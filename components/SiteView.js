@@ -360,15 +360,32 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       <div id="testimonials" style={{ background: "var(--ink-soft)", padding: "50px 24px" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>What our guests say</h2>
+          {testimonials.length > 0 && (
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text)" }}>
+                {(testimonials.reduce((s, t) => s + t.rating, 0) / testimonials.length).toFixed(1)}
+              </span>
+              <span style={{ color: "#E8934A", fontSize: 16, letterSpacing: 2 }}>★★★★★</span>
+              <span style={{ color: "var(--muted)", fontSize: 13.5 }}>
+                average from {testimonials.length} review{testimonials.length === 1 ? "" : "s"}
+              </span>
+            </div>
+          )}
           <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 22 }}>
             Real reviews from real charters — and we'd love to hear about yours.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(280px,1fr)", gap: 30, alignItems: "start" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 16, alignItems: "stretch" }}>
               {testimonials.length === 0 && (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>No reviews yet — be the first to share your experience!</div>
               )}
-              {testimonials.map((t) => <TestimonialCard key={t.id} t={t} />)}
+              {groupTestimonialsForDisplay(testimonials).map((item) =>
+                item.type === "group" ? (
+                  <CompactTestimonialGroup key={item.ts.map((t) => t.id).join("-")} ts={item.ts} />
+                ) : (
+                  <TestimonialCard key={item.t.id} t={item.t} />
+                )
+              )}
             </div>
             <TestimonialForm onSubmit={submitTestimonial} />
           </div>
@@ -741,6 +758,65 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
         Not ready to pay? Just send an inquiry
       </button>
     </form>
+  );
+}
+
+// Short quotes (a handful of words) look lost/oversized as their own full
+// card next to longer reviews. Bundle runs of short ones (up to 3) into one
+// compact card, each getting its own mini-cell, so the grid reads as evenly
+// sized tiles instead of a few tiny ones floating next to big ones.
+const SHORT_QUOTE_WORD_LIMIT = 6;
+
+function groupTestimonialsForDisplay(testimonials) {
+  const items = [];
+  let pendingShort = [];
+
+  function flushShort() {
+    if (pendingShort.length === 1) {
+      items.push({ type: "single", t: pendingShort[0] });
+    } else if (pendingShort.length > 1) {
+      items.push({ type: "group", ts: pendingShort });
+    }
+    pendingShort = [];
+  }
+
+  for (const t of testimonials) {
+    const isShort = t.quote.trim().split(/\s+/).length <= SHORT_QUOTE_WORD_LIMIT;
+    if (isShort) {
+      pendingShort.push(t);
+      if (pendingShort.length === 3) flushShort();
+    } else {
+      flushShort();
+      items.push({ type: "single", t });
+    }
+  }
+  flushShort();
+
+  return items;
+}
+
+function CompactTestimonialGroup({ ts }) {
+  return (
+    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, display: "flex", flexDirection: "column" }}>
+      {ts.map((t, i) => (
+        <div
+          key={t.id}
+          style={{
+            padding: "14px 18px",
+            borderBottom: i < ts.length - 1 ? "1px solid rgba(203,108,230,0.14)" : "none",
+            flex: 1, display: "flex", flexDirection: "column", justifyContent: "center",
+          }}
+        >
+          <div style={{ color: "#E8934A", fontSize: 13, letterSpacing: 2, marginBottom: 4 }}>
+            {"★".repeat(t.rating)}{"☆".repeat(5 - t.rating)}
+          </div>
+          <p style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.9, lineHeight: 1.5, margin: "0 0 4px" }}>
+            &ldquo;{t.quote}&rdquo;
+          </p>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{t.name}</div>
+        </div>
+      ))}
+    </div>
   );
 }
 
