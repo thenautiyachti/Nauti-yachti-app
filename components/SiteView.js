@@ -8,6 +8,7 @@ import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
 const SOCIALS = [
   { label: "Facebook", url: "https://www.facebook.com/profile.php?id=61577960573366" },
+  { label: "TikTok", url: "https://www.tiktok.com/@the.nauti.yachti" },
   { label: "Instagram", url: "https://www.instagram.com/thenautiyachtillc/" },
   { label: "GetMyBoat — Nauti Explorer", url: "https://www.getmyboat.com/trips/5Yr13eya/" },
   { label: "GetMyBoat — Nauti Yachti", url: "https://www.getmyboat.com/trips/2aM5DkWa/" },
