@@ -94,7 +94,14 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       if (checkoutRes.ok) {
         const data = await checkoutRes.json();
         if (data.url) {
-          window.location.href = data.url;
+          if (form.couponCode) {
+            // Give the toast a beat on screen before the redirect to Stripe
+            // carries the customer away from this page entirely.
+            flashToast(data.couponApplied ? "Coupon applied!" : "That coupon code didn't work — charging full price.");
+            setTimeout(() => { window.location.href = data.url; }, 900);
+          } else {
+            window.location.href = data.url;
+          }
           return true; // navigating away
         }
       }
@@ -470,7 +477,7 @@ function AvailabilityCalendar({ blockedDates, partialDates }) {
 function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay, onSubmitInquire }) {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", packageId: defaultPackageId || packages[0]?.id,
-    vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3,
+    vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "",
   });
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -534,7 +541,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
     // to show a stuck button on.
     if (ok) {
       setSent(true);
-      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3 });
+      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "" });
       setTimeout(() => setSent(false), 3500);
     } else {
       setSubmitting(false);
@@ -607,6 +614,15 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
       )}
 
       {field("partySize", "Party size", "number", { min: 1 })}
+      <label style={{ display: "block", marginBottom: 12 }}>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Coupon code <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span></div>
+        <input
+          type="text"
+          value={form.couponCode}
+          onChange={(e) => setForm({ ...form, couponCode: e.target.value.toUpperCase() })}
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
+        />
+      </label>
       <label style={{ display: "block", marginBottom: 14 }}>
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Anything else?</div>
         <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3}

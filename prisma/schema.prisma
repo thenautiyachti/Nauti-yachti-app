@@ -76,6 +76,35 @@ model Inquiry {
   paymentStatus         String  @default("unpaid") // "unpaid" | "paid" | "refunded"
   stripeSessionId       String?
   stripePaymentIntentId String?
+
+  couponCode     String? // uppercase Coupon.code, if one was applied at checkout
+  discountAmount Float? // dollars knocked off priceQuoted by the coupon
+}
+
+model Coupon {
+  id            String   @id @default(cuid())
+  code          String   @unique // stored uppercase, e.g. "FAMILY20"
+  discountType  String // "percent" | "fixed"
+  discountValue Float // 20 means 20% for percent, or $20 for fixed
+  active        Boolean  @default(true)
+  maxUses       Int?
+  usedCount     Int      @default(0)
+  expiresAt     String? // "YYYY-MM-DD"
+  note          String?
+  createdAt     DateTime @default(now())
+}
+
+model Subscription {
+  id           String   @id @default(cuid())
+  name         String // e.g. "Boat storage", "design.com domain", "Claude subscription"
+  category     String? // e.g. "Storage", "Hosting", "Software", "Utilities"
+  amount       Float
+  billingCycle String // "monthly" | "yearly" | "weekly"
+  nextDueDate  String? // "YYYY-MM-DD"
+  vendor       String?
+  note         String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
 }
 
 model ExternalBooking {

@@ -1,6 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { sendInquiryEmail } = require("../../../lib/email");
+const { checkCoupon, discountedAmount } = require("../../../lib/coupons");
 
 // Public: customer clicks "Book this" / submits the booking form and is sent
 // to Stripe's hosted Checkout for the exact quoted price. We still create the
@@ -30,6 +31,22 @@ async function POST(req) {
     return NextResponse.json({ error: "Missing or invalid priceQuoted" }, { status: 400 });
   }
 
+  // A coupon code is optional and never trusted from the client beyond the
+  // code itself — the discount is re-derived server-side from the Coupon
+  // row, exactly the same way /api/coupons/validate judges it. A bad code
+  // (typo, expired, already used up) never blocks checkout — it's silently
+  // ignored and the customer is charged full price.
+  let finalAmount = priceQuoted;
+  let appliedCoupon = null;
+  if (body.couponCode) {
+    const result = await checkCoupon(body.couponCode);
+    if (result.valid) {
+      appliedCoupon = result.coupon;
+      finalAmount = discountedAmount(appliedCoupon.discountType, appliedCoupon.discountValue, priceQuoted);
+    }
+  }
+  const discountAmount = appliedCoupon ? Math.max(0, priceQuoted - finalAmount) : null;
+
   const created = await prisma.inquiry.create({
     data: {
       name: body.name,
@@ -45,8 +62,17 @@ async function POST(req) {
       message: body.message || null,
       priceQuoted,
       paymentStatus: "unpaid",
+      couponCode: appliedCoupon ? appliedCoupon.code : null,
+      discountAmount,
     },
   });
+
+  if (appliedCoupon) {
+    await prisma.coupon.update({
+      where: { id: appliedCoupon.id },
+      data: { usedCount: { increment: 1 } },
+    });
+  }
 
   // Owner still gets the usual inquiry email regardless of whether payment
   // completes — same as the plain-inquiry flow today.
@@ -68,7 +94,7 @@ async function POST(req) {
           price_data: {
             currency: "usd",
             product_data: { name: itemName || "Charter booking" },
-            unit_amount: Math.round(priceQuoted * 100),
+            unit_amount: Math.round(finalAmount * 100),
           },
           quantity: 1,
         },
@@ -83,7 +109,7 @@ async function POST(req) {
       data: { stripeSessionId: session.id },
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url, couponApplied: !!appliedCoupon });
   } catch (err) {
     console.error("[checkout] Stripe session creation failed:", err);
     return NextResponse.json({ error: "Could not start checkout" }, { status: 502 });

@@ -18,11 +18,13 @@ const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Payp
 
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
-  maintenanceItems, engineHours, fuelLogs,
+  maintenanceItems, engineHours, fuelLogs, coupons, subscriptions,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onLogout,
   onUpdateAddonPrice, onAddExternalBooking, onSetExternalBookingStatus, onDeleteExternalBooking,
   onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
+  onAddCoupon, onToggleCouponActive, onDeleteCoupon,
+  onAddSubscription, onUpdateSubscription, onDeleteSubscription,
 }) {
   const [tab, setTab] = useState("inquiries");
 
@@ -31,10 +33,12 @@ export default function AdminView({
     { id: "bookings", label: `External bookings (${externalBookings.length})` },
     { id: "pricing", label: "Packages & pricing" },
     { id: "addons", label: "Add-ons" },
+    { id: "coupons", label: "Coupons" },
     { id: "availability", label: "Availability" },
     { id: "media", label: "Media" },
     { id: "ledger", label: "Income & expenses" },
     { id: "maintenance", label: "Maintenance" },
+    { id: "subscriptions", label: "Subscriptions" },
   ];
 
   return (
@@ -71,6 +75,7 @@ export default function AdminView({
                   <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
                     {i.email} · {i.phone} · {i.vesselName || "—"} · {i.date || "—"} · party of {i.partySize || "—"}
                     {i.priceQuoted ? ` · ${currency(i.priceQuoted)}` : ""}
+                    {i.couponCode ? ` · coupon ${i.couponCode} (−${currency(i.discountAmount || 0)})` : ""}
                   </div>
                   {i.message && <div style={{ fontSize: 12.5, marginTop: 4 }}>{i.message}</div>}
                 </div>
@@ -124,6 +129,10 @@ export default function AdminView({
               </div>
             ))}
           </div>
+        )}
+
+        {tab === "coupons" && (
+          <CouponsTab coupons={coupons} onAdd={onAddCoupon} onToggleActive={onToggleCouponActive} onDelete={onDeleteCoupon} />
         )}
 
         {tab === "pricing" && (
@@ -259,6 +268,10 @@ export default function AdminView({
             onAddEngineHoursLog={onAddEngineHoursLog}
             onAddFuelLog={onAddFuelLog}
           />
+        )}
+
+        {tab === "subscriptions" && (
+          <SubscriptionsTab subscriptions={subscriptions} onAdd={onAddSubscription} onUpdate={onUpdateSubscription} onDelete={onDeleteSubscription} />
         )}
       </div>
     </div>
@@ -774,6 +787,269 @@ function FuelLogPanel({ vessels, fuelLogs, onAdd }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- Coupons tab -------------------------------------------------
+
+function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
+  const emptyForm = { code: "", discountType: "percent", discountValue: "", maxUses: "", expiresAt: "", note: "" };
+  const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!form.code || !form.discountValue) return;
+    setError("");
+    try {
+      await onAdd({
+        code: form.code,
+        discountType: form.discountType,
+        discountValue: Number(form.discountValue),
+        maxUses: form.maxUses ? Number(form.maxUses) : null,
+        expiresAt: form.expiresAt || null,
+        note: form.note || null,
+      });
+      setForm(emptyForm);
+    } catch {
+      setError("Could not save that coupon — the code may already be in use.");
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
+      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
+        <label style={{ display: "block", marginBottom: 8 }}>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Code</div>
+          <input type="text" placeholder="e.g. FAMILY20" value={form.code}
+            onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} required />
+        </label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Type</div>
+            <select value={form.discountType} onChange={(e) => setForm({ ...form, discountType: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+              <option value="percent">Percent off</option>
+              <option value="fixed">Fixed $ off</option>
+            </select>
+          </label>
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>{form.discountType === "percent" ? "Percent" : "Dollars"}</div>
+            <input type="number" min="0" step="0.01" value={form.discountValue} onChange={(e) => setForm({ ...form, discountValue: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} required />
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Max uses (optional)</div>
+            <input type="number" min="1" placeholder="Unlimited" value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          </label>
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Expires (optional)</div>
+            <input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          </label>
+        </div>
+        <input type="text" placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
+        {error && <div style={{ color: "var(--pink)", fontSize: 12.5, marginBottom: 8 }}>{error}</div>}
+        <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add coupon</button>
+      </form>
+
+      <div>
+        <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Coupons ({coupons.length})</div>
+        <div style={{ display: "grid", gap: 6 }}>
+          {coupons.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No coupons yet.</div>}
+          {coupons.map((c) => (
+            <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13.5, color: "var(--text)", gap: 10 }}>
+              <div>
+                <div className="mono" style={{ fontWeight: 700 }}>
+                  {c.code}
+                  <span style={{ fontWeight: 400, color: "var(--muted)", marginLeft: 8 }}>
+                    {c.discountType === "percent" ? `${c.discountValue}% off` : `${currency(c.discountValue)} off`}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                  {c.usedCount} / {c.maxUses ?? "∞"} used
+                  {c.expiresAt ? ` · expires ${c.expiresAt}` : ""}
+                  {c.note ? ` · ${c.note}` : ""}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                <span
+                  className="mono"
+                  style={{
+                    fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em",
+                    color: c.active ? "#0A0612" : "var(--text)",
+                    background: c.active ? "var(--purple)" : "rgba(203,108,230,0.12)",
+                    border: c.active ? "none" : "1px solid rgba(203,108,230,0.3)",
+                  }}
+                >
+                  {c.active ? "Active" : "Inactive"}
+                </span>
+                <button type="button" onClick={() => onToggleActive(c.id, !c.active)}
+                  style={{ background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "5px 9px", fontSize: 11.5, fontWeight: 600 }}>
+                  {c.active ? "Deactivate" : "Activate"}
+                </button>
+                <button type="button" onClick={() => onDelete(c.id)}
+                  style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "5px 9px", fontSize: 11.5, fontWeight: 600 }}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Subscriptions tab --------------------------------------------
+
+const SUBSCRIPTION_CATEGORIES = ["Storage", "Hosting", "Software", "Utilities", "Other"];
+const BILLING_CYCLES = ["monthly", "yearly", "weekly"];
+
+// Normalizes any billing cycle to an equivalent monthly figure so subscriptions
+// on different cadences can be summed into one "per month" total.
+function monthlyAmount(sub) {
+  if (sub.billingCycle === "yearly") return sub.amount / 12;
+  if (sub.billingCycle === "weekly") return sub.amount * 4.33;
+  return sub.amount;
+}
+
+function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
+  const emptyForm = { name: "", category: SUBSCRIPTION_CATEGORIES[0], amount: "", billingCycle: "monthly", nextDueDate: "", vendor: "", note: "" };
+  const [form, setForm] = useState(emptyForm);
+
+  function submit(e) {
+    e.preventDefault();
+    if (!form.name || !form.amount) return;
+    onAdd({
+      name: form.name,
+      category: form.category || null,
+      amount: Number(form.amount),
+      billingCycle: form.billingCycle,
+      nextDueDate: form.nextDueDate || null,
+      vendor: form.vendor || null,
+      note: form.note || null,
+    });
+    setForm(emptyForm);
+  }
+
+  const active = subscriptions.filter((s) => s.active);
+  const totalMonthly = active.reduce((sum, s) => sum + monthlyAmount(s), 0);
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "flex", gap: 10, maxWidth: 480 }}>
+        <StatCard label="Total monthly recurring cost" value={currency(totalMonthly)} color="var(--purple)" />
+        <StatCard label="Active subscriptions" value={String(active.length)} color="#E8934A" />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
+        <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
+          <input type="text" placeholder="Name (e.g. Boat storage)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} required />
+          <label style={{ display: "block", marginBottom: 8 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Category</div>
+            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+              {SUBSCRIPTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <label style={{ flex: 1 }}>
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Amount</div>
+              <input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} required />
+            </label>
+            <label style={{ flex: 1 }}>
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Cycle</div>
+              <select value={form.billingCycle} onChange={(e) => setForm({ ...form, billingCycle: e.target.value })}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+                {BILLING_CYCLES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+          </div>
+          <label style={{ display: "block", marginBottom: 8 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Next due date (optional)</div>
+            <input type="date" value={form.nextDueDate} onChange={(e) => setForm({ ...form, nextDueDate: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          </label>
+          <input type="text" placeholder="Vendor (optional)" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })}
+            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+          <input type="text" placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
+          <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add subscription</button>
+        </form>
+
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Subscriptions ({subscriptions.length})</div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 640, fontSize: 12.5, color: "var(--text)" }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
+                  <th style={{ padding: "4px 8px" }}>Name</th>
+                  <th style={{ padding: "4px 8px" }}>Category</th>
+                  <th style={{ padding: "4px 8px" }}>Amount</th>
+                  <th style={{ padding: "4px 8px" }}>Cycle</th>
+                  <th style={{ padding: "4px 8px" }}>Next due</th>
+                  <th style={{ padding: "4px 8px" }}>Active</th>
+                  <th style={{ padding: "4px 8px" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {subscriptions.length === 0 && (
+                  <tr><td colSpan={7} style={{ padding: "8px", color: "var(--muted)" }}>No subscriptions yet.</td></tr>
+                )}
+                {subscriptions.map((s) => (
+                  <tr key={s.id} style={{ background: "var(--card)" }}>
+                    <td style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>
+                      <input defaultValue={s.name} onBlur={(e) => onUpdate(s.id, { name: e.target.value })}
+                        style={{ width: 130, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)" }} />
+                    </td>
+                    <td style={{ padding: "6px 8px" }}>
+                      <select defaultValue={s.category || SUBSCRIPTION_CATEGORIES[SUBSCRIPTION_CATEGORIES.length - 1]} onChange={(e) => onUpdate(s.id, { category: e.target.value })}
+                        style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }}>
+                        {SUBSCRIPTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ padding: "6px 8px" }}>
+                      <input type="number" min="0" step="0.01" defaultValue={s.amount} onBlur={(e) => onUpdate(s.id, { amount: Number(e.target.value) })}
+                        style={{ width: 70, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                    </td>
+                    <td style={{ padding: "6px 8px" }}>
+                      <select defaultValue={s.billingCycle} onChange={(e) => onUpdate(s.id, { billingCycle: e.target.value })}
+                        style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }}>
+                        {BILLING_CYCLES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ padding: "6px 8px" }}>
+                      <input type="date" defaultValue={s.nextDueDate || ""} onBlur={(e) => onUpdate(s.id, { nextDueDate: e.target.value || null })}
+                        style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                    </td>
+                    <td style={{ padding: "6px 8px" }}>
+                      <button type="button" onClick={() => onUpdate(s.id, { active: !s.active })}
+                        style={{ background: "transparent", color: s.active ? "var(--purple)" : "var(--muted)", border: `1px solid ${s.active ? "var(--purple)" : "var(--muted)"}`, borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600 }}>
+                        {s.active ? "Active" : "Inactive"}
+                      </button>
+                    </td>
+                    <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
+                      <button type="button" onClick={() => onDelete(s.id)}
+                        style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600 }}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );

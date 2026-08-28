@@ -31,6 +31,8 @@ export default function AdminPage() {
   const [maintenanceItems, setMaintenanceItems] = useState([]);
   const [engineHours, setEngineHours] = useState([]);
   const [fuelLogs, setFuelLogs] = useState([]);
+  const [coupons, setCoupons] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
 
   useEffect(() => {
     api("/api/admin/session")
@@ -40,7 +42,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -53,9 +55,11 @@ export default function AdminPage() {
       api("/api/maintenance-items"),
       api("/api/engine-hours"),
       api("/api/fuel-log"),
+      api("/api/coupons"),
+      api("/api/subscriptions"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
-    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl);
+    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub);
     setLoading(false);
   }, []);
 
@@ -169,6 +173,32 @@ export default function AdminPage() {
     // given — refetch the ledger so the Ledger tab/totals pick it up too.
     if (entry.cost) setLedger(await api("/api/ledger"));
   }
+  async function addCoupon(coupon) {
+    const created = await api("/api/coupons", { method: "POST", body: JSON.stringify(coupon) });
+    setCoupons((prev) => [created, ...prev]);
+    return created;
+  }
+  async function toggleCouponActive(id, active) {
+    const updated = await api(`/api/coupons/${id}`, { method: "PATCH", body: JSON.stringify({ active }) });
+    setCoupons((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  }
+  async function deleteCoupon(id) {
+    await api(`/api/coupons/${id}`, { method: "DELETE" });
+    setCoupons((prev) => prev.filter((c) => c.id !== id));
+  }
+  async function addSubscription(subscription) {
+    const created = await api("/api/subscriptions", { method: "POST", body: JSON.stringify(subscription) });
+    setSubscriptions((prev) => [created, ...prev]);
+    return created;
+  }
+  async function updateSubscription(id, fields) {
+    const updated = await api(`/api/subscriptions/${id}`, { method: "PATCH", body: JSON.stringify(fields) });
+    setSubscriptions((prev) => prev.map((s) => (s.id === id ? updated : s)));
+  }
+  async function deleteSubscription(id) {
+    await api(`/api/subscriptions/${id}`, { method: "DELETE" });
+    setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+  }
 
   const totals = useMemo(() => {
     const income = ledger.filter((l) => l.type === "income").reduce((s, l) => s + Number(l.amount || 0), 0);
@@ -221,6 +251,8 @@ export default function AdminPage() {
       maintenanceItems={maintenanceItems}
       engineHours={engineHours}
       fuelLogs={fuelLogs}
+      coupons={coupons}
+      subscriptions={subscriptions}
       onUpdatePrice={updatePackagePrice}
       onUpdatePricePerGuest={updatePricePerGuest}
       onUpdateHourlyByVesselPrice={updateHourlyByVesselPrice}
@@ -236,6 +268,12 @@ export default function AdminPage() {
       onUpdateMaintenanceItem={updateMaintenanceItem}
       onAddEngineHoursLog={addEngineHoursLog}
       onAddFuelLog={addFuelLog}
+      onAddCoupon={addCoupon}
+      onToggleCouponActive={toggleCouponActive}
+      onDeleteCoupon={deleteCoupon}
+      onAddSubscription={addSubscription}
+      onUpdateSubscription={updateSubscription}
+      onDeleteSubscription={deleteSubscription}
       onLogout={handleLogout}
     />
   );
