@@ -41,14 +41,24 @@ export default function AdminView({
     { id: "ledger", label: "Income & expenses" },
     { id: "maintenance", label: "Maintenance" },
     { id: "subscriptions", label: "Subscriptions" },
-    { id: "jarvis", label: "Jarvis" },
   ];
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--ink)" }}>
       <div style={{ background: "var(--ink-soft)", color: "var(--text)", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(203,108,230,0.2)" }}>
         <div className="display" style={{ fontSize: 20, fontWeight: 700 }}>OWNER CONSOLE</div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button
+            onClick={() => setTab("jarvis")}
+            style={{
+              background: tab === "jarvis" ? "linear-gradient(135deg, #00d9ff, #0ea5e9)" : "rgba(0,217,255,0.08)",
+              color: tab === "jarvis" ? "#04070a" : "#4ff3ff",
+              border: "1px solid #0ea5e9", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 700,
+              letterSpacing: "0.04em", boxShadow: tab === "jarvis" ? "0 0 14px rgba(0,217,255,0.5)" : "none",
+            }}
+          >
+            ⚡ Jarvis
+          </button>
           <a href="/" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             ← Back to site
           </a>
@@ -58,11 +68,12 @@ export default function AdminView({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 6, padding: "16px 24px 0", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 6, padding: "16px 24px 0", flexWrap: "nowrap", overflowX: "auto", whiteSpace: "nowrap" }}>
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             background: tab === t.id ? "var(--purple)" : "transparent", color: tab === t.id ? "#0A0612" : "var(--text)",
             border: "1px solid var(--purple)", borderRadius: "8px 8px 0 0", padding: "9px 14px", fontSize: 13, fontWeight: 600,
+            flexShrink: 0, whiteSpace: "nowrap",
           }}>{t.label}</button>
         ))}
       </div>
@@ -1164,12 +1175,59 @@ function jarvisFmtDate(dateStr) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// Relative time like "3m ago" / "2h ago" / "5d ago" for AgentActivity rows.
+function jarvisRelativeTime(dateVal) {
+  const then = new Date(dateVal).getTime();
+  if (isNaN(then)) return "";
+  const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay}d ago`;
+}
+
+const JARVIS_STATUS_STYLE = {
+  running: { color: "#00d9ff", label: "RUNNING", pulse: true },
+  completed: { color: "#ffb454", label: "COMPLETED", pulse: false },
+  failed: { color: "#ff4d5e", label: "FAILED", pulse: false },
+};
+
+// Angular, beveled panel corner — the established Jarvis HUD look (see the
+// standalone Jarvis-Voice-UI's .panel for the non-admin-console version of
+// this same aesthetic). Cuts the top-right and bottom-left corners at 45°.
+const jarvisPanelClip = "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))";
+
+function JarvisPanel({ title, children }) {
+  return (
+    <div
+      style={{
+        background: "rgba(0,217,255,0.04)", border: "1px solid #0ea5e9", borderRadius: 4,
+        padding: "16px 18px", clipPath: jarvisPanelClip, boxShadow: "0 0 16px rgba(0,217,255,0.08) inset",
+        position: "relative",
+      }}
+    >
+      <div className="jarvis-font" style={{
+        fontWeight: 700, fontSize: 12.5, letterSpacing: "0.15em", textTransform: "uppercase", color: "#00d9ff",
+        marginBottom: 12, textShadow: "0 0 8px rgba(0,217,255,0.5)",
+      }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function JarvisTab() {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [lastSpoken, setLastSpoken] = useState("");
   const [audioNote, setAudioNote] = useState("");
+  const [agentActivity, setAgentActivity] = useState(null);
+  const [agentActivityError, setAgentActivityError] = useState(false);
 
   const audioElRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -1193,6 +1251,30 @@ function JarvisTab() {
     }
     loadDashboard();
     const interval = setInterval(loadDashboard, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Agent activity poll — every 30s, same cadence as the dashboard panels.
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAgentActivity() {
+      try {
+        const res = await fetch("/api/admin/agent-activity");
+        if (!res.ok) throw new Error("bad status");
+        const data = await res.json();
+        if (!cancelled) {
+          setAgentActivity(data);
+          setAgentActivityError(false);
+        }
+      } catch {
+        if (!cancelled) setAgentActivityError(true);
+      }
+    }
+    loadAgentActivity();
+    const interval = setInterval(loadAgentActivity, 30000);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -1272,82 +1354,165 @@ function JarvisTab() {
   const mediaQueue = dashboard?.mediaQueue || [];
 
   return (
-    <div>
-      <audio ref={audioElRef} style={{ display: "none" }} />
+    <div
+      className="jarvis-hud"
+      style={{
+        position: "relative", margin: "-24px", padding: 24, minHeight: "calc(100vh - 145px)",
+        background:
+          "radial-gradient(ellipse at top, rgba(0,217,255,0.07) 0%, rgba(4,7,10,1) 62%)," +
+          "repeating-linear-gradient(0deg, rgba(0,217,255,0.025) 0px, rgba(0,217,255,0.025) 1px, transparent 1px, transparent 3px)",
+        overflow: "hidden",
+      }}
+    >
+      <style>{`
+        @keyframes jarvisPulseDot {
+          0%, 100% { box-shadow: 0 0 4px 1px rgba(0,217,255,0.6), 0 0 0 rgba(0,217,255,0.4); opacity: 1; }
+          50% { box-shadow: 0 0 10px 4px rgba(0,217,255,0.9), 0 0 16px rgba(0,217,255,0.5); opacity: 0.65; }
+        }
+        @keyframes jarvisScan {
+          from { background-position: 0 0; }
+          to { background-position: 0 300px; }
+        }
+        .jarvis-hud .jarvis-font {
+          font-family: "Orbitron", "Share Tech Mono", monospace;
+        }
+        .jarvis-hud, .jarvis-hud input, .jarvis-hud select, .jarvis-hud button {
+          font-family: "Share Tech Mono", monospace;
+        }
+        .jarvis-hud .jarvis-dot-running {
+          animation: jarvisPulseDot 1.6s ease-in-out infinite;
+        }
+        .jarvis-scanline-overlay {
+          position: absolute; inset: 0; pointer-events: none; z-index: 1;
+          background: linear-gradient(rgba(0,217,255,0) 0%, rgba(0,217,255,0.05) 50%, rgba(0,217,255,0) 100%);
+          background-size: 100% 6px;
+          animation: jarvisScan 6s linear infinite;
+          mix-blend-mode: screen;
+        }
+      `}</style>
+      <div className="jarvis-scanline-overlay" />
+      <div style={{ position: "relative", zIndex: 2 }}>
+        <audio ref={audioElRef} style={{ display: "none" }} />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-        {!audioEnabled ? (
-          <button type="button" onClick={enableAudio}
-            style={{ background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px 18px", fontWeight: 700, fontSize: 13.5 }}>
-            Enable Jarvis Audio
-          </button>
-        ) : (
-          <span className="mono" style={{
-            fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em",
-            color: "#0A0612", background: "var(--purple)",
-          }}>
-            <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#0A0612", marginRight: 6, verticalAlign: "middle" }} />
-            Audio enabled
-          </span>
+        <div className="jarvis-font" style={{
+          fontSize: 20, fontWeight: 900, letterSpacing: "0.3em", color: "#00d9ff",
+          textShadow: "0 0 12px rgba(0,217,255,0.6)", marginBottom: 4,
+        }}>
+          J.A.R.V.I.S.
+        </div>
+        <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#1c7a86", marginBottom: 18 }}>
+          NAUTI YACHTI // ASSISTANT LINK — CONSOLE MODE
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
+          {!audioEnabled ? (
+            <button type="button" onClick={enableAudio}
+              className="jarvis-font"
+              style={{
+                background: "rgba(0,217,255,0.08)", color: "#00d9ff", border: "1px solid #00d9ff", borderRadius: 4,
+                padding: "10px 18px", fontWeight: 700, fontSize: 12.5, letterSpacing: "0.1em",
+                boxShadow: "0 0 12px rgba(0,217,255,0.25)",
+              }}>
+              ▲ ENABLE JARVIS AUDIO
+            </button>
+          ) : (
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.1em",
+              color: "#04070a", background: "#00d9ff", boxShadow: "0 0 10px rgba(0,217,255,0.5)",
+            }}>
+              <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#04070a", marginRight: 6, verticalAlign: "middle" }} />
+              AUDIO ENABLED
+            </span>
+          )}
+          <div style={{ fontSize: 12.5, color: "#4ff3ff", opacity: 0.75 }}>
+            {lastSpoken ? <>Last spoken: <span style={{ color: "#fff" }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing spoken yet this session."}
+          </div>
+        </div>
+        {audioNote && <div style={{ color: "#ffb454", fontSize: 12.5, marginBottom: 16 }}>{audioNote}</div>}
+
+        {dashboardError && !dashboard && (
+          <div style={{ color: "#ff4d5e", fontSize: 13, marginBottom: 16 }}>Unable to load dashboard data.</div>
         )}
-        <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
-          {lastSpoken ? <>Last spoken: <span style={{ color: "var(--text)" }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing spoken yet this session."}
-        </div>
-      </div>
-      {audioNote && <div style={{ color: "var(--pink)", fontSize: 12.5, marginBottom: 16 }}>{audioNote}</div>}
 
-      {dashboardError && !dashboard && (
-        <div style={{ color: "var(--pink)", fontSize: 13, marginBottom: 16 }}>Unable to load dashboard data.</div>
-      )}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
+          <JarvisPanel title="Upcoming Bookings">
+            {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
+            {dashboard && bookings.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No upcoming confirmed bookings.</div>}
+            {bookings.map((b, idx) => (
+              <div key={idx} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: idx < bookings.length - 1 ? "1px solid rgba(0,217,255,0.12)" : "none", fontSize: 12.5, color: "#dffcff" }}>
+                <span style={{ color: "#ffb454", fontWeight: 700, whiteSpace: "nowrap" }}>{jarvisFmtDate(b.date)}</span>
+                <span style={{ flex: 1 }}>
+                  {b.name} — {b.label}{b.vessel ? ` · ${b.vessel}` : ""}{b.note ? ` (${b.note})` : ""}
+                  {b.weatherRisk && b.weatherRisk.risk && (
+                    <span title={b.weatherRisk.reason} style={{
+                      display: "inline-block", marginLeft: 8, padding: "1px 7px", borderRadius: 3,
+                      border: "1px solid #ffb454", color: "#ffb454", fontSize: 10.5, letterSpacing: "0.02em", whiteSpace: "nowrap", verticalAlign: "middle",
+                    }}>
+                      ⚠ {b.weatherRisk.reason.toUpperCase()}
+                    </span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </JarvisPanel>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-        <div style={{ background: "var(--card)", borderRadius: 10, padding: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 10 }}>Upcoming bookings</div>
-          {!dashboard && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>Loading…</div>}
-          {dashboard && bookings.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>No upcoming confirmed bookings.</div>}
-          {bookings.map((b, idx) => (
-            <div key={idx} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: idx < bookings.length - 1 ? "1px solid rgba(203,108,230,0.12)" : "none", fontSize: 12.5, color: "var(--text)" }}>
-              <span style={{ color: "#E8934A", fontWeight: 700, whiteSpace: "nowrap" }}>{jarvisFmtDate(b.date)}</span>
-              <span style={{ flex: 1 }}>
-                {b.name} — {b.label}{b.vessel ? ` · ${b.vessel}` : ""}{b.note ? ` (${b.note})` : ""}
-                {b.weatherRisk && b.weatherRisk.risk && (
-                  <span title={b.weatherRisk.reason} style={{
-                    display: "inline-block", marginLeft: 8, padding: "1px 7px", borderRadius: 3,
-                    border: "1px solid #E8934A", color: "#E8934A", fontSize: 10.5, letterSpacing: "0.02em", whiteSpace: "nowrap", verticalAlign: "middle",
-                  }}>
-                    ⚠ {b.weatherRisk.reason.toUpperCase()}
-                  </span>
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
+          <JarvisPanel title="Needs Attention">
+            {!attention && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
+            {attention && [
+              ["New inquiries", attention.newInquiries],
+              ["Confirmed, unpaid", attention.unpaidConfirmed],
+              ["Maintenance overdue", attention.overdueMaintenance],
+            ].map(([label, val]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 13, color: "#dffcff" }}>
+                <span>{label}</span>
+                <span style={{ fontWeight: 700, color: val > 0 ? "#ffb454" : "#dffcff" }}>{val}</span>
+              </div>
+            ))}
+          </JarvisPanel>
 
-        <div style={{ background: "var(--card)", borderRadius: 10, padding: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 10 }}>Needs attention</div>
-          {!attention && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>Loading…</div>}
-          {attention && [
-            ["New inquiries", attention.newInquiries],
-            ["Confirmed, unpaid", attention.unpaidConfirmed],
-            ["Maintenance overdue", attention.overdueMaintenance],
-          ].map(([label, val]) => (
-            <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(203,108,230,0.12)", fontSize: 13, color: "var(--text)" }}>
-              <span>{label}</span>
-              <span className="mono" style={{ fontWeight: 700, color: val > 0 ? "#E8934A" : "var(--text)" }}>{val}</span>
-            </div>
-          ))}
-        </div>
+          <JarvisPanel title="Media Queue">
+            {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
+            {dashboard && mediaQueue.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No drafts awaiting review.</div>}
+            {mediaQueue.map((m, idx) => (
+              <div key={idx} style={{ padding: "8px 0", borderBottom: idx < mediaQueue.length - 1 ? "1px solid rgba(0,217,255,0.12)" : "none", fontSize: 12.5, color: "#dffcff" }}>
+                {m.theme} — {m.captionPreview}{m.platform ? ` · ${m.platform}` : ""}{" "}
+                <span style={{ color: "#00d9ff", fontSize: 10.5, letterSpacing: "0.03em" }}>{m.status.toUpperCase()}</span>
+              </div>
+            ))}
+          </JarvisPanel>
 
-        <div style={{ background: "var(--card)", borderRadius: 10, padding: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 10 }}>Media queue</div>
-          {!dashboard && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>Loading…</div>}
-          {dashboard && mediaQueue.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>No drafts awaiting review.</div>}
-          {mediaQueue.map((m, idx) => (
-            <div key={idx} style={{ padding: "8px 0", borderBottom: idx < mediaQueue.length - 1 ? "1px solid rgba(203,108,230,0.12)" : "none", fontSize: 12.5, color: "var(--text)" }}>
-              {m.theme} — {m.captionPreview}{m.platform ? ` · ${m.platform}` : ""}{" "}
-              <span className="mono" style={{ color: "var(--purple)", fontSize: 10.5, letterSpacing: "0.03em" }}>{m.status.toUpperCase()}</span>
-            </div>
-          ))}
+          <JarvisPanel title="Agent Activity">
+            {agentActivityError && !agentActivity && <div style={{ color: "#ff4d5e", fontSize: 12.5 }}>Unable to load agent activity.</div>}
+            {!agentActivity && !agentActivityError && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
+            {agentActivity && agentActivity.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No active tasks.</div>}
+            {agentActivity && agentActivity.length > 0 && (
+              <div style={{ display: "grid", gap: 10, maxHeight: 320, overflowY: "auto" }}>
+                {agentActivity.map((a) => {
+                  const s = JARVIS_STATUS_STYLE[a.status] || JARVIS_STATUS_STYLE.running;
+                  return (
+                    <div key={a.id} style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 12.5, color: "#dffcff" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span
+                          className={s.pulse ? "jarvis-dot-running" : ""}
+                          style={{
+                            display: "inline-block", width: 8, height: 8, borderRadius: "50%",
+                            background: s.color, flexShrink: 0,
+                            boxShadow: s.pulse ? undefined : `0 0 6px ${s.color}`,
+                          }}
+                        />
+                        <span style={{ fontWeight: 700, color: "#fff", flex: 1, minWidth: 0 }}>{a.taskTitle}</span>
+                        <span style={{ fontSize: 10, letterSpacing: "0.06em", color: s.color, whiteSpace: "nowrap" }}>{s.label}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#4ff3ff", opacity: 0.7, marginTop: 3, marginLeft: 16 }}>
+                        {a.agentName} · {jarvisRelativeTime(a.status === "completed" || a.status === "failed" ? (a.completedAt || a.startedAt) : a.startedAt)}
+                      </div>
+                      {a.detail && <div style={{ fontSize: 11.5, color: "#b7d9de", marginTop: 4, marginLeft: 16 }}>{a.detail}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </JarvisPanel>
         </div>
       </div>
     </div>

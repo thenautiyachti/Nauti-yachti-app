@@ -192,3 +192,13 @@ model SpeechEvent {
   audioB64  String // ElevenLabs mp3 output, base64-encoded
   createdAt DateTime @default(now())
 }
+
+model AgentActivity {
+  id          String    @id @default(cuid())
+  agentName   String // e.g. "Claude Code", "Media Agent"
+  taskTitle   String
+  status      String    @default("running") // "running" | "completed" | "failed"
+  detail      String? // free text — a short progress note or result summary
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+}
