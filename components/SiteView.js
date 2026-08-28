@@ -278,12 +278,13 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                 Live radar
               </h3>
               <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 0, marginBottom: 14 }}>
-                National Weather Service radar, Houston/Galveston station — updates automatically.
+                Zoomed in on Lake Conroe — updates automatically.
               </p>
-              <img
-                src="https://radar.weather.gov/ridge/standard/KHGX_loop.gif"
-                alt="Live NWS weather radar loop for the Houston/Galveston area, covering Lake Conroe"
-                style={{ width: "100%", maxWidth: 560, borderRadius: 10, border: "1px solid rgba(203,108,230,0.18)" }}
+              <iframe
+                title="Live weather radar centered on Lake Conroe"
+                src="https://embed.windy.com/embed2.html?lat=30.394&lon=-95.584&detailLat=30.394&detailLon=-95.584&width=650&height=450&zoom=10&level=surface&overlay=radar&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
+                style={{ width: "100%", maxWidth: 560, height: 400, border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10 }}
+                loading="lazy"
               />
             </div>
           </div>
