@@ -92,6 +92,11 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
           }}
         />
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
+          <img
+            src="/logo.jpg"
+            alt="The Nauti Yachti"
+            style={{ width: 280, maxWidth: "70%", height: "auto", display: "inline-block", marginBottom: 20 }}
+          />
           <div className="mono" style={{ color: "var(--purple)", fontSize: 13, letterSpacing: "0.15em", marginBottom: 14 }}>
             LAKE CONROE, TEXAS
           </div>
@@ -113,13 +118,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
             Check availability
           </a>
         </div>
-        <div style={{ marginTop: 40, textAlign: "center", position: "relative", zIndex: 1 }}>
-          <img
-            src="/logo.jpg"
-            alt="The Nauti Yachti"
-            style={{ width: "50%", maxWidth: 450, height: "auto", display: "inline-block" }}
-          />
-        </div>
+        <div style={{ height: 40 }} />
       </div>
       <WakeLine />
 
@@ -425,7 +424,7 @@ function AvailabilityCalendar({ blockedDates, partialDates }) {
   if (!months) return null;
 
   return (
-    <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 32, flexWrap: "wrap", justifyContent: "center" }}>
       {months.map((m) => (
         <AvailabilityMonthGrid key={`${m.year}-${m.month}`} year={m.year} month={m.month} getState={getState} />
       ))}
