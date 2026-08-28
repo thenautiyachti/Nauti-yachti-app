@@ -435,12 +435,38 @@ function AdminAvailabilityRow({ vesselId, blockedDates, partialDates, onToggle }
   );
 }
 
+// Expense categories are stored like "01. Gas" — the leading number was an
+// internal ordering scheme from the owner's old spreadsheet. Strip it only
+// for display; the stored value keeps the number so other code/imports can
+// keep relying on it.
+function stripCategoryPrefix(category) {
+  if (!category) return category;
+  return category.replace(/^\d+\.\s*/, "");
+}
+
+const UNCATEGORIZED_INCOME_LABEL = "Other / Uncategorized";
+
+// Grouped totals for the breakdown panels: expenses by category, income by
+// vessel/package (subcategory). Sorted biggest total first.
+function groupTotals(entries, keyFn) {
+  const groups = new Map();
+  for (const entry of entries) {
+    const key = keyFn(entry) || UNCATEGORIZED_INCOME_LABEL;
+    const cur = groups.get(key) || { label: key, total: 0, count: 0 };
+    cur.total += Number(entry.amount || 0);
+    cur.count += 1;
+    groups.set(key, cur);
+  }
+  return Array.from(groups.values()).sort((a, b) => b.total - a.total);
+}
+
 function LedgerTab({ ledger, totals, onAdd }) {
   const emptyForm = {
     type: "income", amount: "", note: "", date: localDateKey(new Date()),
-    category: INCOME_CATEGORIES[0], origin: RESERVATION_ORIGINS[0], bookingId: "",
+    category: INCOME_CATEGORIES[0], origin: RESERVATION_ORIGINS[0], bookingId: "", subcategory: "",
   };
   const [form, setForm] = useState(emptyForm);
+  const [filterType, setFilterType] = useState("all"); // "all" | "income" | "expense"
   const categoryOptions = form.type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const originOptions = form.type === "income" ? RESERVATION_ORIGINS : STATEMENT_ORIGINS;
 
@@ -453,9 +479,21 @@ function LedgerTab({ ledger, totals, onAdd }) {
   function submit(e) {
     e.preventDefault();
     if (!form.amount) return;
-    onAdd({ ...form, amount: Number(form.amount) });
+    onAdd({ ...form, amount: Number(form.amount), subcategory: form.subcategory || null });
     setForm(emptyForm);
   }
+
+  const sortedLedger = [...ledger].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const visibleLedger = filterType === "all" ? sortedLedger : sortedLedger.filter((l) => l.type === filterType);
+
+  const expenseBreakdown = groupTotals(
+    ledger.filter((l) => l.type === "expense"),
+    (l) => stripCategoryPrefix(l.category)
+  );
+  const incomeBreakdown = groupTotals(
+    ledger.filter((l) => l.type === "income"),
+    (l) => l.subcategory
+  );
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,360px) 1fr", gap: 24 }}>
@@ -496,21 +534,40 @@ function LedgerTab({ ledger, totals, onAdd }) {
           </label>
           <input type="text" placeholder="Booking ID (links this to a reservation)" value={form.bookingId} onChange={(e) => setForm({ ...form, bookingId: e.target.value })}
             style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+          {form.type === "income" && (
+            <input type="text" placeholder="Vessel / Package (e.g. The Nauti Explorer)" value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+          )}
           <input type="text" placeholder="Note (e.g. guest name, description)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
             style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
           <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add entry</button>
         </form>
       </div>
       <div>
-        <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Recent entries</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ fontWeight: 700, color: "var(--text)" }}>Recent entries</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {["all", "income", "expense"].map((f) => (
+              <button key={f} type="button" onClick={() => setFilterType(f)}
+                style={{
+                  padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600, textTransform: "capitalize",
+                  border: "1px solid var(--purple)", cursor: "pointer",
+                  background: filterType === f ? "var(--purple)" : "transparent",
+                  color: filterType === f ? "#0A0612" : "var(--text)",
+                }}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
         <div style={{ display: "grid", gap: 6, maxHeight: 380, overflowY: "auto" }}>
-          {ledger.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
-          {ledger.map((l) => (
+          {visibleLedger.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
+          {visibleLedger.map((l) => (
             <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13.5, color: "var(--text)", gap: 10 }}>
               <div>
-                <div>{l.date} — {l.note || l.category || "(no note)"}</div>
+                <div>{l.date} — {l.note || stripCategoryPrefix(l.category) || "(no note)"}</div>
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                  {[l.category, l.origin, l.bookingId && `#${l.bookingId}`].filter(Boolean).join(" · ")}
+                  {[stripCategoryPrefix(l.category), l.subcategory, l.origin, l.bookingId && `#${l.bookingId}`].filter(Boolean).join(" · ")}
                 </div>
               </div>
               <span className="mono" style={{ color: l.type === "income" ? "#7FE0B8" : "#F0559C", fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -519,6 +576,27 @@ function LedgerTab({ ledger, totals, onAdd }) {
             </div>
           ))}
         </div>
+      </div>
+      <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <BreakdownPanel title="Expenses by category" rows={expenseBreakdown} color="#F0559C" />
+        <BreakdownPanel title="Income by vessel / package" rows={incomeBreakdown} color="#7FE0B8" />
+      </div>
+    </div>
+  );
+}
+
+function BreakdownPanel({ title, rows, color }) {
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+      <div style={{ fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>{title}</div>
+      {rows.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
+      <div style={{ display: "grid", gap: 6 }}>
+        {rows.map((r) => (
+          <div key={r.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13.5, color: "var(--text)", gap: 10 }}>
+            <span>{r.label} <span style={{ color: "var(--muted)", fontSize: 11.5 }}>({r.count} {r.count === 1 ? "entry" : "entries"})</span></span>
+            <span className="mono" style={{ color, fontWeight: 700, whiteSpace: "nowrap" }}>{currency(r.total)}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

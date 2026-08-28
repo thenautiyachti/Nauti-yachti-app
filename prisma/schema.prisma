@@ -131,15 +131,16 @@ model AddOn {
 }
 
 model LedgerEntry {
-  id        String   @id @default(cuid())
-  type      String // "income" | "expense"
-  category  String? // e.g. "01. Gas" (expense) or "Reservation" (income)
-  amount    Float
-  note      String?
-  origin    String? // reservation origin (Boatsetter, GetmyBoat, ...) or statement source (Cash, Wells Fargo Statement, ...)
-  bookingId String? // links an expense back to the reservation it was for
-  date      String
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  type        String // "income" | "expense"
+  category    String? // e.g. "01. Gas" (expense) or "Reservation" (income)
+  subcategory String? // vessel/package name for income rows, e.g. "The Nauti Explorer" — null for expenses
+  amount      Float
+  note        String?
+  origin      String? // reservation origin (Boatsetter, GetmyBoat, ...) or statement source (Cash, Wells Fargo Statement, ...)
+  bookingId   String? // links an expense back to the reservation it was for
+  date        String
+  createdAt   DateTime @default(now())
 }
 
 model MaintenanceItem {

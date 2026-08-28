@@ -14,14 +14,15 @@ async function POST(req) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { type, amount, note, date, category, origin, bookingId } = await req.json();
+  const { type, amount, note, date, category, subcategory, origin, bookingId } = await req.json();
   if (!["income", "expense"].includes(type) || !amount || !date) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
   const entry = await prisma.ledgerEntry.create({
     data: {
       type, amount: Number(amount), note: note || null, date,
-      category: category || null, origin: origin || null, bookingId: bookingId || null,
+      category: category || null, subcategory: subcategory || null,
+      origin: origin || null, bookingId: bookingId || null,
     },
   });
   return NextResponse.json(entry);
