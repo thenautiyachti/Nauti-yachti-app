@@ -388,12 +388,18 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
 }
 
 function AvailabilityCalendar({ blockedDates }) {
-  const today = new Date();
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return d;
-  });
+  // Computed client-side only: "today" must reflect the viewer's local clock,
+  // and doing this during SSR causes hydration mismatches when the server's
+  // timezone differs from the browser's.
+  const [days, setDays] = useState([]);
+  useEffect(() => {
+    const today = new Date();
+    setDays(Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      return d;
+    }));
+  }, []);
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
       {days.map((d) => {

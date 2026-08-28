@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { currency, localDateKey } from "../lib/pricing";
 
 const EXPENSE_CATEGORIES = [
@@ -320,12 +320,16 @@ function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, on
 }
 
 function AdminAvailabilityRow({ vesselId, blockedDates, onToggle }) {
-  const today = new Date();
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return d;
-  });
+  // Computed client-side only — see AvailabilityCalendar in SiteView.js for why.
+  const [days, setDays] = useState([]);
+  useEffect(() => {
+    const today = new Date();
+    setDays(Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      return d;
+    }));
+  }, []);
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, maxWidth: 560 }}>
       {days.map((d) => {
