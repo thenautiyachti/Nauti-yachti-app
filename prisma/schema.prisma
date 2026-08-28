@@ -3,10 +3,9 @@ generator client {
 }
 
 datasource db {
-  // For production, change "sqlite" to "postgresql" and point DATABASE_URL
-  // at a real Postgres database (e.g. Supabase or Vercel Postgres).
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Package {
