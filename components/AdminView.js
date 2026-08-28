@@ -18,13 +18,14 @@ const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Payp
 
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
-  maintenanceItems, engineHours, fuelLogs, coupons, subscriptions,
+  maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onLogout,
   onUpdateAddonPrice, onAddExternalBooking, onSetExternalBookingStatus, onDeleteExternalBooking,
   onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
   onAddCoupon, onToggleCouponActive, onDeleteCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
+  onUpdateMediaDraftStatus, onDeleteMediaDraft,
 }) {
   const [tab, setTab] = useState("inquiries");
 
@@ -36,6 +37,7 @@ export default function AdminView({
     { id: "coupons", label: "Coupons" },
     { id: "availability", label: "Availability" },
     { id: "media", label: "Media" },
+    { id: "mediaDrafts", label: `Media Drafts (${mediaDrafts.filter((d) => d.status === "pending").length})` },
     { id: "ledger", label: "Income & expenses" },
     { id: "maintenance", label: "Maintenance" },
     { id: "subscriptions", label: "Subscriptions" },
@@ -252,6 +254,10 @@ export default function AdminView({
               Photo/video uploads aren't wired up yet — this edits captions on the existing gallery tiles. Adding real uploads means storing files somewhere like S3 or Cloudinary; happy to wire that in next.
             </p>
           </div>
+        )}
+
+        {tab === "mediaDrafts" && (
+          <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} />
         )}
 
         {tab === "ledger" && (
@@ -903,6 +909,88 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Media Drafts tab ------------------------------------------------
+
+const MEDIA_DRAFT_STATUS_COLORS = {
+  pending: "rgba(203,108,230,0.12)",
+  approved: "var(--purple)",
+  rejected: "rgba(240,85,156,0.18)",
+  posted: "#7FE0B8",
+};
+const MEDIA_DRAFT_STATUS_TEXT_COLORS = {
+  pending: "var(--text)",
+  approved: "#0A0612",
+  rejected: "var(--pink)",
+  posted: "#0A0612",
+};
+
+function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete }) {
+  return (
+    <div>
+      <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Media drafts ({mediaDrafts.length})</div>
+      <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 14 }}>
+        These are AI-drafted social posts queued for your review — nothing here is ever posted automatically. Approve or reject each one; approved drafts still require a separate manual posting step.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+        {mediaDrafts.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No drafts found — they'll show up here once the media agent queues one.</div>}
+        {mediaDrafts.map((d) => (
+          <div key={d.id} style={{ background: "var(--card)", borderRadius: 10, overflow: "hidden", color: "var(--text)" }}>
+            {d.mediaType === "video" ? (
+              <a href={d.mediaUrl} target="_blank" rel="noreferrer" style={{ width: "100%", height: 160, background: "rgba(203,108,230,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--purple)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                ▶ View video
+              </a>
+            ) : (
+              <img src={d.mediaUrl} alt="" style={{ width: "100%", height: 160, objectFit: "cover" }} />
+            )}
+            <div style={{ padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+                <div style={{ fontWeight: 700, fontSize: 13.5 }}>{d.theme}</div>
+                <span
+                  className="mono"
+                  style={{
+                    fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap",
+                    color: MEDIA_DRAFT_STATUS_TEXT_COLORS[d.status] || "var(--text)",
+                    background: MEDIA_DRAFT_STATUS_COLORS[d.status] || "rgba(203,108,230,0.12)",
+                  }}
+                >
+                  {d.status}
+                </span>
+              </div>
+              <div style={{ fontSize: 12.5, marginBottom: 8 }}>{d.caption}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
+                {[d.platform || "Platform TBD", new Date(d.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })].join(" · ")}
+              </div>
+              {d.status === "pending" ? (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button type="button" onClick={() => onUpdateStatus(d.id, "approved")}
+                    style={{ flex: 1, background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    Approve
+                  </button>
+                  <button type="button" onClick={() => onUpdateStatus(d.id, "rejected")}
+                    style={{ flex: 1, background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    Reject
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button type="button" onClick={() => onUpdateStatus(d.id, "pending")}
+                    style={{ flex: 1, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
+                    Reset to pending
+                  </button>
+                  <button type="button" onClick={() => onDelete(d.id)}
+                    style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

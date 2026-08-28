@@ -172,3 +172,16 @@ model FuelLog {
   note          String?
   createdAt     DateTime @default(now())
 }
+
+model MediaDraft {
+  id         String    @id @default(cuid())
+  theme      String // e.g. package name or "General" this draft is themed around
+  mediaUrl   String // URL of the generated image or video
+  mediaType  String    @default("image") // "image" | "video"
+  caption    String // Drafted social caption text
+  platform   String? // intended platform, e.g. "instagram", "facebook", "tiktok" — nullable, may be undecided
+  status     String    @default("pending") // "pending" | "approved" | "rejected" | "posted"
+  reviewNote String? // optional owner note when approving/rejecting
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+}

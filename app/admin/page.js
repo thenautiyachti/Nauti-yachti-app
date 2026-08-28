@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [fuelLogs, setFuelLogs] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [mediaDrafts, setMediaDrafts] = useState([]);
 
   useEffect(() => {
     api("/api/admin/session")
@@ -42,7 +43,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -57,9 +58,10 @@ export default function AdminPage() {
       api("/api/fuel-log"),
       api("/api/coupons"),
       api("/api/subscriptions"),
+      api("/api/media-drafts"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
-    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub);
+    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md);
     setLoading(false);
   }, []);
 
@@ -199,6 +201,14 @@ export default function AdminPage() {
     await api(`/api/subscriptions/${id}`, { method: "DELETE" });
     setSubscriptions((prev) => prev.filter((s) => s.id !== id));
   }
+  async function updateMediaDraftStatus(id, status, reviewNote) {
+    const updated = await api(`/api/media-drafts/${id}`, { method: "PATCH", body: JSON.stringify({ status, ...(reviewNote !== undefined ? { reviewNote } : {}) }) });
+    setMediaDrafts((prev) => prev.map((d) => (d.id === id ? updated : d)));
+  }
+  async function deleteMediaDraft(id) {
+    await api(`/api/media-drafts/${id}`, { method: "DELETE" });
+    setMediaDrafts((prev) => prev.filter((d) => d.id !== id));
+  }
 
   const totals = useMemo(() => {
     const income = ledger.filter((l) => l.type === "income").reduce((s, l) => s + Number(l.amount || 0), 0);
@@ -253,6 +263,7 @@ export default function AdminPage() {
       fuelLogs={fuelLogs}
       coupons={coupons}
       subscriptions={subscriptions}
+      mediaDrafts={mediaDrafts}
       onUpdatePrice={updatePackagePrice}
       onUpdatePricePerGuest={updatePricePerGuest}
       onUpdateHourlyByVesselPrice={updateHourlyByVesselPrice}
@@ -274,6 +285,8 @@ export default function AdminPage() {
       onAddSubscription={addSubscription}
       onUpdateSubscription={updateSubscription}
       onDeleteSubscription={deleteSubscription}
+      onUpdateMediaDraftStatus={updateMediaDraftStatus}
+      onDeleteMediaDraft={deleteMediaDraft}
       onLogout={handleLogout}
     />
   );
