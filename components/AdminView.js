@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { currency, localDateKey, imageFocus } from "../lib/pricing";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
@@ -41,6 +41,7 @@ export default function AdminView({
     { id: "ledger", label: "Income & expenses" },
     { id: "maintenance", label: "Maintenance" },
     { id: "subscriptions", label: "Subscriptions" },
+    { id: "jarvis", label: "Jarvis" },
   ];
 
   return (
@@ -279,6 +280,8 @@ export default function AdminView({
         {tab === "subscriptions" && (
           <SubscriptionsTab subscriptions={subscriptions} onAdd={onAddSubscription} onUpdate={onUpdateSubscription} onDelete={onDeleteSubscription} />
         )}
+
+        {tab === "jarvis" && <JarvisTab />}
       </div>
     </div>
   );
@@ -1137,6 +1140,214 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Jarvis tab --------------------------------------------------
+//
+// Folds the standalone Jarvis-Voice-UI HUD into the owner console so it
+// works from anywhere over the site's own HTTPS + passcode auth, with no
+// separate always-on server or tunnel. Vercel functions can't hold a
+// websocket open, so this polls Postgres instead:
+//  - GET /api/admin/dashboard every ~30s for bookings/attention/media queue
+//  - GET /api/admin/speak?since=... every ~2s for new SpeechEvent rows
+//    while this tab is mounted, decoding + playing any new audio.
+// Browsers block audio autoplay until a real user gesture, so playback is
+// gated behind a one-time "Enable Jarvis Audio" click, same as the
+// standalone HUD's ACTIVATE button.
+
+function jarvisFmtDate(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function JarvisTab() {
+  const [dashboard, setDashboard] = useState(null);
+  const [dashboardError, setDashboardError] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [lastSpoken, setLastSpoken] = useState("");
+  const [audioNote, setAudioNote] = useState("");
+
+  const audioElRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const sinceRef = useRef(null);
+
+  // Dashboard poll — every 30s while this tab is mounted.
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDashboard() {
+      try {
+        const res = await fetch("/api/admin/dashboard");
+        if (!res.ok) throw new Error("bad status");
+        const data = await res.json();
+        if (!cancelled) {
+          setDashboard(data);
+          setDashboardError(false);
+        }
+      } catch {
+        if (!cancelled) setDashboardError(true);
+      }
+    }
+    loadDashboard();
+    const interval = setInterval(loadDashboard, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Speech poll — every 2s, only once audio has been unlocked by a click.
+  useEffect(() => {
+    if (!audioEnabled) return;
+    let cancelled = false;
+    let inFlight = false;
+
+    async function pollSpeech() {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const since = sinceRef.current || new Date().toISOString();
+        const res = await fetch(`/api/admin/speak?since=${encodeURIComponent(since)}`);
+        if (!res.ok || cancelled) return;
+        const events = await res.json();
+        if (!events.length) return;
+        sinceRef.current = events[events.length - 1].createdAt;
+        for (const ev of events) playSpeech(ev);
+      } catch {
+        // transient — just try again on the next tick
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    const interval = setInterval(pollSpeech, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioEnabled]);
+
+  function playSpeech(ev) {
+    setLastSpoken(ev.text);
+    const el = audioElRef.current;
+    if (!el) return;
+    el.src = `data:audio/mpeg;base64,${ev.audioB64}`;
+    el.play()
+      .then(() => setAudioNote(""))
+      .catch((err) => {
+        console.error("Jarvis audio playback blocked:", err);
+        setAudioNote("Playback blocked — click anywhere on the page to retry.");
+        const retry = () => {
+          audioCtxRef.current && audioCtxRef.current.resume();
+          el.play().then(() => {
+            setAudioNote("");
+            document.removeEventListener("click", retry);
+          }).catch(() => {});
+        };
+        document.addEventListener("click", retry);
+      });
+  }
+
+  function enableAudio() {
+    // Create the ONE AudioContext right here, inside a real user gesture, so
+    // the browser doesn't leave it suspended — then reuse this exact
+    // instance (and the single <audio> element below) for every message
+    // instead of creating a new one per message. Same pattern as the
+    // standalone Jarvis-Voice-UI HUD's ACTIVATE button.
+    if (!audioCtxRef.current) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtxRef.current = new Ctx();
+    }
+    if (audioCtxRef.current) audioCtxRef.current.resume();
+    sinceRef.current = new Date().toISOString();
+    setAudioEnabled(true);
+  }
+
+  const bookings = dashboard?.bookings || [];
+  const attention = dashboard?.needsAttention || null;
+  const mediaQueue = dashboard?.mediaQueue || [];
+
+  return (
+    <div>
+      <audio ref={audioElRef} style={{ display: "none" }} />
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+        {!audioEnabled ? (
+          <button type="button" onClick={enableAudio}
+            style={{ background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px 18px", fontWeight: 700, fontSize: 13.5 }}>
+            Enable Jarvis Audio
+          </button>
+        ) : (
+          <span className="mono" style={{
+            fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em",
+            color: "#0A0612", background: "var(--purple)",
+          }}>
+            <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#0A0612", marginRight: 6, verticalAlign: "middle" }} />
+            Audio enabled
+          </span>
+        )}
+        <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
+          {lastSpoken ? <>Last spoken: <span style={{ color: "var(--text)" }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing spoken yet this session."}
+        </div>
+      </div>
+      {audioNote && <div style={{ color: "var(--pink)", fontSize: 12.5, marginBottom: 16 }}>{audioNote}</div>}
+
+      {dashboardError && !dashboard && (
+        <div style={{ color: "var(--pink)", fontSize: 13, marginBottom: 16 }}>Unable to load dashboard data.</div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+        <div style={{ background: "var(--card)", borderRadius: 10, padding: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 10 }}>Upcoming bookings</div>
+          {!dashboard && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>Loading…</div>}
+          {dashboard && bookings.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>No upcoming confirmed bookings.</div>}
+          {bookings.map((b, idx) => (
+            <div key={idx} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: idx < bookings.length - 1 ? "1px solid rgba(203,108,230,0.12)" : "none", fontSize: 12.5, color: "var(--text)" }}>
+              <span style={{ color: "#E8934A", fontWeight: 700, whiteSpace: "nowrap" }}>{jarvisFmtDate(b.date)}</span>
+              <span style={{ flex: 1 }}>
+                {b.name} — {b.label}{b.vessel ? ` · ${b.vessel}` : ""}{b.note ? ` (${b.note})` : ""}
+                {b.weatherRisk && b.weatherRisk.risk && (
+                  <span title={b.weatherRisk.reason} style={{
+                    display: "inline-block", marginLeft: 8, padding: "1px 7px", borderRadius: 3,
+                    border: "1px solid #E8934A", color: "#E8934A", fontSize: 10.5, letterSpacing: "0.02em", whiteSpace: "nowrap", verticalAlign: "middle",
+                  }}>
+                    ⚠ {b.weatherRisk.reason.toUpperCase()}
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background: "var(--card)", borderRadius: 10, padding: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 10 }}>Needs attention</div>
+          {!attention && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>Loading…</div>}
+          {attention && [
+            ["New inquiries", attention.newInquiries],
+            ["Confirmed, unpaid", attention.unpaidConfirmed],
+            ["Maintenance overdue", attention.overdueMaintenance],
+          ].map(([label, val]) => (
+            <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(203,108,230,0.12)", fontSize: 13, color: "var(--text)" }}>
+              <span>{label}</span>
+              <span className="mono" style={{ fontWeight: 700, color: val > 0 ? "#E8934A" : "var(--text)" }}>{val}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background: "var(--card)", borderRadius: 10, padding: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 10 }}>Media queue</div>
+          {!dashboard && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>Loading…</div>}
+          {dashboard && mediaQueue.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12.5 }}>No drafts awaiting review.</div>}
+          {mediaQueue.map((m, idx) => (
+            <div key={idx} style={{ padding: "8px 0", borderBottom: idx < mediaQueue.length - 1 ? "1px solid rgba(203,108,230,0.12)" : "none", fontSize: 12.5, color: "var(--text)" }}>
+              {m.theme} — {m.captionPreview}{m.platform ? ` · ${m.platform}` : ""}{" "}
+              <span className="mono" style={{ color: "var(--purple)", fontSize: 10.5, letterSpacing: "0.03em" }}>{m.status.toUpperCase()}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

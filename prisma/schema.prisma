@@ -185,3 +185,10 @@ model MediaDraft {
   createdAt  DateTime  @default(now())
   reviewedAt DateTime?
 }
+
+model SpeechEvent {
+  id        String   @id @default(cuid())
+  text      String // the text that was spoken
+  audioB64  String // ElevenLabs mp3 output, base64-encoded
+  createdAt DateTime @default(now())
+}
