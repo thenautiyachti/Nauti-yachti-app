@@ -9,6 +9,7 @@ const MONTHS = [
   {
     month: 2,
     events: [
+      { day: 2, name: "Texas Independence Day", special: false },
       { day: 9, endDay: 13, name: "Spring Break", note: "The unofficial start of the season on Lake Conroe.", special: false },
     ],
   },
@@ -22,9 +23,11 @@ const MONTHS = [
   {
     month: 4,
     events: [
+      { day: 5, name: "Cinco de Mayo", note: "A great excuse for a lake party.", special: false },
       { day: 10, name: "Mother's Day", note: "Special pricing for mothers.", special: true },
       { day: 16, name: "Boatz & Glowz — Party Cove Glow Party, 7 PM", note: "The first glow party of the season.", special: true },
-      { day: 25, name: "Memorial Day", special: false },
+      { day: 16, endDay: 22, name: "National Safe Boating Week", note: "Kicks off the summer boating season.", special: false },
+      { day: 23, endDay: 25, name: "Memorial Day Weekend", special: false },
     ],
   },
   {
@@ -32,19 +35,25 @@ const MONTHS = [
     events: [
       { day: 19, name: "Juneteenth", special: false },
       { day: 21, name: "Father's Day", note: "Special pricing for fathers.", special: true },
+      { day: 21, name: "First Day of Summer", note: "Summer solstice — the longest day of the year.", special: false },
     ],
   },
   {
     month: 6,
     events: [
-      { day: 4, name: "Independence Day", special: true },
+      { day: 3, endDay: 5, name: "Independence Day Weekend — America's 250th!", note: "2026 marks 250 years since the Declaration of Independence.", special: true },
     ],
   },
-  { month: 7, events: [] },
+  {
+    month: 7,
+    events: [
+      { day: 27, name: "World Lake Day", note: "The UN-designated day to celebrate lakes worldwide.", special: true },
+    ],
+  },
   {
     month: 8,
     events: [
-      { day: 7, name: "Labor Day", special: false },
+      { day: 5, endDay: 7, name: "Labor Day Weekend", special: false },
       { day: 19, name: "Boatz & Glowz — Party Cove Glow Party, 7 PM", note: "The second glow party of the season.", special: true },
     ],
   },
