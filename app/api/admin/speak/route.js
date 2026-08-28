@@ -4,14 +4,21 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "pNInz6obpgDQGcFmaJgB";
+const JARVIS_SERVICE_KEY = process.env.JARVIS_SERVICE_KEY;
 
 // POST { text: string } -> synthesizes speech via ElevenLabs and stores the
 // resulting audio as a SpeechEvent row for the Jarvis tab to pick up on its
 // next poll. This replaces the standalone Jarvis-Voice-UI server's websocket
 // push — Vercel serverless functions can't hold a long-lived websocket, so
 // the frontend polls GET /api/admin/speak?since=... instead.
+//
+// Auth: the owner's admin session cookie, OR a machine-only service key sent
+// as `x-jarvis-key` — this lets Claude Code trigger speech from the backend
+// without ever touching the human admin passcode.
 async function POST(req) {
-  if (!isAdminAuthenticated()) {
+  const serviceKeyHeader = req.headers.get("x-jarvis-key");
+  const authorized = isAdminAuthenticated() || (JARVIS_SERVICE_KEY && serviceKeyHeader === JARVIS_SERVICE_KEY);
+  if (!authorized) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
