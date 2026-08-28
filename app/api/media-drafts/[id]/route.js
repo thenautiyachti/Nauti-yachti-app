@@ -16,8 +16,8 @@ async function PATCH(req, { params }) {
     return NextResponse.json({ error: "Media draft not found" }, { status: 404 });
   }
 
-  if ("status" in body && !["pending", "approved", "rejected", "posted"].includes(body.status)) {
-    return NextResponse.json({ error: 'status must be "pending", "approved", "rejected", or "posted"' }, { status: 400 });
+  if ("status" in body && !["pending", "approved", "rejected", "posted", "discussing"].includes(body.status)) {
+    return NextResponse.json({ error: 'status must be "pending", "approved", "rejected", "posted", or "discussing"' }, { status: 400 });
   }
 
   const data = {};

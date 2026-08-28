@@ -107,8 +107,8 @@ async function GET() {
       }),
       prisma.engineHoursLog.aggregate({ _max: { hours: true } }),
       prisma.mediaDraft.findMany({
-        where: { status: "pending" },
-        select: { theme: true, caption: true, platform: true, status: true },
+        where: { status: { in: ["pending", "discussing"] } },
+        select: { id: true, theme: true, mediaUrl: true, mediaType: true, caption: true, platform: true, status: true, createdAt: true },
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
@@ -162,10 +162,15 @@ async function GET() {
     }
 
     const mediaQueue = mediaQueueRows.map((r) => ({
+      id: r.id,
       theme: r.theme,
+      mediaUrl: r.mediaUrl,
+      mediaType: r.mediaType,
+      caption: r.caption,
       captionPreview: r.caption.length > 60 ? `${r.caption.slice(0, 60)}…` : r.caption,
       platform: r.platform,
       status: r.status,
+      createdAt: r.createdAt,
     }));
 
     return NextResponse.json({
