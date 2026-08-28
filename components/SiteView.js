@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { currency, tierPrice, dayTypeForDate, localDateKey, imageFocus } from "../lib/pricing";
+import { currency, tierPrice, dayTypeForDate, imageFocus } from "../lib/pricing";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
+import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
 const SOCIALS = [
   { label: "Facebook", url: "https://www.facebook.com/profile.php?id=61577960573366" },
@@ -40,11 +41,12 @@ function WakeLine({ flip }) {
   );
 }
 
-export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked }) {
+export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates }) {
   const [packages] = useState(initialPackages);
   const [vessels] = useState(initialVessels);
   const [gallery] = useState(initialGallery);
   const [blocked] = useState(initialBlocked);
+  const [partialDates] = useState(initialPartialDates || {});
   const [selectedVessel, setSelectedVessel] = useState(initialVessels[0]?.id);
   const [activePackage, setActivePackage] = useState(initialPackages[0]?.id || null);
   const [prefill, setPrefill] = useState(null);
@@ -168,14 +170,19 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* AVAILABILITY */}
       <div id="availability" style={{ padding: "50px 24px", background: "var(--ink-soft)" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>
             Availability — {vessels.find((v) => v.id === selectedVessel)?.name}
           </h2>
-          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 18 }}>
-            Grey days are already booked. This updates live from the owner console.
+          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 10 }}>
+            This updates live from the owner console.
           </p>
-          <AvailabilityCalendar blockedDates={blocked[selectedVessel] || []} />
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
+            <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "var(--purple)", verticalAlign: "middle", marginRight: 5 }} />Open</span>
+            <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "repeating-linear-gradient(45deg, #E8934A, #E8934A 3px, #C97633 3px, #C97633 6px)", verticalAlign: "middle", marginRight: 5 }} />Partially booked</span>
+            <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "#3A2E40", verticalAlign: "middle", marginRight: 5 }} />Fully booked</span>
+          </div>
+          <AvailabilityCalendar blockedDates={blocked[selectedVessel] || []} partialDates={partialDates[selectedVessel] || {}} />
         </div>
       </div>
 
@@ -183,9 +190,22 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       <div id="gallery" style={{ background: "var(--ink)", padding: "50px 24px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>On the water</h2>
-          <p style={{ color: "var(--purple)", fontSize: 14, marginTop: 0, marginBottom: 20 }}>
+          <p style={{ color: "var(--purple)", fontSize: 14, marginTop: 0, marginBottom: 18 }}>
             Follow along for the full photo & video library.
           </p>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 30 }}>
+            {SOCIALS.map((s) => (
+              <a
+                key={s.label}
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 20, padding: "7px 16px", fontSize: 13, textDecoration: "none" }}
+              >
+                {s.label} ↗
+              </a>
+            ))}
+          </div>
           {Object.entries(
             gallery.reduce((acc, g) => {
               (acc[g.category] = acc[g.category] || []).push(g);
@@ -200,9 +220,11 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14 }}>
                   {items.map((g) => (
-                    <div key={g.id} style={{ borderRadius: 10, overflow: "hidden", position: "relative", height: 160 }}>
-                      <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: imageFocus(g.image), display: "block" }} />
-                      <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, color: "#0A0612", fontSize: 12, fontWeight: 600, background: "rgba(243,234,251,0.9)", padding: "4px 8px", borderRadius: 5 }}>
+                    <div key={g.id} style={{ borderRadius: 10, overflow: "hidden", background: "var(--card)", border: "1px solid rgba(203,108,230,0.15)" }}>
+                      <div style={{ aspectRatio: "3 / 4", overflow: "hidden" }}>
+                        <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: imageFocus(g.image), display: "block" }} />
+                      </div>
+                      <div style={{ color: "var(--text)", fontSize: 12, fontWeight: 600, padding: "8px 10px" }}>
                         {g.caption}
                       </div>
                     </div>
@@ -211,19 +233,6 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               </div>
             );
           })}
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-            {SOCIALS.map((s) => (
-              <a
-                key={s.label}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 20, padding: "7px 16px", fontSize: 13, textDecoration: "none" }}
-              >
-                {s.label} ↗
-              </a>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -387,39 +396,31 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
   );
 }
 
-function AvailabilityCalendar({ blockedDates }) {
+function AvailabilityCalendar({ blockedDates, partialDates }) {
   // Computed client-side only: "today" must reflect the viewer's local clock,
   // and doing this during SSR causes hydration mismatches when the server's
   // timezone differs from the browser's.
-  const [days, setDays] = useState([]);
+  const [months, setMonths] = useState(null);
   useEffect(() => {
-    const today = new Date();
-    setDays(Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      return d;
-    }));
+    const now = new Date();
+    setMonths([
+      { year: now.getFullYear(), month: now.getMonth() },
+      { year: now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear(), month: (now.getMonth() + 1) % 12 },
+    ]);
   }, []);
+
+  function getState(key) {
+    if (blockedDates.includes(key)) return "full";
+    return partialDates[key] || "open";
+  }
+
+  if (!months) return null;
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
-      {days.map((d) => {
-        const key = localDateKey(d);
-        const isBlocked = blockedDates.includes(key);
-        return (
-          <div
-            key={key}
-            className="day-cell"
-            style={{
-              background: isBlocked ? "#3A2E40" : "var(--purple)", borderRadius: 8, padding: "10px 4px",
-              textAlign: "center", color: isBlocked ? "var(--muted)" : "#0A0612",
-            }}
-          >
-            <div style={{ fontSize: 10.5, opacity: 0.75 }}>{d.toLocaleDateString("en-US", { weekday: "short" })}</div>
-            <div className="mono" style={{ fontSize: 15, fontWeight: 700 }}>{d.getDate()}</div>
-            <div style={{ fontSize: 9.5, marginTop: 2 }}>{isBlocked ? "Booked" : "Open"}</div>
-          </div>
-        );
-      })}
+    <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
+      {months.map((m) => (
+        <AvailabilityMonthGrid key={`${m.year}-${m.month}`} year={m.year} month={m.month} getState={getState} />
+      ))}
     </div>
   );
 }

@@ -10,32 +10,30 @@ async function GET() {
   return NextResponse.json(bookings);
 }
 
-// Body: { vesselId, vesselName, date, guestName, partySize, platform, status, note }
+// Body: { vesselId, vesselName, date, hours, guestName, partySize, platform, status, note }
 async function POST(req) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();
-  const { vesselId, vesselName, date, guestName, partySize, platform, status, note } = body;
+  const { vesselId, vesselName, date, hours, guestName, partySize, platform, status, note } = body;
   if (!vesselId || !vesselName || !date || !platform) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
+  // A confirmed booking only reserves its own hours, not the whole day —
+  // hours accumulate toward the 8hr-day threshold (see groupExternalBookingState
+  // in lib/serialize.js), not an automatic full-day block. Full-day blocks
+  // are a separate, explicit owner action.
   const booking = await prisma.externalBooking.create({
     data: {
       vesselId, vesselName, date, platform,
+      hours: hours ? Number(hours) : null,
       guestName: guestName || null,
       partySize: partySize ? Number(partySize) : null,
       status: status === "confirmed" ? "confirmed" : "pending",
       note: note || null,
     },
   });
-  if (booking.status === "confirmed") {
-    await prisma.blockedDate.upsert({
-      where: { vesselId_date: { vesselId, date } },
-      update: {},
-      create: { vesselId, date },
-    });
-  }
   return NextResponse.json(booking);
 }
 

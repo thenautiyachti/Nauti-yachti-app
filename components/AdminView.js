@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { currency, localDateKey, imageFocus } from "../lib/pricing";
+import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
 const EXPENSE_CATEGORIES = [
   "01. Gas", "02. Food & Party", "03. Cleaning Supplies", "04. Apparel & Advertisement",
@@ -16,7 +17,7 @@ const RESERVATION_ORIGINS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram",
 const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Paypal Statement", "Wells Fargo Statement", "WoodForest Statement", "Other"];
 
 export default function AdminView({
-  packages, vessels, gallery, blocked, inquiries, ledger, totals, addons, externalBookings,
+  packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onLogout,
   onUpdateAddonPrice, onAddExternalBooking, onSetExternalBookingStatus, onDeleteExternalBooking,
@@ -110,7 +111,7 @@ export default function AdminView({
         )}
 
         {tab === "pricing" && (
-          <div style={{ display: "grid", gap: 10, maxWidth: 720 }}>
+          <div style={{ display: "grid", gap: 10, maxWidth: 960 }}>
             {packages.map((p) => (
               <div key={p.id} style={{ background: "var(--card)", borderRadius: 8, padding: 12, color: "var(--text)" }}>
                 <div
@@ -188,11 +189,23 @@ export default function AdminView({
 
         {tab === "availability" && (
           <div>
-            <p style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 14 }}>Click a day to toggle it booked / open, per vessel.</p>
+            <p style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 6 }}>
+              Click a day to toggle a full-day block, per vessel. Orange/striped days have confirmed bookings but aren't full — click only if you need to close the rest of the day too.
+            </p>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>
+              <span><span style={{ display: "inline-block", width: 11, height: 11, borderRadius: 3, background: "var(--purple)", verticalAlign: "middle", marginRight: 5 }} />Open</span>
+              <span><span style={{ display: "inline-block", width: 11, height: 11, borderRadius: 3, background: "repeating-linear-gradient(45deg, #E8934A, #E8934A 3px, #C97633 3px, #C97633 6px)", verticalAlign: "middle", marginRight: 5 }} />Partial</span>
+              <span><span style={{ display: "inline-block", width: 11, height: 11, borderRadius: 3, background: "#3A2E40", verticalAlign: "middle", marginRight: 5 }} />Full</span>
+            </div>
             {vessels.map((v) => (
-              <div key={v.id} style={{ marginBottom: 20 }}>
+              <div key={v.id} style={{ marginBottom: 28 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6, color: "var(--text)" }}>{v.name}</div>
-                <AdminAvailabilityRow vesselId={v.id} blockedDates={blocked[v.id] || []} onToggle={onToggleBlocked} />
+                <AdminAvailabilityRow
+                  vesselId={v.id}
+                  blockedDates={blocked[v.id] || []}
+                  partialDates={partialDates[v.id] || {}}
+                  onToggle={onToggleBlocked}
+                />
               </div>
             ))}
           </div>
@@ -228,7 +241,7 @@ const BOOKING_PLATFORMS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "
 
 function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, onDelete }) {
   const emptyForm = {
-    vesselId: vessels[0]?.id || "", date: localDateKey(new Date()),
+    vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), hours: 4,
     guestName: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "pending", note: "",
   };
   const [form, setForm] = useState(emptyForm);
@@ -237,7 +250,7 @@ function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, on
     e.preventDefault();
     if (!form.date || !form.vesselId) return;
     const vessel = vessels.find((v) => v.id === form.vesselId);
-    onAdd({ ...form, vesselName: vessel?.name || form.vesselId, partySize: form.partySize ? Number(form.partySize) : null });
+    onAdd({ ...form, vesselName: vessel?.name || form.vesselId, hours: Number(form.hours), partySize: form.partySize ? Number(form.partySize) : null });
     setForm(emptyForm);
   }
 
@@ -248,7 +261,7 @@ function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, on
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
       <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
         <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 10 }}>
-          Log a booking from GetMyBoat, Boatsetter, or elsewhere. Confirming it blocks that date on the public availability calendar.
+          Log a booking from GetMyBoat, Boatsetter, or elsewhere. Confirming it marks that day partially booked (or fully, at 8+ combined hours) on the public availability calendar.
         </p>
         <label style={{ display: "block", marginBottom: 8 }}>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Vessel</div>
@@ -257,8 +270,16 @@ function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, on
             {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>
         </label>
-        <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
-          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          <label style={{ width: 90 }}>
+            <select value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((h) => <option key={h} value={h}>{h} hr{h === 1 ? "" : "s"}</option>)}
+            </select>
+          </label>
+        </div>
         <input type="text" placeholder="Guest name" value={form.guestName} onChange={(e) => setForm({ ...form, guestName: e.target.value })}
           style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
         <input type="number" placeholder="Party size" min="1" value={form.partySize} onChange={(e) => setForm({ ...form, partySize: e.target.value })}
@@ -296,7 +317,7 @@ function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, on
                   <div>
                     <div>{b.date} — {b.vesselName} — {b.guestName || "Guest"}{b.partySize ? ` (${b.partySize})` : ""}</div>
                     <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                      {[b.platform, b.note].filter(Boolean).join(" · ")}
+                      {[b.hours ? `${b.hours} hrs` : null, b.platform, b.note].filter(Boolean).join(" · ")}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -319,31 +340,36 @@ function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, on
   );
 }
 
-function AdminAvailabilityRow({ vesselId, blockedDates, onToggle }) {
+function AdminAvailabilityRow({ vesselId, blockedDates, partialDates, onToggle }) {
   // Computed client-side only — see AvailabilityCalendar in SiteView.js for why.
-  const [days, setDays] = useState([]);
+  const [months, setMonths] = useState(null);
   useEffect(() => {
-    const today = new Date();
-    setDays(Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      return d;
-    }));
+    const now = new Date();
+    setMonths([
+      { year: now.getFullYear(), month: now.getMonth() },
+      { year: now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear(), month: (now.getMonth() + 1) % 12 },
+    ]);
   }, []);
+
+  function getState(key) {
+    if (blockedDates.includes(key)) return "full";
+    return partialDates[key] || "open";
+  }
+
+  if (!months) return null;
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, maxWidth: 560 }}>
-      {days.map((d) => {
-        const key = localDateKey(d);
-        const isBlocked = blockedDates.includes(key);
-        return (
-          <button key={key} onClick={() => onToggle(vesselId, key)} className="day-cell" style={{
-            background: isBlocked ? "#3A2E40" : "var(--purple)", border: "none", borderRadius: 8, padding: "8px 2px", color: isBlocked ? "var(--muted)" : "#0A0612",
-          }}>
-            <div style={{ fontSize: 10 }}>{d.toLocaleDateString("en-US", { weekday: "short" })}</div>
-            <div className="mono" style={{ fontSize: 13, fontWeight: 700 }}>{d.getDate()}</div>
-          </button>
-        );
-      })}
+    <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+      {months.map((m) => (
+        <AvailabilityMonthGrid
+          key={`${m.year}-${m.month}`}
+          year={m.year}
+          month={m.month}
+          getState={getState}
+          onDayClick={(key) => onToggle(vesselId, key)}
+          size="compact"
+        />
+      ))}
     </div>
   );
 }

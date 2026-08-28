@@ -2,7 +2,8 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
-// Body: { status } — toggles pending/confirmed. Confirming blocks the date on the public calendar.
+// Body: { status } — toggles pending/confirmed. Confirming marks the date
+// "partially" booked (its own hours only) — see /api/partial-dates.
 async function PATCH(req, { params }) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -17,13 +18,6 @@ async function PATCH(req, { params }) {
     return NextResponse.json({ error: "Booking not found" }, { status: 404 });
   }
   const updated = await prisma.externalBooking.update({ where: { id }, data: { status } });
-  if (status === "confirmed") {
-    await prisma.blockedDate.upsert({
-      where: { vesselId_date: { vesselId: existing.vesselId, date: existing.date } },
-      update: {},
-      create: { vesselId: existing.vesselId, date: existing.date },
-    });
-  }
   return NextResponse.json(updated);
 }
 

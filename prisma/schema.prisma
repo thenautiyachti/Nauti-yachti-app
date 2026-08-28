@@ -79,6 +79,7 @@ model ExternalBooking {
   vesselId   String
   vesselName String
   date       String // "YYYY-MM-DD"
+  hours      Int? // charter length; used to gauge how much of the day is taken
   guestName  String?
   partySize  Int?
   platform   String // "Boatsetter" | "GetmyBoat" | "Facebook" | "Instagram" | "Other"

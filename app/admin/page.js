@@ -23,6 +23,7 @@ export default function AdminPage() {
   const [vessels, setVessels] = useState([]);
   const [gallery, setGallery] = useState([]);
   const [blocked, setBlocked] = useState({});
+  const [partialDates, setPartialDates] = useState({});
   const [inquiries, setInquiries] = useState([]);
   const [ledger, setLedger] = useState([]);
   const [addons, setAddons] = useState([]);
@@ -36,17 +37,18 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, i, l, a, eb] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
       api("/api/blocked-dates"),
+      api("/api/partial-dates"),
       api("/api/inquiries"),
       api("/api/ledger"),
       api("/api/addons"),
       api("/api/external-bookings"),
     ]);
-    setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
+    setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
     setLoading(false);
   }, []);
 
@@ -124,29 +126,26 @@ export default function AdminPage() {
     await api(`/api/addons/${id}`, { method: "PATCH", body: JSON.stringify({ field: "price", value: price }) });
     setAddons((prev) => prev.map((a) => (a.id === id ? { ...a, price } : a)));
   }
+  // Booking state is derived from summed hours across all of a vessel's
+  // day's bookings, so it's simplest (and least error-prone) to just
+  // refetch the derived state rather than duplicate that math client-side.
+  async function refreshPartialDates() {
+    setPartialDates(await api("/api/partial-dates"));
+  }
   async function addExternalBooking(booking) {
     const created = await api("/api/external-bookings", { method: "POST", body: JSON.stringify(booking) });
     setExternalBookings((prev) => [...prev, created]);
-    if (created.status === "confirmed") {
-      setBlocked((prev) => {
-        const current = prev[created.vesselId] || [];
-        return current.includes(created.date) ? prev : { ...prev, [created.vesselId]: [...current, created.date] };
-      });
-    }
+    if (created.status === "confirmed") await refreshPartialDates();
   }
   async function setExternalBookingStatus(id, status) {
     const updated = await api(`/api/external-bookings/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
     setExternalBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
-    if (status === "confirmed") {
-      setBlocked((prev) => {
-        const current = prev[updated.vesselId] || [];
-        return current.includes(updated.date) ? prev : { ...prev, [updated.vesselId]: [...current, updated.date] };
-      });
-    }
+    await refreshPartialDates();
   }
   async function deleteExternalBooking(id) {
     await api(`/api/external-bookings/${id}`, { method: "DELETE" });
     setExternalBookings((prev) => prev.filter((b) => b.id !== id));
+    await refreshPartialDates();
   }
 
   const totals = useMemo(() => {
@@ -191,6 +190,7 @@ export default function AdminPage() {
       vessels={vessels}
       gallery={gallery}
       blocked={blocked}
+      partialDates={partialDates}
       inquiries={inquiries}
       ledger={ledger}
       totals={totals}
