@@ -394,7 +394,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* INQUIRY */}
       <div id="inquire" style={{ background: "var(--ink-soft)", padding: "56px 24px 80px" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(260px,1fr) minmax(320px,560px)", gap: 44, alignItems: "start" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(260px,1fr) minmax(360px,720px)", gap: 44, alignItems: "start" }}>
           <div style={{ paddingTop: 6 }}>
             <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Check availability & inquire</h2>
             <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 26 }}>
@@ -641,7 +641,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
 
   function field(name, label, type = "text", extra = {}) {
     return (
-      <label style={{ display: "block", marginBottom: 12 }}>
+      <label style={{ display: "block" }}>
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>{label}</div>
         <input
           type={type}
@@ -654,6 +654,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
       </label>
     );
   }
+  const fullWidth = { gridColumn: "1 / -1" };
 
   async function runSubmit(handler) {
     const pkg = packages.find((p) => p.id === form.packageId);
@@ -692,72 +693,78 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
 
   return (
     <form onSubmit={submit} style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.2)", borderRadius: 12, padding: 20, boxShadow: "0 4px 24px rgba(0,0,0,0.35)" }}>
-      {field("name", "Name")}
-      {field("email", "Email", "email")}
-      {field("phone", "Phone", "tel")}
-      <label style={{ display: "block", marginBottom: 12 }}>
-        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Package</div>
-        <select value={form.packageId} onChange={(e) => setForm({ ...form, packageId: e.target.value })}
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
-          {packages.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-              {p.pricingType === "flat" ? ` — ${currency(p.price)}` : p.pricingType === "per-guest" ? ` — ${currency(p.pricePerGuest)}/guest` : p.pricingType === "tiered-by-guests" ? ` — from ${currency(p.tiers[0].price)}` : ""}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 14px", marginBottom: 12 }}>
+        {field("name", "Name")}
+        {field("email", "Email", "email")}
+        {field("phone", "Phone", "tel")}
 
-      {selectedPkg?.vessels?.length > 0 && (
-        <label style={{ display: "block", marginBottom: 12 }}>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Vessel</div>
-          <select value={form.vesselId} onChange={(e) => setForm({ ...form, vesselId: e.target.value })}
+        <label style={{ display: "block" }}>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Package</div>
+          <select value={form.packageId} onChange={(e) => setForm({ ...form, packageId: e.target.value })}
             style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
-            {vessels.map((v) => <option key={v.id} value={v.id}>{v.name} (cap. {v.capacity})</option>)}
-          </select>
-        </label>
-      )}
-
-      {selectedPkg?.pricingType === "per-guest" ? (
-        <div style={{ marginBottom: 12, background: "rgba(203,108,230,0.08)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "10px 12px" }}>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 600, marginBottom: 2 }}>Event date</div>
-          <div style={{ fontSize: 14 }}>
-            {new Date(selectedPkg.eventDate + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} · {selectedPkg.fixedHours} hrs — the only date available this year
-          </div>
-        </div>
-      ) : (
-        field("date", "Requested date", "date")
-      )}
-
-      {selectedPkg?.pricingType === "hourly-by-vessel" && (
-        <label style={{ display: "block", marginBottom: 12 }}>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>
-            Duration <span style={{ color: "var(--purple)", fontWeight: 400 }}>({form.date ? (dayType === "weekend" ? "weekend" : "weekday") + " rate" : "pick a date to confirm weekday/weekend rate"})</span>
-          </div>
-          <select value={form.hours} onChange={(e) => setForm({ ...form, hours: Number(e.target.value) })}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
-            {Object.keys(selectedPkg.hourlyByVessel[form.vesselId]?.[dayType] || {}).map((h) => (
-              <option key={h} value={h}>{h} hour{h === "1" ? "" : "s"} — {currency(selectedPkg.hourlyByVessel[form.vesselId][dayType][h])}</option>
+            {packages.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.pricingType === "flat" ? ` — ${currency(p.price)}` : p.pricingType === "per-guest" ? ` — ${currency(p.pricePerGuest)}/guest` : p.pricingType === "tiered-by-guests" ? ` — from ${currency(p.tiers[0].price)}` : ""}
+              </option>
             ))}
           </select>
         </label>
-      )}
 
-      {field("partySize", "Party size", "number", { min: 1 })}
-      <label style={{ display: "block", marginBottom: 12 }}>
-        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Coupon code <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span></div>
-        <input
-          type="text"
-          value={form.couponCode}
-          onChange={(e) => setForm({ ...form, couponCode: e.target.value.toUpperCase() })}
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
-        />
-      </label>
-      <label style={{ display: "block", marginBottom: 14 }}>
-        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Anything else?</div>
-        <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3}
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, fontFamily: "inherit" }} />
-      </label>
+        {selectedPkg?.vessels?.length > 0 && (
+          <label style={{ display: "block" }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Vessel</div>
+            <select value={form.vesselId} onChange={(e) => setForm({ ...form, vesselId: e.target.value })}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
+              {vessels.map((v) => <option key={v.id} value={v.id}>{v.name} (cap. {v.capacity})</option>)}
+            </select>
+          </label>
+        )}
+
+        {selectedPkg?.pricingType === "per-guest" ? (
+          <div style={{ ...fullWidth, background: "rgba(203,108,230,0.08)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "10px 12px" }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 600, marginBottom: 2 }}>Event date</div>
+            <div style={{ fontSize: 14 }}>
+              {new Date(selectedPkg.eventDate + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} · {selectedPkg.fixedHours} hrs — the only date available this year
+            </div>
+          </div>
+        ) : (
+          field("date", "Requested date", "date")
+        )}
+
+        {selectedPkg?.pricingType === "hourly-by-vessel" && (
+          <label style={{ display: "block" }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>
+              Duration <span style={{ color: "var(--purple)", fontWeight: 400 }}>({form.date ? (dayType === "weekend" ? "weekend" : "weekday") + " rate" : "pick a date to confirm weekday/weekend rate"})</span>
+            </div>
+            <select value={form.hours} onChange={(e) => setForm({ ...form, hours: Number(e.target.value) })}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
+              {Object.keys(selectedPkg.hourlyByVessel[form.vesselId]?.[dayType] || {}).map((h) => (
+                <option key={h} value={h}>{h} hour{h === "1" ? "" : "s"} — {currency(selectedPkg.hourlyByVessel[form.vesselId][dayType][h])}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {field("partySize", "Party size", "number", { min: 1 })}
+
+        <label style={{ display: "block" }}>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Coupon code <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span></div>
+          <input
+            type="text"
+            value={form.couponCode}
+            onChange={(e) => setForm({ ...form, couponCode: e.target.value.toUpperCase() })}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
+          />
+        </label>
+
+        <label style={{ display: "block", ...fullWidth }}>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Anything else?</div>
+          <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, fontFamily: "inherit" }} />
+        </label>
+      </div>
+
       <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 14, fontSize: 13, color: "var(--muted)" }}>
         <input
           type="checkbox"
@@ -790,30 +797,19 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
 const SHORT_QUOTE_WORD_LIMIT = 6;
 
 function groupTestimonialsForDisplay(testimonials) {
-  const items = [];
-  let pendingShort = [];
+  const isShort = (t) => t.quote.trim().split(/\s+/).length <= SHORT_QUOTE_WORD_LIMIT;
 
-  function flushShort() {
-    if (pendingShort.length === 1) {
-      items.push({ type: "single", t: pendingShort[0] });
-    } else if (pendingShort.length > 1) {
-      items.push({ type: "group", ts: pendingShort });
-    }
-    pendingShort = [];
+  // Pool every short review together regardless of where it falls in the
+  // list — grouping only adjacent items missed most pairings, since short
+  // and long reviews are interleaved by submission date, not length.
+  const shorts = testimonials.filter(isShort);
+  const longs = testimonials.filter((t) => !isShort(t));
+
+  const items = longs.map((t) => ({ type: "single", t }));
+  for (let i = 0; i < shorts.length; i += 3) {
+    const chunk = shorts.slice(i, i + 3);
+    items.push(chunk.length === 1 ? { type: "single", t: chunk[0] } : { type: "group", ts: chunk });
   }
-
-  for (const t of testimonials) {
-    const isShort = t.quote.trim().split(/\s+/).length <= SHORT_QUOTE_WORD_LIMIT;
-    if (isShort) {
-      pendingShort.push(t);
-      if (pendingShort.length === 3) flushShort();
-    } else {
-      flushShort();
-      items.push({ type: "single", t });
-    }
-  }
-  flushShort();
-
   return items;
 }
 
