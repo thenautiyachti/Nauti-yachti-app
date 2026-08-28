@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // For production, change "sqlite" to "postgresql" and point DATABASE_URL
+  // at a real Postgres database (e.g. Supabase or Vercel Postgres).
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Package {
+  id            String  @id
+  name          String
+  pricingType   String // "hourly-by-vessel" | "per-guest" | "tiered-by-guests" | "flat"
+  unit          String?
+  blurb         String
+  bulletsIntro  String?
+  bulletsJson   String? // JSON string: string[]
+  closing       String?
+  linkLabel     String?
+  linkUrl       String?
+  image         String?
+  price         Float? // used when pricingType = "flat"
+  pricePerGuest Float? // used when pricingType = "per-guest"
+  fixedHours    Int? // used when pricingType = "per-guest" or "tiered-by-guests"
+  eventDate     String? // used when pricingType = "per-guest" (e.g. Boatz & Glowz)
+  tiersJson     String? // JSON string: { max: number, price: number }[]
+  hourlyJson    String? // JSON string: { [vesselId]: { weekday: {...}, weekend: {...} } }
+  vesselsJson   String // JSON string: string[] of vessel ids this package can use
+  sortOrder     Int     @default(0)
+}
+
+model Vessel {
+  id        String  @id
+  slip      String
+  name      String
+  capacity  Int
+  note      String
+  image     String?
+  sortOrder Int     @default(0)
+}
+
+model GalleryItem {
+  id        String @id
+  image     String
+  caption   String
+  category  String // matches a Package id
+  sortOrder Int    @default(0)
+}
+
+model BlockedDate {
+  id       String @id @default(cuid())
+  vesselId String
+  date     String // "YYYY-MM-DD"
+
+  @@unique([vesselId, date])
+}
+
+model Inquiry {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String
+  packageId   String
+  packageName String
+  vesselId    String?
+  vesselName  String?
+  date        String?
+  hours       Int?
+  partySize   String?
+  message     String?
+  priceQuoted Float?
+  status      String   @default("new") // "new" | "confirmed" | "declined"
+  submittedAt DateTime @default(now())
+}
+
+model ExternalBooking {
+  id         String   @id @default(cuid())
+  vesselId   String
+  vesselName String
+  date       String // "YYYY-MM-DD"
+  guestName  String?
+  partySize  Int?
+  platform   String // "Boatsetter" | "GetmyBoat" | "Facebook" | "Instagram" | "Other"
+  status     String   @default("pending") // "pending" | "confirmed"
+  note       String?
+  createdAt  DateTime @default(now())
+}
+
+model AddOn {
+  id        String  @id
+  name      String
+  price     Float
+  unit      String? // e.g. "per charter", "per bottle"
+  blurb     String?
+  sortOrder Int     @default(0)
+}
+
+model LedgerEntry {
+  id        String   @id @default(cuid())
+  type      String // "income" | "expense"
+  category  String? // e.g. "01. Gas" (expense) or "Reservation" (income)
+  amount    Float
+  note      String?
+  origin    String? // reservation origin (Boatsetter, GetmyBoat, ...) or statement source (Cash, Wells Fargo Statement, ...)
+  bookingId String? // links an expense back to the reservation it was for
+  date      String
+  createdAt DateTime @default(now())
+}

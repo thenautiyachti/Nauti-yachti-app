@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root {
+  --ink: #0A0612;
+  --ink-soft: #170B26;
+  --card: #1F1130;
+  --purple: #CB6CE6;
+  --pink: #F0559C;
+  --text: #F3EAFB;
+  --muted: #B7A4C9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: 'Work Sans', sans-serif;
+}
+
+.display {
+  font-family: 'Big Shoulders Display', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.slip-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.slip-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(203, 108, 230, 0.25);
+}
+@media (prefers-reduced-motion: reduce) {
+  .slip-card { transition: none; }
+}
+
+.day-cell {
+  transition: background 0.1s ease;
+}
+
+input, select, textarea {
+  background: var(--ink);
+  color: var(--text);
+}
+input::placeholder, textarea::placeholder {
+  color: var(--muted);
+}

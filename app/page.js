@@ -1,0 +1,26 @@
+import { prisma } from "../lib/db";
+import { parsePackage, groupBlockedDates } from "../lib/serialize";
+import SiteView from "../components/SiteView";
+
+// Server component: loads everything the public page needs in one shot
+// (no client-side loading spinner needed for first paint).
+export default async function HomePage() {
+  const [packageRows, vessels, gallery, blockedRows] = await Promise.all([
+    prisma.package.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.vessel.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.galleryItem.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.blockedDate.findMany(),
+  ]);
+
+  const packages = packageRows.map(parsePackage);
+  const blocked = groupBlockedDates(blockedRows);
+
+  return (
+    <SiteView
+      initialPackages={packages}
+      initialVessels={vessels}
+      initialGallery={gallery}
+      initialBlocked={blocked}
+    />
+  );
+}
