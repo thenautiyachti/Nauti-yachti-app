@@ -394,11 +394,33 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* INQUIRY */}
       <div id="inquire" style={{ background: "var(--ink-soft)", padding: "56px 24px 80px" }}>
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Check availability & inquire</h2>
-          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 20 }}>
-            We'll get back to you fast — this goes straight to our dashboard and email.
-          </p>
+        <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(260px,1fr) minmax(320px,560px)", gap: 44, alignItems: "start" }}>
+          <div style={{ paddingTop: 6 }}>
+            <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Check availability & inquire</h2>
+            <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 26 }}>
+              We'll get back to you fast — this goes straight to our dashboard and email.
+            </p>
+            <div style={{ display: "grid", gap: 16 }}>
+              <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: "16px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--purple)", marginBottom: 4 }}>Fast response</div>
+                <div style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
+                  Every inquiry lands directly on our dashboard — we typically reply the same day.
+                </div>
+              </div>
+              <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: "16px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--purple)", marginBottom: 4 }}>Flexible cancellation</div>
+                <div style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
+                  Full refund 24+ hours out, and free rescheduling 2+ days before your charter. See our <a href="/terms" style={{ color: "var(--purple)" }}>full policy</a>.
+                </div>
+              </div>
+              <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: "16px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--purple)", marginBottom: 4 }}>Prefer to talk it through?</div>
+                <div style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
+                  TheNautiYachti@Gmail.com — 832-948-2912
+                </div>
+              </div>
+            </div>
+          </div>
           <InquiryForm packages={packages} vessels={vessels} defaultPackageId={activePackage} prefill={prefill} onSubmitPay={submitCheckout} onSubmitInquire={submitPlainInquiry} />
         </div>
       </div>
