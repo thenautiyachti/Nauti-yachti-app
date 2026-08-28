@@ -82,7 +82,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       <NavBar />
 
       {/* HERO */}
-      <div style={{ background: "var(--ink)", color: "var(--text)", padding: "70px 24px 0", position: "relative" }}>
+      <div style={{ background: "var(--ink)", color: "var(--text)", padding: "28px 24px 0", position: "relative" }}>
         <div
           aria-hidden="true"
           style={{
@@ -177,14 +177,14 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* AVAILABILITY */}
       <div id="availability" style={{ padding: "50px 24px", background: "var(--ink-soft)" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>
             Availability — {vessels.find((v) => v.id === selectedVessel)?.name}
           </h2>
           <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 10 }}>
             This updates live from the owner console.
           </p>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
             <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "var(--purple)", verticalAlign: "middle", marginRight: 5 }} />Open</span>
             <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "repeating-linear-gradient(45deg, #E8934A, #E8934A 3px, #C97633 3px, #C97633 6px)", verticalAlign: "middle", marginRight: 5 }} />Partially booked</span>
             <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "#3A2E40", verticalAlign: "middle", marginRight: 5 }} />Fully booked</span>
