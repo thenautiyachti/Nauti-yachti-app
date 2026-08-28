@@ -102,6 +102,12 @@ async function POST(req) {
       success_url: `${origin}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/#packages`,
       metadata: { inquiryId: created.id },
+      consent_collection: { terms_of_service: "required" },
+      custom_text: {
+        terms_of_service_acceptance: {
+          message: `I agree to the [Cancellation Policy & Waiver Terms](${origin}/terms).`,
+        },
+      },
     });
 
     await prisma.inquiry.update({
