@@ -34,6 +34,7 @@ export default function AdminPage() {
   const [coupons, setCoupons] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [mediaDrafts, setMediaDrafts] = useState([]);
+  const [testimonials, setTestimonials] = useState([]);
 
   useEffect(() => {
     api("/api/admin/session")
@@ -43,7 +44,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -59,9 +60,10 @@ export default function AdminPage() {
       api("/api/coupons"),
       api("/api/subscriptions"),
       api("/api/media-drafts"),
+      api("/api/testimonials"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
-    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md);
+    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts);
     setLoading(false);
   }, []);
 
@@ -216,6 +218,14 @@ export default function AdminPage() {
     await api(`/api/media-drafts/${id}`, { method: "DELETE" });
     setMediaDrafts((prev) => prev.filter((d) => d.id !== id));
   }
+  async function updateTestimonialStatus(id, status) {
+    const updated = await api(`/api/testimonials/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    setTestimonials((prev) => prev.map((t) => (t.id === id ? updated : t)));
+  }
+  async function deleteTestimonial(id) {
+    await api(`/api/testimonials/${id}`, { method: "DELETE" });
+    setTestimonials((prev) => prev.filter((t) => t.id !== id));
+  }
 
   const totals = useMemo(() => {
     const income = ledger.filter((l) => l.type === "income").reduce((s, l) => s + Number(l.amount || 0), 0);
@@ -271,6 +281,7 @@ export default function AdminPage() {
       coupons={coupons}
       subscriptions={subscriptions}
       mediaDrafts={mediaDrafts}
+      testimonials={testimonials}
       onUpdatePrice={updatePackagePrice}
       onUpdatePricePerGuest={updatePricePerGuest}
       onUpdateHourlyByVesselPrice={updateHourlyByVesselPrice}
@@ -295,6 +306,8 @@ export default function AdminPage() {
       onDeleteSubscription={deleteSubscription}
       onUpdateMediaDraftStatus={updateMediaDraftStatus}
       onDeleteMediaDraft={deleteMediaDraft}
+      onUpdateTestimonialStatus={updateTestimonialStatus}
+      onDeleteTestimonial={deleteTestimonial}
       onLogout={handleLogout}
     />
   );

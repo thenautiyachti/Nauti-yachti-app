@@ -18,7 +18,7 @@ const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Payp
 
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
-  maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts,
+  maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onLogout,
   onUpdateAddonPrice, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
@@ -26,6 +26,7 @@ export default function AdminView({
   onAddCoupon, onToggleCouponActive, onDeleteCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
   onUpdateMediaDraftStatus, onDeleteMediaDraft,
+  onUpdateTestimonialStatus, onDeleteTestimonial,
 }) {
   const [tab, setTab] = useState("inquiries");
 
@@ -146,6 +147,7 @@ export default function AdminView({
     { id: "availability", label: "Availability" },
     { id: "media", label: "Media" },
     { id: "mediaDrafts", label: `Media Drafts (${mediaDrafts.filter((d) => d.status === "pending").length})` },
+    { id: "testimonials", label: `Testimonials (${testimonials.filter((t) => t.status === "pending").length})` },
     { id: "ledger", label: "Income & expenses" },
     { id: "maintenance", label: "Maintenance" },
     { id: "subscriptions", label: "Subscriptions" },
@@ -383,6 +385,10 @@ export default function AdminView({
 
         {tab === "mediaDrafts" && (
           <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} />
+        )}
+
+        {tab === "testimonials" && (
+          <TestimonialsTab testimonials={testimonials} onUpdateStatus={onUpdateTestimonialStatus} onDelete={onDeleteTestimonial} />
         )}
 
         {tab === "ledger" && (
@@ -702,6 +708,45 @@ function groupTotals(entries, keyFn) {
   return Array.from(groups.values()).sort((a, b) => b.total - a.total);
 }
 
+// Groups LedgerEntry rows by bookingId to compute actual profit per
+// reservation: income rows and expense rows (e.g. fuel) logged against the
+// same booking net out to income − expense. Rows with no bookingId can't be
+// attributed to a specific reservation, so they're skipped. Sorted by net
+// profit descending so the best (and, scrolling down, worst) performing
+// bookings are easy to spot at a glance.
+function groupBookingProfit(entries) {
+  const groups = new Map();
+  for (const entry of entries) {
+    if (!entry.bookingId) continue;
+    const cur = groups.get(entry.bookingId) || { bookingId: entry.bookingId, income: 0, expense: 0 };
+    if (entry.type === "income") cur.income += Number(entry.amount || 0);
+    else if (entry.type === "expense") cur.expense += Number(entry.amount || 0);
+    groups.set(entry.bookingId, cur);
+  }
+  return Array.from(groups.values())
+    .map((g) => ({ ...g, profit: g.income - g.expense }))
+    .sort((a, b) => b.profit - a.profit);
+}
+
+// Groups third-party-platform income rows by origin to total the commission
+// each platform kept — grossAmount (what the guest paid the platform) minus
+// amount (what was actually paid out to the owner). Rows without a
+// grossAmount (site-originated bookings, or historical rows where it wasn't
+// tracked) aren't part of this — only third-party income has that gross/net
+// split. Sorted biggest commission lost first.
+function groupCommissionLost(entries) {
+  const groups = new Map();
+  for (const entry of entries) {
+    if (entry.type !== "income" || entry.grossAmount == null) continue;
+    const key = entry.origin || UNCATEGORIZED_INCOME_LABEL;
+    const cur = groups.get(key) || { label: key, total: 0, count: 0 };
+    cur.total += Number(entry.grossAmount) - Number(entry.amount || 0);
+    cur.count += 1;
+    groups.set(key, cur);
+  }
+  return Array.from(groups.values()).sort((a, b) => b.total - a.total);
+}
+
 function LedgerTab({ ledger, totals, onAdd }) {
   const emptyForm = {
     type: "income", amount: "", grossAmount: "", note: "", date: localDateKey(new Date()),
@@ -741,6 +786,8 @@ function LedgerTab({ ledger, totals, onAdd }) {
     ledger.filter((l) => l.type === "income"),
     (l) => l.subcategory
   );
+  const bookingProfit = groupBookingProfit(ledger);
+  const commissionLost = groupCommissionLost(ledger);
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,360px) 1fr", gap: 24 }}>
@@ -848,6 +895,37 @@ function LedgerTab({ ledger, totals, onAdd }) {
       <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <BreakdownPanel title="Expenses by category" rows={expenseBreakdown} color="#F0559C" />
         <BreakdownPanel title="Income by vessel / package" rows={incomeBreakdown} color="#7FE0B8" />
+      </div>
+      <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <BookingProfitPanel rows={bookingProfit} />
+        <BreakdownPanel title="Commission lost to platforms" rows={commissionLost} color="#F0559C" />
+      </div>
+    </div>
+  );
+}
+
+// Same visual shell as BreakdownPanel, but each row needs to show income and
+// expense alongside the net profit rather than a single total — kept as its
+// own component instead of overloading BreakdownPanel's row shape.
+function BookingProfitPanel({ rows }) {
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+      <div style={{ fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>Profit by booking</div>
+      {rows.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No bookingId-linked entries yet.</div>}
+      <div style={{ display: "grid", gap: 6, maxHeight: 300, overflowY: "auto" }}>
+        {rows.map((r) => (
+          <div key={r.bookingId} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13.5, color: "var(--text)", gap: 10 }}>
+            <span className="mono" style={{ whiteSpace: "nowrap" }}>
+              {r.bookingId}{" "}
+              <span style={{ color: "var(--muted)", fontSize: 11.5 }}>
+                (+{currency(r.income)} / −{currency(r.expense)})
+              </span>
+            </span>
+            <span className="mono" style={{ color: r.profit >= 0 ? "#7FE0B8" : "#F0559C", fontWeight: 700, whiteSpace: "nowrap" }}>
+              {currency(r.profit)}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1349,6 +1427,111 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete }) {
                 </div>
               )}
             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- Testimonials tab ------------------------------------------------
+
+const TESTIMONIAL_STATUS_COLORS = {
+  pending: "rgba(232,147,74,0.22)",
+  approved: "var(--purple)",
+  rejected: "rgba(240,85,156,0.22)",
+};
+const TESTIMONIAL_STATUS_TEXT_COLORS = {
+  pending: "#E8934A",
+  approved: "#0A0612",
+  rejected: "var(--pink)",
+};
+
+function TestimonialsTab({ testimonials, onUpdateStatus, onDelete }) {
+  const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "approved" | "rejected"
+  const pendingCount = testimonials.filter((t) => t.status === "pending").length;
+
+  // Pending (the actionable state) always floats to the top; within each
+  // group, most recently submitted first.
+  const sorted = [...testimonials].sort((a, b) => {
+    if (a.status === "pending" && b.status !== "pending") return -1;
+    if (b.status === "pending" && a.status !== "pending") return 1;
+    return (b.submittedAt || "").localeCompare(a.submittedAt || "");
+  });
+  const visible = filterStatus === "all" ? sorted : sorted.filter((t) => t.status === filterStatus);
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ fontWeight: 700, color: "var(--text)" }}>
+          Testimonials ({testimonials.length})
+          {pendingCount > 0 && <span style={{ color: "#E8934A" }}> — {pendingCount} pending review</span>}
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          {["all", "pending", "approved", "rejected"].map((f) => (
+            <button key={f} type="button" onClick={() => setFilterStatus(f)}
+              style={{
+                padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600, textTransform: "capitalize",
+                border: "1px solid var(--purple)", cursor: "pointer",
+                background: filterStatus === f ? "var(--purple)" : "transparent",
+                color: filterStatus === f ? "#0A0612" : "var(--text)",
+              }}>
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+        {visible.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No testimonials found.</div>}
+        {visible.map((t) => (
+          <div key={t.id} style={{
+            background: "var(--card)", borderRadius: 10, padding: 14, color: "var(--text)",
+            border: t.status === "pending" ? "1px solid #E8934A" : "1px solid transparent",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13.5 }}>{t.name}</div>
+                <div style={{ color: "#E8934A", fontSize: 14, letterSpacing: 1 }}>{"★".repeat(t.rating)}{"☆".repeat(5 - t.rating)}</div>
+              </div>
+              <span
+                className="mono"
+                style={{
+                  fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap",
+                  color: TESTIMONIAL_STATUS_TEXT_COLORS[t.status] || "var(--text)",
+                  background: TESTIMONIAL_STATUS_COLORS[t.status] || "rgba(203,108,230,0.12)",
+                }}
+              >
+                {t.status}
+              </span>
+            </div>
+            {t.packageOrVessel && <div style={{ fontSize: 11.5, color: "var(--purple)", marginBottom: 6 }}>{t.packageOrVessel}</div>}
+            <div style={{ fontSize: 12.5, marginBottom: 10, lineHeight: 1.5 }}>&ldquo;{t.quote}&rdquo;</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
+              {t.submittedAt && new Date(t.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </div>
+            {t.status === "pending" ? (
+              <div style={{ display: "flex", gap: 6 }}>
+                <button type="button" onClick={() => onUpdateStatus(t.id, "approved")}
+                  style={{ flex: 1, background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                  Approve
+                </button>
+                <button type="button" onClick={() => onUpdateStatus(t.id, "rejected")}
+                  style={{ flex: 1, background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                  Reject
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 6 }}>
+                <button type="button" onClick={() => onUpdateStatus(t.id, "pending")}
+                  style={{ flex: 1, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
+                  Reset to pending
+                </button>
+                <button type="button" onClick={() => onDelete(t.id)}
+                  style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>

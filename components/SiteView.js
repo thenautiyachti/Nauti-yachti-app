@@ -44,12 +44,13 @@ function WakeLine({ flip }) {
   );
 }
 
-export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates, forecast }) {
+export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates, forecast, initialTestimonials }) {
   const [packages] = useState(initialPackages);
   const [vessels] = useState(initialVessels);
   const [gallery] = useState(initialGallery);
   const [blocked] = useState(initialBlocked);
   const [partialDates] = useState(initialPartialDates || {});
+  const [testimonials] = useState(initialTestimonials || []);
   const [selectedVessel, setSelectedVessel] = useState(initialVessels[0]?.id);
   const [activePackage, setActivePackage] = useState(initialPackages[0]?.id || null);
   const [prefill, setPrefill] = useState(null);
@@ -118,6 +119,20 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
     }
 
     return submitPlainInquiry(form);
+  }
+
+  async function submitTestimonial(form) {
+    const res = await fetch("/api/testimonials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (!res.ok) {
+      flashToast("Something went wrong sending that — please try again.");
+      return false;
+    }
+    flashToast("Thanks for the review! It's pending review and will appear here once approved.");
+    return true;
   }
 
   return (
@@ -338,6 +353,25 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* TESTIMONIALS */}
+      <div id="testimonials" style={{ background: "var(--ink-soft)", padding: "50px 24px" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>What our guests say</h2>
+          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 22 }}>
+            Real reviews from real charters — and we'd love to hear about yours.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(280px,1fr)", gap: 30, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 16 }}>
+              {testimonials.length === 0 && (
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>No reviews yet — be the first to share your experience!</div>
+              )}
+              {testimonials.map((t) => <TestimonialCard key={t.id} t={t} />)}
+            </div>
+            <TestimonialForm onSubmit={submitTestimonial} />
+          </div>
         </div>
       </div>
 
@@ -705,6 +739,104 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
       </button>
       <button type="button" onClick={inquireOnly} disabled={submitting} style={{ width: "100%", marginTop: 10, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "11px", fontWeight: 600, fontSize: 14, opacity: submitting ? 0.7 : 1 }}>
         Not ready to pay? Just send an inquiry
+      </button>
+    </form>
+  );
+}
+
+function TestimonialCard({ t }) {
+  return (
+    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 18, display: "flex", flexDirection: "column" }}>
+      <div style={{ color: "#E8934A", fontSize: 16, letterSpacing: 2, marginBottom: 8 }}>
+        {"★".repeat(t.rating)}{"☆".repeat(5 - t.rating)}
+      </div>
+      <p style={{ fontSize: 14, color: "var(--text)", opacity: 0.9, lineHeight: 1.6, margin: "0 0 14px", flex: 1 }}>
+        &ldquo;{t.quote}&rdquo;
+      </p>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{t.name}</div>
+      {t.packageOrVessel && <div style={{ fontSize: 12, color: "var(--purple)", marginTop: 2 }}>{t.packageOrVessel}</div>}
+    </div>
+  );
+}
+
+function TestimonialForm({ onSubmit }) {
+  const emptyForm = { name: "", rating: 5, quote: "", packageOrVessel: "" };
+  const [form, setForm] = useState(emptyForm);
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    const ok = await onSubmit(form);
+    if (ok) {
+      setForm(emptyForm);
+      setSent(true);
+      setTimeout(() => setSent(false), 4000);
+    }
+    setSubmitting(false);
+  }
+
+  return (
+    <form onSubmit={submit} style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.2)", borderRadius: 12, padding: 20, boxShadow: "0 4px 24px rgba(0,0,0,0.35)" }}>
+      <div className="display" style={{ fontSize: 18, color: "var(--text)", marginBottom: 4 }}>Share your experience</div>
+      <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 14 }}>
+        We read every submission — yours will appear above once we approve it.
+      </p>
+      <label style={{ display: "block", marginBottom: 12 }}>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Name</div>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          required
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
+        />
+      </label>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Rating</div>
+        <div style={{ display: "flex", gap: 2 }}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setForm({ ...form, rating: n })}
+              aria-label={`${n} star${n === 1 ? "" : "s"}`}
+              style={{ background: "transparent", border: "none", cursor: "pointer", padding: 2, fontSize: 26, lineHeight: 1, color: n <= form.rating ? "#E8934A" : "rgba(203,108,230,0.25)" }}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+      </div>
+      <label style={{ display: "block", marginBottom: 12 }}>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>
+          Package / vessel <span style={{ fontWeight: 400 }}>(optional)</span>
+        </div>
+        <input
+          type="text"
+          value={form.packageOrVessel}
+          onChange={(e) => setForm({ ...form, packageOrVessel: e.target.value })}
+          placeholder="e.g. Party Cove on the Nauti Yachti"
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
+        />
+      </label>
+      <label style={{ display: "block", marginBottom: 14 }}>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Your review</div>
+        <textarea
+          value={form.quote}
+          onChange={(e) => setForm({ ...form, quote: e.target.value })}
+          rows={4}
+          required
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, fontFamily: "inherit" }}
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={submitting}
+        style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "12px", fontWeight: 700, fontSize: 15, opacity: submitting ? 0.7 : 1 }}
+      >
+        {sent ? "Thanks — pending review ✓" : submitting ? "Sending…" : "Submit review"}
       </button>
     </form>
   );

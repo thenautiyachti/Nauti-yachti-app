@@ -6,13 +6,14 @@ import SiteView from "../components/SiteView";
 // Server component: loads everything the public page needs in one shot
 // (no client-side loading spinner needed for first paint).
 export default async function HomePage() {
-  const [packageRows, vessels, gallery, blockedRows, externalBookingRows, forecast] = await Promise.all([
+  const [packageRows, vessels, gallery, blockedRows, externalBookingRows, forecast, testimonials] = await Promise.all([
     prisma.package.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.vessel.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.galleryItem.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.blockedDate.findMany(),
     prisma.externalBooking.findMany({ where: { status: "confirmed" } }),
     getLakeConroeForecast(),
+    prisma.testimonial.findMany({ where: { status: "approved" }, orderBy: { submittedAt: "desc" } }),
   ]);
 
   const packages = packageRows.map(parsePackage);
@@ -27,6 +28,7 @@ export default async function HomePage() {
       initialBlocked={blocked}
       initialPartialDates={partialDates}
       forecast={forecast}
+      initialTestimonials={testimonials}
     />
   );
 }

@@ -200,6 +200,17 @@ model MediaDraft {
   reviewedAt DateTime?
 }
 
+model Testimonial {
+  id              String    @id @default(cuid())
+  name            String
+  rating          Int // 1-5
+  quote           String
+  packageOrVessel String? // e.g. "Party Cove on the Nauti Yachti" — optional
+  status          String    @default("pending") // "pending" | "approved" | "rejected"
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+}
+
 model SpeechEvent {
   id        String   @id @default(cuid())
   text      String // the text that was spoken
