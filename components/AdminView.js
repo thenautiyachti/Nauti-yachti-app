@@ -1347,16 +1347,25 @@ function JarvisTab() {
     }
     if (audioCtxRef.current) audioCtxRef.current.resume();
 
-    // Route the <audio> element through a gain node so playback is louder
-    // than the raw ElevenLabs output — a media element can only be wired
-    // into a MediaElementSourceNode once, so this only runs the first time.
+    // Route the <audio> element through a gain node (with a compressor
+    // after it to catch peaks) so playback is louder than the raw
+    // ElevenLabs output without clipping — a media element can only be
+    // wired into a MediaElementSourceNode once, so this only runs the
+    // first time.
     if (audioCtxRef.current && audioElRef.current && !gainNodeRef.current) {
       try {
         const source = audioCtxRef.current.createMediaElementSource(audioElRef.current);
         const gain = audioCtxRef.current.createGain();
-        gain.gain.value = 1.8;
+        gain.gain.value = 2.6;
+        const compressor = audioCtxRef.current.createDynamicsCompressor();
+        compressor.threshold.value = -18;
+        compressor.knee.value = 24;
+        compressor.ratio.value = 8;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.25;
         source.connect(gain);
-        gain.connect(audioCtxRef.current.destination);
+        gain.connect(compressor);
+        compressor.connect(audioCtxRef.current.destination);
         gainNodeRef.current = gain;
       } catch (err) {
         console.error("Jarvis audio gain boost setup failed:", err);
