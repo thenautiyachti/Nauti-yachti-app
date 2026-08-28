@@ -25,6 +25,7 @@ export default function NavBar() {
         <Link href="/events" style={LINK_STYLE}>Events</Link>
         <Link href="/#inquire" style={LINK_STYLE}>Book</Link>
         <Link href="/privacy-policy" style={LINK_STYLE}>Privacy Policy</Link>
+        <Link href="/terms" style={LINK_STYLE}>Terms & Cancellation Policy</Link>
         <Link
           href="/admin"
           style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 12px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}

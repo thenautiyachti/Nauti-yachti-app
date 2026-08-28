@@ -478,6 +478,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
   const [form, setForm] = useState({
     name: "", email: "", phone: "", packageId: defaultPackageId || packages[0]?.id,
     vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "",
+    agreeTerms: false,
   });
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -541,7 +542,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
     // to show a stuck button on.
     if (ok) {
       setSent(true);
-      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "" });
+      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "", agreeTerms: false });
       setTimeout(() => setSent(false), 3500);
     } else {
       setSubmitting(false);
@@ -627,6 +628,21 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Anything else?</div>
         <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3}
           style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, fontFamily: "inherit" }} />
+      </label>
+      <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 14, fontSize: 13, color: "var(--muted)" }}>
+        <input
+          type="checkbox"
+          checked={form.agreeTerms}
+          onChange={(e) => setForm({ ...form, agreeTerms: e.target.checked })}
+          required
+          style={{ marginTop: 3 }}
+        />
+        <span>
+          I have read and agree to the{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "var(--purple)", textDecoration: "underline" }}>
+            Terms &amp; Cancellation Policy
+          </a>
+        </span>
       </label>
       <button type="submit" disabled={submitting} style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "12px", fontWeight: 700, fontSize: 15, opacity: submitting ? 0.7 : 1 }}>
         {sent ? "Request sent ✓" : submitting ? "Redirecting to payment…" : "Book & pay now"}
