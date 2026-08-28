@@ -136,6 +136,7 @@ model LedgerEntry {
   category    String? // e.g. "01. Gas" (expense) or "Reservation" (income)
   subcategory String? // vessel/package name for income rows, e.g. "The Nauti Explorer" — null for expenses
   amount      Float
+  grossAmount Float? // income rows only: the platform's gross/list price before its commission — amount is what was actually paid out. Nullable/optional; not used for expenses.
   note        String?
   origin      String? // reservation origin (Boatsetter, GetmyBoat, ...) or statement source (Cash, Wells Fargo Statement, ...)
   bookingId   String? // links an expense back to the reservation it was for

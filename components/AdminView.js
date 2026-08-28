@@ -29,6 +29,114 @@ export default function AdminView({
 }) {
   const [tab, setTab] = useState("inquiries");
 
+  // Jarvis audio machinery lives here — not inside JarvisTab — so switching
+  // admin console tabs doesn't tear down the AudioContext/gain/compressor
+  // graph or the 2s speech-polling loop. AdminView stays mounted for the
+  // whole console session; only a full page reload should require the owner
+  // to re-click "Enable Jarvis Audio". See JarvisTab below for the render
+  // side of this (the button/status badge still live on the Jarvis tab).
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [lastSpoken, setLastSpoken] = useState("");
+  const [audioNote, setAudioNote] = useState("");
+  const audioElRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const gainNodeRef = useRef(null);
+  const sinceRef = useRef(null);
+
+  // Speech poll — every 2s, only once audio has been unlocked by a click.
+  useEffect(() => {
+    if (!audioEnabled) return;
+    let cancelled = false;
+    let inFlight = false;
+
+    async function pollSpeech() {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const since = sinceRef.current || new Date().toISOString();
+        const res = await fetch(`/api/admin/speak?since=${encodeURIComponent(since)}`);
+        if (!res.ok || cancelled) return;
+        const events = await res.json();
+        if (!events.length) return;
+        sinceRef.current = events[events.length - 1].createdAt;
+        for (const ev of events) playSpeech(ev);
+      } catch {
+        // transient — just try again on the next tick
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    const interval = setInterval(pollSpeech, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioEnabled]);
+
+  function playSpeech(ev) {
+    setLastSpoken(ev.text);
+    const el = audioElRef.current;
+    if (!el) return;
+    el.src = `data:audio/mpeg;base64,${ev.audioB64}`;
+    el.play()
+      .then(() => setAudioNote(""))
+      .catch((err) => {
+        console.error("Jarvis audio playback blocked:", err);
+        setAudioNote("Playback blocked — click anywhere on the page to retry.");
+        const retry = () => {
+          audioCtxRef.current && audioCtxRef.current.resume();
+          el.play().then(() => {
+            setAudioNote("");
+            document.removeEventListener("click", retry);
+          }).catch(() => {});
+        };
+        document.addEventListener("click", retry);
+      });
+  }
+
+  function enableAudio() {
+    // Create the ONE AudioContext right here, inside a real user gesture, so
+    // the browser doesn't leave it suspended — then reuse this exact
+    // instance (and the single <audio> element below) for every message
+    // instead of creating a new one per message. Same pattern as the
+    // standalone Jarvis-Voice-UI HUD's ACTIVATE button.
+    if (!audioCtxRef.current) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtxRef.current = new Ctx();
+    }
+    if (audioCtxRef.current) audioCtxRef.current.resume();
+
+    // Route the <audio> element through a gain node (with a compressor
+    // after it to catch peaks) so playback is louder than the raw
+    // ElevenLabs output without clipping — a media element can only be
+    // wired into a MediaElementSourceNode once, so this only runs the
+    // first time.
+    if (audioCtxRef.current && audioElRef.current && !gainNodeRef.current) {
+      try {
+        const source = audioCtxRef.current.createMediaElementSource(audioElRef.current);
+        const gain = audioCtxRef.current.createGain();
+        gain.gain.value = 2.6;
+        const compressor = audioCtxRef.current.createDynamicsCompressor();
+        compressor.threshold.value = -18;
+        compressor.knee.value = 24;
+        compressor.ratio.value = 8;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.25;
+        source.connect(gain);
+        gain.connect(compressor);
+        compressor.connect(audioCtxRef.current.destination);
+        gainNodeRef.current = gain;
+      } catch (err) {
+        console.error("Jarvis audio gain boost setup failed:", err);
+      }
+    }
+
+    sinceRef.current = new Date().toISOString();
+    setAudioEnabled(true);
+  }
+
   const tabs = [
     { id: "inquiries", label: `Inquiries (${inquiries.length})` },
     { id: "bookings", label: `External bookings (${externalBookings.length})` },
@@ -45,6 +153,8 @@ export default function AdminView({
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--ink)" }}>
+      {/* Persists across tab switches — see the Jarvis audio state above. */}
+      <audio ref={audioElRef} style={{ display: "none" }} />
       <div style={{ background: "var(--ink-soft)", color: "var(--text)", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(203,108,230,0.2)" }}>
         <div className="display" style={{ fontSize: 20, fontWeight: 700 }}>OWNER CONSOLE</div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -292,7 +402,14 @@ export default function AdminView({
           <SubscriptionsTab subscriptions={subscriptions} onAdd={onAddSubscription} onUpdate={onUpdateSubscription} onDelete={onDeleteSubscription} />
         )}
 
-        {tab === "jarvis" && <JarvisTab />}
+        {tab === "jarvis" && (
+          <JarvisTab
+            audioEnabled={audioEnabled}
+            onEnableAudio={enableAudio}
+            lastSpoken={lastSpoken}
+            audioNote={audioNote}
+          />
+        )}
       </div>
     </div>
   );
@@ -444,6 +561,38 @@ function stripCategoryPrefix(category) {
   return category.replace(/^\d+\.\s*/, "");
 }
 
+const LEDGER_MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// LedgerEntry.date is a plain "YYYY-MM-DD" string. Format it by parsing the
+// parts directly — do NOT round-trip through `new Date(dateString)` plus
+// local getters; that parses the bare string as UTC midnight and then reads
+// it back with local-timezone getters, which silently shifts the displayed
+// date back a day in US timezones (the same class of bug already fixed
+// elsewhere in this codebase — see localDateKey in lib/pricing.js).
+function fmtLedgerDate(dateStr) {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  const month = LEDGER_MONTH_ABBR[Number(m) - 1];
+  if (!month || !d || !y) return dateStr;
+  return `${month} ${d} ${y}`;
+}
+
+// Already-imported income rows (from the owner's spreadsheet) have
+// "Name — Vessel — Nhr — gross $X" jammed into `note` — there's no separate
+// name/duration column for those. This is a display-only best-effort parse:
+// only kicks in when the note actually looks like that em-dash-joined
+// format, so a plain freeform note (what new entries use) is treated as the
+// name field itself rather than being misparsed. Vessel is NOT re-derived
+// here — it already has its own column (subcategory).
+function parseIncomeNoteDisplay(note) {
+  if (!note) return { name: null, duration: null };
+  if (!note.includes(" — ")) return { name: note, duration: null };
+  const parts = note.split(" — ").map((p) => p.trim()).filter(Boolean);
+  const durationPart = parts.find((p) => /^\d+\s*hrs?$/i.test(p));
+  const namePart = parts.find((p) => !/^\d+\s*hrs?$/i.test(p) && !/^gross\s*\$/i.test(p));
+  return { name: namePart || null, duration: durationPart || null };
+}
+
 const UNCATEGORIZED_INCOME_LABEL = "Other / Uncategorized";
 
 // Grouped totals for the breakdown panels: expenses by category, income by
@@ -462,7 +611,7 @@ function groupTotals(entries, keyFn) {
 
 function LedgerTab({ ledger, totals, onAdd }) {
   const emptyForm = {
-    type: "income", amount: "", note: "", date: localDateKey(new Date()),
+    type: "income", amount: "", grossAmount: "", note: "", date: localDateKey(new Date()),
     category: INCOME_CATEGORIES[0], origin: RESERVATION_ORIGINS[0], bookingId: "", subcategory: "",
   };
   const [form, setForm] = useState(emptyForm);
@@ -473,13 +622,18 @@ function LedgerTab({ ledger, totals, onAdd }) {
   function setType(type) {
     const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
     const origins = type === "income" ? RESERVATION_ORIGINS : STATEMENT_ORIGINS;
-    setForm({ ...form, type, category: categories[0], origin: origins[0] });
+    setForm({ ...form, type, category: categories[0], origin: origins[0], grossAmount: "" });
   }
 
   function submit(e) {
     e.preventDefault();
     if (!form.amount) return;
-    onAdd({ ...form, amount: Number(form.amount), subcategory: form.subcategory || null });
+    onAdd({
+      ...form,
+      amount: Number(form.amount),
+      subcategory: form.subcategory || null,
+      grossAmount: form.type === "income" && form.grossAmount ? Number(form.grossAmount) : null,
+    });
     setForm(emptyForm);
   }
 
@@ -538,6 +692,10 @@ function LedgerTab({ ledger, totals, onAdd }) {
             <input type="text" placeholder="Vessel / Package (e.g. The Nauti Explorer)" value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
               style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
           )}
+          {form.type === "income" && (
+            <input type="number" placeholder="Gross / list price (optional — before platform's cut)" value={form.grossAmount} onChange={(e) => setForm({ ...form, grossAmount: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+          )}
           <input type="text" placeholder="Note (e.g. guest name, description)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
             style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
           <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add entry</button>
@@ -562,19 +720,36 @@ function LedgerTab({ ledger, totals, onAdd }) {
         </div>
         <div style={{ display: "grid", gap: 6, maxHeight: 380, overflowY: "auto" }}>
           {visibleLedger.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
-          {visibleLedger.map((l) => (
-            <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13.5, color: "var(--text)", gap: 10 }}>
-              <div>
-                <div>{l.date} — {l.note || stripCategoryPrefix(l.category) || "(no note)"}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                  {[stripCategoryPrefix(l.category), l.subcategory, l.origin, l.bookingId && `#${l.bookingId}`].filter(Boolean).join(" · ")}
+          {visibleLedger.map((l) => {
+            const isIncome = l.type === "income";
+            const { name, duration } = isIncome ? parseIncomeNoteDisplay(l.note) : { name: null, duration: null };
+            return (
+              <div key={l.id} style={{ background: "var(--card)", borderRadius: 6, padding: "10px 12px", fontSize: 13, color: "var(--text)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", columnGap: 14, rowGap: 2, alignItems: "baseline", minWidth: 0 }}>
+                    <span className="mono" style={{ fontWeight: 700, color: "#E8934A", whiteSpace: "nowrap" }}>{fmtLedgerDate(l.date)}</span>
+                    {isIncome ? (
+                      <>
+                        {name && <span style={{ fontWeight: 600 }}>{name}</span>}
+                        {l.subcategory && <span style={{ color: "var(--purple)" }}>{l.subcategory}</span>}
+                        {duration && <span style={{ color: "var(--muted)" }}>{duration}</span>}
+                      </>
+                    ) : (
+                      <span style={{ fontWeight: 600 }}>{stripCategoryPrefix(l.category) || "(no category)"}</span>
+                    )}
+                  </div>
+                  <span className="mono" style={{ color: isIncome ? "#7FE0B8" : "#F0559C", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
+                    {isIncome ? "+" : "−"}{currency(l.amount)}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>
+                  {isIncome
+                    ? [stripCategoryPrefix(l.category), l.origin, l.bookingId && `#${l.bookingId}`].filter(Boolean).join(" · ")
+                    : [l.origin, l.note, l.bookingId && `#${l.bookingId}`].filter(Boolean).join(" · ")}
                 </div>
               </div>
-              <span className="mono" style={{ color: l.type === "income" ? "#7FE0B8" : "#F0559C", fontWeight: 700, whiteSpace: "nowrap" }}>
-                {l.type === "income" ? "+" : "−"}{currency(l.amount)}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -1328,23 +1503,15 @@ function JarvisPanel({ title, children }) {
   );
 }
 
-function JarvisTab() {
+function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote }) {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(false);
-  const [lastSpoken, setLastSpoken] = useState("");
-  const [audioNote, setAudioNote] = useState("");
   const [agentActivity, setAgentActivity] = useState(null);
   const [agentActivityError, setAgentActivityError] = useState(false);
   const [mediaItems, setMediaItems] = useState([]);
   const [expandedMediaId, setExpandedMediaId] = useState(null);
   const [mediaActionPendingId, setMediaActionPendingId] = useState(null);
   const [mediaActionError, setMediaActionError] = useState("");
-
-  const audioElRef = useRef(null);
-  const audioCtxRef = useRef(null);
-  const gainNodeRef = useRef(null);
-  const sinceRef = useRef(null);
 
   // Dashboard poll — every 30s while this tab is mounted.
   useEffect(() => {
@@ -1400,100 +1567,6 @@ function JarvisTab() {
   useEffect(() => {
     if (dashboard) setMediaItems(dashboard.mediaQueue || []);
   }, [dashboard]);
-
-  // Speech poll — every 2s, only once audio has been unlocked by a click.
-  useEffect(() => {
-    if (!audioEnabled) return;
-    let cancelled = false;
-    let inFlight = false;
-
-    async function pollSpeech() {
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        const since = sinceRef.current || new Date().toISOString();
-        const res = await fetch(`/api/admin/speak?since=${encodeURIComponent(since)}`);
-        if (!res.ok || cancelled) return;
-        const events = await res.json();
-        if (!events.length) return;
-        sinceRef.current = events[events.length - 1].createdAt;
-        for (const ev of events) playSpeech(ev);
-      } catch {
-        // transient — just try again on the next tick
-      } finally {
-        inFlight = false;
-      }
-    }
-
-    const interval = setInterval(pollSpeech, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioEnabled]);
-
-  function playSpeech(ev) {
-    setLastSpoken(ev.text);
-    const el = audioElRef.current;
-    if (!el) return;
-    el.src = `data:audio/mpeg;base64,${ev.audioB64}`;
-    el.play()
-      .then(() => setAudioNote(""))
-      .catch((err) => {
-        console.error("Jarvis audio playback blocked:", err);
-        setAudioNote("Playback blocked — click anywhere on the page to retry.");
-        const retry = () => {
-          audioCtxRef.current && audioCtxRef.current.resume();
-          el.play().then(() => {
-            setAudioNote("");
-            document.removeEventListener("click", retry);
-          }).catch(() => {});
-        };
-        document.addEventListener("click", retry);
-      });
-  }
-
-  function enableAudio() {
-    // Create the ONE AudioContext right here, inside a real user gesture, so
-    // the browser doesn't leave it suspended — then reuse this exact
-    // instance (and the single <audio> element below) for every message
-    // instead of creating a new one per message. Same pattern as the
-    // standalone Jarvis-Voice-UI HUD's ACTIVATE button.
-    if (!audioCtxRef.current) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (Ctx) audioCtxRef.current = new Ctx();
-    }
-    if (audioCtxRef.current) audioCtxRef.current.resume();
-
-    // Route the <audio> element through a gain node (with a compressor
-    // after it to catch peaks) so playback is louder than the raw
-    // ElevenLabs output without clipping — a media element can only be
-    // wired into a MediaElementSourceNode once, so this only runs the
-    // first time.
-    if (audioCtxRef.current && audioElRef.current && !gainNodeRef.current) {
-      try {
-        const source = audioCtxRef.current.createMediaElementSource(audioElRef.current);
-        const gain = audioCtxRef.current.createGain();
-        gain.gain.value = 2.6;
-        const compressor = audioCtxRef.current.createDynamicsCompressor();
-        compressor.threshold.value = -18;
-        compressor.knee.value = 24;
-        compressor.ratio.value = 8;
-        compressor.attack.value = 0.003;
-        compressor.release.value = 0.25;
-        source.connect(gain);
-        gain.connect(compressor);
-        compressor.connect(audioCtxRef.current.destination);
-        gainNodeRef.current = gain;
-      } catch (err) {
-        console.error("Jarvis audio gain boost setup failed:", err);
-      }
-    }
-
-    sinceRef.current = new Date().toISOString();
-    setAudioEnabled(true);
-  }
 
   // Approve / deny / discuss a queued media draft directly from the Jarvis
   // tab. This is a human clicking inside the already-authenticated admin
@@ -1572,8 +1645,6 @@ function JarvisTab() {
       `}</style>
       <div className="jarvis-scanline-overlay" />
       <div style={{ position: "relative", zIndex: 2 }}>
-        <audio ref={audioElRef} style={{ display: "none" }} />
-
         <div className="jarvis-font" style={{
           fontSize: 20, fontWeight: 900, letterSpacing: "0.3em", color: "#00d9ff",
           textShadow: "0 0 12px rgba(0,217,255,0.6)", marginBottom: 4,
@@ -1586,7 +1657,7 @@ function JarvisTab() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
           {!audioEnabled ? (
-            <button type="button" onClick={enableAudio}
+            <button type="button" onClick={onEnableAudio}
               className="jarvis-font"
               style={{
                 background: "rgba(0,217,255,0.08)", color: "#00d9ff", border: "1px solid #00d9ff", borderRadius: 4,
