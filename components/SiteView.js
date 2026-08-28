@@ -189,7 +189,9 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                   <div style={{ padding: 18 }}>
                     <div className="mono" style={{ color: "var(--purple)", fontSize: 12, letterSpacing: "0.12em" }}>{v.slip}</div>
                     <div className="display" style={{ fontSize: 24, fontWeight: 700, margin: "4px 0" }}>{v.name}</div>
-                    <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>Capacity: {v.capacity} (incl. captain)</div>
+                    <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
+                      Capacity: {v.capacity} {v.note && v.note.toLowerCase().includes("captainless") ? "(no captain required)" : "(incl. captain)"}
+                    </div>
                     <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.4 }}>{v.note}</div>
                   </div>
                 </button>
