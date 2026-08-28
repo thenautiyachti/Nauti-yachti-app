@@ -379,13 +379,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               {testimonials.length === 0 && (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>No reviews yet — be the first to share your experience!</div>
               )}
-              {groupTestimonialsForDisplay(testimonials).map((item) =>
-                item.type === "group" ? (
-                  <CompactTestimonialGroup key={item.ts.map((t) => t.id).join("-")} ts={item.ts} />
-                ) : (
-                  <TestimonialCard key={item.t.id} t={item.t} />
-                )
-              )}
+              {testimonials.map((t) => <TestimonialCard key={t.id} t={t} />)}
             </div>
             <TestimonialForm onSubmit={submitTestimonial} />
           </div>
@@ -790,61 +784,13 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
   );
 }
 
-// Short quotes (a handful of words) look lost/oversized as their own full
-// card next to longer reviews. Bundle runs of short ones (up to 3) into one
-// compact card, each getting its own mini-cell, so the grid reads as evenly
-// sized tiles instead of a few tiny ones floating next to big ones.
-const SHORT_QUOTE_WORD_LIMIT = 6;
-
-function groupTestimonialsForDisplay(testimonials) {
-  const isShort = (t) => t.quote.trim().split(/\s+/).length <= SHORT_QUOTE_WORD_LIMIT;
-
-  // Pool every short review together regardless of where it falls in the
-  // list — grouping only adjacent items missed most pairings, since short
-  // and long reviews are interleaved by submission date, not length.
-  const shorts = testimonials.filter(isShort);
-  const longs = testimonials.filter((t) => !isShort(t));
-
-  const items = longs.map((t) => ({ type: "single", t }));
-  for (let i = 0; i < shorts.length; i += 3) {
-    const chunk = shorts.slice(i, i + 3);
-    items.push(chunk.length === 1 ? { type: "single", t: chunk[0] } : { type: "group", ts: chunk });
-  }
-  return items;
-}
-
-function CompactTestimonialGroup({ ts }) {
-  return (
-    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, display: "flex", flexDirection: "column" }}>
-      {ts.map((t, i) => (
-        <div
-          key={t.id}
-          style={{
-            padding: "14px 18px",
-            borderBottom: i < ts.length - 1 ? "1px solid rgba(203,108,230,0.14)" : "none",
-            flex: 1, display: "flex", flexDirection: "column", justifyContent: "center",
-          }}
-        >
-          <div style={{ color: "#E8934A", fontSize: 13, letterSpacing: 2, marginBottom: 4 }}>
-            {"★".repeat(t.rating)}{"☆".repeat(5 - t.rating)}
-          </div>
-          <p style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.9, lineHeight: 1.5, margin: "0 0 4px" }}>
-            &ldquo;{t.quote}&rdquo;
-          </p>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{t.name}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function TestimonialCard({ t }) {
   return (
-    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 18, display: "flex", flexDirection: "column" }}>
+    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", alignSelf: "start" }}>
       <div style={{ color: "#E8934A", fontSize: 16, letterSpacing: 2, marginBottom: 8 }}>
         {"★".repeat(t.rating)}{"☆".repeat(5 - t.rating)}
       </div>
-      <p style={{ fontSize: 14, color: "var(--text)", opacity: 0.9, lineHeight: 1.6, margin: "0 0 14px", flex: 1 }}>
+      <p style={{ fontSize: 14, color: "var(--text)", opacity: 0.9, lineHeight: 1.6, margin: "0 0 14px" }}>
         &ldquo;{t.quote}&rdquo;
       </p>
       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{t.name}</div>

@@ -32,19 +32,19 @@ export default function AvailabilityMonthGrid({ year, month, getState, onDayClic
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const cellPad = size === "compact" ? "6px 2px" : "10px 4px";
+  const cellPad = size === "compact" ? "6px 2px" : "18px 6px";
 
   return (
-    <div>
-      <div className="display" style={{ fontSize: 18, color: "var(--text)", fontWeight: 700, marginBottom: 8 }}>
+    <div style={size === "compact" ? undefined : { flex: "1 1 380px", minWidth: 320, maxWidth: 460 }}>
+      <div className="display" style={{ fontSize: size === "compact" ? 18 : 24, color: "var(--text)", fontWeight: 700, marginBottom: 12 }}>
         {MONTH_NAMES[month]} {year}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 4 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: size === "compact" ? 6 : 8, marginBottom: 6 }}>
         {WEEKDAYS.map((w, i) => (
-          <div key={i} className="mono" style={{ fontSize: 10, color: "var(--muted)", textAlign: "center" }}>{w}</div>
+          <div key={i} className="mono" style={{ fontSize: size === "compact" ? 10 : 13, color: "var(--muted)", textAlign: "center" }}>{w}</div>
         ))}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: size === "compact" ? 6 : 8 }}>
         {cells.map((d, i) => {
           if (!d) return <div key={i} />;
           const dateObj = new Date(year, month, d);
@@ -67,7 +67,7 @@ export default function AvailabilityMonthGrid({ year, month, getState, onDayClic
                 fontFamily: "inherit",
               }}
             >
-              <div className="mono" style={{ fontSize: size === "compact" ? 12 : 14, fontWeight: 700 }}>{d}</div>
+              <div className="mono" style={{ fontSize: size === "compact" ? 12 : 17, fontWeight: 700 }}>{d}</div>
             </Tag>
           );
         })}
