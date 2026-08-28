@@ -141,7 +141,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                   }}
                 >
                   {v.image && (
-                    <img src={v.image} alt={v.name} style={{ width: "100%", height: 150, objectFit: "cover", objectPosition: imageFocus(v.image), display: "block" }} />
+                    <img src={v.image} alt={v.name} style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", objectPosition: imageFocus(v.image), display: "block" }} />
                   )}
                   <div style={{ padding: 18 }}>
                     <div className="mono" style={{ color: "var(--purple)", fontSize: 12, letterSpacing: "0.12em" }}>{v.slip}</div>
@@ -292,7 +292,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
   return (
     <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       {pkg.image && (
-        <img src={pkg.image} alt={pkg.name} style={{ width: "100%", height: 160, objectFit: "cover", objectPosition: imageFocus(pkg.image), display: "block" }} />
+        <img src={pkg.image} alt={pkg.name} style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", objectPosition: imageFocus(pkg.image), display: "block" }} />
       )}
       <div style={{ padding: 18, display: "flex", flexDirection: "column", flex: 1 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>

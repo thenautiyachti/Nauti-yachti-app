@@ -51,7 +51,7 @@ const GALLERY = [
   { id: "g-tubing-2", category: "tubing", image: `${BC}/4aef37df-4231-4031-9999-8da0dff7233a_2x`, caption: "Watching the ride from the back deck", sortOrder: 2 },
   { id: "g-tubing-3", category: "tubing", image: `${BC}/b1461286-75dd-407d-ad57-8dc2c978b208_2x`, caption: "Hands up on the tube", sortOrder: 3 },
   { id: "g-tubing-4", category: "tubing", image: `${BC}/e591054f-71ba-44bc-9f25-91d4032d6210_2x`, caption: "Bouncing across the wake", sortOrder: 4 },
-  { id: "g-tubing-5", category: "tubing", image: `${BC}/e8a5c870-57a0-4892-b69d-a03d097eab57_2x`, caption: "Cruising Lake Conroe", sortOrder: 5 },
+  { id: "g-tubing-5", category: "tubing", image: "/wakeboarding.jpg", caption: "Carving up the wake", sortOrder: 5 },
 
   // Birthday Party
   { id: "g-birthday-1", category: "birthday", image: `${BC}/5fb07f44-df05-47ed-b223-a478b9cd2b48_2x`, caption: "Balloons on deck", sortOrder: 1 },
@@ -108,7 +108,7 @@ const PACKAGES = [
   {
     id: "tubing",
     name: "Tubing / Wakeboarding",
-    image: "https://bc-user-uploads.brandcrowd.com/public/media-Production/3009ad0c-217a-4298-b498-e0325b468130/243bcf68-219a-4676-ae5f-f4ebf71e10aa_2x",
+    image: "/tubing-hero.jpg",
     pricingType: "hourly-by-vessel",
     hourlyJson: JSON.stringify(TUBING_HOURLY_BY_VESSEL),
     unit: "Includes fuel, tube, wakeboards, ice chest with water & ice.",
