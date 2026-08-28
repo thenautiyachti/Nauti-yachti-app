@@ -272,6 +272,20 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                 </div>
               ))}
             </div>
+
+            <div style={{ marginTop: 34 }}>
+              <h3 className="display" style={{ fontSize: 18, color: "var(--text)", marginBottom: 4 }}>
+                Live radar
+              </h3>
+              <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 0, marginBottom: 14 }}>
+                National Weather Service radar, Houston/Galveston station — updates automatically.
+              </p>
+              <img
+                src="https://radar.weather.gov/ridge/standard/KHGX_loop.gif"
+                alt="Live NWS weather radar loop for the Houston/Galveston area, covering Lake Conroe"
+                style={{ width: "100%", maxWidth: 560, borderRadius: 10, border: "1px solid rgba(203,108,230,0.18)" }}
+              />
+            </div>
           </div>
         </div>
       )}
