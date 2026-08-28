@@ -65,8 +65,22 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
     document.getElementById("inquire")?.scrollIntoView({ behavior: "smooth" });
   }
 
-  async function submitInquiry(form) {
-    // Primary path: send the customer to Stripe Checkout to pay in full at
+  async function submitPlainInquiry(form) {
+    const res = await fetch("/api/inquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (!res.ok) {
+      flashToast("Something went wrong sending that — please try again or call us directly.");
+      return false;
+    }
+    flashToast("Inquiry sent — we'll be in touch soon.");
+    return true;
+  }
+
+  async function submitCheckout(form) {
+    // Pay-now path: send the customer to Stripe Checkout to pay in full at
     // booking time. If Stripe isn't configured yet (503 — no keys added),
     // fall back silently to the plain inquiry flow so the site keeps working
     // for real customers in the meantime.
@@ -95,17 +109,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       return false;
     }
 
-    const res = await fetch("/api/inquiries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (!res.ok) {
-      flashToast("Something went wrong sending that — please try again or call us directly.");
-      return false;
-    }
-    flashToast("Inquiry sent — we'll be in touch soon.");
-    return true;
+    return submitPlainInquiry(form);
   }
 
   return (
@@ -155,7 +159,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* VESSELS */}
       <div style={{ background: "var(--ink-soft)", padding: "10px 24px 50px" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 4 }}>Pick your vessel</h2>
           <p style={{ color: "var(--muted)", marginTop: 0, marginBottom: 22, fontSize: 14 }}>Each slip shows what that boat is built for.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 16 }}>
@@ -208,7 +212,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* AVAILABILITY */}
       <div id="availability" style={{ padding: "50px 24px", background: "var(--ink-soft)" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto", textAlign: "center" }}>
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>
             Availability — {vessels.find((v) => v.id === selectedVessel)?.name}
           </h2>
@@ -226,7 +230,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* GALLERY */}
       <div id="gallery" style={{ background: "var(--ink)", padding: "50px 24px" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>On the water</h2>
           <p style={{ color: "var(--purple)", fontSize: 14, marginTop: 0, marginBottom: 18 }}>
             Follow along for the full photo & video library.
@@ -281,7 +285,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
           <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 20 }}>
             We'll get back to you fast — this goes straight to our dashboard and email.
           </p>
-          <InquiryForm packages={packages} vessels={vessels} defaultPackageId={activePackage} prefill={prefill} onSubmit={submitInquiry} />
+          <InquiryForm packages={packages} vessels={vessels} defaultPackageId={activePackage} prefill={prefill} onSubmitPay={submitCheckout} onSubmitInquire={submitPlainInquiry} />
         </div>
       </div>
 
@@ -463,7 +467,7 @@ function AvailabilityCalendar({ blockedDates, partialDates }) {
   );
 }
 
-function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmit }) {
+function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay, onSubmitInquire }) {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", packageId: defaultPackageId || packages[0]?.id,
     vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3,
@@ -514,8 +518,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmit })
     );
   }
 
-  async function submit(e) {
-    e.preventDefault();
+  async function runSubmit(handler) {
     const pkg = packages.find((p) => p.id === form.packageId);
     const vessel = vessels.find((v) => v.id === form.vesselId);
 
@@ -525,7 +528,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmit })
     if (pkg?.pricingType === "tiered-by-guests") priceQuoted = tierPrice(pkg.tiers, Number(form.partySize || 1));
 
     setSubmitting(true);
-    const ok = await onSubmit({ ...form, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted });
+    const ok = await handler({ ...form, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted });
     // On a successful checkout redirect the browser navigates away entirely,
     // so `submitting` staying true until then is fine — there's no page left
     // to show a stuck button on.
@@ -536,6 +539,18 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmit })
     } else {
       setSubmitting(false);
     }
+  }
+
+  function submit(e) {
+    e.preventDefault();
+    runSubmit(onSubmitPay);
+  }
+
+  function inquireOnly(e) {
+    // type="button" skips native required-field validation, so check it
+    // manually — same experience as clicking the submit button would give.
+    if (!e.currentTarget.form.reportValidity()) return;
+    runSubmit(onSubmitInquire);
   }
 
   return (
@@ -599,6 +614,9 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmit })
       </label>
       <button type="submit" disabled={submitting} style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "12px", fontWeight: 700, fontSize: 15, opacity: submitting ? 0.7 : 1 }}>
         {sent ? "Request sent ✓" : submitting ? "Redirecting to payment…" : "Book & pay now"}
+      </button>
+      <button type="button" onClick={inquireOnly} disabled={submitting} style={{ width: "100%", marginTop: 10, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "11px", fontWeight: 600, fontSize: 14, opacity: submitting ? 0.7 : 1 }}>
+        Not ready to pay? Just send an inquiry
       </button>
     </form>
   );
