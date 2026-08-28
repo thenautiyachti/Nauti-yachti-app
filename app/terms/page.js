@@ -10,30 +10,25 @@ const SECTIONS = [
   },
   {
     title: "2. Cancellation & Refund Policy",
-    example: true,
     body: [
-      "The figures below are EXAMPLE placeholders only. The exact day thresholds and refund percentages have not been finalized and must be reviewed and confirmed by the owner before this policy is treated as final.",
+      "This policy is subject to the weather exception in Section 3 below — weather-related cancellations initiated by The Nauti Yachti are not subject to these guest-cancellation terms.",
     ],
     bullets: [
-      "7 or more days before your charter date: full refund of amounts paid.",
-      "3–6 days before your charter date: 50% refund of amounts paid.",
-      "Less than 72 hours before your charter date: non-refundable, except for owner-initiated weather cancellations (see below).",
+      "24 hours or more before your charter date/time: 100% refund of amounts paid.",
+      "Less than 24 hours before your charter (day-of cancellation), with communication from the guest: 60% refund of amounts paid.",
+      "No-show — no communication at all once the reserved charter time has passed: 0% refund, non-refundable.",
     ],
   },
   {
     title: "3. Weather-Related Cancellations & Rescheduling",
-    example: true,
     body: [
-      "EXAMPLE placeholder — final wording to be confirmed by the owner.",
-      "If The Nauti Yachti determines, in its sole discretion, that weather conditions (including thunderstorms, dangerously high wind, or a lake advisory) make a scheduled charter unsafe, we may cancel or reschedule the charter. When The Nauti Yachti initiates a cancellation for weather, guests will be offered either a full refund or the option to reschedule to another available date, at the guest's choice.",
+      "If The Nauti Yachti determines, in its sole discretion, that weather conditions (including thunderstorms, dangerously high wind, or a lake advisory) make a scheduled charter unsafe, we may cancel or reschedule the charter. When The Nauti Yachti initiates a cancellation for weather, guests will be offered either a full refund or the option to reschedule to another available date, at the guest's choice. The Nauti Yachti is not liable for charter disruptions caused by weather.",
     ],
   },
   {
     title: "4. Rescheduling by Guest",
-    example: true,
     body: [
-      "EXAMPLE placeholder — final wording to be confirmed by the owner.",
-      "Guests may request to reschedule an upcoming charter to a different available date. Requests made 7 or more days before the original charter date will generally be accommodated at no charge, subject to availability. Requests made closer to the charter date are subject to the cancellation terms above.",
+      "Guests may request to reschedule an upcoming charter to a different available date. Requests made 2 or more days before the original charter date will generally be accommodated at no charge, subject to availability. Requests made closer to the charter date are subject to the cancellation terms above.",
     ],
   },
   {
@@ -71,7 +66,7 @@ export default function TermsPage() {
           <h1 className="display" style={{ fontSize: "clamp(32px, 5vw, 48px)", margin: 0, lineHeight: 1, fontWeight: 800, color: "var(--text)" }}>
             Terms & Cancellation Policy
           </h1>
-          <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 12 }}>Status: DRAFT — not yet finalized</div>
+          <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 12 }}>Status: Cancellation & rescheduling policy confirmed — liability waiver still pending attorney review</div>
         </div>
       </div>
 
@@ -80,10 +75,10 @@ export default function TermsPage() {
 
           <div style={{ border: "1px solid #F0555C", background: "rgba(240,85,92,0.1)", borderRadius: 10, padding: "16px 18px" }}>
             <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.06em", color: "#FF7A80", marginBottom: 6 }}>
-              ⚠ DRAFT DOCUMENT — NOT YET FINAL
+              ⚠ LIABILITY WAIVER STILL PENDING
             </div>
             <p style={{ fontSize: 14, color: "var(--text)", opacity: 0.9, lineHeight: 1.6, margin: 0 }}>
-              This entire page, including the cancellation figures and the liability waiver section, is a working draft. The example refund figures below must be reviewed and confirmed by the owner, and the liability waiver section must be reviewed and drafted by a licensed attorney, before this page can be relied on as a final, binding policy.
+              The cancellation and rescheduling policy below has been confirmed by the owner. The liability waiver section (Section 5) is still a placeholder and must be drafted and reviewed by a licensed attorney before this page can be relied on as a complete, binding policy.
             </p>
           </div>
 
