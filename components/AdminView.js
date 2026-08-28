@@ -1231,6 +1231,7 @@ function JarvisTab() {
 
   const audioElRef = useRef(null);
   const audioCtxRef = useRef(null);
+  const gainNodeRef = useRef(null);
   const sinceRef = useRef(null);
 
   // Dashboard poll — every 30s while this tab is mounted.
@@ -1345,6 +1346,23 @@ function JarvisTab() {
       if (Ctx) audioCtxRef.current = new Ctx();
     }
     if (audioCtxRef.current) audioCtxRef.current.resume();
+
+    // Route the <audio> element through a gain node so playback is louder
+    // than the raw ElevenLabs output — a media element can only be wired
+    // into a MediaElementSourceNode once, so this only runs the first time.
+    if (audioCtxRef.current && audioElRef.current && !gainNodeRef.current) {
+      try {
+        const source = audioCtxRef.current.createMediaElementSource(audioElRef.current);
+        const gain = audioCtxRef.current.createGain();
+        gain.gain.value = 1.8;
+        source.connect(gain);
+        gain.connect(audioCtxRef.current.destination);
+        gainNodeRef.current = gain;
+      } catch (err) {
+        console.error("Jarvis audio gain boost setup failed:", err);
+      }
+    }
+
     sinceRef.current = new Date().toISOString();
     setAudioEnabled(true);
   }
