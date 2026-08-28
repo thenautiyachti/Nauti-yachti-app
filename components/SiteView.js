@@ -9,8 +9,10 @@ import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 const SOCIALS = [
   { label: "Facebook", url: "https://www.facebook.com/profile.php?id=61577960573366" },
   { label: "Instagram", url: "https://www.instagram.com/thenautiyachtillc/" },
-  { label: "GetMyBoat — Trip 1", url: "https://www.getmyboat.com/trips/5Yr13eya/" },
-  { label: "GetMyBoat — Trip 2", url: "https://www.getmyboat.com/trips/ZK8Wmz1Y/" },
+  { label: "GetMyBoat — Nauti Explorer", url: "https://www.getmyboat.com/trips/5Yr13eya/" },
+  { label: "GetMyBoat — Nauti Yachti", url: "https://www.getmyboat.com/trips/2aM5DkWa/" },
+  { label: "Boatsetter — Nauti Explorer", url: "https://www.boatsetter.com/boats/nwfblfv" },
+  { label: "GetMyBoat — Yolo, Lake Conroe", url: "https://www.getmyboat.com/trips/GaZ8b2dK/" },
 ];
 
 const HERO_PARAGRAPHS = [
