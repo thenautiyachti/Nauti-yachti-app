@@ -2,6 +2,7 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 const { sendInquiryEmail } = require("../../../lib/email");
+const { generateBookingId } = require("../../../lib/bookingId");
 
 // Admin-only: view all inquiries.
 async function GET() {
@@ -23,6 +24,8 @@ async function POST(req) {
     }
   }
 
+  const bookingId = await generateBookingId(body.date || null);
+
   const created = await prisma.inquiry.create({
     data: {
       name: body.name,
@@ -37,6 +40,7 @@ async function POST(req) {
       partySize: body.partySize ? String(body.partySize) : null,
       message: body.message || null,
       priceQuoted: body.priceQuoted != null ? Number(body.priceQuoted) : null,
+      bookingId,
     },
   });
 

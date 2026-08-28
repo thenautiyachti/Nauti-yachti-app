@@ -2,6 +2,7 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { sendInquiryEmail } = require("../../../lib/email");
 const { checkCoupon, discountedAmount } = require("../../../lib/coupons");
+const { generateBookingId } = require("../../../lib/bookingId");
 
 // Public: customer clicks "Book this" / submits the booking form and is sent
 // to Stripe's hosted Checkout for the exact quoted price. We still create the
@@ -46,6 +47,7 @@ async function POST(req) {
     }
   }
   const discountAmount = appliedCoupon ? Math.max(0, priceQuoted - finalAmount) : null;
+  const bookingId = await generateBookingId(body.date || null);
 
   const created = await prisma.inquiry.create({
     data: {
@@ -64,6 +66,7 @@ async function POST(req) {
       paymentStatus: "unpaid",
       couponCode: appliedCoupon ? appliedCoupon.code : null,
       discountAmount,
+      bookingId,
     },
   });
 

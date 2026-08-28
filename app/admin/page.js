@@ -155,6 +155,13 @@ export default function AdminPage() {
     setExternalBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
     await refreshPartialDates();
   }
+  // Generic field patch (pricePaid, hours, guestName, partySize, note) — used
+  // by the unified Bookings tab for inline edits that don't affect the
+  // public availability calendar, so no need to refetch partial dates.
+  async function updateExternalBooking(id, fields) {
+    const updated = await api(`/api/external-bookings/${id}`, { method: "PATCH", body: JSON.stringify(fields) });
+    setExternalBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+  }
   async function deleteExternalBooking(id) {
     await api(`/api/external-bookings/${id}`, { method: "DELETE" });
     setExternalBookings((prev) => prev.filter((b) => b.id !== id));
@@ -275,6 +282,7 @@ export default function AdminPage() {
       onUpdateAddonPrice={updateAddonPrice}
       onAddExternalBooking={addExternalBooking}
       onSetExternalBookingStatus={setExternalBookingStatus}
+      onUpdateExternalBooking={updateExternalBooking}
       onDeleteExternalBooking={deleteExternalBooking}
       onUpdateMaintenanceItem={updateMaintenanceItem}
       onAddEngineHoursLog={addEngineHoursLog}

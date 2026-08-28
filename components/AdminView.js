@@ -21,7 +21,7 @@ export default function AdminView({
   maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onLogout,
-  onUpdateAddonPrice, onAddExternalBooking, onSetExternalBookingStatus, onDeleteExternalBooking,
+  onUpdateAddonPrice, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
   onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
   onAddCoupon, onToggleCouponActive, onDeleteCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
@@ -139,7 +139,7 @@ export default function AdminView({
 
   const tabs = [
     { id: "inquiries", label: `Inquiries (${inquiries.length})` },
-    { id: "bookings", label: `External bookings (${externalBookings.length})` },
+    { id: "bookings", label: `Bookings (${inquiries.length + externalBookings.length})` },
     { id: "pricing", label: "Packages & pricing" },
     { id: "addons", label: "Add-ons" },
     { id: "coupons", label: "Coupons" },
@@ -227,12 +227,15 @@ export default function AdminView({
         )}
 
         {tab === "bookings" && (
-          <ExternalBookingsTab
+          <BookingsTab
             vessels={vessels}
+            inquiries={inquiries}
             externalBookings={externalBookings}
-            onAdd={onAddExternalBooking}
-            onSetStatus={onSetExternalBookingStatus}
-            onDelete={onDeleteExternalBooking}
+            onAddExternalBooking={onAddExternalBooking}
+            onSetExternalBookingStatus={onSetExternalBookingStatus}
+            onUpdateExternalBooking={onUpdateExternalBooking}
+            onDeleteExternalBooking={onDeleteExternalBooking}
+            onMarkInquiry={onMarkInquiry}
           />
         )}
 
@@ -417,10 +420,45 @@ export default function AdminView({
 
 const BOOKING_PLATFORMS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "Other"];
 
-function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, onDelete }) {
+// Merges Inquiry rows (site-originated) and ExternalBooking rows (logged
+// from third-party platforms) into one shape for the unified table below.
+// kind distinguishes which management actions/enum apply to a given row —
+// their status values and editable fields differ, so the row renderer
+// branches on it rather than trying to force both into one schema.
+function toUnifiedRows(inquiries, externalBookings) {
+  const fromInquiries = inquiries.map((i) => ({
+    kind: "inquiry",
+    id: i.id,
+    bookingId: i.bookingId,
+    date: i.date,
+    name: i.name,
+    vesselName: i.vesselName,
+    hours: i.hours,
+    pricePaid: i.priceQuoted,
+    source: "Site",
+    status: i.status,
+    raw: i,
+  }));
+  const fromExternal = externalBookings.map((b) => ({
+    kind: "external",
+    id: b.id,
+    bookingId: b.bookingId,
+    date: b.date,
+    name: b.guestName,
+    vesselName: b.vesselName,
+    hours: b.hours,
+    pricePaid: b.pricePaid,
+    source: b.platform,
+    status: b.status,
+    raw: b,
+  }));
+  return [...fromInquiries, ...fromExternal].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+}
+
+function BookingsTab({ vessels, inquiries, externalBookings, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
   const emptyForm = {
     vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), hours: 4,
-    guestName: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "pending", note: "",
+    guestName: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "pending", note: "", pricePaid: "",
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -428,18 +466,25 @@ function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, on
     e.preventDefault();
     if (!form.date || !form.vesselId) return;
     const vessel = vessels.find((v) => v.id === form.vesselId);
-    onAdd({ ...form, vesselName: vessel?.name || form.vesselId, hours: Number(form.hours), partySize: form.partySize ? Number(form.partySize) : null });
+    onAddExternalBooking({
+      ...form,
+      vesselName: vessel?.name || form.vesselId,
+      hours: Number(form.hours),
+      partySize: form.partySize ? Number(form.partySize) : null,
+      pricePaid: form.pricePaid ? Number(form.pricePaid) : null,
+    });
     setForm(emptyForm);
   }
 
-  const pending = externalBookings.filter((b) => b.status === "pending");
-  const confirmed = externalBookings.filter((b) => b.status === "confirmed");
+  // Every historical booking (site + external), most recent first — no date
+  // filtering, so past charters stay visible alongside upcoming ones.
+  const rows = toUnifiedRows(inquiries, externalBookings);
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
       <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
         <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 10 }}>
-          Log a booking from GetMyBoat, Boatsetter, or elsewhere. Confirming it marks that day partially booked (or fully, at 8+ combined hours) on the public availability calendar.
+          Log a booking from GetMyBoat, Boatsetter, or elsewhere. Confirming it marks that day partially booked (or fully, at 8+ combined hours) on the public availability calendar. It'll show up below alongside site bookings, with its own booking ID.
         </p>
         <label style={{ display: "block", marginBottom: 8 }}>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Vessel</div>
@@ -479,40 +524,88 @@ function ExternalBookingsTab({ vessels, externalBookings, onAdd, onSetStatus, on
             Confirmed
           </button>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+          <span className="mono" style={{ color: "var(--muted)" }}>$</span>
+          <input type="number" placeholder="Price paid (optional)" value={form.pricePaid} onChange={(e) => setForm({ ...form, pricePaid: e.target.value })}
+            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+        </div>
         <input type="text" placeholder="Note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
           style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
         <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add booking</button>
       </form>
 
-      <div style={{ display: "grid", gap: 20 }}>
-        {[["Pending", pending], ["Confirmed", confirmed]].map(([label, list]) => (
-          <div key={label}>
-            <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>{label} ({list.length})</div>
-            <div style={{ display: "grid", gap: 6 }}>
-              {list.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>None yet.</div>}
-              {list.map((b) => (
-                <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13.5, color: "var(--text)", gap: 10 }}>
-                  <div>
-                    <div>{b.date} — {b.vesselName} — {b.guestName || "Guest"}{b.partySize ? ` (${b.partySize})` : ""}</div>
-                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                      {[b.hours ? `${b.hours} hrs` : null, b.platform, b.note].filter(Boolean).join(" · ")}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    <button type="button" onClick={() => onSetStatus(b.id, b.status === "confirmed" ? "pending" : "confirmed")}
-                      style={{ background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "5px 9px", fontSize: 11.5, fontWeight: 600 }}>
-                      {b.status === "confirmed" ? "Mark pending" : "Confirm"}
-                    </button>
-                    <button type="button" onClick={() => onDelete(b.id)}
-                      style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "5px 9px", fontSize: 11.5, fontWeight: 600 }}>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+      <div>
+        <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>All bookings ({rows.length})</div>
+        {rows.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No bookings yet.</div>}
+        {rows.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 12.5, color: "var(--text)" }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
+                  <th style={{ padding: "4px 8px" }}>Booking ID</th>
+                  <th style={{ padding: "4px 8px" }}>Date</th>
+                  <th style={{ padding: "4px 8px" }}>Name</th>
+                  <th style={{ padding: "4px 8px" }}>Vessel</th>
+                  <th style={{ padding: "4px 8px" }}>Duration</th>
+                  <th style={{ padding: "4px 8px" }}>Price paid</th>
+                  <th style={{ padding: "4px 8px" }}>Source</th>
+                  <th style={{ padding: "4px 8px" }}>Status / actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={`${r.kind}-${r.id}`} style={{ background: "var(--card)" }}>
+                    <td className="mono" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", color: r.bookingId ? "#E8934A" : "var(--muted)", whiteSpace: "nowrap" }}>
+                      {r.bookingId || "—"}
+                    </td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.date || "—"}</td>
+                    <td style={{ padding: "6px 8px", fontWeight: 600 }}>{r.name || (r.kind === "external" ? "Guest" : "—")}</td>
+                    <td style={{ padding: "6px 8px" }}>{r.vesselName || "—"}</td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.hours ? `${r.hours} hrs` : "—"}</td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      {r.kind === "external" ? (
+                        <input
+                          type="number"
+                          defaultValue={r.pricePaid ?? ""}
+                          placeholder="—"
+                          onBlur={(e) => {
+                            const value = e.target.value === "" ? null : Number(e.target.value);
+                            if (value !== r.pricePaid) onUpdateExternalBooking(r.id, { pricePaid: value });
+                          }}
+                          style={{ width: 76, padding: "4px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }}
+                        />
+                      ) : (
+                        r.pricePaid != null ? currency(r.pricePaid) : "—"
+                      )}
+                    </td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.source}</td>
+                    <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
+                      {r.kind === "external" ? (
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <button type="button" onClick={() => onSetExternalBookingStatus(r.id, r.status === "confirmed" ? "pending" : "confirmed")}
+                            style={{ background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                            {r.status === "confirmed" ? "Mark pending" : "Confirm"}
+                          </button>
+                          <button type="button" onClick={() => onDeleteExternalBooking(r.id)}
+                            style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                            Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <select value={r.status} onChange={(e) => onMarkInquiry(r.id, e.target.value)}
+                          style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
+                          <option value="new">New</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="declined">Declined</option>
+                        </select>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

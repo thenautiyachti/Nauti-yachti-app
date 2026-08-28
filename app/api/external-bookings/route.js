@@ -1,6 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
+const { generateBookingId } = require("../../../lib/bookingId");
 
 async function GET() {
   if (!isAdminAuthenticated()) {
@@ -16,10 +17,11 @@ async function POST(req) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();
-  const { vesselId, vesselName, date, hours, guestName, partySize, platform, status, note } = body;
+  const { vesselId, vesselName, date, hours, guestName, partySize, platform, status, note, pricePaid } = body;
   if (!vesselId || !vesselName || !date || !platform) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
+  const bookingId = await generateBookingId(date);
   // A confirmed booking only reserves its own hours, not the whole day —
   // hours accumulate toward the 8hr-day threshold (see groupExternalBookingState
   // in lib/serialize.js), not an automatic full-day block. Full-day blocks
@@ -32,6 +34,8 @@ async function POST(req) {
       partySize: partySize ? Number(partySize) : null,
       status: status === "confirmed" ? "confirmed" : "pending",
       note: note || null,
+      pricePaid: pricePaid != null && pricePaid !== "" ? Number(pricePaid) : null,
+      bookingId,
     },
   });
   return NextResponse.json(booking);

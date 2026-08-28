@@ -79,6 +79,11 @@ model Inquiry {
 
   couponCode     String? // uppercase Coupon.code, if one was applied at checkout
   discountAmount Float? // dollars knocked off priceQuoted by the coupon
+
+  // Format "NY-YYYYMMDD-NN" — assigned at creation time going forward only.
+  // Historical rows are intentionally left null (never backfilled) — see
+  // lib/bookingId.js for the generator.
+  bookingId String? @unique
 }
 
 model Coupon {
@@ -119,6 +124,13 @@ model ExternalBooking {
   status     String   @default("pending") // "pending" | "confirmed"
   note       String?
   createdAt  DateTime @default(now())
+
+  pricePaid Float? // what the guest actually paid, if the owner has logged it
+
+  // Format "NY-YYYYMMDD-NN" — assigned at creation time going forward only.
+  // Historical rows are intentionally left null (never backfilled) — see
+  // lib/bookingId.js for the generator.
+  bookingId String? @unique
 }
 
 model AddOn {
