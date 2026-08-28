@@ -28,6 +28,9 @@ export default function AdminPage() {
   const [ledger, setLedger] = useState([]);
   const [addons, setAddons] = useState([]);
   const [externalBookings, setExternalBookings] = useState([]);
+  const [maintenanceItems, setMaintenanceItems] = useState([]);
+  const [engineHours, setEngineHours] = useState([]);
+  const [fuelLogs, setFuelLogs] = useState([]);
 
   useEffect(() => {
     api("/api/admin/session")
@@ -37,7 +40,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -47,8 +50,12 @@ export default function AdminPage() {
       api("/api/ledger"),
       api("/api/addons"),
       api("/api/external-bookings"),
+      api("/api/maintenance-items"),
+      api("/api/engine-hours"),
+      api("/api/fuel-log"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
+    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl);
     setLoading(false);
   }, []);
 
@@ -147,6 +154,21 @@ export default function AdminPage() {
     setExternalBookings((prev) => prev.filter((b) => b.id !== id));
     await refreshPartialDates();
   }
+  async function updateMaintenanceItem(id, fields) {
+    const updated = await api(`/api/maintenance-items/${id}`, { method: "PATCH", body: JSON.stringify(fields) });
+    setMaintenanceItems((prev) => prev.map((m) => (m.id === id ? updated : m)));
+  }
+  async function addEngineHoursLog(entry) {
+    const created = await api("/api/engine-hours", { method: "POST", body: JSON.stringify(entry) });
+    setEngineHours((prev) => [created, ...prev]);
+  }
+  async function addFuelLog(entry) {
+    const created = await api("/api/fuel-log", { method: "POST", body: JSON.stringify(entry) });
+    setFuelLogs((prev) => [created, ...prev]);
+    // The fuel-log route also writes a matching LedgerEntry when a cost is
+    // given — refetch the ledger so the Ledger tab/totals pick it up too.
+    if (entry.cost) setLedger(await api("/api/ledger"));
+  }
 
   const totals = useMemo(() => {
     const income = ledger.filter((l) => l.type === "income").reduce((s, l) => s + Number(l.amount || 0), 0);
@@ -196,6 +218,9 @@ export default function AdminPage() {
       totals={totals}
       addons={addons}
       externalBookings={externalBookings}
+      maintenanceItems={maintenanceItems}
+      engineHours={engineHours}
+      fuelLogs={fuelLogs}
       onUpdatePrice={updatePackagePrice}
       onUpdatePricePerGuest={updatePricePerGuest}
       onUpdateHourlyByVesselPrice={updateHourlyByVesselPrice}
@@ -208,6 +233,9 @@ export default function AdminPage() {
       onAddExternalBooking={addExternalBooking}
       onSetExternalBookingStatus={setExternalBookingStatus}
       onDeleteExternalBooking={deleteExternalBooking}
+      onUpdateMaintenanceItem={updateMaintenanceItem}
+      onAddEngineHoursLog={addEngineHoursLog}
+      onAddFuelLog={addFuelLog}
       onLogout={handleLogout}
     />
   );

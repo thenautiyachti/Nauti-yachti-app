@@ -64,6 +64,35 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
   }
 
   async function submitInquiry(form) {
+    // Primary path: send the customer to Stripe Checkout to pay in full at
+    // booking time. If Stripe isn't configured yet (503 — no keys added),
+    // fall back silently to the plain inquiry flow so the site keeps working
+    // for real customers in the meantime.
+    try {
+      const checkoutRes = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (checkoutRes.ok) {
+        const data = await checkoutRes.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return true; // navigating away
+        }
+      }
+
+      if (checkoutRes.status !== 503) {
+        flashToast("Something went wrong starting checkout — please try again or call us directly.");
+        return false;
+      }
+      // else: 503 "not configured" — fall through to the plain inquiry flow below.
+    } catch {
+      flashToast("Something went wrong starting checkout — please try again or call us directly.");
+      return false;
+    }
+
     const res = await fetch("/api/inquiries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -438,6 +467,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmit })
     vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3,
   });
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const selectedPkg = packages.find((p) => p.id === form.packageId);
 
   useEffect(() => {
@@ -492,11 +522,17 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmit })
     if (pkg?.pricingType === "per-guest") priceQuoted = Number(form.partySize || 0) * pkg.pricePerGuest;
     if (pkg?.pricingType === "tiered-by-guests") priceQuoted = tierPrice(pkg.tiers, Number(form.partySize || 1));
 
+    setSubmitting(true);
     const ok = await onSubmit({ ...form, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted });
+    // On a successful checkout redirect the browser navigates away entirely,
+    // so `submitting` staying true until then is fine — there's no page left
+    // to show a stuck button on.
     if (ok) {
       setSent(true);
       setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3 });
       setTimeout(() => setSent(false), 3500);
+    } else {
+      setSubmitting(false);
     }
   }
 
@@ -559,8 +595,8 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmit })
         <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3}
           style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, fontFamily: "inherit" }} />
       </label>
-      <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "12px", fontWeight: 700, fontSize: 15 }}>
-        {sent ? "Sent ✓" : "Send inquiry"}
+      <button type="submit" disabled={submitting} style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "12px", fontWeight: 700, fontSize: 15, opacity: submitting ? 0.7 : 1 }}>
+        {sent ? "Request sent ✓" : submitting ? "Redirecting to payment…" : "Book & pay now"}
       </button>
     </form>
   );

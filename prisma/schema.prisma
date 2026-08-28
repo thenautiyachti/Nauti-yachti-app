@@ -72,6 +72,10 @@ model Inquiry {
   priceQuoted Float?
   status      String   @default("new") // "new" | "confirmed" | "declined"
   submittedAt DateTime @default(now())
+
+  paymentStatus         String  @default("unpaid") // "unpaid" | "paid" | "refunded"
+  stripeSessionId       String?
+  stripePaymentIntentId String?
 }
 
 model ExternalBooking {
@@ -107,4 +111,35 @@ model LedgerEntry {
   bookingId String? // links an expense back to the reservation it was for
   date      String
   createdAt DateTime @default(now())
+}
+
+model MaintenanceItem {
+  id             String  @id @default(cuid())
+  label          String
+  intervalHours  Int?
+  intervalMonths Int?
+  lastDoneDate   String? // "YYYY-MM-DD"
+  lastDoneHours  Float?
+  notes          String?
+  sortOrder      Int     @default(0)
+}
+
+model EngineHoursLog {
+  id        String   @id @default(cuid())
+  vesselId  String
+  date      String // "YYYY-MM-DD"
+  hours     Float // hour-meter reading at that point, not a duration
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model FuelLog {
+  id            String   @id @default(cuid())
+  vesselId      String
+  date          String // "YYYY-MM-DD"
+  hoursAtFillup Float?
+  gallons       Float?
+  cost          Float?
+  note          String?
+  createdAt     DateTime @default(now())
 }

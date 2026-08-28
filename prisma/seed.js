@@ -104,6 +104,26 @@ const ADDONS = [
   { id: "decoration-package", name: "Full Decoration Package", price: 60, unit: "per charter", blurb: "Balloons, table setup, and themed decor for birthdays, bachelorette parties, and other celebrations.", sortOrder: 3 },
 ];
 
+// Generic starter intervals — the owner will replace these with real
+// manufacturer-recommended numbers per engine later. lastDoneDate/lastDoneHours
+// are left null on purpose so the UI shows "enter last serviced info" instead
+// of a false overdue flag until the owner fills in real service history.
+const MAINTENANCE_ITEMS = [
+  { id: "maint-oil-filter", label: "Engine Oil & Filter Change", intervalHours: 100, intervalMonths: 12, sortOrder: 1 },
+  { id: "maint-lower-unit", label: "Lower Unit / Gear Lube", intervalHours: 100, intervalMonths: 12, sortOrder: 2 },
+  { id: "maint-spark-plugs", label: "Spark Plugs", intervalHours: 100, intervalMonths: 24, sortOrder: 3 },
+  { id: "maint-fuel-filter", label: "Fuel Filter / Water Separator", intervalHours: 100, intervalMonths: 12, sortOrder: 4 },
+  { id: "maint-impeller", label: "Impeller / Raw Water Pump", intervalHours: 200, intervalMonths: 24, sortOrder: 5 },
+  { id: "maint-zincs", label: "Zincs / Anodes Inspect or Replace", intervalHours: 100, intervalMonths: 6, sortOrder: 6 },
+  { id: "maint-belts", label: "Belts Inspect/Replace", intervalHours: 200, intervalMonths: 24, sortOrder: 7 },
+  { id: "maint-battery", label: "Battery Check / Load Test", intervalHours: 100, intervalMonths: 6, sortOrder: 8 },
+  { id: "maint-steering-cables", label: "Steering & Control Cable Lubrication", intervalHours: 100, intervalMonths: 12, sortOrder: 9 },
+  { id: "maint-bilge-pump", label: "Bilge Pump & Float Switch Test", intervalHours: 50, intervalMonths: 3, sortOrder: 10 },
+  { id: "maint-propeller", label: "Propeller Inspection", intervalHours: 100, intervalMonths: 12, sortOrder: 11 },
+  { id: "maint-coolant", label: "Coolant / Antifreeze (closed cooling)", intervalHours: 300, intervalMonths: 24, sortOrder: 12 },
+  { id: "maint-trailer-bearings", label: "Trailer Wheel Bearings", intervalHours: null, intervalMonths: 12, sortOrder: 13 },
+];
+
 const PACKAGES = [
   {
     id: "tubing",
@@ -233,7 +253,15 @@ async function main() {
   for (const a of ADDONS) {
     await prisma.addOn.upsert({ where: { id: a.id }, update: a, create: a });
   }
-  console.log(`Seeded ${VESSELS.length} vessels, ${GALLERY.length} gallery items, ${PACKAGES.length} packages, ${ADDONS.length} add-ons.`);
+  // Only create maintenance items if they don't already exist — unlike the
+  // rows above, the owner is expected to edit these in the admin UI (interval
+  // hours/months, last-serviced info), so re-running the seed must not stomp
+  // those edits back to the generic starter values.
+  for (const m of MAINTENANCE_ITEMS) {
+    const existing = await prisma.maintenanceItem.findUnique({ where: { id: m.id } });
+    if (!existing) await prisma.maintenanceItem.create({ data: m });
+  }
+  console.log(`Seeded ${VESSELS.length} vessels, ${GALLERY.length} gallery items, ${PACKAGES.length} packages, ${ADDONS.length} add-ons, ${MAINTENANCE_ITEMS.length} maintenance items.`);
 }
 
 main()

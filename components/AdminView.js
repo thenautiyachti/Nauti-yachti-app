@@ -18,9 +18,11 @@ const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Payp
 
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
+  maintenanceItems, engineHours, fuelLogs,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onLogout,
   onUpdateAddonPrice, onAddExternalBooking, onSetExternalBookingStatus, onDeleteExternalBooking,
+  onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
 }) {
   const [tab, setTab] = useState("inquiries");
 
@@ -32,6 +34,7 @@ export default function AdminView({
     { id: "availability", label: "Availability" },
     { id: "media", label: "Media" },
     { id: "ledger", label: "Income & expenses" },
+    { id: "maintenance", label: "Maintenance" },
   ];
 
   return (
@@ -71,11 +74,24 @@ export default function AdminView({
                   </div>
                   {i.message && <div style={{ fontSize: 12.5, marginTop: 4 }}>{i.message}</div>}
                 </div>
-                <select value={i.status} onChange={(e) => onMarkInquiry(i.id, e.target.value)} style={{ alignSelf: "center", padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }}>
-                  <option value="new">New</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="declined">Declined</option>
-                </select>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    className="mono"
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em",
+                      color: i.paymentStatus === "paid" ? "#0A0612" : "var(--text)",
+                      background: i.paymentStatus === "paid" ? "var(--purple)" : i.paymentStatus === "refunded" ? "rgba(232,147,74,0.25)" : "rgba(203,108,230,0.12)",
+                      border: i.paymentStatus === "paid" ? "none" : "1px solid rgba(203,108,230,0.3)",
+                    }}
+                  >
+                    {i.paymentStatus || "unpaid"}
+                  </span>
+                  <select value={i.status} onChange={(e) => onMarkInquiry(i.id, e.target.value)} style={{ padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }}>
+                    <option value="new">New</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="declined">Declined</option>
+                  </select>
+                </div>
               </div>
             ))}
           </div>
@@ -231,6 +247,18 @@ export default function AdminView({
 
         {tab === "ledger" && (
           <LedgerTab ledger={ledger} totals={totals} onAdd={onAddLedgerEntry} />
+        )}
+
+        {tab === "maintenance" && (
+          <MaintenanceTab
+            vessels={vessels}
+            maintenanceItems={maintenanceItems}
+            engineHours={engineHours}
+            fuelLogs={fuelLogs}
+            onUpdateItem={onUpdateMaintenanceItem}
+            onAddEngineHoursLog={onAddEngineHoursLog}
+            onAddFuelLog={onAddFuelLog}
+          />
         )}
       </div>
     </div>
@@ -458,6 +486,294 @@ function LedgerTab({ ledger, totals, onAdd }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Maintenance tab -------------------------------------------------
+
+// Whole months elapsed since a "YYYY-MM-DD" date, floored — e.g. a date
+// 45 days ago reads as 1 month, not 1.5.
+function monthsSinceDate(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const now = new Date();
+  let months = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+  if (now.getDate() < d.getDate()) months -= 1;
+  return Math.max(0, months);
+}
+
+// Most recent log per vessel, "most recent" meaning latest date (ties broken
+// by createdAt) — these are point-in-time readings (hour-meter, fillup), not
+// events to sum.
+function latestPerVessel(logs) {
+  const result = {};
+  for (const log of logs) {
+    const cur = result[log.vesselId];
+    if (!cur || log.date > cur.date || (log.date === cur.date && log.createdAt > cur.createdAt)) {
+      result[log.vesselId] = log;
+    }
+  }
+  return result;
+}
+
+const DUE_SOON_FRACTION = 0.9; // flag "due soon" within 10% of either threshold
+
+// MaintenanceItem isn't tied to a specific vessel (it's one shared checklist
+// for the fleet), so status is judged against whichever vessel currently has
+// the most hours on it — the worst case, so nothing slips through unnoticed.
+function maintenanceStatus(item, currentHours) {
+  const hasHoursBasis = item.intervalHours != null && item.lastDoneHours != null && currentHours != null;
+  const hasMonthsBasis = item.intervalMonths != null && !!item.lastDoneDate;
+
+  if (!hasHoursBasis && !hasMonthsBasis) {
+    return { status: "unknown", label: "Enter last serviced info", hoursSince: null, monthsSince: null };
+  }
+
+  let overdue = false;
+  let dueSoon = false;
+  let hoursSince = null;
+  let monthsSinceVal = null;
+
+  if (hasHoursBasis) {
+    hoursSince = currentHours - item.lastDoneHours;
+    if (hoursSince >= item.intervalHours) overdue = true;
+    else if (hoursSince >= item.intervalHours * DUE_SOON_FRACTION) dueSoon = true;
+  }
+  if (hasMonthsBasis) {
+    monthsSinceVal = monthsSinceDate(item.lastDoneDate);
+    if (monthsSinceVal >= item.intervalMonths) overdue = true;
+    else if (monthsSinceVal >= item.intervalMonths * DUE_SOON_FRACTION) dueSoon = true;
+  }
+
+  return {
+    status: overdue ? "overdue" : dueSoon ? "due-soon" : "ok",
+    label: overdue ? "Overdue" : dueSoon ? "Due soon" : "OK",
+    hoursSince, monthsSince: monthsSinceVal,
+  };
+}
+
+const STATUS_COLORS = { overdue: "var(--pink)", "due-soon": "#E8934A", ok: "#7FE0B8", unknown: "var(--muted)" };
+
+function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUpdateItem, onAddEngineHoursLog, onAddFuelLog }) {
+  const latestHours = latestPerVessel(engineHours);
+  const latestFuel = latestPerVessel(fuelLogs);
+
+  const vesselHours = vessels.map((v) => ({ vessel: v, log: latestHours[v.id] || null }));
+  const knownHours = vesselHours.map((vh) => vh.log?.hours).filter((h) => h != null);
+  const fleetMaxHours = knownHours.length ? Math.max(...knownHours) : null;
+
+  const statuses = maintenanceItems.map((item) => ({ item, ...maintenanceStatus(item, fleetMaxHours) }));
+  const overdueCount = statuses.filter((s) => s.status === "overdue").length;
+  const dueSoonCount = statuses.filter((s) => s.status === "due-soon").length;
+
+  const fuelGaps = vessels.map((v) => {
+    const lastFuel = latestFuel[v.id];
+    const currentLog = latestHours[v.id];
+    if (!lastFuel) return { vessel: v, flag: false };
+    const tripsSince = engineHours.filter((e) => e.vesselId === v.id && e.date > lastFuel.date).length;
+    const hoursSince = currentLog && lastFuel.hoursAtFillup != null ? currentLog.hours - lastFuel.hoursAtFillup : null;
+    const flag = (hoursSince != null && hoursSince >= 15) || tripsSince >= 3;
+    return { vessel: v, flag, hoursSince, tripsSince, lastFuelDate: lastFuel.date };
+  }).filter((g) => g.flag);
+
+  return (
+    <div style={{ display: "grid", gap: 24 }}>
+      <div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          {vesselHours.map(({ vessel, log }) => (
+            <StatCard key={vessel.id} label={`${vessel.name} hours`} value={log ? `${log.hours.toLocaleString()} hrs` : "No log yet"} color="var(--purple)" />
+          ))}
+          <StatCard label="Overdue items" value={String(overdueCount)} color="var(--pink)" />
+          <StatCard label="Due soon" value={String(dueSoonCount)} color="#E8934A" />
+        </div>
+        {fuelGaps.length > 0 && (
+          <div style={{ background: "var(--card)", borderRadius: 8, padding: 12, borderLeft: "3px solid #E8934A" }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 4 }}>Fuel gap warning</div>
+            {fuelGaps.map((g) => (
+              <div key={g.vessel.id} style={{ fontSize: 12.5, color: "var(--muted)" }}>
+                {g.vessel.name}: last fuel entry {g.lastFuelDate}
+                {g.hoursSince != null ? ` — ${g.hoursSince.toLocaleString()} hrs run since` : ""}
+                {g.tripsSince ? ` — ${g.tripsSince} trip${g.tripsSince === 1 ? "" : "s"} logged since` : ""}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Maintenance schedule</div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 12.5, color: "var(--text)" }}>
+            <thead>
+              <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
+                <th style={{ padding: "4px 8px" }}>Item</th>
+                <th style={{ padding: "4px 8px" }}>Interval (hrs)</th>
+                <th style={{ padding: "4px 8px" }}>Interval (mo)</th>
+                <th style={{ padding: "4px 8px" }}>Last done date</th>
+                <th style={{ padding: "4px 8px" }}>Last done hours</th>
+                <th style={{ padding: "4px 8px" }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {statuses.map(({ item, status, label, hoursSince, monthsSince }) => (
+                <tr key={item.id} style={{ background: "var(--card)" }}>
+                  <td style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>{item.label}</td>
+                  <td style={{ padding: "6px 8px" }}>
+                    <input type="number" defaultValue={item.intervalHours ?? ""} placeholder="—"
+                      onBlur={(e) => onUpdateItem(item.id, { intervalHours: e.target.value === "" ? null : Number(e.target.value) })}
+                      style={{ width: 60, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                  </td>
+                  <td style={{ padding: "6px 8px" }}>
+                    <input type="number" defaultValue={item.intervalMonths ?? ""} placeholder="—"
+                      onBlur={(e) => onUpdateItem(item.id, { intervalMonths: e.target.value === "" ? null : Number(e.target.value) })}
+                      style={{ width: 60, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                  </td>
+                  <td style={{ padding: "6px 8px" }}>
+                    <input type="date" defaultValue={item.lastDoneDate || ""}
+                      onBlur={(e) => onUpdateItem(item.id, { lastDoneDate: e.target.value || null })}
+                      style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                  </td>
+                  <td style={{ padding: "6px 8px" }}>
+                    <input type="number" defaultValue={item.lastDoneHours ?? ""} placeholder="—"
+                      onBlur={(e) => onUpdateItem(item.id, { lastDoneHours: e.target.value === "" ? null : Number(e.target.value) })}
+                      style={{ width: 70, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                  </td>
+                  <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
+                    <span style={{ color: STATUS_COLORS[status], fontWeight: 700 }}>{label}</span>
+                    {(hoursSince != null || monthsSince != null) && (
+                      <div style={{ fontSize: 10.5, color: "var(--muted)" }}>
+                        {[hoursSince != null ? `${Math.round(hoursSince)} hrs since` : null, monthsSince != null ? `${monthsSince} mo since` : null].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8 }}>
+          Fleet-wide status is judged against the highest-hours vessel so nothing slips through unnoticed. Intervals shown are generic starting points — swap in the real numbers from each engine's manual when you have them.
+        </p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <EngineHoursLogPanel vessels={vessels} engineHours={engineHours} onAdd={onAddEngineHoursLog} />
+        <FuelLogPanel vessels={vessels} fuelLogs={fuelLogs} onAdd={onAddFuelLog} />
+      </div>
+    </div>
+  );
+}
+
+function EngineHoursLogPanel({ vessels, engineHours, onAdd }) {
+  const emptyForm = { vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), hours: "", note: "" };
+  const [form, setForm] = useState(emptyForm);
+
+  function submit(e) {
+    e.preventDefault();
+    if (!form.vesselId || !form.date || form.hours === "") return;
+    onAdd({ ...form, hours: Number(form.hours) });
+    setForm(emptyForm);
+  }
+
+  function vesselName(id) {
+    return vessels.find((v) => v.id === id)?.name || id;
+  }
+
+  return (
+    <div>
+      <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Engine hours log</div>
+      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+        <label style={{ display: "block", marginBottom: 8 }}>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Vessel</div>
+          <select value={form.vesselId} onChange={(e) => setForm({ ...form, vesselId: e.target.value })}
+            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+            {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          <input type="number" placeholder="Hour-meter reading" value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })}
+            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} required />
+        </div>
+        <input type="text" placeholder="Note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
+        <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add entry</button>
+      </form>
+      <div style={{ display: "grid", gap: 6, maxHeight: 260, overflowY: "auto" }}>
+        {engineHours.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
+        {engineHours.map((h) => (
+          <div key={h.id} style={{ background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "var(--text)" }}>
+            <div>{h.date} — {vesselName(h.vesselId)} — {h.hours.toLocaleString()} hrs</div>
+            {h.note && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{h.note}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FuelLogPanel({ vessels, fuelLogs, onAdd }) {
+  const emptyForm = { vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), hoursAtFillup: "", gallons: "", cost: "", note: "" };
+  const [form, setForm] = useState(emptyForm);
+
+  function submit(e) {
+    e.preventDefault();
+    if (!form.vesselId || !form.date) return;
+    onAdd({
+      ...form,
+      hoursAtFillup: form.hoursAtFillup === "" ? null : Number(form.hoursAtFillup),
+      gallons: form.gallons === "" ? null : Number(form.gallons),
+      cost: form.cost === "" ? null : Number(form.cost),
+    });
+    setForm(emptyForm);
+  }
+
+  function vesselName(id) {
+    return vessels.find((v) => v.id === id)?.name || id;
+  }
+
+  return (
+    <div>
+      <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Fuel log</div>
+      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+        <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 0, marginBottom: 8 }}>
+          Entering a cost also adds a matching expense to the Ledger tab (category "fuel").
+        </p>
+        <label style={{ display: "block", marginBottom: 8 }}>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Vessel</div>
+          <select value={form.vesselId} onChange={(e) => setForm({ ...form, vesselId: e.target.value })}
+            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+            {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          <input type="number" placeholder="Hours at fillup" value={form.hoursAtFillup} onChange={(e) => setForm({ ...form, hoursAtFillup: e.target.value })}
+            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input type="number" placeholder="Gallons" value={form.gallons} onChange={(e) => setForm({ ...form, gallons: e.target.value })}
+            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          <input type="number" placeholder="Cost ($)" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })}
+            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+        </div>
+        <input type="text" placeholder="Note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
+        <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add entry</button>
+      </form>
+      <div style={{ display: "grid", gap: 6, maxHeight: 260, overflowY: "auto" }}>
+        {fuelLogs.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
+        {fuelLogs.map((f) => (
+          <div key={f.id} style={{ background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "var(--text)" }}>
+            <div>{f.date} — {vesselName(f.vesselId)}{f.cost != null ? ` — ${currency(f.cost)}` : ""}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+              {[f.hoursAtFillup != null ? `${f.hoursAtFillup} hrs` : null, f.gallons != null ? `${f.gallons} gal` : null, f.note].filter(Boolean).join(" · ")}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
