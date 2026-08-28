@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { currency, tierPrice, dayTypeForDate, localDateKey } from "../lib/pricing";
+import { currency, tierPrice, dayTypeForDate, localDateKey, imageFocus } from "../lib/pricing";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 
@@ -132,7 +132,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                   }}
                 >
                   {v.image && (
-                    <img src={v.image} alt={v.name} style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
+                    <img src={v.image} alt={v.name} style={{ width: "100%", height: 150, objectFit: "cover", objectPosition: imageFocus(v.image), display: "block" }} />
                   )}
                   <div style={{ padding: 18 }}>
                     <div className="mono" style={{ color: "var(--purple)", fontSize: 12, letterSpacing: "0.12em" }}>{v.slip}</div>
@@ -201,7 +201,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14 }}>
                   {items.map((g) => (
                     <div key={g.id} style={{ borderRadius: 10, overflow: "hidden", position: "relative", height: 160 }}>
-                      <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: imageFocus(g.image), display: "block" }} />
                       <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, color: "#0A0612", fontSize: 12, fontWeight: 600, background: "rgba(243,234,251,0.9)", padding: "4px 8px", borderRadius: 5 }}>
                         {g.caption}
                       </div>
@@ -276,7 +276,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
   return (
     <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       {pkg.image && (
-        <img src={pkg.image} alt={pkg.name} style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+        <img src={pkg.image} alt={pkg.name} style={{ width: "100%", height: 160, objectFit: "cover", objectPosition: imageFocus(pkg.image), display: "block" }} />
       )}
       <div style={{ padding: 18, display: "flex", flexDirection: "column", flex: 1 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { currency, localDateKey } from "../lib/pricing";
+import { currency, localDateKey, imageFocus } from "../lib/pricing";
 
 const EXPENSE_CATEGORIES = [
   "01. Gas", "02. Food & Party", "03. Cleaning Supplies", "04. Apparel & Advertisement",
@@ -202,7 +202,7 @@ export default function AdminView({
           <div style={{ display: "grid", gap: 10, maxWidth: 560 }}>
             {gallery.map((g) => (
               <div key={g.id} style={{ background: "var(--card)", borderRadius: 8, padding: 12, display: "flex", gap: 12, alignItems: "center" }}>
-                <img src={g.image} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
+                <img src={g.image} alt="" style={{ width: 64, height: 64, objectFit: "cover", objectPosition: imageFocus(g.image), borderRadius: 6, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: "var(--purple)", marginBottom: 4, textTransform: "uppercase" }}>{g.category}</div>
                   <input defaultValue={g.caption} onBlur={(e) => onUpdateCaption(g.id, e.target.value)}
