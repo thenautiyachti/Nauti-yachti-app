@@ -83,7 +83,15 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* HERO */}
       <div style={{ background: "var(--ink)", color: "var(--text)", padding: "70px 24px 0", position: "relative" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute", inset: 0,
+            backgroundImage: "linear-gradient(rgba(10,6,18,0.86), rgba(10,6,18,0.93)), url(/hero-watermark.jpg)",
+            backgroundSize: "cover", backgroundPosition: "center 22%", backgroundRepeat: "no-repeat",
+          }}
+        />
+        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
           <div className="mono" style={{ color: "var(--purple)", fontSize: 13, letterSpacing: "0.15em", marginBottom: 14 }}>
             LAKE CONROE, TEXAS
           </div>
@@ -105,7 +113,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
             Check availability
           </a>
         </div>
-        <div style={{ marginTop: 40, textAlign: "center" }}>
+        <div style={{ marginTop: 40, textAlign: "center", position: "relative", zIndex: 1 }}>
           <img
             src="/logo.jpg"
             alt="The Nauti Yachti"
