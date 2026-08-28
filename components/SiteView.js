@@ -43,7 +43,7 @@ function WakeLine({ flip }) {
   );
 }
 
-export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates }) {
+export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates, forecast }) {
   const [packages] = useState(initialPackages);
   const [vessels] = useState(initialVessels);
   const [gallery] = useState(initialGallery);
@@ -234,6 +234,44 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
           <AvailabilityCalendar blockedDates={blocked[selectedVessel] || []} partialDates={partialDates[selectedVessel] || {}} />
         </div>
       </div>
+
+      {/* WEATHER */}
+      {forecast && forecast.length > 0 && (
+        <div style={{ padding: "50px 24px", background: "var(--ink)" }}>
+          <div style={{ maxWidth: 1400, margin: "0 auto", textAlign: "center" }}>
+            <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>
+              Lake Conroe — 7-day forecast
+            </h2>
+            <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 22 }}>
+              Planning a trip? Here's what the water's looking like this week.
+            </p>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+              {forecast.map((d) => (
+                <div
+                  key={d.date}
+                  style={{
+                    background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10,
+                    padding: "16px 14px", width: 128, flexShrink: 0,
+                  }}
+                >
+                  <div style={{ fontSize: 12.5, color: "var(--purple)", fontWeight: 700, letterSpacing: "0.05em", marginBottom: 8 }}>
+                    {d.day.toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>{d.icon}</div>
+                  <div style={{ fontSize: 13, color: "var(--text)", marginBottom: 4 }}>{d.label}</div>
+                  <div style={{ fontSize: 14, color: "var(--text)" }}>
+                    <span style={{ fontWeight: 700 }}>{d.high}°</span>
+                    <span style={{ color: "var(--muted)" }}> / {d.low}°</span>
+                  </div>
+                  {d.precipProb >= 30 && (
+                    <div style={{ fontSize: 11.5, color: "var(--pink)", marginTop: 4 }}>💧 {d.precipProb}%</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* GALLERY */}
       <div id="gallery" style={{ background: "var(--ink)", padding: "50px 24px" }}>
