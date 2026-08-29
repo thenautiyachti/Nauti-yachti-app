@@ -99,7 +99,7 @@ async function GET() {
       }),
       prisma.externalBooking.findMany({
         where: { date: { gte: today }, status: "booked" },
-        select: { guestName: true, vesselName: true, date: true, partySize: true, platform: true },
+        select: { guestName: true, vesselName: true, date: true, startTime: true, partySize: true, platform: true },
         orderBy: { date: "asc" },
         take: 10,
       }),
@@ -134,6 +134,7 @@ async function GET() {
         label: r.packageName,
         vessel: r.vesselName,
         date: r.date,
+        startTime: null, // site inquiries don't currently capture a start time
         partySize: r.partySize,
         note: r.paymentStatus === "paid" ? "Paid" : r.paymentStatus,
       })),
@@ -143,6 +144,7 @@ async function GET() {
         label: r.platform,
         vessel: r.vesselName,
         date: r.date,
+        startTime: r.startTime,
         partySize: r.partySize != null ? String(r.partySize) : null,
         note: null,
       })),

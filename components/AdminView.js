@@ -2132,6 +2132,17 @@ function jarvisFmtDate(dateStr) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// "14:30" -> "2:30 PM". Returns null (not shown) for a missing time rather
+// than a placeholder — most site-originated bookings don't have one yet.
+function jarvisFmtTime(timeStr) {
+  if (!timeStr) return null;
+  const [h, m] = timeStr.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 // Relative time like "3m ago" / "2h ago" / "5d ago" for AgentActivity rows.
 function jarvisRelativeTime(dateVal) {
   const then = new Date(dateVal).getTime();
@@ -2526,9 +2537,11 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
             {dashboard && bookings.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No upcoming confirmed bookings.</div>}
             {bookings.map((b, idx) => (
               <div key={idx} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: idx < bookings.length - 1 ? "1px solid rgba(0,217,255,0.12)" : "none", fontSize: 12.5, color: "#dffcff" }}>
-                <span style={{ color: "#ffb454", fontWeight: 700, whiteSpace: "nowrap" }}>{jarvisFmtDate(b.date)}</span>
+                <span style={{ color: "#ffb454", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {jarvisFmtDate(b.date)}{jarvisFmtTime(b.startTime) ? ` · ${jarvisFmtTime(b.startTime)}` : ""}
+                </span>
                 <span style={{ flex: 1 }}>
-                  {b.name} — {b.label}{b.vessel ? ` · ${b.vessel}` : ""}{b.note ? ` (${b.note})` : ""}
+                  {b.name} — {b.label}{b.vessel ? ` · ${b.vessel}` : ""}{b.partySize ? ` · party of ${b.partySize}` : ""}{b.note ? ` (${b.note})` : ""}
                   {b.weatherRisk && b.weatherRisk.risk && (
                     <span title={b.weatherRisk.reason} style={{
                       display: "inline-block", marginLeft: 8, padding: "1px 7px", borderRadius: 3,
