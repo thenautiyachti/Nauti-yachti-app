@@ -163,7 +163,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
           <h1 className="display" style={{ fontSize: "clamp(42px, 8vw, 76px)", margin: 0, lineHeight: 0.95, fontWeight: 800 }}>
             Life is better<br />on a boat
           </h1>
-          <div style={{ maxWidth: 800, margin: "22px auto 32px", textAlign: "left" }}>
+          <div style={{ maxWidth: 800, margin: "22px auto 32px", textAlign: "center" }}>
             {HERO_PARAGRAPHS.map((p, i) => (
               <p key={i} style={{ fontSize: 16.5, opacity: 0.85, lineHeight: 1.65, margin: "0 0 14px" }}>{p}</p>
             ))}
