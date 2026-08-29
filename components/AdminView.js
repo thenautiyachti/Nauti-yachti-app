@@ -149,6 +149,7 @@ export default function AdminView({
     { id: "mediaDrafts", label: `Media Drafts (${mediaDrafts.filter((d) => d.status === "pending").length})` },
     { id: "testimonials", label: `Testimonials (${testimonials.filter((t) => t.status === "pending").length})` },
     { id: "ledger", label: "Income & expenses" },
+    { id: "taxReport", label: "Tax Report" },
     { id: "maintenance", label: "Maintenance" },
     { id: "subscriptions", label: "Subscriptions" },
   ];
@@ -394,6 +395,10 @@ export default function AdminView({
 
         {tab === "ledger" && (
           <LedgerTab ledger={ledger} totals={totals} onAdd={onAddLedgerEntry} />
+        )}
+
+        {tab === "taxReport" && (
+          <TaxReportTab ledger={ledger} subscriptions={subscriptions} />
         )}
 
         {tab === "maintenance" && (
@@ -1543,6 +1548,99 @@ function TestimonialsTab({ testimonials, onUpdateStatus, onDelete }) {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- Tax Report tab -------------------------------------------------
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function TaxReportTab({ ledger, subscriptions }) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from(new Set(ledger.map((l) => l.date && l.date.slice(0, 4)).filter(Boolean)));
+  if (!years.includes(String(currentYear))) years.push(String(currentYear));
+  years.sort((a, b) => b.localeCompare(a));
+
+  const [year, setYear] = useState(years[0] || String(currentYear));
+
+  const yearLedger = ledger.filter((l) => l.date && l.date.startsWith(year));
+  const income = yearLedger.filter((l) => l.type === "income");
+  const expenses = yearLedger.filter((l) => l.type === "expense");
+  const totalIncome = income.reduce((sum, l) => sum + Number(l.amount || 0), 0);
+  const totalExpense = expenses.reduce((sum, l) => sum + Number(l.amount || 0), 0);
+  const net = totalIncome - totalExpense;
+
+  const expenseBreakdown = groupTotals(expenses, (l) => stripCategoryPrefix(l.category));
+  const incomeBreakdown = groupTotals(income, (l) => stripCategoryPrefix(l.category));
+
+  const activeSubs = subscriptions.filter((s) => s.active);
+  const annualSubscriptionCost = activeSubs.reduce((sum, s) => sum + monthlyAmount(s) * 12, 0);
+
+  function exportYearCsv() {
+    const rows = [
+      ["Date", "Type", "Category", "Amount", "Origin", "Booking ID", "Vessel/Package", "Note"],
+      ...yearLedger
+        .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+        .map((l) => [l.date, l.type, stripCategoryPrefix(l.category) || "", l.amount, l.origin || "", l.bookingId || "", l.subcategory || "", l.note || ""]),
+    ];
+    downloadCsv(`nauti-yachti-tax-report-${year}.csv`, rows);
+  }
+
+  function exportSubscriptionsCsv() {
+    const rows = [
+      ["Name", "Category", "Amount", "Billing cycle", "Annualized cost", "Vendor", "Active"],
+      ...subscriptions.map((s) => [s.name, s.category || "", s.amount, s.billingCycle, (monthlyAmount(s) * 12).toFixed(2), s.vendor || "", s.active ? "yes" : "no"]),
+    ];
+    downloadCsv(`nauti-yachti-subscriptions-${year}.csv`, rows);
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <label style={{ fontSize: 13, color: "var(--muted)" }}>
+          Tax year{" "}
+          <select value={year} onChange={(e) => setYear(e.target.value)}
+            style={{ padding: "7px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginLeft: 6 }}>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </label>
+        <button type="button" onClick={exportYearCsv}
+          style={{ background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 700, fontSize: 13 }}>
+          Download {year} income & expense CSV
+        </button>
+        <button type="button" onClick={exportSubscriptionsCsv}
+          style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "9px 16px", fontWeight: 600, fontSize: 13 }}>
+          Download subscriptions CSV
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <StatCard label={`${year} total income`} value={currency(totalIncome)} color="var(--purple)" />
+        <StatCard label={`${year} total expenses`} value={currency(totalExpense)} color="var(--pink)" />
+        <StatCard label={`${year} net profit`} value={currency(net)} color="#E8934A" />
+        <StatCard label="Annual recurring subscription cost" value={currency(annualSubscriptionCost)} color="#00d9ff" />
+      </div>
+
+      <p style={{ fontSize: 12.5, color: "var(--muted)", maxWidth: 640 }}>
+        This isn't a filed tax form — it's a plain summary of everything logged in the Income &amp; expenses and Subscriptions tabs for the selected year, exportable as CSV to hand to a bookkeeper or drop into tax software. Categories below mirror the expense categories used when logging entries.
+      </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <BreakdownPanel title={`${year} expenses by category`} rows={expenseBreakdown} color="#F0559C" />
+        <BreakdownPanel title={`${year} income by category`} rows={incomeBreakdown} color="#7FE0B8" />
       </div>
     </div>
   );
