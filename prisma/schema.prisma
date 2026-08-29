@@ -30,6 +30,19 @@ model Package {
   sortOrder     Int     @default(0)
 }
 
+// Audit trail for Packages & Pricing changes — internal only, never shown
+// on the public site. Lets the owner investigate a pricing discrepancy
+// after the fact (what changed, from what, to what, when).
+model PriceChangeLog {
+  id          String   @id @default(cuid())
+  packageId   String
+  packageName String // denormalized snapshot — stays readable even if the package is later renamed
+  field       String // human-readable description, e.g. "Flat price", "Per-guest price", "Nauti Explorer / weekend / 4hr", "Tier 2 (13-16 guests)"
+  oldValue    Float?
+  newValue    Float
+  changedAt   DateTime @default(now())
+}
+
 model Vessel {
   id        String  @id
   slip      String

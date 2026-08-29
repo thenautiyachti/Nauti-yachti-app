@@ -18,7 +18,7 @@ const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Payp
 
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
-  maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials,
+  maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials, priceHistory,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onUpdateInquiry, onLogout,
   onUpdateAddonPrice, onUpdateAddon, onAddAddon, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
@@ -230,6 +230,7 @@ export default function AdminView({
         )}
 
         {tab === "pricing" && (
+          <>
           <div style={{ display: "grid", gap: 10, maxWidth: 960 }}>
             {packages.map((p) => (
               <div key={p.id} style={{ background: "var(--card)", borderRadius: 8, padding: 12, color: "var(--text)" }}>
@@ -304,6 +305,8 @@ export default function AdminView({
               </div>
             ))}
           </div>
+          <PriceHistoryPanel priceHistory={priceHistory} />
+          </>
         )}
 
         {tab === "availability" && (
@@ -511,6 +514,47 @@ function InquiriesTab({ inquiries, onUpdate }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Formats a PriceChangeLog row's ISO changedAt into a short local
+// date/time string, e.g. "Aug 29, 2026 2:14 PM".
+function fmtChangeTimestamp(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+// Internal-only audit trail for Packages & Pricing — never shown on the
+// public site. Collapsed by default since it's investigate-when-needed
+// data, not something the owner needs to look at every visit.
+function PriceHistoryPanel({ priceHistory }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 20 }}>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>
+        {open ? "▲" : "▼"} Price change history ({priceHistory.length})
+      </button>
+      {open && (
+        <div style={{ maxWidth: 720, display: "grid", gap: 6, maxHeight: 420, overflowY: "auto" }}>
+          {priceHistory.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No price changes logged yet.</div>}
+          {priceHistory.map((h) => (
+            <div key={h.id} style={{ background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 12.5, color: "var(--text)", display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <span style={{ fontWeight: 600 }}>{h.packageName}</span>
+                <span style={{ color: "var(--muted)" }}> — {h.field}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
+                <span className="mono" style={{ color: "var(--muted)" }}>
+                  {h.oldValue != null ? currency(h.oldValue) : "—"} → <span style={{ color: "var(--purple)", fontWeight: 700 }}>{currency(h.newValue)}</span>
+                </span>
+                <span style={{ color: "var(--muted)", fontSize: 11 }}>{fmtChangeTimestamp(h.changedAt)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

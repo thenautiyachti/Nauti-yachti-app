@@ -35,6 +35,7 @@ export default function AdminPage() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [mediaDrafts, setMediaDrafts] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
+  const [priceHistory, setPriceHistory] = useState([]);
 
   useEffect(() => {
     api("/api/admin/session")
@@ -44,7 +45,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -61,9 +62,10 @@ export default function AdminPage() {
       api("/api/subscriptions"),
       api("/api/media-drafts"),
       api("/api/testimonials"),
+      api("/api/price-history"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
-    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts);
+    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts); setPriceHistory(ph);
     setLoading(false);
   }, []);
 
@@ -291,6 +293,7 @@ export default function AdminPage() {
       subscriptions={subscriptions}
       mediaDrafts={mediaDrafts}
       testimonials={testimonials}
+      priceHistory={priceHistory}
       onUpdatePrice={updatePackagePrice}
       onUpdatePricePerGuest={updatePricePerGuest}
       onUpdateHourlyByVesselPrice={updateHourlyByVesselPrice}
