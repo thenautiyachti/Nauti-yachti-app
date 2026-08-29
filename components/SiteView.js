@@ -381,9 +381,15 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               </span>
             </div>
           )}
-          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 22 }}>
+          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 16 }}>
             Real reviews from real charters — and we'd love to hear about yours.
           </p>
+          <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.25)", borderRadius: 10, padding: "14px 18px", marginBottom: 22, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 20 }}>⚓</span>
+            <span style={{ color: "var(--text)", fontSize: 14, flex: 1, minWidth: 220 }}>
+              <strong>Been aboard before?</strong> Every returning guest gets <strong>10% off</strong> their next trip — just use code <span className="mono" style={{ color: "var(--pink)", fontWeight: 700 }}>WELCOMEBACK10</span> when you book. And if you've got a minute, we'd genuinely love to hear how your trip went below!
+            </span>
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(280px,1fr)", gap: 30, alignItems: "start" }}>
             <div style={{ columns: "240px 3", columnGap: 16 }}>
               {testimonials.length === 0 && (
