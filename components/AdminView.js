@@ -449,18 +449,29 @@ const BOOKING_PLATFORMS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "
 // kind distinguishes which management actions/enum apply to a given row —
 // their status values and editable fields differ, so the row renderer
 // branches on it rather than trying to force both into one schema.
+// Inquiry.status ("new"|"confirmed"|"declined") and ExternalBooking.status
+// ("pending"|"completed"|"cancelled") are different enums for different
+// underlying flows — this maps both onto the same 3-bucket concept so the
+// unified table can filter/display them consistently without changing
+// either model's own real values.
+const INQUIRY_STATUS_BUCKET = { new: "pending", confirmed: "completed", declined: "cancelled" };
+
 function toUnifiedRows(inquiries, externalBookings) {
   const fromInquiries = inquiries.map((i) => ({
     kind: "inquiry",
     id: i.id,
     bookingId: i.bookingId,
     date: i.date,
+    startTime: null,
     name: i.name,
+    email: i.email,
     vesselName: i.vesselName,
     hours: i.hours,
+    partySize: i.partySize,
     pricePaid: i.priceQuoted,
     source: "Site",
     status: i.status,
+    statusBucket: INQUIRY_STATUS_BUCKET[i.status] || "pending",
     addOnIds: i.addOnIds ? JSON.parse(i.addOnIds) : [],
     raw: i,
   }));
@@ -469,23 +480,33 @@ function toUnifiedRows(inquiries, externalBookings) {
     id: b.id,
     bookingId: b.bookingId,
     date: b.date,
+    startTime: b.startTime,
     name: b.guestName,
+    email: b.email,
     vesselName: b.vesselName,
     hours: b.hours,
+    partySize: b.partySize,
     pricePaid: b.pricePaid,
     source: b.platform,
     status: b.status,
+    statusBucket: b.status,
     raw: b,
   }));
   return [...fromInquiries, ...fromExternal].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
 
+const BOOKING_STATUS_BUCKETS = ["pending", "completed", "cancelled"];
+const BOOKING_STATUS_COLOR = { pending: "#E8934A", completed: "#7FE0B8", cancelled: "#F0559C" };
+const BOOKING_STATUS_LABEL = { pending: "Pending", completed: "Completed", cancelled: "Cancelled" };
+
 function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
   const emptyForm = {
-    vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), hours: 4,
-    guestName: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "pending", note: "", pricePaid: "",
+    vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), startTime: "", hours: 4,
+    guestName: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "pending", note: "", pricePaid: "",
   };
   const [form, setForm] = useState(emptyForm);
+  const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "completed" | "cancelled"
+  const [sortBy, setSortBy] = useState("date-desc"); // "date-desc" | "date-asc" | "status"
 
   function submit(e) {
     e.preventDefault();
@@ -501,15 +522,22 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
     setForm(emptyForm);
   }
 
-  // Every historical booking (site + external), most recent first — no date
-  // filtering, so past charters stay visible alongside upcoming ones.
-  const rows = toUnifiedRows(inquiries, externalBookings);
+  // Every historical booking (site + external). No date filtering, so past
+  // charters stay visible alongside upcoming ones — only the status filter
+  // below narrows what's shown.
+  const allRows = toUnifiedRows(inquiries, externalBookings);
+  const rows = (filterStatus === "all" ? allRows : allRows.filter((r) => r.statusBucket === filterStatus))
+    .sort((a, b) => {
+      if (sortBy === "date-asc") return (a.date || "").localeCompare(b.date || "");
+      if (sortBy === "status") return BOOKING_STATUS_BUCKETS.indexOf(a.statusBucket) - BOOKING_STATUS_BUCKETS.indexOf(b.statusBucket) || (b.date || "").localeCompare(a.date || "");
+      return (b.date || "").localeCompare(a.date || ""); // date-desc, default
+    });
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
       <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
         <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 10 }}>
-          Log a booking from GetMyBoat, Boatsetter, or elsewhere. Confirming it marks that day partially booked (or fully, at 8+ combined hours) on the public availability calendar. It'll show up below alongside site bookings, with its own booking ID.
+          Log a booking from GetMyBoat, Boatsetter, or elsewhere. Marking it completed reserves that day (its own hours, or the whole day at 8+ combined hours) on the public availability calendar. It'll show up below alongside site bookings, with its own booking ID.
         </p>
         <label style={{ display: "block", marginBottom: 8 }}>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Vessel</div>
@@ -519,9 +547,18 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
           </select>
         </label>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
-            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Date</div>
+            <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          </label>
+          <label style={{ width: 100 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Start time</div>
+            <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          </label>
           <label style={{ width: 90 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Duration</div>
             <select value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })}
               style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((h) => <option key={h} value={h}>{h} hr{h === 1 ? "" : "s"}</option>)}
@@ -529,6 +566,8 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
           </label>
         </div>
         <input type="text" placeholder="Guest name" value={form.guestName} onChange={(e) => setForm({ ...form, guestName: e.target.value })}
+          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+        <input type="email" placeholder="Guest email (optional)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
           style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
         <input type="number" placeholder="Party size" min="1" value={form.partySize} onChange={(e) => setForm({ ...form, partySize: e.target.value })}
           style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
@@ -539,15 +578,13 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
             {BOOKING_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </label>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <button type="button" onClick={() => setForm({ ...form, status: "pending" })}
-            style={{ flex: 1, padding: "8px", borderRadius: 6, border: "1px solid var(--purple)", background: form.status === "pending" ? "var(--purple)" : "transparent", color: form.status === "pending" ? "#0A0612" : "var(--text)", fontWeight: 600, fontSize: 13 }}>
-            Pending
-          </button>
-          <button type="button" onClick={() => setForm({ ...form, status: "confirmed" })}
-            style={{ flex: 1, padding: "8px", borderRadius: 6, border: "1px solid var(--purple)", background: form.status === "confirmed" ? "var(--purple)" : "transparent", color: form.status === "confirmed" ? "#0A0612" : "var(--text)", fontWeight: 600, fontSize: 13 }}>
-            Confirmed
-          </button>
+        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+          {BOOKING_STATUS_BUCKETS.map((s) => (
+            <button key={s} type="button" onClick={() => setForm({ ...form, status: s })}
+              style={{ flex: 1, padding: "8px 4px", borderRadius: 6, border: "1px solid var(--purple)", background: form.status === s ? "var(--purple)" : "transparent", color: form.status === s ? "#0A0612" : "var(--text)", fontWeight: 600, fontSize: 12 }}>
+              {BOOKING_STATUS_LABEL[s]}
+            </button>
+          ))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
           <span className="mono" style={{ color: "var(--muted)" }}>$</span>
@@ -560,30 +597,55 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
       </form>
 
       <div>
-        <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>All bookings ({rows.length})</div>
-        {rows.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No bookings yet.</div>}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+          <div style={{ fontWeight: 700, color: "var(--text)" }}>All bookings ({rows.length}{filterStatus !== "all" ? ` of ${allRows.length}` : ""})</div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 4 }}>
+              {["all", ...BOOKING_STATUS_BUCKETS].map((s) => (
+                <button key={s} type="button" onClick={() => setFilterStatus(s)}
+                  style={{
+                    padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600, textTransform: "capitalize",
+                    border: "1px solid var(--purple)", cursor: "pointer",
+                    background: filterStatus === s ? "var(--purple)" : "transparent",
+                    color: filterStatus === s ? "#0A0612" : "var(--text)",
+                  }}>
+                  {s === "all" ? "All" : BOOKING_STATUS_LABEL[s]}
+                </button>
+              ))}
+            </div>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+              style={{ padding: "5px 8px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
+              <option value="date-desc">Newest first</option>
+              <option value="date-asc">Oldest first</option>
+              <option value="status">Group by status</option>
+            </select>
+          </div>
+        </div>
+        {rows.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No bookings match this filter.</div>}
         {rows.length > 0 && (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 12.5, color: "var(--text)" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1080, fontSize: 12.5, color: "var(--text)" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                   <th style={{ padding: "4px 8px" }}>Booking ID</th>
-                  <th style={{ padding: "4px 8px" }}>Date</th>
                   <th style={{ padding: "4px 8px" }}>Name</th>
+                  <th style={{ padding: "4px 8px" }}>Email</th>
                   <th style={{ padding: "4px 8px" }}>Vessel</th>
+                  <th style={{ padding: "4px 8px" }}>Start</th>
                   <th style={{ padding: "4px 8px" }}>Duration</th>
+                  <th style={{ padding: "4px 8px" }}>Party size</th>
                   <th style={{ padding: "4px 8px" }}>Price paid</th>
                   <th style={{ padding: "4px 8px" }}>Source</th>
-                  <th style={{ padding: "4px 8px" }}>Status / actions</th>
+                  <th style={{ padding: "4px 8px" }}>Status</th>
+                  <th style={{ padding: "4px 8px" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={`${r.kind}-${r.id}`} style={{ background: "var(--card)" }}>
                     <td className="mono" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", color: r.bookingId ? "#E8934A" : "var(--muted)", whiteSpace: "nowrap" }}>
-                      {r.bookingId || "—"}
+                      {r.bookingId || r.date || "—"}
                     </td>
-                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.date || "—"}</td>
                     <td style={{ padding: "6px 8px", fontWeight: 600 }}>
                       {r.name || (r.kind === "external" ? "Guest" : "—")}
                       {r.addOnIds && r.addOnIds.length > 0 && (
@@ -592,8 +654,38 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                         </div>
                       )}
                     </td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      {r.kind === "external" ? (
+                        <input
+                          type="email"
+                          defaultValue={r.email || ""}
+                          placeholder="—"
+                          onBlur={(e) => {
+                            const value = e.target.value.trim() || null;
+                            if (value !== r.email) onUpdateExternalBooking(r.id, { email: value });
+                          }}
+                          style={{ width: 140, padding: "4px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)" }}
+                        />
+                      ) : (
+                        r.email || "—"
+                      )}
+                    </td>
                     <td style={{ padding: "6px 8px" }}>{r.vesselName || "—"}</td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      {r.kind === "external" ? (
+                        <input
+                          type="time"
+                          defaultValue={r.startTime || ""}
+                          onBlur={(e) => {
+                            const value = e.target.value || null;
+                            if (value !== r.startTime) onUpdateExternalBooking(r.id, { startTime: value });
+                          }}
+                          style={{ width: 100, padding: "4px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)" }}
+                        />
+                      ) : (r.startTime || "—")}
+                    </td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.hours ? `${r.hours} hrs` : "—"}</td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.partySize ?? "—"}</td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
                       {r.kind === "external" ? (
                         <input
@@ -611,13 +703,18 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                       )}
                     </td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.source}</td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: BOOKING_STATUS_COLOR[r.statusBucket], textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                        {BOOKING_STATUS_LABEL[r.statusBucket] || r.status}
+                      </span>
+                    </td>
                     <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
                       {r.kind === "external" ? (
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <button type="button" onClick={() => onSetExternalBookingStatus(r.id, r.status === "confirmed" ? "pending" : "confirmed")}
-                            style={{ background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
-                            {r.status === "confirmed" ? "Mark pending" : "Confirm"}
-                          </button>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                          <select value={r.status} onChange={(e) => onSetExternalBookingStatus(r.id, e.target.value)}
+                            style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
+                            {BOOKING_STATUS_BUCKETS.map((s) => <option key={s} value={s}>{BOOKING_STATUS_LABEL[s]}</option>)}
+                          </select>
                           <button type="button" onClick={() => onDeleteExternalBooking(r.id)}
                             style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
                             Delete

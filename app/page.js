@@ -11,7 +11,7 @@ export default async function HomePage() {
     prisma.vessel.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.galleryItem.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.blockedDate.findMany(),
-    prisma.externalBooking.findMany({ where: { status: "confirmed" } }),
+    prisma.externalBooking.findMany({ where: { status: "completed" } }),
     getLakeConroeForecast(),
     prisma.testimonial.findMany({ where: { status: "approved" }, orderBy: { submittedAt: "desc" } }),
     prisma.addOn.findMany({ orderBy: { sortOrder: "asc" } }),

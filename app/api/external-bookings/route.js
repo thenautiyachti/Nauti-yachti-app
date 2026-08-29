@@ -11,28 +11,32 @@ async function GET() {
   return NextResponse.json(bookings);
 }
 
-// Body: { vesselId, vesselName, date, hours, guestName, partySize, platform, status, note }
+const EXTERNAL_BOOKING_STATUSES = ["pending", "completed", "cancelled"];
+
+// Body: { vesselId, vesselName, date, startTime, hours, guestName, email, partySize, platform, status, note }
 async function POST(req) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();
-  const { vesselId, vesselName, date, hours, guestName, partySize, platform, status, note, pricePaid } = body;
+  const { vesselId, vesselName, date, startTime, hours, guestName, email, partySize, platform, status, note, pricePaid } = body;
   if (!vesselId || !vesselName || !date || !platform) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
   const bookingId = await generateBookingId(date);
-  // A confirmed booking only reserves its own hours, not the whole day —
+  // A completed booking only reserves its own hours, not the whole day —
   // hours accumulate toward the 8hr-day threshold (see groupExternalBookingState
   // in lib/serialize.js), not an automatic full-day block. Full-day blocks
   // are a separate, explicit owner action.
   const booking = await prisma.externalBooking.create({
     data: {
       vesselId, vesselName, date, platform,
+      startTime: startTime || null,
       hours: hours ? Number(hours) : null,
       guestName: guestName || null,
+      email: email || null,
       partySize: partySize ? Number(partySize) : null,
-      status: status === "confirmed" ? "confirmed" : "pending",
+      status: EXTERNAL_BOOKING_STATUSES.includes(status) ? status : "pending",
       note: note || null,
       pricePaid: pricePaid != null && pricePaid !== "" ? Number(pricePaid) : null,
       bookingId,

@@ -150,7 +150,7 @@ export default function AdminPage() {
   async function addExternalBooking(booking) {
     const created = await api("/api/external-bookings", { method: "POST", body: JSON.stringify(booking) });
     setExternalBookings((prev) => [...prev, created]);
-    if (created.status === "confirmed") await refreshPartialDates();
+    if (created.status === "completed") await refreshPartialDates();
   }
   async function setExternalBookingStatus(id, status) {
     const updated = await api(`/api/external-bookings/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });

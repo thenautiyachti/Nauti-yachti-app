@@ -120,19 +120,20 @@ model ExternalBooking {
   vesselId   String
   vesselName String
   date       String // "YYYY-MM-DD"
+  startTime  String? // "HH:MM" 24-hour, e.g. "10:00" — when the charter starts
   hours      Int? // charter length; used to gauge how much of the day is taken
   guestName  String?
+  email      String? // guest email, when known — Boatsetter/GetMyBoat rarely expose a real one
   partySize  Int?
   platform   String // "Boatsetter" | "GetmyBoat" | "Facebook" | "Instagram" | "Other"
-  status     String   @default("pending") // "pending" | "confirmed"
+  status     String   @default("pending") // "pending" | "completed" | "cancelled"
   note       String?
   createdAt  DateTime @default(now())
 
   pricePaid Float? // what the guest actually paid, if the owner has logged it
 
-  // Format "NY-YYYYMMDD-NN" — assigned at creation time going forward only.
-  // Historical rows are intentionally left null (never backfilled) — see
-  // lib/bookingId.js for the generator.
+  // Format "NY-YYYYMMDD-NN" — assigned at creation time going forward, and
+  // backfilled once (2026-08-29) for historical rows so every booking has one.
   bookingId String? @unique
 }
 

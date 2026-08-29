@@ -97,7 +97,7 @@ async function GET() {
         take: 10,
       }),
       prisma.externalBooking.findMany({
-        where: { date: { gte: today }, status: "confirmed" },
+        where: { date: { gte: today }, status: "completed" },
         select: { guestName: true, vesselName: true, date: true, partySize: true, platform: true },
         orderBy: { date: "asc" },
         take: 10,
