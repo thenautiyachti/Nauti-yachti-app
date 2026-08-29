@@ -144,6 +144,8 @@ model AddOn {
   unit      String? // e.g. "per charter", "per bottle"
   blurb     String?
   sortOrder Int     @default(0)
+  active    Boolean @default(true) // false = hidden from the public site (e.g. temporarily out of stock) but still manageable in the admin console
+  archived  Boolean @default(false) // true = removed from the main admin list into the Archived section; also implies hidden from the public site
 }
 
 model LedgerEntry {

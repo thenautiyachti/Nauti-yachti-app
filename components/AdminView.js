@@ -21,7 +21,7 @@ export default function AdminView({
   maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onLogout,
-  onUpdateAddonPrice, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
+  onUpdateAddonPrice, onUpdateAddon, onAddAddon, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
   onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
   onAddCoupon, onToggleCouponActive, onDeleteCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
@@ -255,22 +255,7 @@ export default function AdminView({
         )}
 
         {tab === "addons" && (
-          <div style={{ display: "grid", gap: 10, maxWidth: 480 }}>
-            {addons.map((a) => (
-              <div key={a.id} style={{ background: "var(--card)", borderRadius: 8, padding: 12, color: "var(--text)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{a.name}</div>
-                  {a.blurb && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{a.blurb}</div>}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                  <span className="mono">$</span>
-                  <input type="number" defaultValue={a.price} onBlur={(e) => onUpdateAddonPrice(a.id, Number(e.target.value))}
-                    style={{ width: 70, padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
-                  <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap" }}>{a.unit}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <AddOnsTab addons={addons} onUpdate={onUpdateAddon} onAdd={onAddAddon} />
         )}
 
         {tab === "coupons" && (
@@ -1354,6 +1339,115 @@ function FuelLogPanel({ vessels, fuelLogs, onAdd }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- Add-ons tab -------------------------------------------------
+
+function AddOnsTab({ addons, onUpdate, onAdd }) {
+  const emptyForm = { name: "", price: "", unit: "", blurb: "" };
+  const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+
+  const live = addons.filter((a) => !a.archived);
+  const archived = addons.filter((a) => a.archived);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!form.name || form.price === "") return;
+    setError("");
+    try {
+      await onAdd({ name: form.name, price: Number(form.price), unit: form.unit || null, blurb: form.blurb || null });
+      setForm(emptyForm);
+    } catch {
+      setError("Could not add that — try again.");
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
+      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
+        <div style={{ fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>Add a new add-on</div>
+        <input type="text" placeholder="Name (e.g. Champagne bottle)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} required />
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Price</div>
+            <input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} required />
+          </label>
+          <label style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Unit (optional)</div>
+            <input type="text" placeholder="per charter" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          </label>
+        </div>
+        <input type="text" placeholder="Blurb (optional)" value={form.blurb} onChange={(e) => setForm({ ...form, blurb: e.target.value })}
+          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
+        {error && <div style={{ color: "var(--pink)", fontSize: 12.5, marginBottom: 8 }}>{error}</div>}
+        <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add add-on</button>
+      </form>
+
+      <div>
+        <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Add-ons ({live.length})</div>
+        <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+          {live.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No add-ons yet.</div>}
+          {live.map((a) => (
+            <div key={a.id} style={{ background: "var(--card)", borderRadius: 8, padding: 12, color: "var(--text)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, opacity: a.active ? 1 : 0.55 }}>
+              <div style={{ minWidth: 0 }}>
+                <input defaultValue={a.name} onBlur={(e) => e.target.value.trim() && e.target.value !== a.name && onUpdate(a.id, { name: e.target.value.trim() })}
+                  style={{ fontWeight: 600, fontSize: 14, background: "transparent", border: "none", color: "var(--text)", padding: 0, width: "100%" }} />
+                <input defaultValue={a.blurb || ""} placeholder="Blurb (optional)" onBlur={(e) => e.target.value !== (a.blurb || "") && onUpdate(a.id, { blurb: e.target.value || null })}
+                  style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, background: "transparent", border: "none", padding: 0, width: "100%" }} />
+                {!a.active && <div style={{ fontSize: 10.5, color: "var(--pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 4 }}>Hidden from site</div>}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span className="mono">$</span>
+                  <input type="number" defaultValue={a.price} onBlur={(e) => onUpdate(a.id, { price: Number(e.target.value) })}
+                    style={{ width: 70, padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+                  <input defaultValue={a.unit || ""} placeholder="unit" onBlur={(e) => e.target.value !== (a.unit || "") && onUpdate(a.id, { unit: e.target.value || null })}
+                    style={{ width: 76, fontSize: 11, color: "var(--muted)", padding: "6px 6px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", background: "transparent" }} />
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button type="button" onClick={() => onUpdate(a.id, { active: !a.active })}
+                    style={{ background: "transparent", color: a.active ? "var(--purple)" : "var(--muted)", border: `1px solid ${a.active ? "var(--purple)" : "var(--muted)"}`, borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    {a.active ? "Hide from site" : "Show on site"}
+                  </button>
+                  <button type="button" onClick={() => onUpdate(a.id, { archived: true })}
+                    style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button type="button" onClick={() => setShowArchived((v) => !v)}
+          style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>
+          {showArchived ? "▲" : "▼"} Archived ({archived.length})
+        </button>
+        {showArchived && (
+          <div style={{ display: "grid", gap: 8 }}>
+            {archived.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>Nothing archived.</div>}
+            {archived.map((a) => (
+              <div key={a.id} style={{ background: "var(--card)", borderRadius: 8, padding: "10px 12px", color: "var(--muted)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <div>
+                  <span style={{ color: "var(--text)", fontWeight: 600 }}>{a.name}</span>
+                  <span style={{ marginLeft: 8 }}>{currency(a.price)}{a.unit ? ` ${a.unit}` : ""}</span>
+                </div>
+                <button type="button" onClick={() => onUpdate(a.id, { archived: false })}
+                  style={{ background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                  Restore
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

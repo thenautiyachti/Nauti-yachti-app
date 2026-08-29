@@ -138,8 +138,15 @@ export default function AdminPage() {
     setLedger((prev) => [created, ...prev]);
   }
   async function updateAddonPrice(id, price) {
-    await api(`/api/addons/${id}`, { method: "PATCH", body: JSON.stringify({ field: "price", value: price }) });
-    setAddons((prev) => prev.map((a) => (a.id === id ? { ...a, price } : a)));
+    await updateAddon(id, { price });
+  }
+  async function updateAddon(id, fields) {
+    const updated = await api(`/api/addons/${id}`, { method: "PATCH", body: JSON.stringify(fields) });
+    setAddons((prev) => prev.map((a) => (a.id === id ? updated : a)));
+  }
+  async function addAddon(fields) {
+    const created = await api("/api/addons", { method: "POST", body: JSON.stringify(fields) });
+    setAddons((prev) => [...prev, created]);
   }
   // Booking state is derived from summed hours across all of a vessel's
   // day's bookings, so it's simplest (and least error-prone) to just
@@ -291,6 +298,8 @@ export default function AdminPage() {
       onUpdateCaption={updateCaption}
       onMarkInquiry={markInquiry}
       onUpdateAddonPrice={updateAddonPrice}
+      onUpdateAddon={updateAddon}
+      onAddAddon={addAddon}
       onAddExternalBooking={addExternalBooking}
       onSetExternalBookingStatus={setExternalBookingStatus}
       onUpdateExternalBooking={updateExternalBooking}

@@ -14,7 +14,7 @@ export default async function HomePage() {
     prisma.externalBooking.findMany({ where: { status: "completed" } }),
     getLakeConroeForecast(),
     prisma.testimonial.findMany({ where: { status: "approved" }, orderBy: { submittedAt: "desc" } }),
-    prisma.addOn.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.addOn.findMany({ where: { active: true, archived: false }, orderBy: { sortOrder: "asc" } }),
   ]);
 
   const packages = packageRows.map(parsePackage);
