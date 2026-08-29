@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { currency, tierPrice, dayTypeForDate, imageFocus } from "../lib/pricing";
+import { currency, tierPrice, dayTypeForDate, imageFocus, imageFit } from "../lib/pricing";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -326,33 +326,41 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               </a>
             ))}
           </div>
-          {Object.entries(
-            gallery.reduce((acc, g) => {
+          {(() => {
+            const byCategory = gallery.reduce((acc, g) => {
               (acc[g.category] = acc[g.category] || []).push(g);
               return acc;
-            }, {})
-          ).map(([category, items]) => {
-            const pkgName = packages.find((p) => p.id === category)?.name || category;
-            return (
-              <div key={category} style={{ marginBottom: 26 }}>
-                <div className="mono" style={{ color: "var(--purple)", fontSize: 12.5, letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase" }}>
-                  {pkgName}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14 }}>
-                  {items.map((g) => (
-                    <div key={g.id} style={{ borderRadius: 10, overflow: "hidden", background: "var(--card)", border: "1px solid rgba(203,108,230,0.15)" }}>
-                      <div style={{ aspectRatio: "3 / 4", overflow: "hidden" }}>
-                        <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: imageFocus(g.image), display: "block" }} />
+            }, {});
+            // Show gallery sections in the same order as the packages above,
+            // rather than whatever order categories first appeared in.
+            const orderedCategories = [
+              ...packages.map((p) => p.id).filter((id) => byCategory[id]),
+              ...Object.keys(byCategory).filter((c) => !packages.some((p) => p.id === c)),
+            ];
+            return orderedCategories.map((category) => {
+              const items = byCategory[category];
+              const pkgName = packages.find((p) => p.id === category)?.name || category;
+              return (
+                <div key={category} style={{ marginBottom: 26 }}>
+                  <div className="mono" style={{ color: "var(--purple)", fontSize: 12.5, letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase" }}>
+                    {pkgName}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14 }}>
+                    {items.map((g) => (
+                      <div key={g.id} style={{ borderRadius: 10, overflow: "hidden", background: "var(--card)", border: "1px solid rgba(203,108,230,0.15)" }}>
+                        <div style={{ aspectRatio: "3 / 4", overflow: "hidden" }}>
+                          <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: imageFit(g.image), objectPosition: imageFocus(g.image), display: "block" }} />
+                        </div>
+                        <div style={{ color: "var(--text)", fontSize: 12, fontWeight: 600, padding: "8px 10px" }}>
+                          {g.caption}
+                        </div>
                       </div>
-                      <div style={{ color: "var(--text)", fontSize: 12, fontWeight: 600, padding: "8px 10px" }}>
-                        {g.caption}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             );
-          })}
+            });
+          })()}
         </div>
       </div>
 
