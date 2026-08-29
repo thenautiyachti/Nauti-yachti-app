@@ -383,7 +383,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
             Real reviews from real charters — and we'd love to hear about yours.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(280px,1fr)", gap: 30, alignItems: "start" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 16, alignItems: "stretch" }}>
+            <div style={{ columns: "240px 3", columnGap: 16 }}>
               {testimonials.length === 0 && (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>No reviews yet — be the first to share your experience!</div>
               )}
@@ -794,7 +794,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
 
 function TestimonialCard({ t }) {
   return (
-    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", alignSelf: "start" }}>
+    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 18, breakInside: "avoid", marginBottom: 16, display: "block" }}>
       <div style={{ color: "#E8934A", fontSize: 16, letterSpacing: 2, marginBottom: 8 }}>
         {"★".repeat(t.rating)}{"☆".repeat(5 - t.rating)}
       </div>
