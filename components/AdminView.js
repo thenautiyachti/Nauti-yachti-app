@@ -2617,9 +2617,13 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
 
 function StatCard({ label, value, color }) {
   return (
-    <div style={{ flex: 1, background: "var(--card)", borderRadius: 10, padding: "10px 12px", borderTop: `3px solid ${color}` }}>
+    // minWidth: 0 overrides flexbox's default min-width:auto on a flex
+    // item — without it, a long value (e.g. a negative net like
+    // "$-1,448.51") refuses to shrink and visually overflows into
+    // whatever sits next to this card instead of wrapping/clipping.
+    <div style={{ flex: 1, minWidth: 0, background: "var(--card)", borderRadius: 10, padding: "10px 12px", borderTop: `3px solid ${color}` }}>
       <div style={{ fontSize: 11, color: "var(--muted)" }}>{label}</div>
-      <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{value}</div>
+      <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", overflowWrap: "break-word" }}>{value}</div>
     </div>
   );
 }
