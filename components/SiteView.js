@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { currency, tierPrice, dayTypeForDate, imageFocus, imageFit } from "../lib/pricing";
+import { currency, tierPrice, dayTypeForDate, imageFocus, imageFit, imageZoom } from "../lib/pricing";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -12,6 +12,7 @@ const SOCIALS = [
   { label: "Instagram", url: "https://www.instagram.com/thenautiyachtillc/" },
   { label: "GetMyBoat — Nauti Explorer", url: "https://www.getmyboat.com/trips/5Yr13eya/" },
   { label: "GetMyBoat — Nauti Yachti", url: "https://www.getmyboat.com/trips/2aM5DkWa/" },
+  { label: "GetMyBoat — Nauti Islander", url: "https://www.getmyboat.com/trips/RNRjo5AN/" },
   { label: "Boatsetter — Nauti Explorer", url: "https://www.boatsetter.com/boats/nwfblfv" },
   { label: "GetMyBoat — Yolo, Lake Conroe", url: "https://www.getmyboat.com/trips/GaZ8b2dK/" },
 ];
@@ -350,7 +351,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                     {items.map((g) => (
                       <div key={g.id} style={{ borderRadius: 10, overflow: "hidden", background: "var(--card)", border: "1px solid rgba(203,108,230,0.15)" }}>
                         <div style={{ aspectRatio: "3 / 4", overflow: "hidden" }}>
-                          <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: imageFit(g.image), objectPosition: imageFocus(g.image), display: "block" }} />
+                          <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: imageFit(g.image), objectPosition: imageFocus(g.image), transform: `scale(${imageZoom(g.image)})`, display: "block" }} />
                         </div>
                         <div style={{ color: "var(--text)", fontSize: 12, fontWeight: 600, padding: "8px 10px" }}>
                           {g.caption}
