@@ -847,7 +847,7 @@ function AddOnsDropdown({ addOns, selectedIds, onChange }) {
         onClick={() => setOpen((o) => !o)}
         style={{
           width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14,
-          background: "#fff", color: selectedIds.length ? "inherit" : "var(--muted)", textAlign: "left",
+          background: "var(--card)", color: selectedIds.length ? "var(--text)" : "var(--muted)", textAlign: "left",
           display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer",
         }}
       >
@@ -858,12 +858,12 @@ function AddOnsDropdown({ addOns, selectedIds, onChange }) {
         <div
           style={{
             position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, zIndex: 10,
-            background: "#fff", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.25)", padding: 6,
+            background: "var(--card)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.45)", padding: 6,
           }}
         >
           {addOns.map((a) => (
-            <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 5, cursor: "pointer", fontSize: 13.5 }}>
+            <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 5, cursor: "pointer", fontSize: 13.5, color: "var(--text)" }}>
               <input type="checkbox" checked={selectedIds.includes(a.id)} onChange={() => toggle(a.id)} />
               <span>{a.name} — {currency(a.price)}{a.unit ? ` ${a.unit}` : ""}</span>
             </label>
