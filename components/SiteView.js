@@ -477,9 +477,14 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
       <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>{pkg.unit}</div>
 
       {pkg.linkLabel && pkg.linkUrl && (
-        <a href={pkg.linkUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--pink)", fontWeight: 700, fontSize: 13, display: "inline-block", marginBottom: 8, textDecoration: "underline" }}>
-          {pkg.linkLabel} ↗
-        </a>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <a href={pkg.linkUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--pink)", fontWeight: 700, fontSize: 13, display: "inline-block", textDecoration: "underline" }}>
+            {pkg.linkLabel} ↗
+          </a>
+          {pkg.id === "wakesurf" && (
+            <img src="/yolo-lake-conroe-logo.png" alt="Yolo Lake Conroe" style={{ width: 26, height: 26, borderRadius: "50%", display: "block" }} />
+          )}
+        </div>
       )}
       {pkg.blurb.split("\n\n").map((para, i) => (
         <p key={i} style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.85, lineHeight: 1.5, margin: "0 0 10px" }}>{para}</p>
