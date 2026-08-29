@@ -404,12 +404,12 @@ const BOOKING_PLATFORMS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "
 // kind distinguishes which management actions/enum apply to a given row —
 // their status values and editable fields differ, so the row renderer
 // branches on it rather than trying to force both into one schema.
-// Inquiry.status ("new"|"confirmed"|"declined") and ExternalBooking.status
-// ("pending"|"completed"|"cancelled") are different enums for different
-// underlying flows — this maps both onto the same 3-bucket concept so the
-// unified table can filter/display them consistently without changing
-// either model's own real values.
-const INQUIRY_STATUS_BUCKET = { new: "pending", pending: "pending", confirmed: "completed", lapsed: "cancelled", cancelled: "cancelled" };
+// Inquiry.status ("new"|"lapsed"|"pending"|"booked"|"completed"|"cancelled")
+// and ExternalBooking.status ("booked"|"completed"|"cancelled") are
+// different enums for different underlying flows — this maps both onto the
+// same shared bucket concept so the unified table can filter/display them
+// consistently without changing either model's own real values.
+const INQUIRY_STATUS_BUCKET = { new: "pending", pending: "pending", booked: "booked", completed: "completed", lapsed: "cancelled", cancelled: "cancelled" };
 
 function toUnifiedRows(inquiries, externalBookings) {
   const fromInquiries = inquiries.map((i) => ({
@@ -452,9 +452,9 @@ function toUnifiedRows(inquiries, externalBookings) {
 
 // ---- Inquiries tab -------------------------------------------------
 
-const INQUIRY_STATUSES = ["new", "lapsed", "pending", "confirmed", "cancelled"];
-const INQUIRY_STATUS_LABEL = { new: "New", lapsed: "Lapsed", pending: "Pending", confirmed: "Confirmed", cancelled: "Cancelled" };
-const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pending: "#E8934A", confirmed: "#7FE0B8", cancelled: "#F0559C" };
+const INQUIRY_STATUSES = ["new", "lapsed", "pending", "booked", "completed", "cancelled"];
+const INQUIRY_STATUS_LABEL = { new: "New", lapsed: "Lapsed", pending: "Pending", booked: "Booked", completed: "Completed", cancelled: "Cancelled" };
+const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pending: "#E8934A", booked: "#4FA8E8", completed: "#7FE0B8", cancelled: "#F0559C" };
 const REFUND_TYPES = ["full", "partial", "none"];
 const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none: "No refund" };
 
@@ -559,14 +559,21 @@ function PriceHistoryPanel({ priceHistory }) {
   );
 }
 
-const BOOKING_STATUS_BUCKETS = ["pending", "completed", "cancelled"];
-const BOOKING_STATUS_COLOR = { pending: "#E8934A", completed: "#7FE0B8", cancelled: "#F0559C" };
-const BOOKING_STATUS_LABEL = { pending: "Pending", completed: "Completed", cancelled: "Cancelled" };
+// The 3 real ExternalBooking statuses — used for the add-booking form's
+// toggle and the per-row status <select> (an external booking can never be
+// bare "pending", that state only exists on the Inquiry side).
+const BOOKING_STATUS_BUCKETS = ["booked", "completed", "cancelled"];
+// Unified filter/sort buckets for the combined Inquiry+ExternalBooking
+// table — includes "pending" since a site Inquiry can sit in that bucket
+// even though no ExternalBooking row ever will.
+const UNIFIED_STATUS_BUCKETS = ["pending", "booked", "completed", "cancelled"];
+const BOOKING_STATUS_COLOR = { pending: "#E8934A", booked: "#4FA8E8", completed: "#7FE0B8", cancelled: "#F0559C" };
+const BOOKING_STATUS_LABEL = { pending: "Pending", booked: "Booked", completed: "Completed", cancelled: "Cancelled" };
 
 function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
   const emptyForm = {
     vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), startTime: "", hours: 4,
-    guestName: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "pending", note: "", pricePaid: "",
+    guestName: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "booked", note: "", pricePaid: "",
   };
   const [form, setForm] = useState(emptyForm);
   const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "completed" | "cancelled"
@@ -593,7 +600,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
   const rows = (filterStatus === "all" ? allRows : allRows.filter((r) => r.statusBucket === filterStatus))
     .sort((a, b) => {
       if (sortBy === "date-asc") return (a.date || "").localeCompare(b.date || "");
-      if (sortBy === "status") return BOOKING_STATUS_BUCKETS.indexOf(a.statusBucket) - BOOKING_STATUS_BUCKETS.indexOf(b.statusBucket) || (b.date || "").localeCompare(a.date || "");
+      if (sortBy === "status") return UNIFIED_STATUS_BUCKETS.indexOf(a.statusBucket) - UNIFIED_STATUS_BUCKETS.indexOf(b.statusBucket) || (b.date || "").localeCompare(a.date || "");
       return (b.date || "").localeCompare(a.date || ""); // date-desc, default
     });
 
@@ -665,7 +672,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
           <div style={{ fontWeight: 700, color: "var(--text)" }}>All bookings ({rows.length}{filterStatus !== "all" ? ` of ${allRows.length}` : ""})</div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 4 }}>
-              {["all", ...BOOKING_STATUS_BUCKETS].map((s) => (
+              {["all", ...UNIFIED_STATUS_BUCKETS].map((s) => (
                 <button key={s} type="button" onClick={() => setFilterStatus(s)}
                   style={{
                     padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600, textTransform: "capitalize",
@@ -2539,7 +2546,7 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
             {!attention && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
             {attention && [
               ["New inquiries", attention.newInquiries],
-              ["Confirmed, unpaid", attention.unpaidConfirmed],
+              ["Booked, unpaid", attention.unpaidConfirmed],
               ["Maintenance overdue", attention.overdueMaintenance],
             ].map(([label, val]) => (
               <div key={label} style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 13, color: "#dffcff" }}>

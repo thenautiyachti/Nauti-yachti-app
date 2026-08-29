@@ -90,21 +90,21 @@ async function GET() {
       prisma.inquiry.findMany({
         where: {
           date: { gte: today },
-          status: { not: "cancelled" },
-          OR: [{ status: "confirmed" }, { paymentStatus: "paid" }],
+          status: { notIn: ["cancelled", "completed"] },
+          OR: [{ status: "booked" }, { paymentStatus: "paid" }],
         },
         select: { name: true, packageName: true, vesselName: true, date: true, partySize: true, priceQuoted: true, paymentStatus: true },
         orderBy: { date: "asc" },
         take: 10,
       }),
       prisma.externalBooking.findMany({
-        where: { date: { gte: today }, status: "completed" },
+        where: { date: { gte: today }, status: "booked" },
         select: { guestName: true, vesselName: true, date: true, partySize: true, platform: true },
         orderBy: { date: "asc" },
         take: 10,
       }),
       prisma.inquiry.count({ where: { status: "new" } }),
-      prisma.inquiry.count({ where: { status: "confirmed", paymentStatus: "unpaid" } }),
+      prisma.inquiry.count({ where: { status: "booked", paymentStatus: "unpaid" } }),
       prisma.maintenanceItem.findMany({
         select: { label: true, intervalHours: true, intervalMonths: true, lastDoneDate: true, lastDoneHours: true },
       }),

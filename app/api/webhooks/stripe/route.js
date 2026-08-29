@@ -40,7 +40,7 @@ async function POST(req) {
     try {
       const data = {
         paymentStatus: "paid",
-        status: "confirmed",
+        status: "booked",
         stripePaymentIntentId: session.payment_intent || null,
       };
 

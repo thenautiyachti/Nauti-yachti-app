@@ -83,7 +83,7 @@ model Inquiry {
   partySize   String?
   message     String?
   priceQuoted Float?
-  status      String   @default("new") // "new" | "lapsed" | "pending" | "confirmed" | "cancelled"
+  status      String   @default("new") // "new" | "lapsed" | "pending" | "booked" | "completed" | "cancelled"
   submittedAt DateTime @default(now())
 
   paymentStatus         String  @default("unpaid") // "unpaid" | "paid" | "refunded"
@@ -147,7 +147,7 @@ model ExternalBooking {
   email      String? // guest email, when known — Boatsetter/GetMyBoat rarely expose a real one
   partySize  Int?
   platform   String // "Boatsetter" | "GetmyBoat" | "Facebook" | "Instagram" | "Other"
-  status     String   @default("pending") // "pending" | "completed" | "cancelled"
+  status     String   @default("booked") // "booked" | "completed" | "cancelled"
   note       String?
   createdAt  DateTime @default(now())
 

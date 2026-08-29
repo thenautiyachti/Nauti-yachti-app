@@ -11,7 +11,7 @@ async function GET() {
   return NextResponse.json(bookings);
 }
 
-const EXTERNAL_BOOKING_STATUSES = ["pending", "completed", "cancelled"];
+const EXTERNAL_BOOKING_STATUSES = ["booked", "completed", "cancelled"];
 
 // Body: { vesselId, vesselName, date, startTime, hours, guestName, email, partySize, platform, status, note }
 async function POST(req) {
@@ -36,7 +36,7 @@ async function POST(req) {
       guestName: guestName || null,
       email: email || null,
       partySize: partySize ? Number(partySize) : null,
-      status: EXTERNAL_BOOKING_STATUSES.includes(status) ? status : "pending",
+      status: EXTERNAL_BOOKING_STATUSES.includes(status) ? status : "booked",
       note: note || null,
       pricePaid: pricePaid != null && pricePaid !== "" ? Number(pricePaid) : null,
       bookingId,

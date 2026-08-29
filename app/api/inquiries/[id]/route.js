@@ -2,7 +2,7 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
-const INQUIRY_STATUSES = ["new", "lapsed", "pending", "confirmed", "cancelled"];
+const INQUIRY_STATUSES = ["new", "lapsed", "pending", "booked", "completed", "cancelled"];
 const REFUND_TYPES = ["full", "partial", "none"];
 
 // Body: { status?, refundType?, refundAmount? }. refundType/refundAmount are

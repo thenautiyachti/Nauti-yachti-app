@@ -21,7 +21,7 @@ async function PATCH(req, { params }) {
 
   const data = {};
   if ("status" in body) {
-    if (!["pending", "completed", "cancelled"].includes(body.status)) {
+    if (!["booked", "completed", "cancelled"].includes(body.status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
     data.status = body.status;
