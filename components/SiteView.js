@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { currency, tierPrice, dayTypeForDate, imageFocus, imageFit } from "../lib/pricing";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
@@ -762,19 +762,11 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
         </label>
 
         {addOns && addOns.length > 0 && (
-          <label style={{ display: "block" }}>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Add-ons <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional, ctrl/cmd-click to select more than one)</span></div>
-            <select
-              multiple
-              value={form.addOnIds}
-              onChange={(e) => setForm({ ...form, addOnIds: Array.from(e.target.selectedOptions, (o) => o.value) })}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, minHeight: 84 }}
-            >
-              {addOns.map((a) => (
-                <option key={a.id} value={a.id}>{a.name} — {currency(a.price)}{a.unit ? ` ${a.unit}` : ""}</option>
-              ))}
-            </select>
-          </label>
+          <AddOnsDropdown
+            addOns={addOns}
+            selectedIds={form.addOnIds}
+            onChange={(ids) => setForm({ ...form, addOnIds: ids })}
+          />
         )}
 
         <label style={{ display: "block", ...fullWidth }}>
@@ -806,6 +798,67 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
         Not ready to pay? Just send an inquiry
       </button>
     </form>
+  );
+}
+
+// A collapsed dropdown (like the Duration select) that expands into a
+// checkbox list so more than one add-on can be picked, then closes back
+// down — not a native <select multiple>, which stays open as a scroll box.
+function AddOnsDropdown({ addOns, selectedIds, onChange }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  function toggle(id) {
+    onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+  }
+
+  const summary =
+    selectedIds.length === 0
+      ? "None selected"
+      : selectedIds.length === 1
+      ? addOns.find((a) => a.id === selectedIds[0])?.name || "1 selected"
+      : `${selectedIds.length} selected`;
+
+  return (
+    <div ref={rootRef} style={{ position: "relative" }}>
+      <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Add-ons <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span></div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14,
+          background: "#fff", color: selectedIds.length ? "inherit" : "var(--muted)", textAlign: "left",
+          display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer",
+        }}
+      >
+        <span>{summary}</span>
+        <span style={{ opacity: 0.6, fontSize: 11 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, zIndex: 10,
+            background: "#fff", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.25)", padding: 6,
+          }}
+        >
+          {addOns.map((a) => (
+            <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 5, cursor: "pointer", fontSize: 13.5 }}>
+              <input type="checkbox" checked={selectedIds.includes(a.id)} onChange={() => toggle(a.id)} />
+              <span>{a.name} — {currency(a.price)}{a.unit ? ` ${a.unit}` : ""}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
