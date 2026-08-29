@@ -2,8 +2,11 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
-// Body: any subset of { active, discountType, discountValue, maxUses, expiresAt, note }
-// Only the fields present in the body are updated.
+// Body: any subset of { active, discountType, discountValue, maxUses, expiresAt, note, requiresReturningGuest, archived }
+// Only the fields present in the body are updated. Archiving also forces
+// active:false (an archived coupon shouldn't be usable regardless of its
+// own active flag); un-archiving does NOT auto-restore active — same
+// restore-hidden-by-default pattern as AddOn archiving.
 async function PATCH(req, { params }) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -26,6 +29,11 @@ async function PATCH(req, { params }) {
   if ("maxUses" in body) data.maxUses = body.maxUses === "" || body.maxUses == null ? null : Number(body.maxUses);
   if ("expiresAt" in body) data.expiresAt = body.expiresAt || null;
   if ("note" in body) data.note = body.note || null;
+  if ("requiresReturningGuest" in body) data.requiresReturningGuest = !!body.requiresReturningGuest;
+  if ("archived" in body) {
+    data.archived = !!body.archived;
+    if (data.archived) data.active = false;
+  }
 
   const updated = await prisma.coupon.update({ where: { id }, data });
   return NextResponse.json(updated);

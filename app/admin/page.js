@@ -130,8 +130,11 @@ export default function AdminPage() {
     setGallery((prev) => prev.map((g) => (g.id === id ? { ...g, caption } : g)));
   }
   async function markInquiry(id, status) {
-    await api(`/api/inquiries/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
-    setInquiries((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
+    await updateInquiry(id, { status });
+  }
+  async function updateInquiry(id, fields) {
+    const updated = await api(`/api/inquiries/${id}`, { method: "PATCH", body: JSON.stringify(fields) });
+    setInquiries((prev) => prev.map((i) => (i.id === id ? updated : i)));
   }
   async function addLedgerEntry(entry) {
     const created = await api("/api/ledger", { method: "POST", body: JSON.stringify(entry) });
@@ -197,12 +200,11 @@ export default function AdminPage() {
     return created;
   }
   async function toggleCouponActive(id, active) {
-    const updated = await api(`/api/coupons/${id}`, { method: "PATCH", body: JSON.stringify({ active }) });
-    setCoupons((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    await updateCoupon(id, { active });
   }
-  async function deleteCoupon(id) {
-    await api(`/api/coupons/${id}`, { method: "DELETE" });
-    setCoupons((prev) => prev.filter((c) => c.id !== id));
+  async function updateCoupon(id, fields) {
+    const updated = await api(`/api/coupons/${id}`, { method: "PATCH", body: JSON.stringify(fields) });
+    setCoupons((prev) => prev.map((c) => (c.id === id ? updated : c)));
   }
   async function addSubscription(subscription) {
     const created = await api("/api/subscriptions", { method: "POST", body: JSON.stringify(subscription) });
@@ -297,6 +299,7 @@ export default function AdminPage() {
       onToggleBlocked={toggleBlocked}
       onUpdateCaption={updateCaption}
       onMarkInquiry={markInquiry}
+      onUpdateInquiry={updateInquiry}
       onUpdateAddonPrice={updateAddonPrice}
       onUpdateAddon={updateAddon}
       onAddAddon={addAddon}
@@ -309,7 +312,7 @@ export default function AdminPage() {
       onAddFuelLog={addFuelLog}
       onAddCoupon={addCoupon}
       onToggleCouponActive={toggleCouponActive}
-      onDeleteCoupon={deleteCoupon}
+      onUpdateCoupon={updateCoupon}
       onAddSubscription={addSubscription}
       onUpdateSubscription={updateSubscription}
       onDeleteSubscription={deleteSubscription}

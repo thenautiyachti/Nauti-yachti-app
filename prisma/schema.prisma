@@ -70,12 +70,19 @@ model Inquiry {
   partySize   String?
   message     String?
   priceQuoted Float?
-  status      String   @default("new") // "new" | "confirmed" | "declined"
+  status      String   @default("new") // "new" | "lapsed" | "pending" | "confirmed" | "cancelled"
   submittedAt DateTime @default(now())
 
   paymentStatus         String  @default("unpaid") // "unpaid" | "paid" | "refunded"
   stripeSessionId       String?
   stripePaymentIntentId String?
+
+  // Only meaningful when status is "cancelled" — how a confirmed booking's
+  // payment was resolved on cancellation. Independent of paymentStatus
+  // (which is the raw Stripe-driven unpaid/paid/refunded signal); this
+  // captures the owner's own record of what actually happened.
+  refundType   String? // "full" | "partial" | "none"
+  refundAmount Float? // dollar amount actually refunded — mainly for "partial"
 
   couponCode     String? // uppercase Coupon.code, if one was applied at checkout
   discountAmount Float? // dollars knocked off priceQuoted by the coupon
@@ -99,6 +106,7 @@ model Coupon {
   expiresAt             String? // "YYYY-MM-DD"
   note                  String?
   requiresReturningGuest Boolean @default(false) // if true, checkCoupon() only accepts this code for an email with a prior paid Inquiry
+  archived              Boolean  @default(false) // soft-delete — removed from the main admin list into an Archived section, restorable
   createdAt             DateTime @default(now())
 }
 

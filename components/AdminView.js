@@ -20,10 +20,10 @@ export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
   maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
-  onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onLogout,
+  onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onUpdateInquiry, onLogout,
   onUpdateAddonPrice, onUpdateAddon, onAddAddon, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
   onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
-  onAddCoupon, onToggleCouponActive, onDeleteCoupon,
+  onAddCoupon, onToggleCouponActive, onUpdateCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
   onUpdateMediaDraftStatus, onDeleteMediaDraft,
   onUpdateTestimonialStatus, onDeleteTestimonial,
@@ -204,40 +204,7 @@ export default function AdminView({
 
       <div style={{ padding: 24 }}>
         {tab === "inquiries" && (
-          <div style={{ display: "grid", gap: 10 }}>
-            {inquiries.length === 0 && <div style={{ color: "var(--muted)" }}>No inquiries yet — they'll show up here the moment a customer submits the form.</div>}
-            {inquiries.map((i) => (
-              <div key={i.id} style={{ background: "var(--card)", borderRadius: 8, padding: 14, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", color: "var(--text)" }}>
-                <div>
-                  <div style={{ fontWeight: 700 }}>{i.name} — {i.packageName}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
-                    {i.email} · {i.phone} · {i.vesselName || "—"} · {i.date || "—"} · party of {i.partySize || "—"}
-                    {i.priceQuoted ? ` · ${currency(i.priceQuoted)}` : ""}
-                    {i.couponCode ? ` · coupon ${i.couponCode} (−${currency(i.discountAmount || 0)})` : ""}
-                  </div>
-                  {i.message && <div style={{ fontSize: 12.5, marginTop: 4 }}>{i.message}</div>}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span
-                    className="mono"
-                    style={{
-                      fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em",
-                      color: i.paymentStatus === "paid" ? "#0A0612" : "var(--text)",
-                      background: i.paymentStatus === "paid" ? "var(--purple)" : i.paymentStatus === "refunded" ? "rgba(232,147,74,0.25)" : "rgba(203,108,230,0.12)",
-                      border: i.paymentStatus === "paid" ? "none" : "1px solid rgba(203,108,230,0.3)",
-                    }}
-                  >
-                    {i.paymentStatus || "unpaid"}
-                  </span>
-                  <select value={i.status} onChange={(e) => onMarkInquiry(i.id, e.target.value)} style={{ padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }}>
-                    <option value="new">New</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="declined">Declined</option>
-                  </select>
-                </div>
-              </div>
-            ))}
-          </div>
+          <InquiriesTab inquiries={inquiries} onUpdate={onUpdateInquiry} />
         )}
 
         {tab === "bookings" && (
@@ -259,7 +226,7 @@ export default function AdminView({
         )}
 
         {tab === "coupons" && (
-          <CouponsTab coupons={coupons} onAdd={onAddCoupon} onToggleActive={onToggleCouponActive} onDelete={onDeleteCoupon} />
+          <CouponsTab coupons={coupons} onAdd={onAddCoupon} onToggleActive={onToggleCouponActive} onUpdate={onUpdateCoupon} />
         )}
 
         {tab === "pricing" && (
@@ -439,7 +406,7 @@ const BOOKING_PLATFORMS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "
 // underlying flows — this maps both onto the same 3-bucket concept so the
 // unified table can filter/display them consistently without changing
 // either model's own real values.
-const INQUIRY_STATUS_BUCKET = { new: "pending", confirmed: "completed", declined: "cancelled" };
+const INQUIRY_STATUS_BUCKET = { new: "pending", pending: "pending", confirmed: "completed", lapsed: "cancelled", cancelled: "cancelled" };
 
 function toUnifiedRows(inquiries, externalBookings) {
   const fromInquiries = inquiries.map((i) => ({
@@ -478,6 +445,74 @@ function toUnifiedRows(inquiries, externalBookings) {
     raw: b,
   }));
   return [...fromInquiries, ...fromExternal].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+}
+
+// ---- Inquiries tab -------------------------------------------------
+
+const INQUIRY_STATUSES = ["new", "lapsed", "pending", "confirmed", "cancelled"];
+const INQUIRY_STATUS_LABEL = { new: "New", lapsed: "Lapsed", pending: "Pending", confirmed: "Confirmed", cancelled: "Cancelled" };
+const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pending: "#E8934A", confirmed: "#7FE0B8", cancelled: "#F0559C" };
+const REFUND_TYPES = ["full", "partial", "none"];
+const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none: "No refund" };
+
+function InquiriesTab({ inquiries, onUpdate }) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {inquiries.length === 0 && <div style={{ color: "var(--muted)" }}>No inquiries yet — they'll show up here the moment a customer submits the form.</div>}
+      {inquiries.map((i) => (
+        <div key={i.id} style={{ background: "var(--card)", borderRadius: 8, padding: 14, color: "var(--text)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>{i.name} — {i.packageName}</div>
+              <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
+                {i.email} · {i.phone} · {i.vesselName || "—"} · {i.date || "—"} · party of {i.partySize || "—"}
+                {i.priceQuoted ? ` · ${currency(i.priceQuoted)}` : ""}
+                {i.couponCode ? ` · coupon ${i.couponCode} (−${currency(i.discountAmount || 0)})` : ""}
+              </div>
+              {i.message && <div style={{ fontSize: 12.5, marginTop: 4 }}>{i.message}</div>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <span
+                className="mono"
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em",
+                  color: i.paymentStatus === "paid" ? "#0A0612" : "var(--text)",
+                  background: i.paymentStatus === "paid" ? "var(--purple)" : i.paymentStatus === "refunded" ? "rgba(232,147,74,0.25)" : "rgba(203,108,230,0.12)",
+                  border: i.paymentStatus === "paid" ? "none" : "1px solid rgba(203,108,230,0.3)",
+                }}
+              >
+                {i.paymentStatus || "unpaid"}
+              </span>
+              <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: INQUIRY_STATUS_COLOR[i.status], textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                {INQUIRY_STATUS_LABEL[i.status] || i.status}
+              </span>
+              <select value={i.status} onChange={(e) => onUpdate(i.id, { status: e.target.value })} style={{ padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }}>
+                {INQUIRY_STATUSES.map((s) => <option key={s} value={s}>{INQUIRY_STATUS_LABEL[s]}</option>)}
+              </select>
+            </div>
+          </div>
+          {i.status === "cancelled" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(203,108,230,0.15)" }}>
+              <span style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>Refund:</span>
+              <select value={i.refundType || ""} onChange={(e) => onUpdate(i.id, { refundType: e.target.value || null })}
+                style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
+                <option value="">— pick one —</option>
+                {REFUND_TYPES.map((r) => <option key={r} value={r}>{REFUND_TYPE_LABEL[r]}</option>)}
+              </select>
+              {i.refundType === "partial" && (
+                <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span className="mono" style={{ color: "var(--muted)" }}>$</span>
+                  <input type="number" min="0" step="0.01" placeholder="Amount refunded" defaultValue={i.refundAmount ?? ""}
+                    onBlur={(e) => onUpdate(i.id, { refundAmount: e.target.value === "" ? null : Number(e.target.value) })}
+                    style={{ width: 110, padding: "5px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+                </label>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 const BOOKING_STATUS_BUCKETS = ["pending", "completed", "cancelled"];
@@ -708,9 +743,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                       ) : (
                         <select value={r.status} onChange={(e) => onMarkInquiry(r.id, e.target.value)}
                           style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
-                          <option value="new">New</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="declined">Declined</option>
+                          {INQUIRY_STATUSES.map((s) => <option key={s} value={s}>{INQUIRY_STATUS_LABEL[s]}</option>)}
                         </select>
                       )}
                     </td>
@@ -1455,10 +1488,14 @@ function AddOnsTab({ addons, onUpdate, onAdd }) {
 
 // ---- Coupons tab -------------------------------------------------
 
-function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
+function CouponsTab({ coupons, onAdd, onToggleActive, onUpdate }) {
   const emptyForm = { code: "", discountType: "percent", discountValue: "", maxUses: "", expiresAt: "", note: "", requiresReturningGuest: false };
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+
+  const live = coupons.filter((c) => !c.archived);
+  const archived = coupons.filter((c) => c.archived);
 
   async function submit(e) {
     e.preventDefault();
@@ -1527,10 +1564,10 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
       </form>
 
       <div>
-        <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Coupons ({coupons.length})</div>
-        <div style={{ display: "grid", gap: 6 }}>
-          {coupons.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No coupons yet.</div>}
-          {coupons.map((c) => (
+        <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Coupons ({live.length})</div>
+        <div style={{ display: "grid", gap: 6, marginBottom: 20 }}>
+          {live.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No coupons yet.</div>}
+          {live.map((c) => (
             <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13.5, color: "var(--text)", gap: 10 }}>
               <div>
                 <div className="mono" style={{ fontWeight: 700 }}>
@@ -1562,7 +1599,7 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
                   style={{ background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "5px 9px", fontSize: 11.5, fontWeight: 600 }}>
                   {c.active ? "Deactivate" : "Activate"}
                 </button>
-                <button type="button" onClick={() => onDelete(c.id)}
+                <button type="button" onClick={() => onUpdate(c.id, { archived: true })}
                   style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "5px 9px", fontSize: 11.5, fontWeight: 600 }}>
                   Delete
                 </button>
@@ -1570,6 +1607,30 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
             </div>
           ))}
         </div>
+
+        <button type="button" onClick={() => setShowArchived((v) => !v)}
+          style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>
+          {showArchived ? "▲" : "▼"} Archived ({archived.length})
+        </button>
+        {showArchived && (
+          <div style={{ display: "grid", gap: 6 }}>
+            {archived.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>Nothing archived.</div>}
+            {archived.map((c) => (
+              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "var(--muted)", gap: 10 }}>
+                <div className="mono" style={{ fontWeight: 700, color: "var(--text)" }}>
+                  {c.code}
+                  <span style={{ fontWeight: 400, color: "var(--muted)", marginLeft: 8 }}>
+                    {c.discountType === "percent" ? `${c.discountValue}% off` : `${currency(c.discountValue)} off`}
+                  </span>
+                </div>
+                <button type="button" onClick={() => onUpdate(c.id, { archived: false })}
+                  style={{ background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                  Restore
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

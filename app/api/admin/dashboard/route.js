@@ -90,6 +90,7 @@ async function GET() {
       prisma.inquiry.findMany({
         where: {
           date: { gte: today },
+          status: { not: "cancelled" },
           OR: [{ status: "confirmed" }, { paymentStatus: "paid" }],
         },
         select: { name: true, packageName: true, vesselName: true, date: true, partySize: true, priceQuoted: true, paymentStatus: true },
