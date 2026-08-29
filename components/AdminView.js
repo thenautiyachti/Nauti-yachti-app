@@ -42,6 +42,7 @@ export default function AdminView({
   const audioElRef = useRef(null);
   const audioCtxRef = useRef(null);
   const gainNodeRef = useRef(null);
+  const analyserRef = useRef(null);
   const sinceRef = useRef(null);
 
   // Speech poll — every 2s, only once audio has been unlocked by a click.
@@ -128,6 +129,16 @@ export default function AdminView({
         source.connect(gain);
         gain.connect(compressor);
         compressor.connect(audioCtxRef.current.destination);
+
+        // Tapped off the same post-gain/compressor signal that actually
+        // plays, so the visualizer reacts to what Jarvis is really saying —
+        // not the raw pre-boost audio.
+        const analyser = audioCtxRef.current.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.75;
+        compressor.connect(analyser);
+        analyserRef.current = analyser;
+
         gainNodeRef.current = gain;
       } catch (err) {
         console.error("Jarvis audio gain boost setup failed:", err);
@@ -423,6 +434,7 @@ export default function AdminView({
             onEnableAudio={enableAudio}
             lastSpoken={lastSpoken}
             audioNote={audioNote}
+            analyserRef={analyserRef}
           />
         )}
       </div>
@@ -1886,7 +1898,7 @@ function JarvisPanel({ title, children }) {
   );
 }
 
-function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote }) {
+function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyserRef }) {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState(false);
   const [agentActivity, setAgentActivity] = useState(null);
@@ -1950,6 +1962,62 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote }) {
   useEffect(() => {
     if (dashboard) setMediaItems(dashboard.mediaQueue || []);
   }, [dashboard]);
+
+  // Live voice waveform — draws whatever's actually coming out of the
+  // Jarvis <audio> element (post gain/compressor) onto a canvas every
+  // frame. Runs continuously once audio is enabled: a flat idle line
+  // between utterances, a reactive pulse while speech is playing. The
+  // AnalyserNode itself is created once in enableAudio() (see above) and
+  // handed down via analyserRef, so this effect only needs to draw.
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    if (!audioEnabled) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+    let raf;
+
+    function draw() {
+      raf = requestAnimationFrame(draw);
+      const analyser = analyserRef.current;
+      ctx.clearRect(0, 0, width, height);
+
+      if (!analyser) {
+        ctx.strokeStyle = "rgba(0,217,255,0.4)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+        return;
+      }
+
+      const data = new Uint8Array(analyser.fftSize);
+      analyser.getByteTimeDomainData(data);
+
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "#00d9ff";
+      ctx.shadowColor = "#00d9ff";
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      const sliceWidth = width / data.length;
+      let x = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = data[i] / 128.0; // ~1.0 at silence, swings 0-2 with signal
+        const y = (v * height) / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+        x += sliceWidth;
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [audioEnabled, analyserRef]);
 
   // Approve / deny / discuss a queued media draft directly from the Jarvis
   // tab. This is a human clicking inside the already-authenticated admin
@@ -2063,6 +2131,19 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote }) {
           </div>
         </div>
         {audioNote && <div style={{ color: "#ffb454", fontSize: 12.5, marginBottom: 16 }}>{audioNote}</div>}
+
+        <div style={{
+          position: "relative", border: "1px solid rgba(0,217,255,0.25)", borderRadius: 6,
+          background: "radial-gradient(ellipse at center, rgba(0,217,255,0.06) 0%, rgba(0,0,0,0.3) 80%)",
+          padding: "10px 14px", marginBottom: 20,
+        }}>
+          <canvas ref={canvasRef} width={900} height={70} style={{ width: "100%", height: 70, display: "block" }} />
+          {!audioEnabled && (
+            <div className="jarvis-font" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, letterSpacing: "0.15em", color: "#1c7a86" }}>
+              ENABLE AUDIO TO ACTIVATE VOICE WAVEFORM
+            </div>
+          )}
+        </div>
 
         {dashboardError && !dashboard && (
           <div style={{ color: "#ff4d5e", fontSize: 13, marginBottom: 16 }}>Unable to load dashboard data.</div>
