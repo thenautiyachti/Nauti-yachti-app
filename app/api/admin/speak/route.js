@@ -3,7 +3,7 @@ const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "pNInz6obpgDQGcFmaJgB";
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wDsJlOXPqcvIUKdLXjDs"; // "Jarvis" preset
 const JARVIS_SERVICE_KEY = process.env.JARVIS_SERVICE_KEY;
 
 // POST { text: string } -> synthesizes speech via ElevenLabs and stores the
