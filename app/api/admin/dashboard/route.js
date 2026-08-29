@@ -84,7 +84,9 @@ async function GET() {
   const today = localDateKey(new Date());
 
   try {
-    const [siteBookings, externalBookings, newInquiries, unpaidConfirmed, maintenanceItems, maxHoursRow, mediaQueueRows] = await Promise.all([
+    const thirtyDaysAgo = localDateKey(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+
+    const [siteBookings, externalBookings, newInquiries, unpaidConfirmed, maintenanceItems, maxHoursRow, mediaQueueRows, recentLedger, dueSubscriptions] = await Promise.all([
       prisma.inquiry.findMany({
         where: {
           date: { gte: today },
@@ -110,6 +112,16 @@ async function GET() {
         where: { status: { in: ["pending", "discussing"] } },
         select: { id: true, theme: true, mediaUrl: true, mediaType: true, caption: true, platform: true, status: true, createdAt: true },
         orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+      prisma.ledgerEntry.findMany({
+        where: { date: { gte: thirtyDaysAgo } },
+        select: { type: true, amount: true },
+      }),
+      prisma.subscription.findMany({
+        where: { active: true, nextDueDate: { not: null } },
+        select: { name: true, amount: true, billingCycle: true, nextDueDate: true },
+        orderBy: { nextDueDate: "asc" },
         take: 5,
       }),
     ]);
@@ -148,6 +160,7 @@ async function GET() {
     const currentHours = maxHoursRow._max.hours || 0;
     const now = new Date();
     let overdueMaintenance = 0;
+    const overdueMaintenanceItems = [];
     for (const item of maintenanceItems) {
       if (item.lastDoneHours == null && !item.lastDoneDate) continue;
       let overdue = false;
@@ -158,8 +171,30 @@ async function GET() {
         const monthsSince = (now - new Date(item.lastDoneDate)) / (1000 * 60 * 60 * 24 * 30.44);
         if (monthsSince >= item.intervalMonths) overdue = true;
       }
-      if (overdue) overdueMaintenance++;
+      if (overdue) {
+        overdueMaintenance++;
+        overdueMaintenanceItems.push(item.label);
+      }
     }
+
+    // Last-30-days income/expense pulse, straight off the same LedgerEntry
+    // rows the Ledger and Tax Report tabs use — a quick "how's the business
+    // doing right now" snapshot for the Jarvis dashboard.
+    let revenue30dIncome = 0;
+    let revenue30dExpense = 0;
+    for (const entry of recentLedger) {
+      if (entry.type === "income") revenue30dIncome += Number(entry.amount || 0);
+      else if (entry.type === "expense") revenue30dExpense += Number(entry.amount || 0);
+    }
+
+    const todayKey = localDateKey(now);
+    const subscriptionsDueSoon = dueSubscriptions.map((s) => ({
+      name: s.name,
+      amount: s.amount,
+      billingCycle: s.billingCycle,
+      nextDueDate: s.nextDueDate,
+      daysUntilDue: Math.round((new Date(s.nextDueDate + "T00:00:00") - new Date(todayKey + "T00:00:00")) / (1000 * 60 * 60 * 24)),
+    }));
 
     const mediaQueue = mediaQueueRows.map((r) => ({
       id: r.id,
@@ -179,7 +214,14 @@ async function GET() {
         newInquiries,
         unpaidConfirmed,
         overdueMaintenance,
+        overdueMaintenanceItems,
       },
+      revenue30d: {
+        income: revenue30dIncome,
+        expense: revenue30dExpense,
+        net: revenue30dIncome - revenue30dExpense,
+      },
+      subscriptionsDueSoon,
       mediaQueue,
       asOf: new Date().toISOString(),
     });

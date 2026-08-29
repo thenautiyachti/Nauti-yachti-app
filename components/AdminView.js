@@ -1907,6 +1907,68 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
   const [expandedMediaId, setExpandedMediaId] = useState(null);
   const [mediaActionPendingId, setMediaActionPendingId] = useState(null);
   const [mediaActionError, setMediaActionError] = useState("");
+  const [todos, setTodos] = useState([]);
+  const [todoText, setTodoText] = useState("");
+  const [todoError, setTodoError] = useState("");
+
+  // To-do list — fetched once on mount (not polled; nothing else writes to
+  // this table, so there's no need to re-poll every 30s like the shared
+  // dashboard data).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/jarvis-todos")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("bad status"))))
+      .then((data) => { if (!cancelled) setTodos(data); })
+      .catch(() => { if (!cancelled) setTodoError("Unable to load to-dos."); });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function addTodo(e) {
+    e.preventDefault();
+    const text = todoText.trim();
+    if (!text) return;
+    setTodoError("");
+    try {
+      const res = await fetch("/api/jarvis-todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("bad status");
+      const created = await res.json();
+      setTodos((prev) => [...prev, created]);
+      setTodoText("");
+    } catch {
+      setTodoError("Could not add that — try again.");
+    }
+  }
+
+  async function toggleTodo(id, done) {
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done } : t)));
+    try {
+      const res = await fetch(`/api/jarvis-todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ done }),
+      });
+      if (!res.ok) throw new Error("bad status");
+    } catch {
+      setTodoError("Could not update that — try again.");
+      setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done: !done } : t)));
+    }
+  }
+
+  async function deleteTodo(id) {
+    const prevTodos = todos;
+    setTodos((prev) => prev.filter((t) => t.id !== id));
+    try {
+      const res = await fetch(`/api/jarvis-todos/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("bad status");
+    } catch {
+      setTodoError("Could not delete that — try again.");
+      setTodos(prevTodos);
+    }
+  }
 
   // Dashboard poll — every 30s while this tab is mounted.
   useEffect(() => {
@@ -2178,11 +2240,71 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
               ["Confirmed, unpaid", attention.unpaidConfirmed],
               ["Maintenance overdue", attention.overdueMaintenance],
             ].map(([label, val]) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 13, color: "#dffcff" }}>
-                <span>{label}</span>
-                <span style={{ fontWeight: 700, color: val > 0 ? "#ffb454" : "#dffcff" }}>{val}</span>
+              <div key={label} style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 13, color: "#dffcff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>{label}</span>
+                  <span style={{ fontWeight: 700, color: val > 0 ? "#ffb454" : "#dffcff" }}>{val}</span>
+                </div>
+                {label === "Maintenance overdue" && val > 0 && attention.overdueMaintenanceItems?.length > 0 && (
+                  <div style={{ fontSize: 11, color: "#ffb454", opacity: 0.85, marginTop: 3 }}>
+                    {attention.overdueMaintenanceItems.join(", ")}
+                  </div>
+                )}
               </div>
             ))}
+          </JarvisPanel>
+
+          <JarvisPanel title="Revenue — last 30 days">
+            {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
+            {dashboard && [
+              ["Income", dashboard.revenue30d.income, "#7FE0B8"],
+              ["Expenses", dashboard.revenue30d.expense, "#ff8fa8"],
+              ["Net", dashboard.revenue30d.net, dashboard.revenue30d.net >= 0 ? "#7FE0B8" : "#ff8fa8"],
+            ].map(([label, val, color]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 13, color: "#dffcff" }}>
+                <span>{label}</span>
+                <span className="mono" style={{ fontWeight: 700, color }}>{currency(val)}</span>
+              </div>
+            ))}
+          </JarvisPanel>
+
+          <JarvisPanel title="Subscriptions Due Soon">
+            {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
+            {dashboard && dashboard.subscriptionsDueSoon.length === 0 && (
+              <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>Nothing with a due date set.</div>
+            )}
+            {dashboard && dashboard.subscriptionsDueSoon.map((s) => (
+              <div key={s.name} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 12.5, color: "#dffcff", gap: 8 }}>
+                <span>{s.name}</span>
+                <span style={{ textAlign: "right", flexShrink: 0 }}>
+                  <span className="mono" style={{ fontWeight: 700 }}>{currency(s.amount)}</span>{" "}
+                  <span style={{ color: s.daysUntilDue <= 3 ? "#ffb454" : "#1c7a86", fontSize: 11 }}>
+                    ({s.daysUntilDue <= 0 ? "due" : `${s.daysUntilDue}d`})
+                  </span>
+                </span>
+              </div>
+            ))}
+          </JarvisPanel>
+
+          <JarvisPanel title="To-Do">
+            <form onSubmit={addTodo} style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <input
+                type="text" value={todoText} onChange={(e) => setTodoText(e.target.value)} placeholder="Add a task…"
+                style={{ flex: 1, minWidth: 0, padding: "7px 9px", borderRadius: 4, border: "1px solid rgba(0,217,255,0.3)", background: "rgba(0,217,255,0.05)", color: "#dffcff", fontSize: 12.5 }}
+              />
+              <button type="submit" style={{ background: "rgba(0,217,255,0.15)", color: "#00d9ff", border: "1px solid #00d9ff", borderRadius: 4, padding: "0 12px", fontSize: 12.5, fontWeight: 700 }}>+</button>
+            </form>
+            {todoError && <div style={{ color: "#ff4d5e", fontSize: 11.5, marginBottom: 8 }}>{todoError}</div>}
+            {todos.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>Nothing on the list.</div>}
+            <div style={{ display: "grid", gap: 2, maxHeight: 220, overflowY: "auto" }}>
+              {todos.map((t) => (
+                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid rgba(0,217,255,0.08)" }}>
+                  <input type="checkbox" checked={t.done} onChange={(e) => toggleTodo(t.id, e.target.checked)} style={{ accentColor: "#00d9ff", flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 12.5, color: t.done ? "#1c7a86" : "#dffcff", textDecoration: t.done ? "line-through" : "none" }}>{t.text}</span>
+                  <button type="button" onClick={() => deleteTodo(t.id)} style={{ background: "transparent", color: "#4ff3ff", border: "none", fontSize: 13, opacity: 0.6, flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
           </JarvisPanel>
 
           <JarvisPanel title="Media Queue">
