@@ -40,7 +40,7 @@ async function POST(req) {
   let finalAmount = priceQuoted;
   let appliedCoupon = null;
   if (body.couponCode) {
-    const result = await checkCoupon(body.couponCode);
+    const result = await checkCoupon(body.couponCode, body.email);
     if (result.valid) {
       appliedCoupon = result.coupon;
       finalAmount = discountedAmount(appliedCoupon.discountType, appliedCoupon.discountValue, priceQuoted);

@@ -1265,7 +1265,7 @@ function FuelLogPanel({ vessels, fuelLogs, onAdd }) {
 // ---- Coupons tab -------------------------------------------------
 
 function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
-  const emptyForm = { code: "", discountType: "percent", discountValue: "", maxUses: "", expiresAt: "", note: "" };
+  const emptyForm = { code: "", discountType: "percent", discountValue: "", maxUses: "", expiresAt: "", note: "", requiresReturningGuest: false };
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
 
@@ -1281,6 +1281,7 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
         maxUses: form.maxUses ? Number(form.maxUses) : null,
         expiresAt: form.expiresAt || null,
         note: form.note || null,
+        requiresReturningGuest: form.requiresReturningGuest,
       });
       setForm(emptyForm);
     } catch {
@@ -1326,6 +1327,10 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
         </div>
         <input type="text" placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
           style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 12.5, color: "var(--text)" }}>
+          <input type="checkbox" checked={form.requiresReturningGuest} onChange={(e) => setForm({ ...form, requiresReturningGuest: e.target.checked })} />
+          Returning guests only (verified by email against a prior paid booking)
+        </label>
         {error && <div style={{ color: "var(--pink)", fontSize: 12.5, marginBottom: 8 }}>{error}</div>}
         <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add coupon</button>
       </form>
@@ -1346,6 +1351,7 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onDelete }) {
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
                   {c.usedCount} / {c.maxUses ?? "∞"} used
                   {c.expiresAt ? ` · expires ${c.expiresAt}` : ""}
+                  {c.requiresReturningGuest ? " · returning guests only" : ""}
                   {c.note ? ` · ${c.note}` : ""}
                 </div>
               </div>

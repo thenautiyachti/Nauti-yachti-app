@@ -10,13 +10,13 @@ async function GET() {
   return NextResponse.json(coupons);
 }
 
-// Body: { code, discountType, discountValue, maxUses?, expiresAt?, note? }
+// Body: { code, discountType, discountValue, maxUses?, expiresAt?, note?, requiresReturningGuest? }
 async function POST(req) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();
-  const { code, discountType, discountValue, maxUses, expiresAt, note } = body;
+  const { code, discountType, discountValue, maxUses, expiresAt, note, requiresReturningGuest } = body;
 
   if (!code || !String(code).trim()) {
     return NextResponse.json({ error: "Code is required" }, { status: 400 });
@@ -43,6 +43,7 @@ async function POST(req) {
       maxUses: maxUses ? Number(maxUses) : null,
       expiresAt: expiresAt || null,
       note: note || null,
+      requiresReturningGuest: !!requiresReturningGuest,
     },
   });
   return NextResponse.json(coupon);

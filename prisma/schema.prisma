@@ -89,16 +89,17 @@ model Inquiry {
 }
 
 model Coupon {
-  id            String   @id @default(cuid())
-  code          String   @unique // stored uppercase, e.g. "FAMILY20"
-  discountType  String // "percent" | "fixed"
-  discountValue Float // 20 means 20% for percent, or $20 for fixed
-  active        Boolean  @default(true)
-  maxUses       Int?
-  usedCount     Int      @default(0)
-  expiresAt     String? // "YYYY-MM-DD"
-  note          String?
-  createdAt     DateTime @default(now())
+  id                    String   @id @default(cuid())
+  code                  String   @unique // stored uppercase, e.g. "FAMILY20"
+  discountType          String // "percent" | "fixed"
+  discountValue         Float // 20 means 20% for percent, or $20 for fixed
+  active                Boolean  @default(true)
+  maxUses               Int?
+  usedCount             Int      @default(0)
+  expiresAt             String? // "YYYY-MM-DD"
+  note                  String?
+  requiresReturningGuest Boolean @default(false) // if true, checkCoupon() only accepts this code for an email with a prior paid Inquiry
+  createdAt             DateTime @default(now())
 }
 
 model Subscription {
