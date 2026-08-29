@@ -44,7 +44,7 @@ async function POST(req) {
         body: JSON.stringify({
           text,
           model_id: "eleven_multilingual_v2",
-          voice_settings: { stability: 0.45, similarity_boost: 0.8 },
+          voice_settings: { stability: 0.45, similarity_boost: 0.8, speed: 1.1 },
         }),
       }
     );
