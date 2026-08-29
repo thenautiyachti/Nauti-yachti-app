@@ -44,13 +44,14 @@ function WakeLine({ flip }) {
   );
 }
 
-export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates, forecast, initialTestimonials }) {
+export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates, forecast, initialTestimonials, initialAddOns }) {
   const [packages] = useState(initialPackages);
   const [vessels] = useState(initialVessels);
   const [gallery] = useState(initialGallery);
   const [blocked] = useState(initialBlocked);
   const [partialDates] = useState(initialPartialDates || {});
   const [testimonials] = useState(initialTestimonials || []);
+  const [addOns] = useState(initialAddOns || []);
   const [selectedVessel, setSelectedVessel] = useState(initialVessels[0]?.id);
   const [activePackage, setActivePackage] = useState(initialPackages[0]?.id || null);
   const [prefill, setPrefill] = useState(null);
@@ -423,7 +424,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               </div>
             </div>
           </div>
-          <InquiryForm packages={packages} vessels={vessels} defaultPackageId={activePackage} prefill={prefill} onSubmitPay={submitCheckout} onSubmitInquire={submitPlainInquiry} />
+          <InquiryForm packages={packages} vessels={vessels} addOns={addOns} defaultPackageId={activePackage} prefill={prefill} onSubmitPay={submitCheckout} onSubmitInquire={submitPlainInquiry} />
         </div>
       </div>
 
@@ -605,11 +606,11 @@ function AvailabilityCalendar({ blockedDates, partialDates }) {
   );
 }
 
-function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay, onSubmitInquire }) {
+function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onSubmitPay, onSubmitInquire }) {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", packageId: defaultPackageId || packages[0]?.id,
     vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "",
-    agreeTerms: false,
+    addOnIds: [], agreeTerms: false,
   });
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -674,7 +675,7 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
     // to show a stuck button on.
     if (ok) {
       setSent(true);
-      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "", agreeTerms: false });
+      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "", addOnIds: [], agreeTerms: false });
       setTimeout(() => setSent(false), 3500);
     } else {
       setSubmitting(false);
@@ -759,6 +760,22 @@ function InquiryForm({ packages, vessels, defaultPackageId, prefill, onSubmitPay
             style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
           />
         </label>
+
+        {addOns && addOns.length > 0 && (
+          <label style={{ display: "block" }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Add-ons <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional, ctrl/cmd-click to select more than one)</span></div>
+            <select
+              multiple
+              value={form.addOnIds}
+              onChange={(e) => setForm({ ...form, addOnIds: Array.from(e.target.selectedOptions, (o) => o.value) })}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, minHeight: 84 }}
+            >
+              {addOns.map((a) => (
+                <option key={a.id} value={a.id}>{a.name} — {currency(a.price)}{a.unit ? ` ${a.unit}` : ""}</option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label style={{ display: "block", ...fullWidth }}>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Anything else?</div>

@@ -67,6 +67,7 @@ async function POST(req) {
       couponCode: appliedCoupon ? appliedCoupon.code : null,
       discountAmount,
       bookingId,
+      addOnIds: Array.isArray(body.addOnIds) && body.addOnIds.length ? JSON.stringify(body.addOnIds) : null,
     },
   });
 

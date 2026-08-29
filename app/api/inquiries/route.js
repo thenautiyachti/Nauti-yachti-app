@@ -41,6 +41,7 @@ async function POST(req) {
       message: body.message || null,
       priceQuoted: body.priceQuoted != null ? Number(body.priceQuoted) : null,
       bookingId,
+      addOnIds: Array.isArray(body.addOnIds) && body.addOnIds.length ? JSON.stringify(body.addOnIds) : null,
     },
   });
 

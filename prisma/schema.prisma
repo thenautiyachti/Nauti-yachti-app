@@ -84,6 +84,8 @@ model Inquiry {
   // Historical rows are intentionally left null (never backfilled) — see
   // lib/bookingId.js for the generator.
   bookingId String? @unique
+
+  addOnIds String? // JSON string: string[] of AddOn ids selected at booking
 }
 
 model Coupon {

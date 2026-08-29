@@ -233,6 +233,7 @@ export default function AdminView({
             vessels={vessels}
             inquiries={inquiries}
             externalBookings={externalBookings}
+            addOns={addons}
             onAddExternalBooking={onAddExternalBooking}
             onSetExternalBookingStatus={onSetExternalBookingStatus}
             onUpdateExternalBooking={onUpdateExternalBooking}
@@ -443,6 +444,7 @@ function toUnifiedRows(inquiries, externalBookings) {
     pricePaid: i.priceQuoted,
     source: "Site",
     status: i.status,
+    addOnIds: i.addOnIds ? JSON.parse(i.addOnIds) : [],
     raw: i,
   }));
   const fromExternal = externalBookings.map((b) => ({
@@ -461,7 +463,7 @@ function toUnifiedRows(inquiries, externalBookings) {
   return [...fromInquiries, ...fromExternal].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
 
-function BookingsTab({ vessels, inquiries, externalBookings, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
+function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
   const emptyForm = {
     vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), hours: 4,
     guestName: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "pending", note: "", pricePaid: "",
@@ -565,7 +567,14 @@ function BookingsTab({ vessels, inquiries, externalBookings, onAddExternalBookin
                       {r.bookingId || "—"}
                     </td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.date || "—"}</td>
-                    <td style={{ padding: "6px 8px", fontWeight: 600 }}>{r.name || (r.kind === "external" ? "Guest" : "—")}</td>
+                    <td style={{ padding: "6px 8px", fontWeight: 600 }}>
+                      {r.name || (r.kind === "external" ? "Guest" : "—")}
+                      {r.addOnIds && r.addOnIds.length > 0 && (
+                        <div style={{ fontWeight: 400, fontSize: 11, color: "var(--purple)", marginTop: 2 }}>
+                          + {r.addOnIds.map((id) => addOns.find((a) => a.id === id)?.name || id).join(", ")}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: "6px 8px" }}>{r.vesselName || "—"}</td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.hours ? `${r.hours} hrs` : "—"}</td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
