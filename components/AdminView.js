@@ -7,7 +7,7 @@ import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 const EXPENSE_CATEGORIES = [
   "01. Gas", "02. Food & Party", "03. Cleaning Supplies", "04. Apparel & Advertisement",
   "05. Boat & Truck Repairs/parts", "06. Utilities", "07. Cell Phone/Internet",
-  "08. Storage", "09. Training", "10. ADP & Employee payout",
+  "08. Storage", "09. Training", "10. ADP & Employee payout", "11. Software & Subscriptions",
 ];
 const INCOME_CATEGORIES = [
   "Reservation", "Add-On (+1 Hour)", "Add-On (+2 Hour)", "Add-On (+3 Hour)", "Add-On (+4 Hour)",
