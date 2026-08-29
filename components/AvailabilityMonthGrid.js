@@ -35,7 +35,7 @@ export default function AvailabilityMonthGrid({ year, month, getState, onDayClic
   const cellPad = size === "compact" ? "6px 2px" : "18px 6px";
 
   return (
-    <div style={size === "compact" ? undefined : { flex: "1 1 380px", minWidth: 320, maxWidth: 460 }}>
+    <div style={size === "compact" ? { flex: "1 1 380px", minWidth: 320 } : { flex: "1 1 380px", minWidth: 320, maxWidth: 460 }}>
       <div className="display" style={{ fontSize: size === "compact" ? 18 : 24, color: "var(--text)", fontWeight: 700, marginBottom: 12 }}>
         {MONTH_NAMES[month]} {year}
       </div>
