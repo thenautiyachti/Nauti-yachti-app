@@ -199,7 +199,7 @@ Real gallery scenes to reference: *The fleet, lit up for Boatz & Glowz; Glowing 
 ### Instagram
 > Mark it down: Boatz & Glowz is back September 19. 🌟🛥️ The entire Nauti Yachti fleet, out together, lighting up Party Cove after dark — this only happens twice a year.
 >
-> Glow gear, sober captains, and a ride to and from Scott's Ridge included. 30 seats total across all 3 boats — these go fast.
+> Glow gear, sober captains, and a ride to and from Scott's Ridge included. 20 seats left on the Nauti Yachti and the Islander — these go fast.
 >
 > Link in bio to check dates. ⚓
 >
@@ -212,14 +212,14 @@ Real gallery scenes to reference: *The fleet, lit up for Boatz & Glowz; Glowing 
 >
 > [On-screen text: "Boatz & Glowz — Sept 19"]
 >
-> 30 seats across 3 boats, sober captains, glow gear included. Book below before it's gone ⬇️
+> 20 seats left on the Nauti Yachti and the Islander, sober captains, glow gear included. Book below before it's gone ⬇️
 >
 > #BoatzAndGlowz #LakeConroe #GlowParty #PartyCove #TheNautiYachti
 
 ### Facebook
 > Boatz & Glowz is officially back on **September 19**! This is our biggest event of the year — we take the entire fleet out together, lit up, for a glow party at Party Cove that you have to see to believe.
 >
-> Includes glow gear, ice & ice chest, festivities, and sober captains, plus a ride to and from Scott's Ridge. Only 30 seats total split across our 3 boats, so these spots go quickly.
+> Includes glow gear, ice & ice chest, festivities, and sober captains, plus a ride to and from Scott's Ridge. Only 20 seats left, on the Nauti Yachti and the Islander, so these spots go quickly.
 >
 > Want in? Message us or book at the link below before seats fill up.
 >
@@ -289,7 +289,7 @@ Purpose: on a day like August 15 (an actual example of a day the account posted 
 ### Gap-fill #5 — "The fleet, lit up for Boatz & Glowz" (Boatz & Glowz gallery)
 **Instagram:** Still not over how good the fleet looked lit up for Boatz & Glowz. ✨🛥️ Mark your calendar — the next one is September 19. Link in bio to check dates. ⚓ | tag: Lake Conroe, TX | #LakeConroe #ConroeTX #TheNautiYachti #BoatzAndGlowz #Throwback
 **TikTok:** The fleet lit up like this?? Unreal ✨🛥️ [On-screen text: "Boatz & Glowz throwback — next one Sept 19"] Book below before seats go ⬇️ #BoatzAndGlowz #LakeConroe #Throwback #TheNautiYachti
-**Facebook:** Throwback to the entire fleet lit up for Boatz & Glowz — this photo still doesn't do it justice in person. Mark your calendar: the next one is September 19, with only 30 seats across all 3 boats. Message us or book at the link below to grab a spot. #LakeConroe #ConroeTX #TheNautiYachti #BoatzAndGlowz
+**Facebook:** Throwback to the entire fleet lit up for Boatz & Glowz — this photo still doesn't do it justice in person. Mark your calendar: the next one is September 19, with only 20 seats left on the Nauti Yachti and the Islander. Message us or book at the link below to grab a spot. #LakeConroe #ConroeTX #TheNautiYachti #BoatzAndGlowz
 
 ---
 
@@ -316,11 +316,13 @@ Purpose: on a day like August 15 (an actual example of a day the account posted 
 
 ## Read this before anything else
 
-**Three things must be settled before a single post goes out.** They appear in the copy below as `[CONFIRM]` markers and `[$PRICE]` placeholders.
+**All three blockers are now settled (owner-confirmed 2026-09-01).** The copy below is ready to send.
 
-1. **The price looks wrong.** The database and the live site both say Boatz & Glowz is **$50 per guest**. Thirty seats at $50 is **$1,500 total** for a four-hour night that uses all three boats, three captains, fuel, glow gear and a shuttle. A single four-hour weekend Party Cove charter on the Nauti Yachti alone is $1,000. If $50 is a typo for $150 or $200, every post below quotes the wrong number to the public and you cannot walk it back mid-campaign. **Settle this first.** Every price is written as `[$PRICE]` for that reason.
-2. **Are seats sold individually or by the boat?** The package blurb says you "split the 30 available seats between 3x vessels", which reads as individual seats — strangers sharing a boat. The drafts assume both are possible ("book a seat or take a whole boat"). If it is groups only, several captions change.
-3. **BYOB and age.** The package includes ice and water only, so the copy tells people to bring their own drinks. If that is wrong, or if the night is 21+, say so now — it belongs in the very first post, not in a DM on the 18th.
+1. **Price: $50 per guest is correct — not a typo.** Verified two ways: the May 2026 glow party billed $445 through the website for a 2-hour event (≈9 seats at $50), and the Sept 19 booking already taken is 8 seats for exactly $400. The owner's own reasoning: the boats sit in one spot at Party Cove and burn almost no fuel, so the margin is better than the headline suggests. Every `$50` in the copy below is real.
+2. **The Nauti Explorer is SOLD OUT.** Hunter's group of 8 has taken it (booking `NY-20260919-01`, $400, word of mouth — no advertising at all). **20 seats remain, on the Nauti Yachti (12) and the Nauti Islander (8).** The scarcity in the copy is therefore genuine, which matters: never manufacture it, and update the number as seats go.
+3. **BYOB, 21+, back around midnight.** Guests bring their own drinks; the boat supplies ice, water and the cooler. The night is 21 and over. Say "around midnight" rather than a hard time — a cove night does not end on a stopwatch.
+
+**One thing worth adding if it is finished in time.** The owner has been upgrading the Explorer — sound system, a 3kW inverter, TV connections and an on-board electric grill. For an event whose whole premise is *sitting still at Party Cove*, that is the strongest selling point available: it stops being a boat ride and becomes a floating venue. **Do not put it in the copy until the owner confirms the work is complete and on the vessels being used** — the Explorer is sold out, so what matters is what is installed on the Yachti and the Islander. Claiming an amenity that is not there is the same false-advertising problem as an AI-generated boat.
 
 **What the post history actually shows.** The Blotato-connected history contains exactly **one** post: a tubing reel pushed to Facebook, Instagram and TikTok on 1 Sep, same caption on all three. Nothing is scheduled. **No mention of September 19 appears anywhere in the connected accounts** — so if the date has been mentioned publicly, it was posted natively and is not visible through Blotato. Treat post #1 below as a genuine cold announcement, not a reminder.
 
@@ -351,7 +353,7 @@ Twelve touchpoints across 18 days — roughly one every other day, which is what
 
 | # | Date | Time (CT) | Platforms | What it does | Real photo / footage |
 |---|---|---|---|---|---|
-| 1 | **Tue Sep 2** | 6:30 PM | FB + IG + TT | The announcement — date, price, 30 seats, link | *The fleet, lit up for Boatz & Glowz* |
+| 1 | **Tue Sep 2** | 6:30 PM | FB + IG + TT | The announcement — date, price, 20 seats left, link | *The fleet, lit up for Boatz & Glowz* |
 | 2 | **Thu Sep 4** | 7:00 PM | FB + IG + TT | Kills the "who's driving / what do I bring" objection | *Glow sticks and good vibes* |
 | 3 | **Sat Sep 5 – Mon Sep 7** | same-day | Stories + 1 reel | Labor Day weekend — post what you are already doing, tag the glow date on the end | Phone footage from that weekend's charters |
 | 4 | **Tue Sep 8** | 7:00 PM | FB + IG + TT | The foam — most shareable visual you own | *Glow foam party at night* |
@@ -381,8 +383,8 @@ Twelve touchpoints across 18 days — roughly one every other day, which is what
 >
 > Here's the whole thing:
 > 🌟 Board 6:30 PM, lines off at 7 — four hours on the water
-> 🌟 [$PRICE] per guest
-> 🌟 30 seats total, split across all three boats
+> 🌟 $50 per guest
+> 🌟 20 seats left, on the Nauti Yachti and the Islander
 > 🌟 Glow gear, sober captains, ice chest and a round-trip ride from Scott's Ridge — all included
 > 🌟 We're your taxi both ways, so leave the truck parked
 >
@@ -395,7 +397,7 @@ Twelve touchpoints across 18 days — roughly one every other day, which is what
 >
 > The whole fleet, lit up, anchored in the middle of Party Cove after dark. We do this twice a year and this is the last one of 2026.
 >
-> Glow gear, sober captains and a ride there and back are all included — you show up, that's it. [$PRICE] a seat, 30 seats total across three boats.
+> Glow gear, sober captains and a ride there and back are all included — you show up, that's it. $50 a seat, 20 seats left on the Nauti Yachti and the Islander.
 >
 > Full details + book at the link in bio 🔗
 >
@@ -406,7 +408,7 @@ Twelve touchpoints across 18 days — roughly one every other day, which is what
 **TikTok** *(needs a clip — a slow pan across the glow photo with movement, or a 5-second phone clip of the glow gear coming out of the box)*
 > The entire fleet. Lit up. Sept 19 🌟
 >
-> [On-screen text: "Boatz & Glowz — Sept 19 — 30 seats"]
+> [On-screen text: "Boatz & Glowz — Sept 19 — 20 seats left"]
 >
 > Twice a year only. Glow gear + sober captains + ride there and back, all in. Link in bio ⬇️
 >
@@ -426,7 +428,7 @@ Twelve touchpoints across 18 days — roughly one every other day, which is what
 > What we bring: the boats, the glow gear, the ice chest, the ice, the captains, the fuel.
 > What you bring: whatever you want to drink, a towel, and something white or neon that lights up. [CONFIRM: BYOB, and 21+ or all ages?]
 >
-> September 19, 7 PM. [$PRICE] a seat, 30 seats total → thenautiyachti.com/glow
+> September 19, 7 PM. $50 a seat, 20 seats left → thenautiyachti.com/glow
 >
 > #LakeConroe #ConroeTX #TheNautiYachti #BoatzAndGlowz #GlowParty
 
@@ -437,7 +439,7 @@ Twelve touchpoints across 18 days — roughly one every other day, which is what
 >
 > We bring the boats, the glow, the ice and the captains. You bring a towel and something neon.
 >
-> Sept 19 · [$PRICE]/seat · 30 seats · link in bio
+> Sept 19 · $50/seat · 20 seats left · link in bio
 >
 > 📍 tag: Lake Conroe, TX
 >
@@ -462,7 +464,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 
 > [Your normal same-day caption about the charter you just ran.]
 >
-> And if you liked today — the whole fleet does this lit up on **September 19**. Boatz & Glowz, Party Cove after dark, 30 seats. Link in bio.
+> And if you liked today — the whole fleet does this lit up on **September 19**. Boatz & Glowz, Party Cove after dark, 20 seats left. Link in bio.
 
 **More important than the posts:** while you are out there this weekend, shoot **ten seconds of usable b-roll** for the rest of the campaign. Sunset off the bow, the cooler being loaded, the boats rafted up. You need video for TikTok on the 8th, 12th, 14th, 17th and 18th, and you do not want to be hunting for it on the day.
 
@@ -477,7 +479,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > This is Boatz & Glowz. Party Cove, after dark, the whole fleet lit up and a foam party in the middle of it.
 >
-> Saturday September 19 — [$PRICE] a seat, 30 seats across three boats, glow gear and sober captains included.
+> Saturday September 19 — $50 a seat, 20 seats left on the Nauti Yachti and the Islander, glow gear and sober captains included.
 >
 > thenautiyachti.com/glow
 >
@@ -497,7 +499,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > [On-screen text: "This is what Sept 19 looks like"]
 >
-> 30 seats. Link in bio ⬇️
+> 20 seats left. Link in bio ⬇️
 >
 > #FoamParty #BoatzAndGlowz #LakeConroe #PartyCove #GlowParty #TheNautiYachti
 
@@ -505,7 +507,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 
 ### Post 5 — Thu Sep 10, 7:00 PM — SOCIAL PROOF
 
-**Photo: "Lighting up Party Cove after dark."** Uses Christina Coronado's real 5-star review, already approved and live on the site. Someone about to hand [$PRICE] to a small local operator they found on Instagram needs to see that other people have done it and had a good time.
+**Photo: "Lighting up Party Cove after dark."** Uses Christina Coronado's real 5-star review, already approved and live on the site. Someone about to hand $50 to a small local operator they found on Instagram needs to see that other people have done it and had a good time.
 
 **Facebook**
 > We got this one from Christina after a birthday charter earlier this season:
@@ -514,7 +516,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > That's the whole job, honestly. ⚓
 >
-> Nine days until Boatz & Glowz — Saturday September 19, Party Cove after dark, 30 seats. thenautiyachti.com/glow
+> Nine days until Boatz & Glowz — Saturday September 19, Party Cove after dark, 20 seats left. thenautiyachti.com/glow
 >
 > #LakeConroe #ConroeTX #TheNautiYachti #BoatzAndGlowz
 
@@ -542,7 +544,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > Next Saturday night the whole fleet goes out lit up, and Party Cove turns into something you have to see in person.
 >
-> September 19 · board 6:30, lines off at 7 · four hours · [$PRICE] a seat · 30 seats total
+> September 19 · board 6:30, lines off at 7 · four hours · $50 a seat · 20 seats left
 >
 > Glow gear, sober captains, ice chest, and a ride from Scott's Ridge and back — all included.
 >
@@ -555,7 +557,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > Boatz & Glowz — next Saturday, Sept 19. Board 6:30, lines off at 7. Four hours in Party Cove with the whole fleet lit up.
 >
-> 30 seats, and that's the whole night. Link in bio.
+> 20 seats left, and that's the whole night. Link in bio.
 >
 > 📍 tag: Lake Conroe, TX
 >
@@ -566,7 +568,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > [On-screen text: "Boatz & Glowz — next Saturday"]
 >
-> Whole fleet, lit up, Party Cove after dark. 30 seats. Link in bio ⬇️
+> Whole fleet, lit up, Party Cove after dark. 20 seats left. Link in bio ⬇️
 >
 > #BoatzAndGlowz #LakeConroe #GlowParty #PartyCove #TheNautiYachti
 
@@ -579,9 +581,9 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 > ⚠️ **Only post this with a real number.** Invented scarcity is the fastest way to lose a local audience — Lake Conroe is small and people talk. If a good number of seats are gone, say the true number. If barely any have sold, **skip this post and run the group-booking angle (post 9) here instead.**
 
 **Facebook**
-> [X] of the 30 seats are gone for Boatz & Glowz. Five days left.
+> [X] of the 20 seats left are gone for Boatz & Glowz. Five days left.
 >
-> Saturday September 19 · 7 PM · Party Cove · [$PRICE] a seat
+> Saturday September 19 · 7 PM · Party Cove · $50 a seat
 >
 > Glow gear, sober captains, round-trip ride from Scott's Ridge, ice chest — all in. You bring a towel and something neon.
 >
@@ -590,7 +592,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 > #LakeConroe #ConroeTX #TheNautiYachti #BoatzAndGlowz #GlowParty
 
 **Instagram** *(post natively)*
-> [X] of 30 seats gone. 5 days. 🌟
+> [X] of 20 seats left gone. 5 days. 🌟
 >
 > Boatz & Glowz — Sept 19, Party Cove after dark. Link in bio.
 >
@@ -599,7 +601,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 > #LakeConroe #ConroeTX #TheNautiYachti #BoatzAndGlowz #GlowParty #PartyCove
 
 **TikTok**
-> [X]/30 seats gone 👀
+> [X]/20 seats left gone 👀
 >
 > [On-screen text: "Boatz & Glowz — Sept 19 — [X]/30 gone"]
 >
@@ -624,9 +626,9 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 > Bring: whatever you want to drink, a towel, a change of clothes (there's foam), and something white or neon.
 > We bring: everything else.
 >
-> Saturday. [$PRICE] a seat. thenautiyachti.com/glow
+> Saturday. $50 a seat. thenautiyachti.com/glow
 >
-> [CONFIRM: is the return actually 11 PM? The package is 4 hours from a 7 PM start.]
+> Return is around midnight - owner-confirmed 2026-09-01. Say "around", not a hard time.
 >
 > #LakeConroe #ConroeTX #TheNautiYachti #BoatzAndGlowz #GlowParty
 
@@ -655,7 +657,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 **Facebook**
 > Got a group? Take a whole boat. 🛥️🌟
 >
-> Boatz & Glowz splits 30 seats across all three vessels — so a group of eight can have the Islander to themselves, and a bigger crew can take the Explorer (14) or the Nauti Yachti (12).
+> Boatz & Glowz splits 20 seats left across all three vessels — so a group of eight can have the Islander to themselves, and a bigger crew can take the Explorer (14) or the Nauti Yachti (12).
 >
 > Birthday, bachelorette, work crew, or eleven people who just want their own boat in the middle of Party Cove — same price per seat either way.
 >
@@ -666,7 +668,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 **Instagram** *(post natively)*
 > Bring the whole group and take a whole boat. 🛥️🌟
 >
-> 30 seats split across three vessels — 8, 12 or 14 depending which one you take. Same price per seat.
+> 20 seats left split across three vessels — 8, 12 or 14 depending which one you take. Same price per seat.
 >
 > Boatz & Glowz, Saturday. Link in bio.
 >
@@ -804,14 +806,14 @@ Thirty people will be standing on your boats on the 19th, phone in hand, having 
 
 ## Owner decisions still outstanding
 
-| # | Decision | Why it blocks |
+**Settled 2026-09-01:** price ($50/guest, confirmed), BYOB, 21+, return around midnight, and seats sold (8 of 30 — the Explorer is gone, 20 remain). The Facebook event exists in the [Lake Conroe Party Cove group](https://www.facebook.com/groups/LakeConroePartyCove).
+
+| # | Decision | Why it matters |
 |---|---|---|
-| 1 | **Is $50/guest correct?** | Every post quotes a price. 30 × $50 = $1,500 for three boats, three captains and four hours. Verify before post #1. |
-| 2 | Individual seats, or groups only? | Changes posts 1, 7 and 9. |
-| 3 | BYOB? 21+ or all ages? | Belongs in post #1, not in DMs on the 18th. |
-| 4 | Return time — is four hours from 7 PM = 11 PM? | Post #8 states it as fact. |
-| 5 | How many seats are actually sold? | Post #7 needs a true number, or gets replaced. As of 1 Sep there are **no** Sept 19 bookings recorded in either the site's inquiries or the external-bookings log. |
-| 6 | **Create a Facebook Event for Sept 19.** | Free, and the single highest-leverage thing available for a dated local event — Facebook reminds attendees itself, and their friends see they are going. Has to be created by you. |
+| 1 | Individual seats, or groups only? | Changes posts 1, 7 and 9. Hunter's booking took a whole boat, so whole-boat clearly works; the open question is whether a lone pair can buy two seats on the Yachti. |
+| 2 | **Also create the event on the business Page**, not only in the group. | The group event reaches people already in that group — good, and free. But a group event does not attach to the business Page or surface in Facebook's local event discovery, which is where people who have never heard of you would find it. Both cost nothing. |
+| 3 | Are the boat upgrades finished — grill, sound, TV, inverter — and on which vessels? | The strongest available angle for a sit-still event, but it cannot be claimed until it is true. See the note at the top. |
+| 4 | Confirm seat count before post #7 (Sep 14). | It quotes a live number. 20 remaining as of 1 Sep; if more sell, the post must say so rather than repeat a stale figure. |
 | 7 | Boost one post? | ~$50–100 on the Sep 8 foam post or the Sep 12 one-week post, radius-targeted at Conroe / Willis / Montgomery / The Woodlands / Spring, ages 21–40. For a dated event this is the highest-ROI spend available. Your call. |
 | 8 | Update all three bios to `thenautiyachti.com/glow` today. | TikTok's bio is currently empty. |
 | 9 | Print the crew-list QR codes. | Needs doing before the 19th, not on it. |
