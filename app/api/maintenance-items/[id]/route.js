@@ -7,10 +7,10 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 // fields inline (interval hours/months) or marks an item done (lastDoneDate +
 // lastDoneHours) from the same table, one field at a time.
 async function PATCH(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   const body = await req.json();
   const existing = await prisma.maintenanceItem.findUnique({ where: { id } });
   if (!existing) {

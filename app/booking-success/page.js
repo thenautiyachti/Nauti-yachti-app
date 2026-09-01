@@ -9,8 +9,10 @@ export const metadata = {
 // marking the booking paid — this page just shows a friendly confirmation
 // once Stripe redirects the customer back. No need to re-verify payment
 // client-side with the session id.
-export default function BookingSuccessPage({ searchParams }) {
-  const sessionId = searchParams && searchParams.session_id;
+export default async function BookingSuccessPage({ searchParams }) {
+  // searchParams is a promise as of Next 15.
+  const params = await searchParams;
+  const sessionId = params && params.session_id;
 
   return (
     <div>

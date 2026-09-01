@@ -38,7 +38,7 @@ async function POST(req) {
 // returns every testimonial instead, so the admin Testimonials tab can
 // moderate the full queue through this same endpoint.
 async function GET() {
-  if (isAdminAuthenticated()) {
+  if (await isAdminAuthenticated()) {
     const all = await prisma.testimonial.findMany({ orderBy: { submittedAt: "desc" } });
     return NextResponse.json(all);
   }

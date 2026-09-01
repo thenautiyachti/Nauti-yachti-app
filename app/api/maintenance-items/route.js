@@ -3,7 +3,7 @@ const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const items = await prisma.maintenanceItem.findMany({ orderBy: { sortOrder: "asc" } });

@@ -3,7 +3,7 @@ const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const drafts = await prisma.mediaDraft.findMany({ orderBy: { createdAt: "desc" } });
@@ -13,7 +13,7 @@ async function GET() {
 // Body: { theme, mediaUrl, mediaType?, caption, platform? }
 // This is what a future generation step will call to insert a new draft.
 async function POST(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();

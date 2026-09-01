@@ -6,10 +6,10 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 // stamped whenever status moves away from "pending" — same convention as
 // MediaDraft's PATCH route.
 async function PATCH(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   const body = await req.json();
   const existing = await prisma.testimonial.findUnique({ where: { id } });
   if (!existing) {
@@ -28,10 +28,10 @@ async function PATCH(req, { params }) {
 }
 
 async function DELETE(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   await prisma.testimonial.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

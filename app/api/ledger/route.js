@@ -3,7 +3,7 @@ const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const entries = await prisma.ledgerEntry.findMany({ orderBy: { createdAt: "desc" } });
@@ -11,7 +11,7 @@ async function GET() {
 }
 
 async function POST(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const { type, amount, grossAmount, note, date, category, subcategory, origin, bookingId } = await req.json();

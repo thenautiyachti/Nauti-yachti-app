@@ -6,10 +6,10 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 // Setting status updates it; reviewedAt is stamped whenever status moves
 // away from "pending". reviewNote is optional owner commentary either way.
 async function PATCH(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   const body = await req.json();
   const existing = await prisma.mediaDraft.findUnique({ where: { id } });
   if (!existing) {
@@ -32,10 +32,10 @@ async function PATCH(req, { params }) {
 }
 
 async function DELETE(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   await prisma.mediaDraft.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

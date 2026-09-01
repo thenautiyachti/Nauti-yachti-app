@@ -10,7 +10,7 @@ const REFUND_TYPES = ["full", "partial", "none"];
 // if status moves away from "cancelled" so a stale refund record can't
 // linger on a booking that's no longer cancelled.
 async function PATCH(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();

@@ -6,7 +6,7 @@ const { generateBookingId } = require("../../../lib/bookingId");
 
 // Admin-only: view all inquiries.
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const inquiries = await prisma.inquiry.findMany({ orderBy: { submittedAt: "desc" } });

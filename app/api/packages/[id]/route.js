@@ -14,11 +14,11 @@ const DAY_TYPE_LABEL = { weekday: "weekday", weekend: "weekend" };
 // audit trail only — never surfaced on the public site) so a pricing
 // discrepancy can be traced back to exactly what changed and when.
 async function PATCH(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { id } = params;
+  const { id } = await params;
   const body = await req.json();
   const existing = await prisma.package.findUnique({ where: { id } });
   if (!existing) {

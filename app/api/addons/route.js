@@ -7,7 +7,7 @@ const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 // filtered (active, non-archived) list via a direct prisma call in
 // app/page.js, not through this route.
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const addons = await prisma.addOn.findMany({ orderBy: { sortOrder: "asc" } });
@@ -16,7 +16,7 @@ async function GET() {
 
 // Body: { name, price, unit?, blurb? }
 async function POST(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();

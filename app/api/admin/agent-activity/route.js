@@ -8,16 +8,16 @@ const JARVIS_SERVICE_KEY = process.env.JARVIS_SERVICE_KEY;
 // machine-only service key sent as `x-jarvis-key` — same dual-auth pattern
 // as /api/admin/speak, so Claude Code (running headlessly, no browser
 // session) can log its own activity here.
-function authorized(req) {
+async function authorized(req) {
   const serviceKeyHeader = req.headers.get("x-jarvis-key");
-  return isAdminAuthenticated() || (JARVIS_SERVICE_KEY && serviceKeyHeader === JARVIS_SERVICE_KEY);
+  return (await isAdminAuthenticated()) || (JARVIS_SERVICE_KEY && serviceKeyHeader === JARVIS_SERVICE_KEY);
 }
 
 // GET -> most recent AgentActivity rows (limit ~25), newest first. Polled by
 // the Jarvis tab's "Agent Activity" panel. Requires the human admin session
 // (this is a console-view read, not a machine write).
 async function GET(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
@@ -37,7 +37,7 @@ async function GET(req) {
 //
 // Auth: admin session cookie OR x-jarvis-key header (see `authorized` above).
 async function POST(req) {
-  if (!authorized(req)) {
+  if (!(await authorized(req))) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 

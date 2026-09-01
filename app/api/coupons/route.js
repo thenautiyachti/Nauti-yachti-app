@@ -3,7 +3,7 @@ const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
@@ -12,7 +12,7 @@ async function GET() {
 
 // Body: { code, discountType, discountValue, maxUses?, expiresAt?, note?, requiresReturningGuest? }
 async function POST(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();

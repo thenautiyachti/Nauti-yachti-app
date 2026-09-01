@@ -2,7 +2,7 @@ const { NextResponse } = require("next/server");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
 async function GET() {
-  return NextResponse.json({ authenticated: isAdminAuthenticated() });
+  return NextResponse.json({ authenticated: await isAdminAuthenticated() });
 }
 
 module.exports = { GET };

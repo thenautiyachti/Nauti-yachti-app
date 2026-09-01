@@ -17,7 +17,7 @@ const JARVIS_SERVICE_KEY = process.env.JARVIS_SERVICE_KEY;
 // without ever touching the human admin passcode.
 async function POST(req) {
   const serviceKeyHeader = req.headers.get("x-jarvis-key");
-  const authorized = isAdminAuthenticated() || (JARVIS_SERVICE_KEY && serviceKeyHeader === JARVIS_SERVICE_KEY);
+  const authorized = (await isAdminAuthenticated()) || (JARVIS_SERVICE_KEY && serviceKeyHeader === JARVIS_SERVICE_KEY);
   if (!authorized) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
@@ -70,7 +70,7 @@ async function POST(req) {
 // GET ?since=<ISO timestamp> -> any SpeechEvent rows created after `since`,
 // oldest-first. Polled every ~2s by the Jarvis tab while it's open.
 async function GET(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 

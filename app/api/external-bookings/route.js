@@ -4,7 +4,7 @@ const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 const { generateBookingId } = require("../../../lib/bookingId");
 
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const bookings = await prisma.externalBooking.findMany({ orderBy: { date: "asc" } });
@@ -15,7 +15,7 @@ const EXTERNAL_BOOKING_STATUSES = ["booked", "completed", "cancelled"];
 
 // Body: { vesselId, vesselName, date, startTime, hours, guestName, email, partySize, platform, status, note }
 async function POST(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();

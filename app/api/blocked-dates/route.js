@@ -10,7 +10,7 @@ async function GET() {
 
 // Toggles a single date for a vessel — admin only.
 async function POST(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const { vesselId, date } = await req.json();

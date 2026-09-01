@@ -8,10 +8,10 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 // own active flag); un-archiving does NOT auto-restore active — same
 // restore-hidden-by-default pattern as AddOn archiving.
 async function PATCH(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   const body = await req.json();
   const existing = await prisma.coupon.findUnique({ where: { id } });
   if (!existing) {
@@ -40,10 +40,10 @@ async function PATCH(req, { params }) {
 }
 
 async function DELETE(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   await prisma.coupon.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

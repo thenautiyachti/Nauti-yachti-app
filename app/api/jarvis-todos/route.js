@@ -6,7 +6,7 @@ const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 // most-recently-completed first — keeps the active list stable while
 // checked-off items settle to the bottom instead of disappearing outright.
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const todos = await prisma.jarvisTodo.findMany({
@@ -17,7 +17,7 @@ async function GET() {
 
 // Body: { text }
 async function POST(req) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();

@@ -9,10 +9,10 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 // owner re-enables visibility explicitly, so a restored add-on starts back
 // out hidden until they choose to show it again.
 async function PATCH(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   const body = await req.json();
   const existing = await prisma.addOn.findUnique({ where: { id } });
   if (!existing) {

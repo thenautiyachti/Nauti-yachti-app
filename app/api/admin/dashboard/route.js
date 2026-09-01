@@ -77,7 +77,7 @@ async function fetchLakeConroeWeatherRisk() {
 // /api/dashboard handler, querying via this repo's own Prisma client instead
 // of raw pg.
 async function GET() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 

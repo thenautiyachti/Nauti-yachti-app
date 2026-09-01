@@ -4,10 +4,10 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
 // Body: { done }
 async function PATCH(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   const body = await req.json();
   const done = !!body.done;
   const updated = await prisma.jarvisTodo.update({
@@ -18,10 +18,10 @@ async function PATCH(req, { params }) {
 }
 
 async function DELETE(req, { params }) {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const { id } = params;
+  const { id } = await params;
   await prisma.jarvisTodo.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
