@@ -5,6 +5,7 @@ import { currency, localDateKey, imageFocus } from "../lib/pricing";
 import {
   GOOGLE_REVIEW_URL, GOOGLE_LISTING_URL, TEMPLATES, ASK_WINDOWS, DOCK_SCRIPT,
   channelFor, daysSince, askWindow, reviewMessage, reviewSubject, DEFAULT_TEMPLATE_FOR_DAYS,
+  smsHref,
 } from "../lib/reviews";
 import { isCrewListRow, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -531,6 +532,7 @@ function toUnifiedRows(inquiries, externalBookings) {
     startTime: null,
     name: i.name,
     email: i.email,
+    phone: i.phone,
     vesselName: i.vesselName,
     hours: i.hours,
     partySize: i.partySize,
@@ -549,6 +551,7 @@ function toUnifiedRows(inquiries, externalBookings) {
     startTime: b.startTime,
     name: b.guestName,
     email: b.email,
+    phone: b.phone,
     vesselName: b.vesselName,
     hours: b.hours,
     partySize: b.partySize,
@@ -2654,7 +2657,7 @@ async function copyToClipboard(text) {
   }
 }
 
-function ReviewRequestsPanel({ inquiries, externalBookings }) {
+function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBooking }) {
   const [asked, setAsked] = useState({});
   const [templateChoice, setTemplateChoice] = useState("auto"); // "auto" | a TEMPLATES id
   const [filter, setFilter] = useState("todo"); // "todo" | "all"
@@ -2674,6 +2677,17 @@ function ReviewRequestsPanel({ inquiries, externalBookings }) {
       saveAskedMarks(next);
       return next;
     });
+  }
+
+  // Capture a phone number straight from this panel. The whole point is that
+  // the owner is looking at the list of people to chase — making them navigate
+  // to the Bookings tab to type a number they were just given at the dock is
+  // exactly the friction that leaves 53 charters with no contact details.
+  // Only external bookings can be written to here; a site Inquiry already
+  // requires a phone at booking time.
+  function savePhone(row, value) {
+    if (row.kind !== "external" || !onUpdateExternalBooking) return;
+    onUpdateExternalBooking(row.id, { phone: value });
   }
 
   // Only charters that actually happened can be asked about. Both a site
@@ -2832,6 +2846,30 @@ function ReviewRequestsPanel({ inquiries, externalBookings }) {
                                 style={{ background: "transparent", color: "var(--text)", border: "1px solid rgba(203,108,230,0.35)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
                                 {previewKey === r.key ? "Hide" : "Preview"}
                               </button>
+                              {/* Text first — guests give a phone number far more
+                                  readily than an email, and the review link opens
+                                  on the phone already in their hand. On a desktop
+                                  browser an sms: link may do nothing, which is why
+                                  "Copy draft" stays the primary action; this button
+                                  is for when the console is open on a phone. */}
+                              {smsHref(r.phone, draftFor(r)) && (
+                                <a
+                                  href={smsHref(r.phone, draftFor(r))}
+                                  onClick={() => markAsked(r.key, true)}
+                                  style={{ color: "#0A0612", background: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
+                                  Text it
+                                </a>
+                              )}
+                              {!r.phone && (
+                                <input
+                                  type="tel"
+                                  placeholder="Add phone…"
+                                  defaultValue=""
+                                  onBlur={(e) => { const v = e.target.value.trim(); if (v) savePhone(r, v); }}
+                                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                                  style={{ width: 118, padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)", fontSize: 11.5 }}
+                                />
+                              )}
                               {r.email && (
                                 <a
                                   href={`mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(reviewSubject())}&body=${encodeURIComponent(draftFor(r))}`}
@@ -2898,7 +2936,7 @@ function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateSt
 
   return (
     <div>
-      <ReviewRequestsPanel inquiries={inquiries || []} externalBookings={externalBookings || []} />
+      <ReviewRequestsPanel inquiries={inquiries || []} externalBookings={externalBookings || []} onUpdateExternalBooking={onUpdateExternalBooking} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <div style={{ fontWeight: 700, color: "var(--text)" }}>
           Testimonials ({testimonials.length})
