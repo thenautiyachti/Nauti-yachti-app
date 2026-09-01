@@ -3800,7 +3800,11 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
           <div style={{ color: "#ff4d5e", fontSize: 13, marginBottom: 16 }}>Unable to load dashboard data.</div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
+        {/* Four columns on a wide screen, so the eight panels sit 4x2 and each
+            has room to be read. See .jarvis-dashboard-grid in globals.css --
+            the breakpoints are explicit so a wider monitor makes the panels
+            bigger rather than squeezing in a fifth column. */}
+        <div className="jarvis-dashboard-grid">
           <JarvisPanel title="Upcoming Bookings">
             {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
             {dashboard && bookings.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No bookings on record yet.</div>}

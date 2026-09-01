@@ -64,3 +64,27 @@ input, select, textarea {
 input::placeholder, textarea::placeholder {
   color: var(--muted);
 }
+
+/* Jarvis dashboard grid.
+ *
+ * Explicit breakpoints rather than `repeat(auto-fit, minmax(...))`, because
+ * auto-fit derives the column count from whatever width happens to be
+ * available — it was landing on five columns on a wide monitor, which made the
+ * eight panels cramped and hard to read. There are exactly eight panels, so
+ * four columns gives a clean 4x2 and each panel twice the room.
+ *
+ * A wider screen should make the panels bigger, not add a fifth column. */
+.jarvis-dashboard-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 700px) {
+  .jarvis-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .jarvis-dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .jarvis-dashboard-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
