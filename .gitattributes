@@ -1,0 +1,13 @@
+# Normalise line endings. Without this, git on Windows rewrites LF to CRLF on
+# checkout and warns on every single command. The repo stores and checks out
+# LF everywhere, which also stops Google Drive seeing spurious file changes.
+* text=auto eol=lf
+
+# Binary assets — never touch these
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.pdf  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
