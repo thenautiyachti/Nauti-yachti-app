@@ -35,6 +35,7 @@ export default function NavBar() {
         <Link href="/about" style={LINK_STYLE}>About</Link>
         <Link href="/faq" style={LINK_STYLE}>FAQ</Link>
         <Link href="/events" style={LINK_STYLE}>Events</Link>
+        <Link href="/gift-certificates" style={LINK_STYLE}>Gift Cards</Link>
         {/* Highlighted while the glow party is the live campaign — it's the
             only dated, sellable event on the site and needs to be reachable
             from every page in one tap. */}

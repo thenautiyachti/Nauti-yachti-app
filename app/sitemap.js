@@ -17,6 +17,9 @@ export default async function sitemap() {
     { path: "/faq", changeFrequency: "monthly", priority: 0.8 },
     { path: "/about", changeFrequency: "monthly", priority: 0.7 },
     { path: "/events", changeFrequency: "weekly", priority: 0.7 },
+    // Seasonal intent spikes hard in December, so this wants to be indexed
+    // well before anyone searches for it.
+    { path: "/gift-certificates", changeFrequency: "monthly", priority: 0.8 },
     { path: "/glow", changeFrequency: "weekly", priority: 0.7 },
     { path: "/terms", changeFrequency: "yearly", priority: 0.3 },
     { path: "/privacy-policy", changeFrequency: "yearly", priority: 0.3 },

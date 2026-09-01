@@ -1,6 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
-const { redeem: redeemGiftCertificate } = require("../../../../lib/giftCertificates");
+const { redeem: redeemGiftCertificate, generateUniqueCode: generateGiftCode } = require("../../../../lib/giftCertificates");
+const { sendGiftCertificateEmail } = require("../../../../lib/email");
 
 // Stripe signature verification needs the exact raw request body — reading
 // req.text() (not req.json()) preserves that. Must run on the Node.js
@@ -36,7 +37,46 @@ async function POST(req) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    const inquiryId = session.metadata && session.metadata.inquiryId;
+    const meta = session.metadata || {};
+
+    // A gift certificate purchase, not a charter booking. The certificate is
+    // minted HERE rather than at checkout, so an abandoned session never
+    // leaves behind a live certificate nobody paid for.
+    if (meta.kind === "gift-certificate") {
+      try {
+        // Stripe retries deliveries, so guard against minting twice for one
+        // payment.
+        const existing = await prisma.giftCertificate.findFirst({
+          where: { stripeSessionId: session.id },
+        });
+        if (!existing) {
+          const amount = Number(meta.amount) || (session.amount_total || 0) / 100;
+          const code = await generateGiftCode();
+          const cert = await prisma.giftCertificate.create({
+            data: {
+              code,
+              initialAmount: amount,
+              balance: amount,
+              purchaserName: meta.purchaserName || null,
+              purchaserEmail: meta.purchaserEmail || session.customer_email || null,
+              purchaserPhone: meta.purchaserPhone || null,
+              recipientName: meta.recipientName || null,
+              message: meta.message || null,
+              stripeSessionId: session.id,
+              note: "Purchased online",
+            },
+          });
+          // Best-effort: the buyer already sees the code on the success page,
+          // so a failed send is not a failed purchase.
+          sendGiftCertificateEmail(cert).catch(() => {});
+        }
+      } catch (err) {
+        console.error("[webhooks/stripe] Failed to mint gift certificate:", err);
+      }
+      return NextResponse.json({ received: true });
+    }
+
+    const inquiryId = meta.inquiryId;
 
     try {
       const data = {
