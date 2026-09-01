@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 // One social pipeline: proposed -> approved -> scheduled -> posted.
 //
@@ -145,13 +145,34 @@ export default function SocialPipelinePanel() {
       </div>
 
       <div style={{ display: "grid", gap: 6, flex: 1, minHeight: 160, overflowY: "auto", alignContent: "start" }}>
-        {ordered.map((r) => {
+        {ordered.map((r, i) => {
           const open = expanded === r.id;
+          // A date heading above the first row of each day. Three posts going
+          // out on the same day is one job, not three, and without the heading
+          // the list reads as an undifferentiated run of rows.
+          const prev = i > 0 ? ordered[i - 1] : null;
+          const newDay = !prev || prev.scheduledDate !== r.scheduledDate;
+          const dayOverdue = r.scheduledDate && r.scheduledDate < today;
+          const dayIsToday = r.scheduledDate === today;
+          const heading = newDay ? (
+            <div key={`h-${r.scheduledDate || "none"}-${r.id}`}
+              style={{
+                fontSize: 10.5, fontWeight: 700, letterSpacing: "0.09em",
+                color: dayOverdue ? "#ff4d5e" : dayIsToday ? "#ffb454" : "#4ff3ff",
+                marginTop: i === 0 ? 0 : 8, paddingBottom: 3,
+                borderBottom: "1px solid rgba(0,217,255,0.18)",
+              }}>
+              {(r.scheduledDate ? prettyDate(r.scheduledDate) : "No date yet").toUpperCase()}
+              {dayOverdue ? " · OVERDUE" : dayIsToday ? " · TODAY" : ""}
+            </div>
+          ) : null;
           const stage = STAGE[r.status] || STAGE.proposed;
           const overdue = r.status === "scheduled" && r.scheduledDate && r.scheduledDate < today;
           const isToday = r.scheduledDate === today;
           return (
-            <div key={r.id} style={{ border: `1px solid ${overdue ? "rgba(255,77,94,0.5)" : "rgba(0,217,255,0.18)"}`, borderRadius: 4, overflow: "hidden" }}>
+            <Fragment key={r.id}>
+            {heading}
+            <div style={{ border: `1px solid ${overdue ? "rgba(255,77,94,0.5)" : "rgba(0,217,255,0.18)"}`, borderRadius: 4, overflow: "hidden" }}>
               <div role="button" tabIndex={0}
                 onClick={() => setExpanded(open ? null : r.id)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpanded(open ? null : r.id); }}
@@ -220,7 +241,20 @@ export default function SocialPipelinePanel() {
                         <button type="button" disabled={busy === r.id} onClick={() => schedule(r)} className="jarvis-font" style={btn("#4ff3ff")}>
                           RESCHEDULE
                         </button>
+                        {/* Killing a scheduled post was impossible before: reject
+                            only existed at the proposal stage, so changing your
+                            mind after scheduling left no way out but posting it
+                            or pushing the date back forever. */}
+                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} className="jarvis-font" style={btn("#ff4d5e")}>
+                          DON&apos;T POST
+                        </button>
                       </>
+                    )}
+
+                    {r.status === "approved" && (
+                      <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} className="jarvis-font" style={btn("#ff4d5e")}>
+                        DON&apos;T POST
+                      </button>
                     )}
 
                     {(r.status === "posted" || r.status === "rejected") && (
@@ -234,6 +268,7 @@ export default function SocialPipelinePanel() {
                 </div>
               )}
             </div>
+            </Fragment>
           );
         })}
       </div>

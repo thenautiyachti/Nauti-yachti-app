@@ -88,3 +88,11 @@ input::placeholder, textarea::placeholder {
 @media (min-width: 1280px) {
   .jarvis-dashboard-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+/* The Social Pipeline holds captions that have to be readable at a glance, so
+   it takes two columns once there are at least two to take. Below that it stays
+   full width like every other panel. In the 4-column layout this puts it in the
+   middle of the second row, with To-Do on its left and Agent Activity on its
+   right. */
+@media (min-width: 700px) {
+  .jarvis-panel-wide { grid-column: span 2; }
+}

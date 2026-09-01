@@ -3441,9 +3441,12 @@ function JarvisActivityDetail({ detail }) {
 // this same aesthetic). Cuts the top-right and bottom-left corners at 45°.
 const jarvisPanelClip = "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))";
 
-function JarvisPanel({ title, children }) {
+function JarvisPanel({ title, children, wide }) {
   return (
     <div
+      // A panel holding a list of things to act on needs more width than a
+      // panel holding one number, so it can span two grid columns.
+      className={wide ? "jarvis-panel-wide" : undefined}
       style={{
         background: "rgba(0,217,255,0.04)", border: "1px solid #0ea5e9", borderRadius: 4,
         // Extra bottom padding because clipPath cuts a 14px triangle out of the
@@ -3943,7 +3946,7 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
               They were two halves of the same job, and the seam between them
               was where work got stuck: approving a draft set a flag and
               stopped, with nothing to carry it to a date. */}
-          <JarvisPanel title="Social Pipeline">
+          <JarvisPanel title="Social Pipeline" wide>
             <SocialPipelinePanel />
           </JarvisPanel>
 
