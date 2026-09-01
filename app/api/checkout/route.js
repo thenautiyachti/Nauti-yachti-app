@@ -2,6 +2,7 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { sendInquiryEmail } = require("../../../lib/email");
 const { checkCoupon, discountedAmount } = require("../../../lib/coupons");
+const { checkGiftCertificate, applicableAmount, redeem: redeemGiftCertificate } = require("../../../lib/giftCertificates");
 const { generateBookingId } = require("../../../lib/bookingId");
 
 // Public: customer clicks "Book this" / submits the booking form and is sent
@@ -47,6 +48,24 @@ async function POST(req) {
     }
   }
   const discountAmount = appliedCoupon ? Math.max(0, priceQuoted - finalAmount) : null;
+
+  // A gift certificate is applied AFTER any coupon, against whatever is still
+  // owed. Like the coupon above, the code is the only thing trusted from the
+  // client — the balance is re-read server-side. It is not redeemed here,
+  // only measured: the draw-down happens once payment actually succeeds, in
+  // the Stripe webhook, so an abandoned checkout cannot silently spend
+  // someone's certificate.
+  let giftCertificate = null;
+  let giftApplied = 0;
+  if (body.giftCertificateCode) {
+    const giftResult = await checkGiftCertificate(body.giftCertificateCode);
+    if (giftResult.ok) {
+      giftCertificate = giftResult.certificate;
+      giftApplied = applicableAmount(giftCertificate, finalAmount);
+      finalAmount = Math.round((finalAmount - giftApplied) * 100) / 100;
+    }
+  }
+
   const bookingId = await generateBookingId(body.date || null);
 
   const created = await prisma.inquiry.create({
@@ -66,6 +85,8 @@ async function POST(req) {
       paymentStatus: "unpaid",
       couponCode: appliedCoupon ? appliedCoupon.code : null,
       discountAmount,
+      giftCertificateCode: giftCertificate ? giftCertificate.code : null,
+      giftAmount: giftApplied > 0 ? giftApplied : null,
       bookingId,
       addOnIds: Array.isArray(body.addOnIds) && body.addOnIds.length ? JSON.stringify(body.addOnIds) : null,
     },
@@ -81,6 +102,34 @@ async function POST(req) {
   // Owner still gets the usual inquiry email regardless of whether payment
   // completes — same as the plain-inquiry flow today.
   sendInquiryEmail(created).catch(() => {});
+
+  // A gift certificate can cover the charter outright, and Stripe cannot
+  // create a checkout session for $0 — it rejects a zero unit_amount. So when
+  // nothing is left to charge, settle it here: redeem the certificate, mark
+  // the booking paid, and send the customer straight to the confirmation page.
+  // There is no card payment to wait on, so this is the one path where the
+  // redemption happens outside the webhook.
+  if (finalAmount <= 0 && giftCertificate) {
+    try {
+      await redeemGiftCertificate(giftCertificate.id, giftApplied, {
+        bookingId: created.bookingId,
+        note: `Covered booking ${created.bookingId || created.id} in full`,
+      });
+      await prisma.inquiry.update({
+        where: { id: created.id },
+        data: { paymentStatus: "paid", status: "booked" },
+      });
+      const origin = new URL(req.url).origin;
+      return NextResponse.json({
+        url: `${origin}/booking-success?gift=1`,
+        couponApplied: !!appliedCoupon,
+        giftCovered: true,
+      });
+    } catch (err) {
+      console.error("[checkout] gift certificate redemption failed:", err);
+      return NextResponse.json({ error: "Could not apply that gift certificate" }, { status: 400 });
+    }
+  }
 
   try {
     const Stripe = require("stripe");

@@ -1,5 +1,6 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
+const { redeem: redeemGiftCertificate } = require("../../../../lib/giftCertificates");
 
 // Stripe signature verification needs the exact raw request body — reading
 // req.text() (not req.json()) preserves that. Must run on the Node.js
@@ -44,11 +45,40 @@ async function POST(req) {
         stripePaymentIntentId: session.payment_intent || null,
       };
 
+      let paidInquiry = null;
       if (inquiryId) {
-        await prisma.inquiry.update({ where: { id: inquiryId }, data });
+        paidInquiry = await prisma.inquiry.update({ where: { id: inquiryId }, data });
       } else if (session.id) {
         // Fallback lookup in case metadata is ever missing.
         await prisma.inquiry.updateMany({ where: { stripeSessionId: session.id }, data });
+        paidInquiry = await prisma.inquiry.findFirst({ where: { stripeSessionId: session.id } });
+      }
+
+      // If a gift certificate part-paid this booking, draw it down now —
+      // payment has actually succeeded. Doing it at checkout instead would let
+      // an abandoned session silently spend someone's certificate.
+      if (paidInquiry && paidInquiry.giftCertificateCode && paidInquiry.giftAmount > 0) {
+        try {
+          const cert = await prisma.giftCertificate.findUnique({
+            where: { code: paidInquiry.giftCertificateCode },
+          });
+          // Guard against a duplicate webhook delivery redeeming twice.
+          const already = cert
+            ? await prisma.giftCertificateRedemption.findFirst({
+                where: { certificateId: cert.id, bookingId: paidInquiry.bookingId },
+              })
+            : null;
+          if (cert && !already) {
+            await redeemGiftCertificate(cert.id, paidInquiry.giftAmount, {
+              bookingId: paidInquiry.bookingId,
+              note: `Applied to booking ${paidInquiry.bookingId || paidInquiry.id}`,
+            });
+          }
+        } catch (giftErr) {
+          // The charter is paid for either way — surface this rather than
+          // failing the webhook, since the balance can be corrected by hand.
+          console.error("[webhooks/stripe] Gift certificate redemption failed:", giftErr);
+        }
       }
     } catch (err) {
       // Don't let a lookup/update failure make Stripe retry forever on a bad

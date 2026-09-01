@@ -100,6 +100,11 @@ model Inquiry {
   couponCode     String? // uppercase Coupon.code, if one was applied at checkout
   discountAmount Float? // dollars knocked off priceQuoted by the coupon
 
+  // Gift certificate applied at checkout, after any coupon. giftAmount is the
+  // dollars drawn off the certificate for this booking.
+  giftCertificateCode String?
+  giftAmount          Float?
+
   // Format "NY-YYYYMMDD-NN" — assigned at creation time going forward only.
   // Historical rows are intentionally left null (never backfilled) — see
   // lib/bookingId.js for the generator.
@@ -272,4 +277,40 @@ model JarvisTodo {
   done      Boolean   @default(false)
   createdAt DateTime  @default(now())
   doneAt    DateTime?
+}
+
+// Prepaid money with a depleting balance — deliberately NOT a Coupon. A coupon
+// is a discount rule; a gift certificate is cash taken up front for a service
+// still owed, which makes an unredeemed balance a liability rather than income.
+model GiftCertificate {
+  id              String   @id @default(cuid())
+  code            String   @unique // e.g. "NY-GIFT-7QK4M2", stored uppercase
+  initialAmount   Float // face value at issue
+  balance         Float // what is left; a certificate can be part-redeemed
+  purchaserName   String?
+  purchaserEmail  String?
+  purchaserPhone  String?
+  recipientName   String?
+  message         String? // the note that goes on the printed certificate
+  status          String   @default("active") // "active" | "redeemed" | "void"
+  expiresAt       String? // "YYYY-MM-DD"; null means no expiry
+  stripeSessionId String? // set when bought online rather than issued by hand
+  note            String?
+  issuedAt        DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  redemptions GiftCertificateRedemption[]
+}
+
+// One row per draw-down, so a balance can always be explained rather than
+// merely asserted — the difference between "it says $50" and "here is where
+// the other $450 went".
+model GiftCertificateRedemption {
+  id            String   @id @default(cuid())
+  certificateId String
+  certificate   GiftCertificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  amount        Float
+  bookingId     String? // the booking it was applied to, when known
+  note          String?
+  redeemedAt    DateTime @default(now())
 }
