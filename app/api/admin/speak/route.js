@@ -27,8 +27,18 @@ async function POST(req) {
   if (!text) {
     return NextResponse.json({ error: "Missing 'text'" }, { status: 400 });
   }
+  // The text is the point; the voice is a bonus. If synthesis is unavailable
+  // for any reason — no API key, an exhausted ElevenLabs quota, an outage —
+  // store the message as text so it still reaches the Jarvis tab. Previously
+  // this returned early and the words were lost along with the audio, which
+  // meant a credit problem silently turned into a communication blackout.
+  async function saveTextOnly(reason) {
+    await prisma.speechEvent.create({ data: { text, audioB64: null } });
+    return NextResponse.json({ ok: true, spoken: false, reason });
+  }
+
   if (!ELEVENLABS_API_KEY) {
-    return NextResponse.json({ error: "ELEVENLABS_API_KEY not set in .env" }, { status: 503 });
+    return saveTextOnly("ELEVENLABS_API_KEY not set");
   }
 
   try {
@@ -52,7 +62,9 @@ async function POST(req) {
     if (!elevenRes.ok) {
       const errBody = await elevenRes.text().catch(() => "");
       console.error("[elevenlabs] request failed:", elevenRes.status, errBody);
-      return NextResponse.json({ error: "ElevenLabs request failed", detail: errBody }, { status: 502 });
+      // Quota exhausted is the common case and is not an error worth losing
+      // the message over — keep the text, drop the voice.
+      return saveTextOnly(`ElevenLabs ${elevenRes.status}: ${errBody.slice(0, 200)}`);
     }
 
     const arrayBuffer = await elevenRes.arrayBuffer();

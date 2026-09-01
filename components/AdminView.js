@@ -52,7 +52,10 @@ export default function AdminView({
 
   // Speech poll — every 2s, only once audio has been unlocked by a click.
   useEffect(() => {
-    if (!audioEnabled) return;
+    // Polling deliberately does NOT depend on audioEnabled. Jarvis messages are
+    // worth reading whether or not you want them read aloud, and polling costs
+    // nothing — it only reads rows that already exist. ElevenLabs is billed at
+    // send time, so nothing here consumes credits.
     let cancelled = false;
     let inFlight = false;
 
@@ -83,7 +86,11 @@ export default function AdminView({
   }, [audioEnabled]);
 
   function playSpeech(ev) {
+    // Text first, always — it should appear even when there is no audio to
+    // play, either because the owner has not enabled sound or because
+    // synthesis failed and the event was stored as text only.
     setLastSpoken(ev.text);
+    if (!ev.audioB64 || !audioEnabled) return;
     const el = audioElRef.current;
     if (!el) return;
     el.src = `data:audio/mpeg;base64,${ev.audioB64}`;

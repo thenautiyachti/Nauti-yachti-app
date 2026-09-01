@@ -249,7 +249,7 @@ model Testimonial {
 model SpeechEvent {
   id        String   @id @default(cuid())
   text      String // the text that was spoken
-  audioB64  String // ElevenLabs mp3 output, base64-encoded
+  audioB64  String? // ElevenLabs mp3 output, base64-encoded; null when synthesis failed (quota) and only the text was kept
   createdAt DateTime @default(now())
 }
 
