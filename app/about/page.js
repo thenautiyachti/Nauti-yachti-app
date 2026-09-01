@@ -5,7 +5,7 @@ import { pageMetadata } from "../../lib/seo";
 export const metadata = pageMetadata({
   title: "About Our Lake Conroe Boat Charter Company",
   description:
-    "Meet The Nauti Yachti — a family-run Lake Conroe boat charter company in Montgomery, TX. Licensed male and female captains, three vessels for 8 to 14 guests, and transparent pricing on every package.",
+    "Meet The Nauti Yachti — a family-run Lake Conroe boat charter company in Conroe, TX. Licensed male and female captains, three vessels for 8 to 14 guests, and transparent pricing on every package.",
   path: "/about",
 });
 
