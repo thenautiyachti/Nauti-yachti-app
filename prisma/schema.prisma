@@ -314,3 +314,28 @@ model GiftCertificateRedemption {
   note          String?
   redeemedAt    DateTime @default(now())
 }
+
+// A scheduled social post, one row per post AND platform.
+//
+// Split per platform rather than one row carrying three captions, because each
+// goes out separately: Blotato cannot push a still image to the Instagram feed,
+// so IG stills are posted by hand while Facebook goes through the API. A single
+// status per post would hide "done on Facebook, still owed on Instagram".
+model CampaignPost {
+  id            String    @id @default(cuid())
+  campaign      String // e.g. "boatz-and-glowz-2026-09"
+  postNumber    Int // ordering within the campaign
+  scheduledDate String // "YYYY-MM-DD"
+  scheduledTime String? // "6:30 PM"
+  title         String?
+  platform      String // "Facebook" | "Instagram" | "TikTok"
+  body          String // the caption, ready to copy
+  photoHint     String? // which real photo to use
+  deliveryNote  String? // e.g. "post natively - Blotato cannot do IG stills"
+  status        String    @default("pending") // "pending" | "posted" | "skipped"
+  postedAt      DateTime?
+  postUrl       String?
+  createdAt     DateTime  @default(now())
+
+  @@index([campaign, scheduledDate])
+}

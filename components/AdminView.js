@@ -9,6 +9,7 @@ import {
 } from "../lib/reviews";
 import { isCrewListRow, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
+import CampaignQueuePanel from "./CampaignQueuePanel";
 
 const EXPENSE_CATEGORIES = [
   "01. Gas", "02. Food & Party", "03. Cleaning Supplies", "04. Apparel & Advertisement",
@@ -3904,6 +3905,10 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
                 </div>
               ))}
             </div>
+          </JarvisPanel>
+
+          <JarvisPanel title="Campaign Queue">
+            <CampaignQueuePanel />
           </JarvisPanel>
 
           <JarvisPanel title="Media Queue">
