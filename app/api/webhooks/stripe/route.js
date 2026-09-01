@@ -85,6 +85,13 @@ async function POST(req) {
         stripePaymentIntentId: session.payment_intent || null,
       };
 
+      // Keep the phone number Stripe collected at checkout. Stripe verifies it,
+      // so it beats whatever was typed into our own form — but only overwrite
+      // when Stripe actually returned one, so a blank never clobbers a good
+      // number the owner already has on the record.
+      const stripePhone = session.customer_details?.phone;
+      if (stripePhone) data.phone = stripePhone;
+
       let paidInquiry = null;
       if (inquiryId) {
         paidInquiry = await prisma.inquiry.update({ where: { id: inquiryId }, data });

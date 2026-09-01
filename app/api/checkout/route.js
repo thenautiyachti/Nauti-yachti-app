@@ -155,6 +155,12 @@ async function POST(req) {
       success_url: `${origin}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/#packages`,
       metadata: { inquiryId: created.id },
+      // Ask Stripe for a phone number as well. The review flow texts guests
+      // rather than emailing them, because a phone number is the contact
+      // detail people actually hand over — so a booking without one is a
+      // review that never gets requested. Stripe verifies the number it
+      // collects, which makes it better than the one typed into our own form.
+      phone_number_collection: { enabled: true },
       consent_collection: { terms_of_service: "required" },
       custom_text: {
         terms_of_service_acceptance: {
