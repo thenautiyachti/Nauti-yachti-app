@@ -2224,6 +2224,42 @@ function JarvisPanel({ title, children }) {
   );
 }
 
+// "Talk to Jarvis" — get the owner from this console to a text box where they
+// can actually type at Claude.
+//
+// Two different situations, because a web page cannot reach a desktop app on a
+// *different* machine:
+//   - On the home PC, Windows has a `claude://` protocol handler registered for
+//     the Claude desktop app, so we can hand off to it directly.
+//   - From a phone or the laptop, that handler doesn't exist and nothing
+//     happens, so we fall back to the web session list. The session has to have
+//     Remote Control switched on for it to be reachable there.
+// We can't feature-detect a protocol handler, so we try it and fall back if the
+// page is still in the foreground shortly after — a successful hand-off blurs
+// or hides this tab.
+const JARVIS_WEB_SESSIONS_URL = "https://claude.ai/code";
+
+function openJarvisSession() {
+  let handedOff = false;
+  const markHandedOff = () => { handedOff = true; };
+  window.addEventListener("blur", markHandedOff, { once: true });
+  document.addEventListener("visibilitychange", markHandedOff, { once: true });
+
+  try {
+    window.location.href = "claude://";
+  } catch {
+    // No handler on this device — the fallback below covers it.
+  }
+
+  window.setTimeout(() => {
+    window.removeEventListener("blur", markHandedOff);
+    document.removeEventListener("visibilitychange", markHandedOff);
+    if (!handedOff && !document.hidden) {
+      window.open(JARVIS_WEB_SESSIONS_URL, "_blank", "noopener,noreferrer");
+    }
+  }, 1200);
+}
+
 function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyserRef }) {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState(false);
@@ -2514,6 +2550,16 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
               AUDIO ENABLED
             </span>
           )}
+          <button type="button" onClick={openJarvisSession}
+            className="jarvis-font"
+            title="Opens the Claude session on the home PC, or the web session list from any other device"
+            style={{
+              background: "rgba(255,180,84,0.08)", color: "#ffb454", border: "1px solid #ffb454", borderRadius: 4,
+              padding: "10px 18px", fontWeight: 700, fontSize: 12.5, letterSpacing: "0.1em",
+              boxShadow: "0 0 12px rgba(255,180,84,0.2)", cursor: "pointer",
+            }}>
+            ✎ TALK TO JARVIS
+          </button>
           <div style={{ fontSize: 17, lineHeight: 1.45, color: "#4ff3ff", opacity: 0.95 }}>
             {lastSpoken ? <>Last spoken: <span style={{ color: "#fff", fontSize: 18.5, fontWeight: 600 }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing spoken yet this session."}
           </div>
