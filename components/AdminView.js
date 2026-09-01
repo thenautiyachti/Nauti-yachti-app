@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { currency, localDateKey, imageFocus } from "../lib/pricing";
+import {
+  GOOGLE_REVIEW_URL, GOOGLE_LISTING_URL, TEMPLATES, ASK_WINDOWS, DOCK_SCRIPT,
+  channelFor, daysSince, askWindow, reviewMessage, reviewSubject, DEFAULT_TEMPLATE_FOR_DAYS,
+} from "../lib/reviews";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
 const EXPENSE_CATEGORIES = [
@@ -362,7 +366,13 @@ export default function AdminView({
         )}
 
         {tab === "testimonials" && (
-          <TestimonialsTab testimonials={testimonials} onUpdateStatus={onUpdateTestimonialStatus} onDelete={onDeleteTestimonial} />
+          <TestimonialsTab
+            testimonials={testimonials}
+            inquiries={inquiries}
+            externalBookings={externalBookings}
+            onUpdateStatus={onUpdateTestimonialStatus}
+            onDelete={onDeleteTestimonial}
+          />
         )}
 
         {tab === "ledger" && (
@@ -1775,6 +1785,278 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete }) {
   );
 }
 
+// ---- Review requests panel -------------------------------------------
+//
+// Lives inside the Testimonials tab rather than as its own tab: this is the
+// "go get more reviews" half of the same job the tab already does (the grid
+// below is the "moderate the ones we got" half).
+//
+// Which charters have already been asked is kept in the browser's
+// localStorage, NOT in the database. Recording it properly wants a
+// `reviewRequestedAt` column on ExternalBooking/Inquiry, which means a
+// migration against the live Supabase database — deliberately not done here.
+// Until then this is a single-owner, single-browser checklist: clearing site
+// data or switching machines loses the marks, and the drafts still work.
+const ASKED_STORAGE_KEY = "ny.reviewAsked.v1";
+
+function loadAskedMarks() {
+  try {
+    const raw = window.localStorage.getItem(ASKED_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {}; // private browsing / storage disabled — the panel still works, it just forgets
+  }
+}
+
+function saveAskedMarks(marks) {
+  try {
+    window.localStorage.setItem(ASKED_STORAGE_KEY, JSON.stringify(marks));
+  } catch {
+    // nothing sensible to do — the in-memory state stays correct for this session
+  }
+}
+
+// navigator.clipboard needs a secure context; the textarea fallback covers
+// the cases where it isn't available (plain-http localhost testing, older
+// mobile browsers) so the button never silently does nothing.
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+function ReviewRequestsPanel({ inquiries, externalBookings }) {
+  const [asked, setAsked] = useState({});
+  const [templateChoice, setTemplateChoice] = useState("auto"); // "auto" | a TEMPLATES id
+  const [filter, setFilter] = useState("todo"); // "todo" | "all"
+  const [flash, setFlash] = useState(""); // key of the row that just got copied
+  const [previewKey, setPreviewKey] = useState(null);
+  const [open, setOpen] = useState(true);
+
+  // Read after mount, not during render — localStorage doesn't exist during
+  // Next's prerender pass and reading it in render would hydrate-mismatch.
+  useEffect(() => setAsked(loadAskedMarks()), []);
+
+  function markAsked(key, on) {
+    setAsked((prev) => {
+      const next = { ...prev };
+      if (on) next[key] = new Date().toISOString();
+      else delete next[key];
+      saveAskedMarks(next);
+      return next;
+    });
+  }
+
+  // Only charters that actually happened can be asked about. Both a site
+  // Inquiry marked "completed" and an ExternalBooking marked "completed" land
+  // in the same unified "completed" bucket.
+  const completed = toUnifiedRows(inquiries, externalBookings)
+    .filter((r) => r.statusBucket === "completed")
+    .map((r) => {
+      const days = daysSince(r.date);
+      return { ...r, key: `${r.kind}-${r.id}`, days, window: askWindow(days) };
+    })
+    // Freshest charters first — those are the ones worth chasing today.
+    .sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999));
+
+  const askedCount = completed.filter((r) => asked[r.key]).length;
+  const rows = filter === "todo" ? completed.filter((r) => !asked[r.key]) : completed;
+
+  function draftFor(row) {
+    const templateId = templateChoice === "auto" ? DEFAULT_TEMPLATE_FOR_DAYS(row.days) : templateChoice;
+    return reviewMessage(templateId, row);
+  }
+
+  async function handleCopy(row) {
+    const ok = await copyToClipboard(draftFor(row));
+    setFlash(ok ? row.key : "");
+    if (ok) {
+      // Copying IS the ask, in practice — so it ticks the row off. The Undo
+      // button on the row puts it back if you were only previewing.
+      markAsked(row.key, true);
+      setTimeout(() => setFlash(""), 1800);
+    }
+  }
+
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 10, padding: 16, marginBottom: 20, color: "var(--text)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ fontWeight: 700 }}>
+          Ask past guests for a Google review
+          <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 12.5 }}>
+            {" "}— {completed.length} completed charter{completed.length === 1 ? "" : "s"} · {askedCount} marked asked · {completed.length - askedCount} to go
+          </span>
+        </div>
+        <button type="button" onClick={() => setOpen((v) => !v)}
+          style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "5px 11px", fontSize: 12, fontWeight: 600 }}>
+          {open ? "▲ Hide" : "▼ Show"}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8, marginBottom: 12, maxWidth: 760, lineHeight: 1.55 }}>
+            Boatsetter and GetMyBoat don&rsquo;t hand over guest email addresses, so nothing here can send itself. What it does is
+            write the message for you: hit <strong>Copy draft</strong>, open that booking&rsquo;s message thread on the platform it came
+            from, and paste. Copying ticks the charter off the list. Some platforms strip outbound links from message
+            threads — if that happens, switch the wording to <em>No link (platform-safe)</em>.
+          </p>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+            <input readOnly value={GOOGLE_REVIEW_URL} onFocus={(e) => e.target.select()}
+              className="mono"
+              style={{ flex: "1 1 380px", minWidth: 260, padding: "7px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)", fontSize: 11.5 }} />
+            <button type="button" onClick={() => copyToClipboard(GOOGLE_REVIEW_URL).then((ok) => { setFlash(ok ? "__link" : ""); setTimeout(() => setFlash(""), 1800); })}
+              style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 12px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
+              {flash === "__link" ? "Copied ✓" : "Copy link"}
+            </button>
+            <a href={GOOGLE_LISTING_URL} target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+              Open listing
+            </a>
+          </div>
+
+          <div style={{ background: "rgba(203,108,230,0.07)", border: "1px solid rgba(203,108,230,0.2)", borderRadius: 8, padding: "10px 12px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: "var(--purple)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+              Say this at the dock — it beats every message
+            </div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--text)", opacity: 0.9 }}>{DOCK_SCRIPT}</div>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+            <label style={{ fontSize: 12, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+              Wording
+              <select value={templateChoice} onChange={(e) => setTemplateChoice(e.target.value)}
+                style={{ padding: "5px 8px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
+                <option value="auto">Suggested (by age)</option>
+                {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </label>
+            <div style={{ display: "flex", gap: 4 }}>
+              {[["todo", "Not yet asked"], ["all", "All completed"]].map(([id, label]) => (
+                <button key={id} type="button" onClick={() => setFilter(id)}
+                  style={{
+                    padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600,
+                    border: "1px solid var(--purple)", cursor: "pointer",
+                    background: filter === id ? "var(--purple)" : "transparent",
+                    color: filter === id ? "#0A0612" : "var(--text)",
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {rows.length === 0 && (
+            <div style={{ color: "var(--muted)", fontSize: 13 }}>
+              {completed.length === 0
+                ? "No completed charters yet — mark a booking Completed on the Bookings tab and it'll appear here."
+                : "Every completed charter is marked asked. Nice work."}
+            </div>
+          )}
+
+          {rows.length > 0 && (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 820, fontSize: 12.5 }}>
+                <thead>
+                  <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
+                    <th style={{ padding: "4px 8px" }}>Charter</th>
+                    <th style={{ padding: "4px 8px" }}>Guest</th>
+                    <th style={{ padding: "4px 8px" }}>Vessel</th>
+                    <th style={{ padding: "4px 8px" }}>Ask via</th>
+                    <th style={{ padding: "4px 8px" }}>Window</th>
+                    <th style={{ padding: "4px 8px" }}>Draft</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => {
+                    const w = ASK_WINDOWS[r.window];
+                    const isAsked = Boolean(asked[r.key]);
+                    return (
+                      <Fragment key={r.key}>
+                        <tr style={{ background: "rgba(255,255,255,0.02)" }}>
+                          <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                            <div className="mono" style={{ color: r.bookingId ? "#E8934A" : "var(--muted)", fontSize: 11 }}>{r.bookingId || "—"}</div>
+                            <div style={{ color: "var(--muted)", fontSize: 11 }}>{r.date || "—"}</div>
+                          </td>
+                          <td style={{ padding: "6px 8px", fontWeight: 600 }}>{r.name || "Guest"}</td>
+                          <td style={{ padding: "6px 8px" }}>{r.vesselName || "—"}</td>
+                          <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                            {channelFor(r.source)}
+                            {r.email && <div style={{ color: "var(--muted)", fontSize: 11 }}>{r.email}</div>}
+                          </td>
+                          <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                            <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: w.color, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                              {w.label}
+                            </span>
+                            <div style={{ color: "var(--muted)", fontSize: 11 }}>
+                              {r.days == null ? "—" : r.days === 0 ? "today" : `${r.days} day${r.days === 1 ? "" : "s"} ago`}
+                            </div>
+                          </td>
+                          <td style={{ padding: "6px 8px" }}>
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                              <button type="button" onClick={() => handleCopy(r)}
+                                style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 700, whiteSpace: "nowrap" }}>
+                                {flash === r.key ? "Copied ✓" : "Copy draft"}
+                              </button>
+                              <button type="button" onClick={() => setPreviewKey(previewKey === r.key ? null : r.key)}
+                                style={{ background: "transparent", color: "var(--text)", border: "1px solid rgba(203,108,230,0.35)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
+                                {previewKey === r.key ? "Hide" : "Preview"}
+                              </button>
+                              {r.email && (
+                                <a
+                                  href={`mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(reviewSubject())}&body=${encodeURIComponent(draftFor(r))}`}
+                                  onClick={() => markAsked(r.key, true)}
+                                  style={{ color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+                                  Email draft
+                                </a>
+                              )}
+                              {isAsked && (
+                                <button type="button" onClick={() => markAsked(r.key, false)}
+                                  style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.25)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
+                                  Undo ask
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {previewKey === r.key && (
+                          <tr>
+                            <td colSpan={6} style={{ padding: "0 8px 10px" }}>
+                              <textarea readOnly value={draftFor(r)} rows={11}
+                                style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", background: "rgba(0,0,0,0.25)", color: "var(--text)", fontSize: 12.5, fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" }} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ---- Testimonials tab ------------------------------------------------
 
 const TESTIMONIAL_STATUS_COLORS = {
@@ -1788,7 +2070,7 @@ const TESTIMONIAL_STATUS_TEXT_COLORS = {
   rejected: "var(--pink)",
 };
 
-function TestimonialsTab({ testimonials, onUpdateStatus, onDelete }) {
+function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateStatus, onDelete }) {
   const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "approved" | "rejected"
   const pendingCount = testimonials.filter((t) => t.status === "pending").length;
 
@@ -1803,6 +2085,7 @@ function TestimonialsTab({ testimonials, onUpdateStatus, onDelete }) {
 
   return (
     <div>
+      <ReviewRequestsPanel inquiries={inquiries || []} externalBookings={externalBookings || []} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <div style={{ fontWeight: 700, color: "var(--text)" }}>
           Testimonials ({testimonials.length})

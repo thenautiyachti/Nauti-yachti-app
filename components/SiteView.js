@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { currency, tierPrice, dayTypeForDate, imageFocus, imageFit, imageZoom } from "../lib/pricing";
+import { GOOGLE_REVIEW_URL } from "../lib/reviews";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -894,6 +895,17 @@ function TestimonialForm({ onSubmit }) {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  // Whether a review has been submitted in this visit. Kept separately from
+  // `sent` (which resets after 4s) because the Google hand-off below should
+  // stay on screen — someone who has just typed out a review is the single
+  // best moment to ask for the Google one, and that moment shouldn't expire
+  // on a timer.
+  //
+  // Deliberately NOT conditioned on the star rating: showing the Google link
+  // only to happy guests is review gating, which violates Google's review
+  // policies and can get a Business Profile penalised. Everyone who submits
+  // sees the same offer.
+  const [submittedOnce, setSubmittedOnce] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -902,6 +914,7 @@ function TestimonialForm({ onSubmit }) {
     if (ok) {
       setForm(emptyForm);
       setSent(true);
+      setSubmittedOnce(true);
       setTimeout(() => setSent(false), 4000);
     }
     setSubmitting(false);
@@ -968,6 +981,26 @@ function TestimonialForm({ onSubmit }) {
       >
         {sent ? "Thanks — pending review ✓" : submitting ? "Sending…" : "Submit review"}
       </button>
+
+      {submittedOnce && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(203,108,230,0.2)" }}>
+          <div style={{ fontSize: 13.5, color: "var(--text)", fontWeight: 700, marginBottom: 4 }}>
+            One more thing, if you have 30 seconds
+          </div>
+          <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 10px", lineHeight: 1.55 }}>
+            We&rsquo;re a small family-run outfit on Lake Conroe, and Google reviews are how new guests find us.
+            Posting the same words there would help us more than you&rsquo;d think.
+          </p>
+          <a
+            href={GOOGLE_REVIEW_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "block", textAlign: "center", background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "10px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}
+          >
+            Review us on Google →
+          </a>
+        </div>
+      )}
     </form>
   );
 }
