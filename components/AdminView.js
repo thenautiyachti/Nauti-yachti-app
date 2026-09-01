@@ -2540,14 +2540,22 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
           <JarvisPanel title="Upcoming Bookings">
             {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
-            {dashboard && bookings.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No upcoming confirmed bookings.</div>}
+            {dashboard && bookings.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No bookings on record yet.</div>}
+            {/* Always three rows: upcoming charters first, padded with the most
+                recently completed ones when fewer than three are on the books.
+                Past rows are dimmed and tagged so they can't be mistaken for
+                something still to come. Scrolls once the list grows. */}
+            <div style={{ maxHeight: 320, overflowY: "auto" }}>
             {bookings.map((b, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: idx < bookings.length - 1 ? "1px solid rgba(0,217,255,0.12)" : "none", fontSize: 12.5, color: "#dffcff" }}>
-                <span style={{ color: "#ffb454", fontWeight: 700, whiteSpace: "nowrap" }}>
-                  {jarvisFmtDate(b.date)}{jarvisFmtTime(b.startTime) ? ` · ${jarvisFmtTime(b.startTime)}` : ""}
+              <div key={idx} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: idx < bookings.length - 1 ? "1px solid rgba(0,217,255,0.12)" : "none", fontSize: 12.5, color: "#dffcff", opacity: b.isPast ? 0.62 : 1 }}>
+                <span style={{ color: b.isPast ? "#4ff3ff" : "#ffb454", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {jarvisFmtDate(b.date)}{jarvisFmtTime(b.startTime) ? ` · ${jarvisFmtTime(b.startTime)}` : ""}{b.hours ? ` · ${b.hours}h` : ""}
                 </span>
                 <span style={{ flex: 1 }}>
-                  {b.name} — {b.label}{b.vessel ? ` · ${b.vessel}` : ""}{b.partySize ? ` · party of ${b.partySize}` : ""}{b.note ? ` (${b.note})` : ""}
+                  {b.isPast && (
+                    <span style={{ display: "inline-block", marginRight: 6, padding: "0 5px", borderRadius: 3, border: "1px solid #4ff3ff", color: "#4ff3ff", fontSize: 9.5, letterSpacing: "0.04em", verticalAlign: "middle" }}>PAST</span>
+                  )}
+                  {b.name}{b.vessel ? ` · ${b.vessel}` : ""} — {b.label}{b.partySize ? ` · party of ${b.partySize}` : ""}{b.note ? ` (${b.note})` : ""}
                   {b.weatherRisk && b.weatherRisk.risk && (
                     <span title={b.weatherRisk.reason} style={{
                       display: "inline-block", marginLeft: 8, padding: "1px 7px", borderRadius: 3,
@@ -2559,6 +2567,7 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
                 </span>
               </div>
             ))}
+            </div>
           </JarvisPanel>
 
           <JarvisPanel title="Needs Attention">
@@ -2647,7 +2656,7 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
               // rows (and the expanded image inside them) blow out past the
               // panel's ~290px width. Explicit "1fr" pins the column to the
               // container's actual width.
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, width: "100%" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, width: "100%", maxHeight: 320, overflowY: "auto" }}>
                 {mediaItems.map((m) => {
                   const isExpanded = expandedMediaId === m.id;
                   const isPending = mediaActionPendingId === m.id;

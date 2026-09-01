@@ -93,13 +93,13 @@ async function GET() {
           status: { notIn: ["cancelled", "completed"] },
           OR: [{ status: "booked" }, { paymentStatus: "paid" }],
         },
-        select: { name: true, packageName: true, vesselName: true, date: true, partySize: true, priceQuoted: true, paymentStatus: true },
+        select: { name: true, packageName: true, vesselName: true, date: true, hours: true, partySize: true, priceQuoted: true, paymentStatus: true },
         orderBy: { date: "asc" },
         take: 10,
       }),
       prisma.externalBooking.findMany({
         where: { date: { gte: today }, status: "booked" },
-        select: { guestName: true, vesselName: true, date: true, startTime: true, partySize: true, platform: true },
+        select: { guestName: true, vesselName: true, date: true, startTime: true, hours: true, partySize: true, platform: true },
         orderBy: { date: "asc" },
         take: 10,
       }),
@@ -109,11 +109,14 @@ async function GET() {
         select: { label: true, intervalHours: true, intervalMonths: true, lastDoneDate: true, lastDoneHours: true },
       }),
       prisma.engineHoursLog.aggregate({ _max: { hours: true } }),
+      // The Jarvis Media Queue panel scrolls through recent drafts of any
+      // status, not just pending ones -- the owner wants at least the last
+      // three visible so an approved or rejected draft can still be reviewed
+      // after the fact.
       prisma.mediaDraft.findMany({
-        where: { status: { in: ["pending", "discussing"] } },
         select: { id: true, theme: true, mediaUrl: true, mediaType: true, caption: true, platform: true, status: true, createdAt: true },
         orderBy: { createdAt: "desc" },
-        take: 5,
+        take: 12,
       }),
       prisma.ledgerEntry.findMany({
         where: { date: { gte: thirtyDaysAgo } },
@@ -135,6 +138,7 @@ async function GET() {
         vessel: r.vesselName,
         date: r.date,
         startTime: null, // site inquiries don't currently capture a start time
+        hours: r.hours,
         partySize: r.partySize,
         note: r.paymentStatus === "paid" ? "Paid" : r.paymentStatus,
       })),
@@ -145,14 +149,55 @@ async function GET() {
         vessel: r.vesselName,
         date: r.date,
         startTime: r.startTime,
+        hours: r.hours,
         partySize: r.partySize != null ? String(r.partySize) : null,
         note: null,
       })),
     ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).slice(0, 10);
 
+    // The owner console shows three booking rows at all times. Upcoming
+    // charters come first; when there are fewer than three (a quiet stretch
+    // between bookings is normal), we pad with the most recently completed
+    // ones so the panel is never empty and always gives recent context.
+    let panelBookings = bookings.map((b) => ({ ...b, isPast: false }));
+    if (panelBookings.length < 3) {
+      const need = 3 - panelBookings.length;
+      const [pastExternal, pastSite] = await Promise.all([
+        prisma.externalBooking.findMany({
+          where: { date: { lt: today } },
+          select: { guestName: true, vesselName: true, date: true, startTime: true, hours: true, partySize: true, platform: true, status: true },
+          orderBy: { date: "desc" },
+          take: need,
+        }),
+        prisma.inquiry.findMany({
+          where: { date: { lt: today }, status: "completed" },
+          select: { name: true, packageName: true, vesselName: true, date: true, hours: true, partySize: true },
+          orderBy: { date: "desc" },
+          take: need,
+        }),
+      ]);
+      const past = [
+        ...pastExternal.map((r) => ({
+          source: r.platform, name: r.guestName || "Guest", label: r.platform, vessel: r.vesselName,
+          date: r.date, startTime: r.startTime, hours: r.hours,
+          partySize: r.partySize != null ? String(r.partySize) : null,
+          note: r.status === "completed" ? null : r.status, isPast: true,
+        })),
+        ...pastSite.map((r) => ({
+          source: "Site", name: r.name, label: r.packageName, vessel: r.vesselName,
+          date: r.date, startTime: null, hours: r.hours,
+          partySize: r.partySize, note: null, isPast: true,
+        })),
+      ]
+        .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+        .slice(0, need)
+        .reverse();
+      panelBookings = [...past, ...panelBookings];
+    }
+
     try {
       const weatherByDate = await fetchLakeConroeWeatherRisk();
-      for (const b of bookings) {
+      for (const b of panelBookings) {
         const key = bookingDateKey(b.date);
         if (weatherByDate[key]) b.weatherRisk = weatherByDate[key];
       }
@@ -212,7 +257,7 @@ async function GET() {
     }));
 
     return NextResponse.json({
-      bookings,
+      bookings: panelBookings,
       needsAttention: {
         newInquiries,
         unpaidConfirmed,
