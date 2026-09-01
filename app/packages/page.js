@@ -28,6 +28,20 @@ export const metadata = pageMetadata({
 
 const SECTION = { maxWidth: 1100, margin: "0 auto" };
 
+// Columns for the "what's included" comparison. Each one reads the package's
+// own `unit` text (the line the owner edits in the console) rather than a
+// hard-coded list, so the table follows the data instead of drifting from it.
+// A package that stops including wakeboards loses its tick automatically.
+const unitOf = (p) => (p.unit || "").toLowerCase();
+const INCLUSION_COLUMNS = [
+  { label: "Fuel", test: (p) => unitOf(p).includes("fuel") },
+  { label: "Ice chest", test: (p) => unitOf(p).includes("ice chest") },
+  { label: "Tube & wakeboards", test: (p) => unitOf(p).includes("tube") || unitOf(p).includes("wakeboard") },
+  { label: "Decorations", test: (p) => unitOf(p).includes("decoration") },
+  { label: "Dinner", test: (p) => unitOf(p).includes("dinner") },
+  { label: "Glow gear", test: (p) => unitOf(p).includes("glow") },
+];
+
 export default async function PackagesIndexPage() {
   const [rows, vessels] = await Promise.all([
     prisma.package.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -114,6 +128,69 @@ export default async function PackagesIndexPage() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* What's included, side by side.
+              Every competitor on Lake Conroe publishes this and we did not,
+              which left the strongest thing about our pricing invisible: fuel
+              is in the price. Several operators quote a lower hourly rate and
+              then bill fuel at the end, so a straight rate comparison makes us
+              look more expensive than we are.
+
+              The rows are derived from each Package's own `unit` text rather
+              than hand-written, so editing a package in the owner console
+              updates this table and it can never quietly go stale. */}
+          <div style={{ marginTop: 34 }}>
+            <h2 className="display" style={{ fontSize: 24, color: "var(--text)", marginBottom: 6 }}>
+              What&rsquo;s included in every charter
+            </h2>
+            <p style={{ fontSize: 15, color: "var(--text)", opacity: 0.82, lineHeight: 1.6, margin: "0 0 16px", maxWidth: 760 }}>
+              Fuel is included in every package we run — there is no refuelling bill at the end and no
+              fuel deposit. Worth checking when you compare quotes, because a lower hourly rate with
+              fuel billed on top is not the cheaper trip.
+            </p>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14.5, minWidth: 620 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: "10px 12px", color: "var(--muted)", fontWeight: 600, borderBottom: "1px solid rgba(203,108,230,0.25)" }}>Package</th>
+                    {INCLUSION_COLUMNS.map((c) => (
+                      <th key={c.label} style={{ textAlign: "center", padding: "10px 8px", color: "var(--muted)", fontWeight: 600, borderBottom: "1px solid rgba(203,108,230,0.25)", whiteSpace: "nowrap" }}>
+                        {c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Only packages that actually declare inclusions. Wake
+                      Surfing is a partner-run coaching session rather than a
+                      boat hire, so its `unit` lists no inclusions — showing it
+                      as a row of dashes would read as "you get nothing", which
+                      is false. It gets a line underneath instead. */}
+                  {packages.filter((p) => INCLUSION_COLUMNS.some((c) => c.test(p))).map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ padding: "10px 12px", color: "var(--text)", borderBottom: "1px solid rgba(203,108,230,0.12)" }}>{p.name}</td>
+                      {INCLUSION_COLUMNS.map((c) => (
+                        <td key={c.label} style={{ textAlign: "center", padding: "10px 8px", borderBottom: "1px solid rgba(203,108,230,0.12)", color: c.test(p) ? "var(--pink)" : "rgba(255,255,255,0.22)" }}>
+                          {c.test(p) ? "✓" : "–"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.7, lineHeight: 1.6, marginTop: 12, maxWidth: 760 }}>
+              Every charter also comes with a licensed captain unless you book the self-drive Nauti
+              Islander, and the Nauti Explorer now carries a full sound system, TV connections, a
+              3,000-watt inverter and an on-board electric grill.
+            </p>
+            {packages.some((p) => !INCLUSION_COLUMNS.some((c) => c.test(p))) && (
+              <p style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.7, lineHeight: 1.6, marginTop: 6, maxWidth: 760 }}>
+                Wake Surfing Lessons is a private coaching session run with a partner rather than a
+                boat hire, so it is quoted on its own terms — see its page for what the session covers.
+              </p>
+            )}
           </div>
 
           {/* The glow party is sold by the seat, not by the boat, so it sits
