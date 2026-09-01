@@ -186,8 +186,11 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               alone matched no search anyone performs; both lines are real,
               visible text, so this adds keyword value without cloaking. */}
           <h1 className="display" style={{ margin: 0, fontWeight: 800 }}>
-            <span style={{ display: "block", fontSize: "clamp(42px, 8vw, 76px)", lineHeight: 0.95 }}>
-              Life is better<br />on a boat
+            {/* One row at every width. The size floor is set so the line still
+                fits a 360px phone without overflowing — nowrap without that
+                floor would push the page sideways on small screens. */}
+            <span style={{ display: "block", fontSize: "clamp(24px, 5.6vw, 64px)", lineHeight: 1.05, whiteSpace: "nowrap" }}>
+              Life is better on a boat
             </span>
             <span
               style={{
