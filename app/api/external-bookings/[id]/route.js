@@ -33,6 +33,13 @@ async function PATCH(req, { params }) {
   if ("email" in body) data.email = body.email || null;
   if ("partySize" in body) data.partySize = body.partySize === "" || body.partySize == null ? null : Number(body.partySize);
   if ("note" in body) data.note = body.note || null;
+  if ("phone" in body) data.phone = body.phone || null;
+  // How the booking was WON, as opposed to which platform processed it. The
+  // three highest-value bookings on record (repeat guest, direct, word of
+  // mouth) all sit under platform "Other", so `platform` alone cannot answer
+  // "what is actually bringing in work".
+  if ("referralSource" in body) data.referralSource = body.referralSource || null;
+  if ("platformRef" in body) data.platformRef = body.platformRef || null;
 
   const updated = await prisma.externalBooking.update({ where: { id }, data });
   return NextResponse.json(updated);

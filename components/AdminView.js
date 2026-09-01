@@ -429,6 +429,20 @@ export default function AdminView({
 
 const BOOKING_PLATFORMS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "Other"];
 
+// How a booking was WON. Deliberately separate from `platform`, which records
+// who processed the payment. The highest-value bookings on record - a repeat
+// guest, a direct cash booking and a word-of-mouth referral - all share the
+// platform value "Other", so platform alone cannot show what is working.
+const BOOKING_REFERRAL_SOURCES = [
+  "platform",
+  "repeat guest",
+  "word of mouth",
+  "direct",
+  "website",
+  "social media",
+  "walk-up",
+];
+
 // Merges Inquiry rows (site-originated) and ExternalBooking rows (logged
 // from third-party platforms) into one shape for the unified table below.
 // kind distinguishes which management actions/enum apply to a given row —
@@ -843,7 +857,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
 function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
   const emptyForm = {
     vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), startTime: "", hours: 4,
-    guestName: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], status: "booked", note: "", pricePaid: "",
+    guestName: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], referralSource: "", status: "booked", note: "", pricePaid: "",
   };
   const [form, setForm] = useState(emptyForm);
   const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "completed" | "cancelled"
@@ -918,6 +932,16 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
           <select value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}
             style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
             {BOOKING_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </label>
+        <label style={{ display: "block", marginBottom: 8 }}>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>
+            How did they find us? <span style={{ opacity: 0.75 }}>— this is what tells you which channel is actually working</span>
+          </div>
+          <select value={form.referralSource || ""} onChange={(e) => setForm({ ...form, referralSource: e.target.value })}
+            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+            <option value="">— not recorded —</option>
+            {BOOKING_REFERRAL_SOURCES.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </label>
         <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>

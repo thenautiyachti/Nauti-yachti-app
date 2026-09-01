@@ -426,7 +426,7 @@ Twelve touchpoints across 18 days — roughly one every other day, which is what
 > We run sober, licensed captains on every boat and we shuttle you to Party Cove and back from Scott's Ridge. Your truck stays parked. Nobody's counting drinks. Nobody's driving home.
 >
 > What we bring: the boats, the glow gear, the ice chest, the ice, the captains, the fuel.
-> What you bring: whatever you want to drink, a towel, and something white or neon that lights up. [CONFIRM: BYOB, and 21+ or all ages?]
+> What you bring: whatever you want to drink — it's BYOB, we supply the cooler, the ice and the water. A towel, and something white or neon that lights up. 21 and over.
 >
 > September 19, 7 PM. $50 a seat, 20 seats left → thenautiyachti.com/glow
 >

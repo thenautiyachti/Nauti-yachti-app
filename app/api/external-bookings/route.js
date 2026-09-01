@@ -19,7 +19,7 @@ async function POST(req) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();
-  const { vesselId, vesselName, date, startTime, hours, guestName, email, partySize, platform, status, note, pricePaid } = body;
+  const { vesselId, vesselName, date, startTime, hours, guestName, email, partySize, platform, referralSource, status, note, pricePaid } = body;
   if (!vesselId || !vesselName || !date || !platform) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
@@ -31,6 +31,10 @@ async function POST(req) {
   const booking = await prisma.externalBooking.create({
     data: {
       vesselId, vesselName, date, platform,
+      // How the booking was won, as opposed to who processed it. Optional, but
+      // it is the only way to tell whether direct/word-of-mouth work is paying
+      // off — those bookings all share platform "Other".
+      referralSource: referralSource || null,
       startTime: startTime || null,
       hours: hours ? Number(hours) : null,
       guestName: guestName || null,

@@ -155,6 +155,7 @@ model ExternalBooking {
 
   phone           String?  // guest phone, when known
   platformRef     String?  // the platform's own reservation number (Boatsetter/GetMyBoat) - shared key with LedgerEntry
+  referralSource  String?  // how the booking was won: "repeat guest", "word of mouth", "website", "walk-up" - distinct from `platform`, which is who processed it
   marketingOptOut Boolean  @default(false)
   ledgerEntries   LedgerEntry[]
 
