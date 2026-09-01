@@ -4,6 +4,7 @@ import PageFooter from "../../components/PageFooter";
 import MiniCalendar from "../../components/MiniCalendar";
 import GlowCountdown from "../../components/GlowCountdown";
 import { currency } from "../../lib/pricing";
+import { pageMetadata } from "../../lib/seo";
 import {
   GLOW_PACKAGE_ID,
   GLOW_EVENT_DATE,
@@ -17,11 +18,16 @@ import {
 // time — regenerate hourly, matching the home page's caching behaviour.
 export const revalidate = 1800;
 
-export const metadata = {
-  title: "Lake Conroe Events & Holidays | The Nauti Yachti",
+// The brand suffix comes from the root layout's title template, so it must
+// NOT be repeated here or the tag reads "... | The Nauti Yachti | The Nauti
+// Yachti". The explicit canonical matters too: without one this page inherits
+// the parent's and declares itself a duplicate of the homepage.
+export const metadata = pageMetadata({
+  title: "Lake Conroe Events & Holidays Calendar",
   description:
-    "Holidays and events worth planning a Lake Conroe charter around — including our Boatz & Glowz glow party at Party Cove.",
-};
+    "Holidays and events worth planning a Lake Conroe boat charter around in 2026 — spring break, July 4th, Labor Day and our Boatz & Glowz glow party at Party Cove.",
+  path: "/events",
+});
 
 const YEAR = 2026;
 

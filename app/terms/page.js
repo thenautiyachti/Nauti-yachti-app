@@ -1,5 +1,13 @@
 import NavBar from "../../components/NavBar";
 import PageFooter from "../../components/PageFooter";
+import { pageMetadata } from "../../lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Terms & Cancellation Policy",
+  description:
+    "The Nauti Yachti's booking terms for Lake Conroe charters: cancellation and refund windows, the weather-cancellation policy, and rescheduling rules.",
+  path: "/terms",
+});
 
 const SECTIONS = [
   {

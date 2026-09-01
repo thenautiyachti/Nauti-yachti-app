@@ -153,6 +153,11 @@ model ExternalBooking {
 
   pricePaid Float? // what the guest actually paid, if the owner has logged it
 
+  phone           String?  // guest phone, when known
+  platformRef     String?  // the platform's own reservation number (Boatsetter/GetMyBoat) - shared key with LedgerEntry
+  marketingOptOut Boolean  @default(false)
+  ledgerEntries   LedgerEntry[]
+
   // Format "NY-YYYYMMDD-NN" — assigned at creation time going forward, and
   // backfilled once (2026-08-29) for historical rows so every booking has one.
   bookingId String? @unique
@@ -179,6 +184,8 @@ model LedgerEntry {
   note        String?
   origin      String? // reservation origin (Boatsetter, GetmyBoat, ...) or statement source (Cash, Wells Fargo Statement, ...)
   bookingId   String? // links an expense back to the reservation it was for
+  externalBookingId String? // real FK to ExternalBooking.id - the reliable join the bookingId string never provided
+  externalBooking   ExternalBooking? @relation(fields: [externalBookingId], references: [id], onDelete: SetNull)
   date        String
   createdAt   DateTime @default(now())
 }

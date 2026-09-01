@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { currency, tierPrice, dayTypeForDate, imageFocus, imageFit, imageZoom } from "../lib/pricing";
+import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
@@ -179,8 +181,22 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
           <div className="mono" style={{ color: "var(--purple)", fontSize: 13, letterSpacing: "0.15em", marginBottom: 14 }}>
             LAKE CONROE, TEXAS
           </div>
-          <h1 className="display" style={{ fontSize: "clamp(42px, 8vw, 76px)", margin: 0, lineHeight: 0.95, fontWeight: 800 }}>
-            Life is better<br />on a boat
+          {/* The tagline still leads visually, but the H1 now also states what
+              the business actually sells and where. "Life is better on a boat"
+              alone matched no search anyone performs; both lines are real,
+              visible text, so this adds keyword value without cloaking. */}
+          <h1 className="display" style={{ margin: 0, fontWeight: 800 }}>
+            <span style={{ display: "block", fontSize: "clamp(42px, 8vw, 76px)", lineHeight: 0.95 }}>
+              Life is better<br />on a boat
+            </span>
+            <span
+              style={{
+                display: "block", fontSize: "clamp(17px, 2.6vw, 25px)", lineHeight: 1.25,
+                fontWeight: 600, marginTop: 16, color: "var(--text)", opacity: 0.92,
+              }}
+            >
+              Private boat charters &amp; party boat rentals on Lake Conroe, Texas
+            </span>
           </h1>
           <div style={{ maxWidth: 800, margin: "22px auto 32px", textAlign: "center" }}>
             {HERO_PARAGRAPHS.map((p, i) => (
@@ -247,7 +263,13 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       {/* PACKAGES */}
       <div id="packages" style={{ background: "var(--ink)", padding: "50px 24px" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 22 }}>Packages & pricing</h2>
+          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Packages & pricing</h2>
+          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 22 }}>
+            Quote a charter right here, or open a package for the full price table and what's included.{" "}
+            <Link href="/packages" style={{ color: "var(--purple)" }}>Browse all packages</Link>
+            {" · "}
+            <Link href="/faq" style={{ color: "var(--purple)" }}>Read the FAQ</Link>
+          </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px,1fr))", gap: 16 }}>
             {packages.map((p) => (
               <PackageCard
@@ -611,12 +633,29 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
         </div>
       )}
 
-      <button
-        onClick={() => onBook({ vesselId, dayType, hour, guests })}
-        style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }}
-      >
-        Book this
-      </button>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: "auto" }}>
+        <button
+          onClick={() => onBook({ vesselId, dayType, hour, guests })}
+          style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700 }}
+        >
+          Book this
+        </button>
+        {/* Real internal link to the package's own indexable page. The card
+            itself is a client-side widget on a single URL, so without this the
+            per-package pages would only be reachable from the nav. */}
+        {!EXCLUDED_PACKAGE_IDS.has(pkg.id) ? (
+          <Link
+            href={`/packages/${slugForPackage(pkg.id)}`}
+            style={{ fontSize: 12.5, color: "var(--pink)", fontWeight: 700, textDecoration: "none" }}
+          >
+            Details &amp; full pricing →
+          </Link>
+        ) : (
+          <Link href="/glow" style={{ fontSize: 12.5, color: "var(--pink)", fontWeight: 700, textDecoration: "none" }}>
+            Event details →
+          </Link>
+        )}
+      </div>
       </div>
     </div>
   );

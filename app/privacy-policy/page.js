@@ -1,5 +1,13 @@
 import NavBar from "../../components/NavBar";
 import PageFooter from "../../components/PageFooter";
+import { pageMetadata } from "../../lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Privacy Policy",
+  description:
+    "How The Nauti Yachti LLC collects, uses and protects the personal information you provide when enquiring about or booking a Lake Conroe boat charter.",
+  path: "/privacy-policy",
+});
 
 const SECTIONS = [
   {

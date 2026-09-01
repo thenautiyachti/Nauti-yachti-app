@@ -21,7 +21,7 @@ import { GLOW_EVENT_DATE } from "../../../lib/glowEvent";
 // Deliberately stripped down: no navigation into packages, no pricing, no
 // second ask. One form, one optional review link.
 export const metadata = {
-  title: "Boatz & Glowz — Crew List | The Nauti Yachti",
+  title: "Boatz & Glowz — Crew List",
   description: "Join the crew list and we'll email you when the next Boatz & Glowz date is set.",
   // No point in this page being indexed — it's a QR destination, not a
   // landing page, and it would dilute /glow in search results.

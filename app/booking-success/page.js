@@ -2,7 +2,11 @@ import NavBar from "../../components/NavBar";
 import PageFooter from "../../components/PageFooter";
 
 export const metadata = {
-  title: "Booking confirmed — The Nauti Yachti",
+  title: "Booking confirmed",
+  // A per-booking confirmation screen has no search value and would be a soft
+  // duplicate of itself for every customer. Kept out of the index explicitly,
+  // in addition to the robots.txt disallow.
+  robots: { index: false, follow: false },
 };
 
 // The webhook (app/api/webhooks/stripe/route.js) is the source of truth for

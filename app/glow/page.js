@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/db";
 import { parsePackage } from "../../lib/serialize";
 import { currency } from "../../lib/pricing";
+import { pageMetadata } from "../../lib/seo";
 import {
   GLOW_PACKAGE_ID,
   GLOW_EVENT_DATE,
@@ -25,17 +26,14 @@ import CrewListForm from "../../components/CrewListForm";
 // freeze them. Same cadence as the home page.
 export const revalidate = 1800;
 
-export const metadata = {
-  title: "Boatz & Glowz — Party Cove Glow Party | The Nauti Yachti",
+// Brand suffix omitted — the root layout's title template appends it.
+// Canonical is explicit so this page does not inherit the parent's.
+export const metadata = pageMetadata({
+  title: "Boatz & Glowz — Party Cove Glow Party on Lake Conroe",
   description:
     "The entire Nauti Yachti fleet lights up Party Cove on Lake Conroe. Glow gear, sober captains, and a ride to and from Scott's Ridge included. 30 seats only.",
-  openGraph: {
-    title: "Boatz & Glowz — Party Cove Glow Party",
-    description:
-      "The entire fleet, lit up at Party Cove on Lake Conroe. Glow gear, sober captains, round-trip ride included. 30 seats only.",
-    type: "website",
-  },
-};
+  path: "/glow",
+});
 
 // Booking deep link: preselects the Boatz & Glowz package on the home page's
 // inquiry form and scrolls straight to it, so a visitor arriving from a

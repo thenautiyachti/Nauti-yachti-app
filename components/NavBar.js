@@ -26,10 +26,14 @@ export default function NavBar() {
         </Link>
       </div>
       <div style={{ display: "flex", gap: 16, fontSize: 14, alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
-        <Link href="/#packages" style={LINK_STYLE}>Packages</Link>
+        {/* Points at the real /packages page rather than the /#packages anchor:
+            an anchor is not a separate indexable URL, so the per-package pages
+            need a genuine internal link from every page to be crawled. */}
+        <Link href="/packages" style={LINK_STYLE}>Packages</Link>
         <Link href="/#availability" style={LINK_STYLE}>Availability</Link>
         <Link href="/#gallery" style={LINK_STYLE}>Gallery</Link>
         <Link href="/about" style={LINK_STYLE}>About</Link>
+        <Link href="/faq" style={LINK_STYLE}>FAQ</Link>
         <Link href="/events" style={LINK_STYLE}>Events</Link>
         {/* Highlighted while the glow party is the live campaign — it's the
             only dated, sellable event on the site and needs to be reachable
