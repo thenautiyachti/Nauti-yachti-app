@@ -471,6 +471,8 @@ export default function AdminView({
             externalBookings={externalBookings}
             onUpdateStatus={onUpdateTestimonialStatus}
             onDelete={onDeleteTestimonial}
+            onUpdateExternalBooking={onUpdateExternalBooking}
+            onUpdateInquiry={onUpdateInquiry}
           />
         )}
 
@@ -2971,7 +2973,7 @@ const TESTIMONIAL_STATUS_TEXT_COLORS = {
   rejected: "var(--pink)",
 };
 
-function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateStatus, onDelete }) {
+function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateStatus, onDelete, onUpdateExternalBooking, onUpdateInquiry }) {
   const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "approved" | "rejected"
   const pendingCount = testimonials.filter((t) => t.status === "pending").length;
 
