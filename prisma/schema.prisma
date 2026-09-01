@@ -258,6 +258,7 @@ model AgentActivity {
 model JarvisTodo {
   id        String    @id @default(cuid())
   text      String
+  priority  String    @default("medium") // "low" | "medium" | "high"
   done      Boolean   @default(false)
   createdAt DateTime  @default(now())
   doneAt    DateTime?

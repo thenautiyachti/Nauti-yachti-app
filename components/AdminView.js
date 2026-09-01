@@ -186,6 +186,9 @@ export default function AdminView({
           <a href="/owner-console-manual.pdf" target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             📖 Manual
           </a>
+          <a href="/liability-waiver-draft.pdf" target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+            Waiver (draft)
+          </a>
           <a href="/" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             ← Back to site
           </a>
@@ -2511,8 +2514,8 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
               AUDIO ENABLED
             </span>
           )}
-          <div style={{ fontSize: 12.5, color: "#4ff3ff", opacity: 0.75 }}>
-            {lastSpoken ? <>Last spoken: <span style={{ color: "#fff" }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing spoken yet this session."}
+          <div style={{ fontSize: 17, lineHeight: 1.45, color: "#4ff3ff", opacity: 0.95 }}>
+            {lastSpoken ? <>Last spoken: <span style={{ color: "#fff", fontSize: 18.5, fontWeight: 600 }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing spoken yet this session."}
           </div>
         </div>
         {audioNote && <div style={{ color: "#ffb454", fontSize: 12.5, marginBottom: 16 }}>{audioNote}</div>}
