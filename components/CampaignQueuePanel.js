@@ -82,8 +82,10 @@ export default function CampaignQueuePanel({ campaign = "boatz-and-glowz-2026-09
   }
 
   return (
-    <div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+    // Fills the panel: JarvisPanel is a flex column, so this stretches and the
+    // list below takes whatever height is left rather than a fixed 420px.
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10, flexShrink: 0 }}>
         <span style={{ fontSize: 12, color: "#4ff3ff" }}>
           {done} of {posts.length} posted
         </span>
@@ -98,7 +100,7 @@ export default function CampaignQueuePanel({ campaign = "boatz-and-glowz-2026-09
         </button>
       </div>
 
-      <div style={{ display: "grid", gap: 12, maxHeight: 420, overflowY: "auto" }}>
+      <div style={{ display: "grid", gap: 12, flex: 1, minHeight: 160, overflowY: "auto", alignContent: "start" }}>
         {byDate.map((group) => {
           const isToday = group.date === today;
           const isPast = group.date < today;

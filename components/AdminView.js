@@ -3395,17 +3395,31 @@ function JarvisPanel({ title, children }) {
     <div
       style={{
         background: "rgba(0,217,255,0.04)", border: "1px solid #0ea5e9", borderRadius: 4,
-        padding: "16px 18px", clipPath: jarvisPanelClip, boxShadow: "0 0 16px rgba(0,217,255,0.08) inset",
+        // Extra bottom padding because clipPath cuts a 14px triangle out of the
+        // bottom-left corner — without the clearance it slices through the last
+        // line of whatever the panel is showing.
+        padding: "16px 18px 22px", clipPath: jarvisPanelClip,
+        boxShadow: "0 0 16px rgba(0,217,255,0.08) inset",
         position: "relative",
+        // Grid stretches every panel in a row to match the tallest, so the panel
+        // is a flex column and its body takes the leftover height. Scroll areas
+        // inside can then fill the panel instead of being pinned to an
+        // arbitrary pixel height that leaves dead space below them.
+        display: "flex", flexDirection: "column", height: "100%", minHeight: 0,
       }}
     >
       <div className="jarvis-font" style={{
         fontWeight: 700, fontSize: 12.5, letterSpacing: "0.15em", textTransform: "uppercase", color: "#00d9ff",
-        marginBottom: 12, textShadow: "0 0 8px rgba(0,217,255,0.5)",
+        marginBottom: 12, textShadow: "0 0 8px rgba(0,217,255,0.5)", flexShrink: 0,
       }}>
         {title}
       </div>
-      {children}
+      {/* minHeight:0 is what actually lets a nested overflow:auto child shrink
+          and scroll — without it a flex child refuses to go below its content
+          height and the scrollbar never engages. */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -3814,7 +3828,7 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
                 recently completed ones when fewer than three are on the books.
                 Past rows are dimmed and tagged so they can't be mistaken for
                 something still to come. Scrolls once the list grows. */}
-            <div style={{ maxHeight: 320, overflowY: "auto" }}>
+            <div style={{ flex: 1, minHeight: 120, overflowY: "auto" }}>
             {bookings.map((b, idx) => (
               <div key={idx} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: idx < bookings.length - 1 ? "1px solid rgba(0,217,255,0.12)" : "none", fontSize: 12.5, color: "#dffcff", opacity: b.isPast ? 0.62 : 1 }}>
                 <span style={{ color: b.isPast ? "#4ff3ff" : "#ffb454", fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -3902,7 +3916,7 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
             </form>
             {todoError && <div style={{ color: "#ff4d5e", fontSize: 11.5, marginBottom: 8 }}>{todoError}</div>}
             {todos.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>Nothing on the list.</div>}
-            <div style={{ display: "grid", gap: 2, maxHeight: 220, overflowY: "auto" }}>
+            <div style={{ display: "grid", gap: 2, flex: 1, minHeight: 120, overflowY: "auto", alignContent: "start" }}>
               {todos.map((t) => (
                 <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid rgba(0,217,255,0.08)" }}>
                   <input type="checkbox" checked={t.done} onChange={(e) => toggleTodo(t.id, e.target.checked)} style={{ accentColor: "#00d9ff", flexShrink: 0 }} />
@@ -3929,7 +3943,7 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
               // rows (and the expanded image inside them) blow out past the
               // panel's ~290px width. Explicit "1fr" pins the column to the
               // container's actual width.
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, width: "100%", maxHeight: 320, overflowY: "auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, width: "100%", flex: 1, minHeight: 140, overflowY: "auto", alignContent: "start" }}>
                 {mediaItems.map((m) => {
                   const isExpanded = expandedMediaId === m.id;
                   const isPending = mediaActionPendingId === m.id;
@@ -3995,7 +4009,7 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
             {!agentActivity && !agentActivityError && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
             {agentActivity && agentActivity.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No active tasks.</div>}
             {agentActivity && agentActivity.length > 0 && (
-              <div style={{ display: "grid", gap: 10, maxHeight: 320, overflowY: "auto" }}>
+              <div style={{ display: "grid", gap: 10, flex: 1, minHeight: 140, overflowY: "auto", alignContent: "start" }}>
                 {agentActivity.map((a) => {
                   const s = JARVIS_STATUS_STYLE[a.status] || JARVIS_STATUS_STYLE.running;
                   return (
