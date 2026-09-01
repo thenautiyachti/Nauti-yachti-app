@@ -1,8 +1,24 @@
+# dependencies / build output
 node_modules
 .next
 out
+
+# local database leftovers (the app uses Postgres; these are stale artifacts)
 dev.db
 dev.db-journal
+prisma/dev.db
+prisma/dev.db-journal
+
+# secrets and local-only config -- never commit these
 .env
 .env.local
+.env.*.local
+.env.production
+conf/
+*.pem
+*.key
+
+# logs and OS cruft
+*.log
 desktop.ini
+.DS_Store
