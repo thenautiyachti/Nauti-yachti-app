@@ -190,9 +190,11 @@ async function GET() {
         })),
       ]
         .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-        .slice(0, need)
-        .reverse();
-      panelBookings = [...past, ...panelBookings];
+        .slice(0, need);
+      // Past rows stay newest-first and sit *below* the upcoming ones, so the
+      // top of the panel is always the most immediately relevant charter:
+      // the next one booked, or failing that the one that just happened.
+      panelBookings = [...panelBookings, ...past];
     }
 
     try {
