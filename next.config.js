@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  // The waiver PDF lives outside public/ and is read at runtime by the
+  // admin-gated route, so Next must trace it into that function bundle.
+  outputFileTracingIncludes: {
+    "/api/admin/documents/waiver": ["./private/legal/**"],
+  },
+
   // Three URLs from an earlier version of the site are still in Google's index
   // and were returning a bare 404, so every bit of accumulated link equity was
   // being thrown away and users were landing on an error page.

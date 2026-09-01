@@ -196,7 +196,7 @@ export default function AdminView({
           <a href="/owner-console-manual.pdf" target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             📖 Manual
           </a>
-          <a href="/liability-waiver-draft.pdf" target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+          <a href="/api/admin/documents/waiver" target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             Waiver (draft)
           </a>
           <a href="/" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>

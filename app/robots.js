@@ -15,7 +15,6 @@ export default function robots() {
           "/glow/crew",       // per-booking crew list, reached by link only
           "/booking-success", // post-checkout confirmation, unique per booking
           "/owner-console-manual.pdf",   // internal operations manual
-          "/liability-waiver-draft.pdf", // unreviewed legal draft — must not be indexed
         ],
       },
     ],
