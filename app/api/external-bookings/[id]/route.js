@@ -39,6 +39,8 @@ async function PATCH(req, { params }) {
   // mouth) all sit under platform "Other", so `platform` alone cannot answer
   // "what is actually bringing in work".
   if ("referralSource" in body) data.referralSource = body.referralSource || null;
+  // null clears the mark ("undo ask"); a truthy value stamps it now.
+  if ("reviewRequestedAt" in body) data.reviewRequestedAt = body.reviewRequestedAt ? new Date(body.reviewRequestedAt) : null;
   if ("platformRef" in body) data.platformRef = body.platformRef || null;
 
   const updated = await prisma.externalBooking.update({ where: { id }, data });

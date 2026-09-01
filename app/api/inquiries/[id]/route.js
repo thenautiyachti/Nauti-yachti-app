@@ -36,6 +36,12 @@ async function PATCH(req, { params }) {
     }
     data.refundType = body.refundType || null;
   }
+  // When a Google review was asked for. null clears the mark ("undo ask").
+  // Stored server-side so the tick survives a cleared browser and follows the
+  // owner between the phone and the desktop.
+  if ("reviewRequestedAt" in body) {
+    data.reviewRequestedAt = body.reviewRequestedAt ? new Date(body.reviewRequestedAt) : null;
+  }
   if ("refundAmount" in body) {
     data.refundAmount = body.refundAmount === "" || body.refundAmount == null ? null : Number(body.refundAmount);
   }

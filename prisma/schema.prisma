@@ -106,6 +106,7 @@ model Inquiry {
   bookingId String? @unique
 
   addOnIds String? // JSON string: string[] of AddOn ids selected at booking
+  reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
 }
 
 model Coupon {
@@ -156,6 +157,7 @@ model ExternalBooking {
   phone           String?  // guest phone, when known
   platformRef     String?  // the platform's own reservation number (Boatsetter/GetMyBoat) - shared key with LedgerEntry
   referralSource  String?  // how the booking was won: "repeat guest", "word of mouth", "website", "walk-up" - distinct from `platform`, which is who processed it
+  reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
   marketingOptOut Boolean  @default(false)
   ledgerEntries   LedgerEntry[]
 

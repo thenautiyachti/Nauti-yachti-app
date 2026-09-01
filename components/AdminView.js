@@ -2657,7 +2657,7 @@ async function copyToClipboard(text) {
   }
 }
 
-function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBooking }) {
+function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBooking, onUpdateInquiry }) {
   const [asked, setAsked] = useState({});
   const [templateChoice, setTemplateChoice] = useState("auto"); // "auto" | a TEMPLATES id
   const [filter, setFilter] = useState("todo"); // "todo" | "all"
@@ -2665,11 +2665,21 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   const [previewKey, setPreviewKey] = useState(null);
   const [open, setOpen] = useState(true);
 
-  // Read after mount, not during render — localStorage doesn't exist during
-  // Next's prerender pass and reading it in render would hydrate-mismatch.
-  useEffect(() => setAsked(loadAskedMarks()), []);
+  // Ask-marks live on the booking row itself (reviewRequestedAt), not in
+  // localStorage. The old browser-storage version lost every tick when site
+  // data was cleared and did not follow the owner between the phone and the
+  // desktop — which broke the moment texting from the phone became the whole
+  // point. localStorage is still read once on mount so marks made before this
+  // change are not silently lost; anything found there is written through to
+  // the database and then forgotten.
+  useEffect(() => {
+    const legacy = loadAskedMarks();
+    if (!legacy || !Object.keys(legacy).length) return;
+    setAsked(legacy);
+  }, []);
 
-  function markAsked(key, on) {
+  function markAsked(key, on, row) {
+    // Optimistic: the tick moves immediately, the write follows.
     setAsked((prev) => {
       const next = { ...prev };
       if (on) next[key] = new Date().toISOString();
@@ -2677,6 +2687,14 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
       saveAskedMarks(next);
       return next;
     });
+    const target = row || null;
+    if (!target) return;
+    const value = on ? new Date().toISOString() : null;
+    if (target.kind === "external" && onUpdateExternalBooking) {
+      onUpdateExternalBooking(target.id, { reviewRequestedAt: value });
+    } else if (target.kind === "site" && onUpdateInquiry) {
+      onUpdateInquiry(target.id, { reviewRequestedAt: value });
+    }
   }
 
   // Capture a phone number straight from this panel. The whole point is that
@@ -2697,13 +2715,16 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
     .filter((r) => r.statusBucket === "completed")
     .map((r) => {
       const days = daysSince(r.date);
-      return { ...r, key: `${r.kind}-${r.id}`, days, window: askWindow(days) };
+      return { ...r, key: `${r.kind}-${r.id}`, days, window: askWindow(days), askedAt: r.raw && r.raw.reviewRequestedAt };
     })
     // Freshest charters first — those are the ones worth chasing today.
     .sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999));
 
-  const askedCount = completed.filter((r) => asked[r.key]).length;
-  const rows = filter === "todo" ? completed.filter((r) => !asked[r.key]) : completed;
+  // Asked if the server row says so, or if this session just marked it and the
+  // write has not round-tripped yet.
+  const wasAsked = (r) => Boolean(r.askedAt || asked[r.key]);
+  const askedCount = completed.filter(wasAsked).length;
+  const rows = filter === "todo" ? completed.filter((r) => !wasAsked(r)) : completed;
 
   function draftFor(row) {
     const templateId = templateChoice === "auto" ? DEFAULT_TEMPLATE_FOR_DAYS(row.days) : templateChoice;
@@ -2716,7 +2737,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
     if (ok) {
       // Copying IS the ask, in practice — so it ticks the row off. The Undo
       // button on the row puts it back if you were only previewing.
-      markAsked(row.key, true);
+      markAsked(row.key, true, row);
       setTimeout(() => setFlash(""), 1800);
     }
   }
@@ -2814,7 +2835,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                 <tbody>
                   {rows.map((r) => {
                     const w = ASK_WINDOWS[r.window];
-                    const isAsked = Boolean(asked[r.key]);
+                    const isAsked = wasAsked(r);
                     return (
                       <Fragment key={r.key}>
                         <tr style={{ background: "rgba(255,255,255,0.02)" }}>
@@ -2855,7 +2876,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                               {smsHref(r.phone, draftFor(r)) && (
                                 <a
                                   href={smsHref(r.phone, draftFor(r))}
-                                  onClick={() => markAsked(r.key, true)}
+                                  onClick={() => markAsked(r.key, true, r)}
                                   style={{ color: "#0A0612", background: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
                                   Text it
                                 </a>
@@ -2873,13 +2894,13 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                               {r.email && (
                                 <a
                                   href={`mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(reviewSubject())}&body=${encodeURIComponent(draftFor(r))}`}
-                                  onClick={() => markAsked(r.key, true)}
+                                  onClick={() => markAsked(r.key, true, r)}
                                   style={{ color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
                                   Email draft
                                 </a>
                               )}
                               {isAsked && (
-                                <button type="button" onClick={() => markAsked(r.key, false)}
+                                <button type="button" onClick={() => markAsked(r.key, false, r)}
                                   style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.25)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
                                   Undo ask
                                 </button>
@@ -2936,7 +2957,7 @@ function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateSt
 
   return (
     <div>
-      <ReviewRequestsPanel inquiries={inquiries || []} externalBookings={externalBookings || []} onUpdateExternalBooking={onUpdateExternalBooking} />
+      <ReviewRequestsPanel inquiries={inquiries || []} externalBookings={externalBookings || []} onUpdateExternalBooking={onUpdateExternalBooking} onUpdateInquiry={onUpdateInquiry} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <div style={{ fontWeight: 700, color: "var(--text)" }}>
           Testimonials ({testimonials.length})
