@@ -9,7 +9,7 @@ import {
 } from "../lib/reviews";
 import { isCrewListRow, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
-import CampaignQueuePanel from "./CampaignQueuePanel";
+import SocialPipelinePanel from "./SocialPipelinePanel";
 
 const EXPENSE_CATEGORIES = [
   "01. Gas", "02. Food & Party", "03. Cleaning Supplies", "04. Apparel & Advertisement",
@@ -3377,14 +3377,6 @@ function JarvisActivityDetail({ detail }) {
 // Badge styling for MediaDraft.status in the Jarvis Media Queue panel.
 // "discussing" reads as "PENDING ACTION" — the owner's wording for "still
 // thinking about it / needs a conversation before we approve it."
-const JARVIS_MEDIA_STATUS_STYLE = {
-  pending: { color: "#00d9ff", label: "PENDING" },
-  discussing: { color: "#ffb454", label: "PENDING ACTION" },
-  approved: { color: "#7fe0b8", label: "APPROVED" },
-  rejected: { color: "#ff4d5e", label: "REJECTED" },
-  posted: { color: "#7fe0b8", label: "POSTED" },
-};
-
 // Angular, beveled panel corner — the established Jarvis HUD look (see the
 // standalone Jarvis-Voice-UI's .panel for the non-admin-console version of
 // this same aesthetic). Cuts the top-right and bottom-left corners at 45°.
@@ -3465,10 +3457,6 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
   const [dashboardError, setDashboardError] = useState(false);
   const [agentActivity, setAgentActivity] = useState(null);
   const [agentActivityError, setAgentActivityError] = useState(false);
-  const [mediaItems, setMediaItems] = useState([]);
-  const [expandedMediaId, setExpandedMediaId] = useState(null);
-  const [mediaActionPendingId, setMediaActionPendingId] = useState(null);
-  const [mediaActionError, setMediaActionError] = useState("");
   const [todos, setTodos] = useState([]);
   const [todoText, setTodoText] = useState("");
   const [todoError, setTodoError] = useState("");
@@ -3583,10 +3571,6 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
   // Mirror the dashboard's media queue into local state so approve/deny/
   // discuss clicks below can update the panel immediately, instead of
   // waiting up to 30s for the next dashboard poll to reflect the change.
-  useEffect(() => {
-    if (dashboard) setMediaItems(dashboard.mediaQueue || []);
-  }, [dashboard]);
-
   // Live voice waveform — draws whatever's actually coming out of the
   // Jarvis <audio> element (post gain/compressor) onto a canvas every
   // frame. Runs continuously once audio is enabled: a flat idle line
@@ -3643,40 +3627,9 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
     return () => cancelAnimationFrame(raf);
   }, [audioEnabled, analyserRef]);
 
-  // Approve / deny / discuss a queued media draft directly from the Jarvis
-  // tab. This is a human clicking inside the already-authenticated admin
-  // console, so it hits /api/media-drafts/[id] with the normal session
-  // cookie — no x-jarvis-key service-key needed. The local mediaItems list
-  // is updated right away so the panel reflects the new status without
-  // waiting for the next 30s dashboard poll; items that move out of
-  // "pending"/"discussing" drop out of the queue, matching what the next
-  // dashboard poll would fetch anyway.
-  async function setMediaDraftStatus(id, status) {
-    setMediaActionPendingId(id);
-    setMediaActionError("");
-    try {
-      const res = await fetch(`/api/media-drafts/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error("bad status");
-      const updated = await res.json();
-      setMediaItems((prev) => {
-        if (status === "pending" || status === "discussing") {
-          return prev.map((m) => (m.id === id ? { ...m, status: updated.status } : m));
-        }
-        return prev.filter((m) => m.id !== id);
-      });
-      if (status !== "pending" && status !== "discussing") {
-        setExpandedMediaId((cur) => (cur === id ? null : cur));
-      }
-    } catch {
-      setMediaActionError("Could not update that item — try again.");
-    } finally {
-      setMediaActionPendingId(null);
-    }
-  }
+  // Media-draft actions now live in SocialPipelinePanel, which owns the whole
+  // proposed -> approved -> scheduled -> posted flow rather than just approve
+  // and deny.
 
   const bookings = dashboard?.bookings || [];
   const attention = dashboard?.needsAttention || null;
@@ -3927,82 +3880,14 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
             </div>
           </JarvisPanel>
 
-          <JarvisPanel title="Campaign Queue">
-            <CampaignQueuePanel />
+          {/* One pipeline replacing the old Media Queue and Campaign Queue.
+              They were two halves of the same job, and the seam between them
+              was where work got stuck: approving a draft set a flag and
+              stopped, with nothing to carry it to a date. */}
+          <JarvisPanel title="Social Pipeline">
+            <SocialPipelinePanel />
           </JarvisPanel>
 
-          <JarvisPanel title="Media Queue">
-            {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
-            {dashboard && mediaItems.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No drafts awaiting review.</div>}
-            {mediaActionError && <div style={{ color: "#ff4d5e", fontSize: 11.5, marginBottom: 8 }}>{mediaActionError}</div>}
-            {mediaItems.length > 0 && (
-              // gridTemplateColumns: "1fr" is required here — an implicit
-              // single-column CSS Grid (the default with just `display:
-              // grid`) sizes its column to the *content's* max-content
-              // width rather than stretching to fill the panel, which let
-              // rows (and the expanded image inside them) blow out past the
-              // panel's ~290px width. Explicit "1fr" pins the column to the
-              // container's actual width.
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, width: "100%", flex: 1, minHeight: 140, overflowY: "auto", alignContent: "start" }}>
-                {mediaItems.map((m) => {
-                  const isExpanded = expandedMediaId === m.id;
-                  const isPending = mediaActionPendingId === m.id;
-                  const statusStyle = JARVIS_MEDIA_STATUS_STYLE[m.status] || JARVIS_MEDIA_STATUS_STYLE.pending;
-                  return (
-                    <div key={m.id} style={{ border: "1px solid rgba(0,217,255,0.18)", borderRadius: 4, background: isExpanded ? "rgba(0,217,255,0.06)" : "transparent", width: "100%", minWidth: 0, boxSizing: "border-box", overflow: "hidden" }}>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setExpandedMediaId(isExpanded ? null : m.id)}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedMediaId(isExpanded ? null : m.id); }}
-                        style={{ padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#dffcff" }}
-                      >
-                        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {m.theme} — {m.captionPreview}{m.platform ? ` · ${m.platform}` : ""}
-                        </span>
-                        <span style={{ color: statusStyle.color, fontSize: 10, letterSpacing: "0.03em", whiteSpace: "nowrap" }}>{statusStyle.label}</span>
-                        <span style={{ color: "#4ff3ff", fontSize: 10, flexShrink: 0 }}>{isExpanded ? "✕" : "▼"}</span>
-                      </div>
-                      {isExpanded && (
-                        <div style={{ padding: "0 10px 12px" }}>
-                          {m.mediaType === "video" ? (
-                            <video src={m.mediaUrl} controls style={{ width: "100%", maxHeight: 240, borderRadius: 4, background: "#000" }} />
-                          ) : (
-                            <img src={m.mediaUrl} alt="" style={{ width: "100%", maxHeight: 240, objectFit: "contain", borderRadius: 4, background: "rgba(0,0,0,0.35)" }} />
-                          )}
-                          <div style={{ fontSize: 12.5, color: "#dffcff", marginTop: 8 }}>{m.caption}</div>
-                          <div style={{ fontSize: 11, color: "#4ff3ff", opacity: 0.75, marginTop: 6 }}>
-                            {[
-                              m.theme,
-                              m.platform || "Platform TBD",
-                              m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null,
-                            ].filter(Boolean).join(" · ")}
-                          </div>
-                          <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                            <button type="button" disabled={isPending} onClick={() => setMediaDraftStatus(m.id, "approved")}
-                              className="jarvis-font"
-                              style={{ flex: 1, background: "#00d9ff", color: "#04070a", border: "none", borderRadius: 4, padding: "7px 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", opacity: isPending ? 0.55 : 1, cursor: isPending ? "default" : "pointer" }}>
-                              APPROVE
-                            </button>
-                            <button type="button" disabled={isPending} onClick={() => setMediaDraftStatus(m.id, "rejected")}
-                              className="jarvis-font"
-                              style={{ flex: 1, background: "transparent", color: "#ff4d5e", border: "1px solid #ff4d5e", borderRadius: 4, padding: "7px 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", opacity: isPending ? 0.55 : 1, cursor: isPending ? "default" : "pointer" }}>
-                              DENY
-                            </button>
-                            <button type="button" disabled={isPending} onClick={() => setMediaDraftStatus(m.id, "discussing")}
-                              className="jarvis-font"
-                              style={{ flex: 1, background: "transparent", color: "#ffb454", border: "1px solid #ffb454", borderRadius: 4, padding: "7px 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", opacity: isPending ? 0.55 : 1, cursor: isPending ? "default" : "pointer" }}>
-                              DISCUSS
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </JarvisPanel>
 
           <JarvisPanel title="Agent Activity">
             {agentActivityError && !agentActivity && <div style={{ color: "#ff4d5e", fontSize: 12.5 }}>Unable to load agent activity.</div>}

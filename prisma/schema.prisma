@@ -230,16 +230,36 @@ model FuelLog {
 }
 
 model MediaDraft {
+  // One social pipeline: proposed -> approved -> scheduled -> posted.
+  // Previously this table held only agent-proposed drafts while a separate
+  // CampaignPost table held scheduled copy, so approving a draft was a dead
+  // end - it set a flag and nothing carried it to a date. Both halves now live
+  // here, which also leaves the media-agent cron POSTing to /api/media-drafts
+  // working unchanged.
   id         String    @id @default(cuid())
-  theme      String // e.g. package name or "General" this draft is themed around
-  mediaUrl   String // URL of the generated image or video
+  theme      String // package name or "General" this is themed around
+  mediaUrl   String? // null for a written-in-advance campaign post with no image yet
   mediaType  String    @default("image") // "image" | "video"
   caption    String // Drafted social caption text
   platform   String? // intended platform, e.g. "instagram", "facebook", "tiktok" — nullable, may be undecided
-  status     String    @default("pending") // "pending" | "approved" | "rejected" | "posted" | "discussing"
+  status     String    @default("proposed") // pipeline stage: "proposed" | "approved" | "scheduled" | "posted" | "rejected"
   reviewNote String? // optional owner note when approving/rejecting
   createdAt  DateTime  @default(now())
   reviewedAt DateTime?
+
+  // Scheduling half of the pipeline, merged in from CampaignPost.
+  campaign      String? // e.g. "boatz-and-glowz-2026-09"; null for a one-off
+  postNumber    Int? // ordering within a campaign
+  title         String? // the beat, e.g. "FINAL CALL"
+  scheduledDate String? // "YYYY-MM-DD" once it has a slot
+  scheduledTime String? // "6:30 PM"
+  photoHint     String? // which real photo to use
+  deliveryNote  String? // e.g. "post natively - Blotato cannot do IG stills"
+  postedAt      DateTime?
+  postUrl       String?
+
+  @@index([campaign, scheduledDate])
+  @@index([status])
 }
 
 model Testimonial {
