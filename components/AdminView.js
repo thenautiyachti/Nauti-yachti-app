@@ -158,22 +158,52 @@ export default function AdminView({
   // (lib/crewList.js) — they must not inflate either tab's count.
   const bookingInquiries = inquiries.filter((i) => !isCrewListRow(i));
 
-  const tabs = [
-    { id: "inquiries", label: `Inquiries (${bookingInquiries.length})` },
-    { id: "bookings", label: `Bookings (${bookingInquiries.length + externalBookings.length})` },
-    { id: "pricing", label: "Packages & pricing" },
-    { id: "addons", label: "Add-ons" },
-    { id: "coupons", label: "Coupons" },
-    { id: "availability", label: "Availability" },
-    { id: "media", label: "Media" },
-    { id: "mediaDrafts", label: `Media Drafts (${mediaDrafts.filter((d) => d.status === "pending").length})` },
-    { id: "testimonials", label: `Testimonials (${testimonials.filter((t) => t.status === "pending").length})` },
-    { id: "ledger", label: "Income & expenses" },
-    { id: "reconcile", label: "Reconciliation" },
-    { id: "taxReport", label: "Tax Report" },
-    { id: "maintenance", label: "Maintenance" },
-    { id: "subscriptions", label: "Subscriptions" },
+  // Fourteen peer tabs had no answer to "where does the next feature go?"
+  // except another tab, so the row kept growing and everything had to be
+  // scanned every time. Grouping keeps every tab — nothing was removed — but
+  // gives each one a home and a place for the next one to land.
+  //
+  // Counts bubble up to the group header so a pending media draft or
+  // testimonial is still visible without opening the group.
+  const TAB_GROUPS = [
+    {
+      id: "bookings", label: "Bookings", tabs: [
+        { id: "inquiries", label: `Inquiries (${bookingInquiries.length})`, count: bookingInquiries.length },
+        { id: "bookings", label: `Bookings (${bookingInquiries.length + externalBookings.length})` },
+        { id: "availability", label: "Availability" },
+      ],
+    },
+    {
+      id: "money", label: "Money", tabs: [
+        { id: "ledger", label: "Income & expenses" },
+        { id: "reconcile", label: "Reconciliation" },
+        { id: "taxReport", label: "Tax Report" },
+        { id: "subscriptions", label: "Subscriptions" },
+      ],
+    },
+    {
+      id: "marketing", label: "Marketing", tabs: [
+        { id: "media", label: "Media" },
+        { id: "mediaDrafts", label: `Media Drafts (${mediaDrafts.filter((d) => d.status === "pending").length})`, count: mediaDrafts.filter((d) => d.status === "pending").length },
+        { id: "testimonials", label: `Testimonials (${testimonials.filter((t) => t.status === "pending").length})`, count: testimonials.filter((t) => t.status === "pending").length },
+      ],
+    },
+    {
+      id: "setup", label: "Setup", tabs: [
+        { id: "pricing", label: "Packages & pricing" },
+        { id: "addons", label: "Add-ons" },
+        { id: "coupons", label: "Coupons" },
+      ],
+    },
+    {
+      id: "boat", label: "Boat", tabs: [
+        { id: "maintenance", label: "Maintenance" },
+      ],
+    },
   ];
+
+  const groupForTab = (tabId) => TAB_GROUPS.find((g) => g.tabs.some((t) => t.id === tabId));
+  const activeGroup = groupForTab(tab) || TAB_GROUPS[0];
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--ink)" }}>
@@ -208,12 +238,39 @@ export default function AdminView({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 6, padding: "16px 24px 0", flexWrap: "nowrap", overflowX: "auto", whiteSpace: "nowrap" }}>
-        {tabs.map((t) => (
+      {/* Group row. Selecting a group jumps to its first tab, so a group is
+          never selected without something being shown. */}
+      <div style={{ display: "flex", gap: 6, padding: "16px 24px 0", flexWrap: "wrap" }}>
+        {TAB_GROUPS.map((g) => {
+          const isActive = g.id === activeGroup.id;
+          const pending = g.tabs.reduce((n, t) => n + (t.count || 0), 0);
+          return (
+            <button key={g.id} onClick={() => setTab(g.tabs[0].id)} style={{
+              background: isActive ? "var(--purple)" : "transparent",
+              color: isActive ? "#0A0612" : "var(--text)",
+              border: "1px solid var(--purple)", borderRadius: 8, padding: "8px 16px",
+              fontSize: 13.5, fontWeight: 700, whiteSpace: "nowrap",
+            }}>
+              {g.label}
+              {pending > 0 && (
+                <span style={{
+                  marginLeft: 7, padding: "1px 7px", borderRadius: 10, fontSize: 11, fontWeight: 700,
+                  background: isActive ? "#0A0612" : "var(--pink)", color: isActive ? "var(--purple)" : "#0A0612",
+                }}>{pending}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tabs within the selected group. */}
+      <div style={{ display: "flex", gap: 6, padding: "10px 24px 0", flexWrap: "nowrap", overflowX: "auto", whiteSpace: "nowrap" }}>
+        {activeGroup.tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            background: tab === t.id ? "var(--purple)" : "transparent", color: tab === t.id ? "#0A0612" : "var(--text)",
-            border: "1px solid var(--purple)", borderRadius: "8px 8px 0 0", padding: "9px 14px", fontSize: 13, fontWeight: 600,
-            flexShrink: 0, whiteSpace: "nowrap",
+            background: tab === t.id ? "rgba(203,108,230,0.22)" : "transparent",
+            color: "var(--text)", opacity: tab === t.id ? 1 : 0.72,
+            border: "1px solid rgba(203,108,230,0.35)", borderRadius: "8px 8px 0 0",
+            padding: "9px 14px", fontSize: 13, fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap",
           }}>{t.label}</button>
         ))}
       </div>
