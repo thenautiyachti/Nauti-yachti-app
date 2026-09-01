@@ -89,9 +89,29 @@ async function GET(req) {
   const { searchParams } = new URL(req.url);
   const since = searchParams.get("since");
   const sinceDate = since ? new Date(since) : null;
+  const valid = sinceDate && !isNaN(sinceDate.getTime());
+
+  // With no `since`, return the most recent messages rather than the whole
+  // history. The Jarvis tab calls it this way on load so the panel opens with
+  // what Jarvis has already said — previously it only ever asked for messages
+  // newer than the moment the page opened, so the panel was always empty until
+  // something new arrived, and anything said while the tab was shut was lost
+  // to the owner entirely.
+  if (!valid) {
+    const recent = await prisma.speechEvent.findMany({
+      orderBy: { createdAt: "desc" },
+      take: Math.min(Number(searchParams.get("limit")) || 15, 50),
+    });
+    // Oldest-first, so the client can append new arrivals the same way in
+    // both cases.
+    recent.reverse();
+    return NextResponse.json(
+      recent.map((e) => ({ id: e.id, text: e.text, audioB64: e.audioB64, createdAt: e.createdAt }))
+    );
+  }
 
   const events = await prisma.speechEvent.findMany({
-    where: sinceDate && !isNaN(sinceDate.getTime()) ? { createdAt: { gt: sinceDate } } : undefined,
+    where: { createdAt: { gt: sinceDate } },
     orderBy: { createdAt: "asc" },
   });
 

@@ -50,6 +50,9 @@ export default function AdminView({
   const gainNodeRef = useRef(null);
   const analyserRef = useRef(null);
   const sinceRef = useRef(null);
+  // A running log of what Jarvis has said, so the tab shows a transcript
+  // rather than only the single most recent line.
+  const [messages, setMessages] = useState([]);
 
   // Speech poll — every 2s, only once audio has been unlocked by a click.
   useEffect(() => {
@@ -63,14 +66,38 @@ export default function AdminView({
     async function pollSpeech() {
       if (inFlight) return;
       inFlight = true;
+      // First call of the session has no cursor: ask for recent history so the
+      // panel opens with what Jarvis has already said. Anything said while the
+      // tab was closed used to be invisible, which made the whole channel look
+      // broken whenever the voice was down.
+      const first = !sinceRef.current;
       try {
-        const since = sinceRef.current || new Date().toISOString();
-        const res = await fetch(`/api/admin/speak?since=${encodeURIComponent(since)}`);
+        const url = first
+          ? "/api/admin/speak"
+          : `/api/admin/speak?since=${encodeURIComponent(sinceRef.current)}`;
+        const res = await fetch(url);
         if (!res.ok || cancelled) return;
         const events = await res.json();
-        if (!events.length) return;
+        if (!events.length) {
+          // Nothing stored at all — still mark the cursor so the next poll asks
+          // only for new arrivals rather than re-fetching history forever.
+          if (first) sinceRef.current = new Date().toISOString();
+          return;
+        }
         sinceRef.current = events[events.length - 1].createdAt;
-        for (const ev of events) playSpeech(ev);
+        setMessages((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          const merged = [...prev, ...events.filter((e) => !seen.has(e.id))];
+          // Keep the panel bounded; it is a running log, not an archive.
+          return merged.slice(-30);
+        });
+        // Only speak what arrives live. Replaying history aloud on every page
+        // load would be maddening.
+        if (!first) {
+          for (const ev of events) playSpeech(ev);
+        } else if (events.length) {
+          setLastSpoken(events[events.length - 1].text);
+        }
       } catch {
         // transient — just try again on the next tick
       } finally {
@@ -483,6 +510,7 @@ export default function AdminView({
             audioEnabled={audioEnabled}
             onEnableAudio={enableAudio}
             lastSpoken={lastSpoken}
+            messages={messages}
             audioNote={audioNote}
             analyserRef={analyserRef}
           />
@@ -3415,7 +3443,7 @@ function openJarvisSession() {
   }, 1200);
 }
 
-function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyserRef }) {
+function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNote, analyserRef }) {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState(false);
   const [agentActivity, setAgentActivity] = useState(null);
@@ -3716,10 +3744,43 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, audioNote, analyse
             ✎ TALK TO JARVIS
           </button>
           <div style={{ fontSize: 17, lineHeight: 1.45, color: "#4ff3ff", opacity: 0.95 }}>
-            {lastSpoken ? <>Last spoken: <span style={{ color: "#fff", fontSize: 18.5, fontWeight: 600 }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing spoken yet this session."}
+            {lastSpoken ? <>Latest: <span style={{ color: "#fff", fontSize: 18.5, fontWeight: 600 }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing from Jarvis yet."}
           </div>
         </div>
         {audioNote && <div style={{ color: "#ffb454", fontSize: 12.5, marginBottom: 16 }}>{audioNote}</div>}
+
+        {/* The running transcript. Newest first, matching the owner's stated
+            preference elsewhere in the console. A message with no audio was
+            stored text-only because synthesis was unavailable — worth marking,
+            so a silent message is obviously "not spoken" rather than "missed". */}
+        {messages && messages.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div className="jarvis-font" style={{ fontSize: 11, letterSpacing: "0.14em", color: "#1c7a86", marginBottom: 8 }}>
+              TRANSCRIPT
+            </div>
+            <div style={{
+              maxHeight: 260, overflowY: "auto", display: "grid", gap: 10,
+              border: "1px solid rgba(0,217,255,0.18)", borderRadius: 6, padding: "12px 14px",
+              background: "rgba(0,0,0,0.25)",
+            }}>
+              {[...messages].reverse().map((m) => (
+                <div key={m.id} style={{ borderBottom: "1px solid rgba(0,217,255,0.1)", paddingBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginBottom: 3 }}>
+                    <span className="mono" style={{ fontSize: 10.5, color: "#1c7a86", whiteSpace: "nowrap" }}>
+                      {new Date(m.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    </span>
+                    {!m.audioB64 && (
+                      <span style={{ fontSize: 9.5, letterSpacing: "0.05em", color: "#ffb454", border: "1px solid #ffb454", borderRadius: 3, padding: "0 5px" }}>
+                        TEXT ONLY
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 14.5, color: "#dffcff", lineHeight: 1.5 }}>{m.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{
           position: "relative", border: "1px solid rgba(0,217,255,0.25)", borderRadius: 6,
