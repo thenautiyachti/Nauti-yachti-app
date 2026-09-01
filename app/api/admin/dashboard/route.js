@@ -2,6 +2,7 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 const { localDateKey } = require("../../../../lib/pricing");
+const { CREW_LIST_PACKAGE_ID } = require("../../../../lib/crewList");
 
 // pg/Prisma returns "YYYY-MM-DD" date-only columns as plain strings here.
 // Take that prefix directly rather than routing through `new Date(str)`
@@ -103,7 +104,10 @@ async function GET() {
         orderBy: { date: "asc" },
         take: 10,
       }),
-      prisma.inquiry.count({ where: { status: "new" } }),
+      // Crew-list signups share the Inquiry table (see lib/crewList.js) but
+      // are mailing-list contacts, not leads needing a reply — they must not
+      // show up on the dashboard as unactioned new inquiries.
+      prisma.inquiry.count({ where: { status: "new", packageId: { not: CREW_LIST_PACKAGE_ID } } }),
       prisma.inquiry.count({ where: { status: "booked", paymentStatus: "unpaid" } }),
       prisma.maintenanceItem.findMany({
         select: { label: true, intervalHours: true, intervalMonths: true, lastDoneDate: true, lastDoneHours: true },

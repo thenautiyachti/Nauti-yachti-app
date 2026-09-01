@@ -6,6 +6,8 @@ import { GOOGLE_REVIEW_URL } from "../lib/reviews";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
+import GlowStrip from "./GlowStrip";
+import { GLOW_PACKAGE_ID, GLOW_START_TIME, GLOW_CHECK_IN_TIME, GLOW_MEETING_POINT, formatGlowDate } from "../lib/glowEvent";
 
 const SOCIALS = [
   { label: "Facebook", url: "https://www.facebook.com/profile.php?id=61577960573366" },
@@ -63,6 +65,22 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
     setToast(msg);
     setTimeout(() => setToast(null), 2600);
   }
+
+  // Deep link support: /?package=glowz#inquire preselects that package in the
+  // booking form and scrolls to it. This is what makes a single "link in bio"
+  // one tap from a booking instead of dropping the visitor at the top of a
+  // page with eight package cards to scroll past. Read once on mount.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("package");
+    if (!wanted || !initialPackages.some((p) => p.id === wanted)) return;
+    setActivePackage(wanted);
+    // The hash alone won't scroll reliably here — the form is below a lot of
+    // server-rendered content and the browser has usually already given up on
+    // the hash by the time this runs.
+    requestAnimationFrame(() => {
+      document.getElementById("inquire")?.scrollIntoView({ behavior: "smooth" });
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleBook(pkgId, selection) {
     setActivePackage(pkgId);
@@ -181,6 +199,13 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
         </div>
         <div style={{ height: 40 }} />
       </div>
+
+      {/* Next Boatz & Glowz date — disappears on its own once the date passes. */}
+      {(() => {
+        const glow = packages.find((p) => p.id === GLOW_PACKAGE_ID);
+        return glow?.eventDate ? <GlowStrip eventDate={glow.eventDate} /> : null;
+      })()}
+
       <WakeLine />
 
       {/* VESSELS */}
@@ -557,9 +582,16 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
               ))}
             </select>
           </div>
-          <div className="mono" style={{ fontSize: 11.5, color: "var(--purple)" }}>
-            One date only this year: {new Date(pkg.eventDate + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} · {pkg.fixedHours} hrs
-            <div style={{ color: "var(--muted)", marginTop: 2 }}>The first Boatz & Glowz this year (May) has already happened.</div>
+          <div className="mono" style={{ fontSize: 11.5, color: "var(--purple)", lineHeight: 1.6 }}>
+            One date only this year: {formatGlowDate(pkg.eventDate)}
+            <div style={{ color: "var(--muted)", marginTop: 2 }}>
+              Board {GLOW_CHECK_IN_TIME} · lines off {GLOW_START_TIME} · {pkg.fixedHours} hrs
+            </div>
+            <div style={{ color: "var(--muted)" }}>Departs {GLOW_MEETING_POINT}</div>
+            <div style={{ color: "var(--muted)" }}>30 seats total across all 3 boats</div>
+            <a href="/glow" style={{ color: "var(--pink)", fontWeight: 700, textDecoration: "underline", display: "inline-block", marginTop: 4 }}>
+              Full event details →
+            </a>
           </div>
         </div>
       )}
@@ -741,7 +773,11 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           <div style={{ ...fullWidth, background: "rgba(203,108,230,0.08)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "10px 12px" }}>
             <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 600, marginBottom: 2 }}>Event date</div>
             <div style={{ fontSize: 14 }}>
-              {new Date(selectedPkg.eventDate + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} · {selectedPkg.fixedHours} hrs — the only date available this year
+              {formatGlowDate(selectedPkg.eventDate)} · {selectedPkg.fixedHours} hrs — the only date available this year
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.55 }}>
+              Board {GLOW_CHECK_IN_TIME}, lines off {GLOW_START_TIME}, departing {GLOW_MEETING_POINT}. Party size below = number of seats.{" "}
+              <a href="/glow" style={{ color: "var(--purple)" }}>What's included →</a>
             </div>
           </div>
         ) : (

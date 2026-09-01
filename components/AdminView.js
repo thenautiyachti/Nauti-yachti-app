@@ -6,6 +6,7 @@ import {
   GOOGLE_REVIEW_URL, GOOGLE_LISTING_URL, TEMPLATES, ASK_WINDOWS, DOCK_SCRIPT,
   channelFor, daysSince, askWindow, reviewMessage, reviewSubject, DEFAULT_TEMPLATE_FOR_DAYS,
 } from "../lib/reviews";
+import { isCrewListRow, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
 const EXPENSE_CATEGORIES = [
@@ -153,9 +154,13 @@ export default function AdminView({
     setAudioEnabled(true);
   }
 
+  // Crew-list signups are mailing-list contacts stored in the Inquiry table
+  // (lib/crewList.js) — they must not inflate either tab's count.
+  const bookingInquiries = inquiries.filter((i) => !isCrewListRow(i));
+
   const tabs = [
-    { id: "inquiries", label: `Inquiries (${inquiries.length})` },
-    { id: "bookings", label: `Bookings (${inquiries.length + externalBookings.length})` },
+    { id: "inquiries", label: `Inquiries (${bookingInquiries.length})` },
+    { id: "bookings", label: `Bookings (${bookingInquiries.length + externalBookings.length})` },
     { id: "pricing", label: "Packages & pricing" },
     { id: "addons", label: "Add-ons" },
     { id: "coupons", label: "Coupons" },
@@ -164,6 +169,7 @@ export default function AdminView({
     { id: "mediaDrafts", label: `Media Drafts (${mediaDrafts.filter((d) => d.status === "pending").length})` },
     { id: "testimonials", label: `Testimonials (${testimonials.filter((t) => t.status === "pending").length})` },
     { id: "ledger", label: "Income & expenses" },
+    { id: "reconcile", label: "Reconciliation" },
     { id: "taxReport", label: "Tax Report" },
     { id: "maintenance", label: "Maintenance" },
     { id: "subscriptions", label: "Subscriptions" },
@@ -379,6 +385,14 @@ export default function AdminView({
           <LedgerTab ledger={ledger} totals={totals} onAdd={onAddLedgerEntry} />
         )}
 
+        {tab === "reconcile" && (
+          <ReconciliationTab
+            externalBookings={externalBookings}
+            ledger={ledger}
+            onUpdateExternalBooking={onUpdateExternalBooking}
+          />
+        )}
+
         {tab === "taxReport" && (
           <TaxReportTab ledger={ledger} subscriptions={subscriptions} />
         )}
@@ -428,7 +442,10 @@ const BOOKING_PLATFORMS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "
 const INQUIRY_STATUS_BUCKET = { new: "pending", pending: "pending", booked: "booked", completed: "completed", lapsed: "cancelled", cancelled: "cancelled" };
 
 function toUnifiedRows(inquiries, externalBookings) {
-  const fromInquiries = inquiries.map((i) => ({
+  // Crew-list signups live in the Inquiry table (see lib/crewList.js) but are
+  // mailing-list contacts, not bookings — they'd otherwise show up here as
+  // permanently "pending" reservations with no date and never clear.
+  const fromInquiries = inquiries.filter((i) => !isCrewListRow(i)).map((i) => ({
     kind: "inquiry",
     id: i.id,
     bookingId: i.bookingId,
@@ -474,11 +491,94 @@ const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pen
 const REFUND_TYPES = ["full", "partial", "none"];
 const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none: "No refund" };
 
+// The guest mailing list. These rows come from the two-field signup on /glow
+// and /glow/crew, not the booking form — so they get their own panel with a
+// one-click "copy all emails" rather than sitting in the inquiry queue where
+// they'd read as leads that were never followed up.
+function CrewListPanel({ signups, onUpdate }) {
+  const [copied, setCopied] = useState(false);
+
+  // Only ever hand over addresses that haven't opted out. The signup form
+  // promises an unsubscribe, and until there's a real marketingOptOut column
+  // (see prisma/proposed-contact-and-reconciliation.sql) that promise is kept
+  // by setting the row's status to "lapsed" — so "lapsed" must never end up
+  // on the clipboard.
+  const mailable = mailableCrewList(signups);
+  const optedOut = signups.length - mailable.length;
+
+  async function copyEmails() {
+    try {
+      await navigator.clipboard.writeText(mailable.map((s) => s.email).join(", "));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked — the addresses are listed below anyway */
+    }
+  }
+
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 8, padding: 14, marginBottom: 14, border: "1px solid rgba(203,108,230,0.3)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontWeight: 700, color: "var(--text)" }}>
+            Crew list — {mailable.length} contact{mailable.length === 1 ? "" : "s"}
+            {optedOut > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}> ({optedOut} opted out)</span>}
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
+            Guest emails captured from /glow and the on-boat QR code — this is the
+            list to mail when the next date is set. To honour an unsubscribe, set
+            that person&apos;s status to &ldquo;{CREW_LIST_UNSUBSCRIBED_STATUS}&rdquo; below and they
+            drop out of the copy button.
+          </div>
+        </div>
+        {mailable.length > 0 && (
+          <button
+            type="button"
+            onClick={copyEmails}
+            style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700, flexShrink: 0 }}
+          >
+            {copied ? "Copied ✓" : "Copy mailable emails"}
+          </button>
+        )}
+      </div>
+      {signups.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>
+          No signups yet — they'll appear here as guests join from the glow page.
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 4, marginTop: 10, maxHeight: 220, overflowY: "auto" }}>
+          {signups.map((s) => {
+            const out = s.status === CREW_LIST_UNSUBSCRIBED_STATUS;
+            return (
+              <div key={s.id} style={{ fontSize: 12.5, color: "var(--text)", opacity: out ? 0.45 : 1, display: "flex", gap: 8, alignItems: "baseline" }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, textDecoration: out ? "line-through" : "none" }}>{s.name}</span>
+                  <span style={{ color: "var(--muted)" }}> · {s.email}{s.message ? ` · ${s.message}` : ""}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onUpdate(s.id, { status: out ? "new" : CREW_LIST_UNSUBSCRIBED_STATUS })}
+                  style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 5, padding: "2px 8px", fontSize: 11, flexShrink: 0 }}
+                >
+                  {out ? "Resubscribe" : "Unsubscribe"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InquiriesTab({ inquiries, onUpdate }) {
+  const crewList = inquiries.filter(isCrewListRow);
+  const realInquiries = inquiries.filter((i) => !isCrewListRow(i));
   return (
     <div style={{ display: "grid", gap: 10 }}>
-      {inquiries.length === 0 && <div style={{ color: "var(--muted)" }}>No inquiries yet — they'll show up here the moment a customer submits the form.</div>}
-      {inquiries.map((i) => (
+      <CrewListPanel signups={crewList} onUpdate={onUpdate} />
+      {realInquiries.length === 0 && <div style={{ color: "var(--muted)" }}>No inquiries yet — they'll show up here the moment a customer submits the form.</div>}
+      {realInquiries.map((i) => (
         <div key={i.id} style={{ background: "var(--card)", borderRadius: 8, padding: 14, color: "var(--text)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
@@ -586,6 +686,160 @@ const UNIFIED_STATUS_BUCKETS = ["pending", "booked", "completed", "cancelled"];
 const BOOKING_STATUS_COLOR = { pending: "#E8934A", booked: "#4FA8E8", completed: "#7FE0B8", cancelled: "#F0559C" };
 const BOOKING_STATUS_LABEL = { pending: "Pending", booked: "Booked", completed: "Completed", cancelled: "Cancelled" };
 
+// ---- Guest contact capture -------------------------------------------
+//
+// ExternalBooking.email has existed and been editable in the bookings table
+// all along, but nothing ever surfaced *which* bookings were missing one, so
+// in practice it never got filled in — every one of the live rows is null.
+// This panel makes the gap visible and puts the highest-value rows (guests
+// who actually paid and sailed) at the top, so filling it in is a short
+// worklist rather than a scroll through the whole table.
+//
+// Grouping is by guest name because there are no emails yet to group by.
+// First names collide easily, so repeats are labelled as candidates to
+// check, never asserted as the same person.
+function normalizeGuestName(name) {
+  return (name || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
+  const [open, setOpen] = useState(false);
+  const [onlyMissing, setOnlyMissing] = useState(true);
+
+  const withEmail = externalBookings.filter((b) => b.email);
+  const completed = externalBookings.filter((b) => b.status === "completed");
+  const completedMissing = completed.filter((b) => !b.email);
+
+  // Same normalized name on more than one booking — a repeat-guest candidate.
+  const byName = new Map();
+  for (const b of externalBookings) {
+    const key = normalizeGuestName(b.guestName);
+    if (!key) continue;
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key).push(b);
+  }
+  const repeatCandidates = Array.from(byName.entries())
+    .filter(([, list]) => list.length > 1)
+    .map(([key, list]) => ({
+      key,
+      name: list[0].guestName,
+      count: list.length,
+      completedCount: list.filter((b) => b.status === "completed").length,
+      dates: list.map((b) => b.date).sort(),
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  // Sorted so the guests worth contacting come first: completed charters
+  // without an email, newest first.
+  const worklist = [...externalBookings]
+    .filter((b) => (onlyMissing ? !b.email : true))
+    .sort((a, b) => {
+      const rank = (x) => (x.status === "completed" ? 0 : 1);
+      return rank(a) - rank(b) || (b.date || "").localeCompare(a.date || "");
+    });
+
+  function exportMarketingCsv() {
+    const rows = [
+      ["Booking ID", "Date", "Guest name", "Email", "Platform", "Status", "Party size", "Vessel", "Price paid"],
+      ...externalBookings
+        .filter((b) => b.email)
+        .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+        .map((b) => [b.bookingId || "", b.date, b.guestName || "", b.email, b.platform, b.status, b.partySize ?? "", b.vesselName, b.pricePaid ?? ""]),
+    ];
+    downloadCsv("nauti-yachti-guest-contacts.csv", rows);
+  }
+
+  return (
+    <div style={{ gridColumn: "1 / -1" }}>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        style={{ background: "transparent", color: completedMissing.length ? "#E8934A" : "var(--muted)", border: `1px solid ${completedMissing.length ? "rgba(232,147,74,0.5)" : "rgba(203,108,230,0.3)"}`, borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>
+        {open ? "▲" : "▼"} Guest contacts — {withEmail.length} of {externalBookings.length} bookings have an email
+        {completedMissing.length > 0 ? ` · ${completedMissing.length} paying guests unreachable` : ""}
+      </button>
+      {open && (
+        <div style={{ display: "grid", gap: 14, marginBottom: 18 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <StatCard label="Bookings with an email" value={`${withEmail.length} / ${externalBookings.length}`} color={withEmail.length ? "var(--purple)" : "#F0559C"} />
+            <StatCard label="Completed charters, no email" value={String(completedMissing.length)} color="#F0559C" />
+            <StatCard label="Repeat-guest candidates" value={String(repeatCandidates.length)} color="#E8934A" />
+          </div>
+
+          <div style={{ background: "rgba(240,85,156,0.07)", border: "1px solid rgba(240,85,156,0.3)", borderRadius: 10, padding: 12, fontSize: 12.5, color: "var(--text)", lineHeight: 1.55 }}>
+            Boatsetter and GetMyBoat relay messages and hide the guest&apos;s real address, so an email will almost never arrive with the booking — it has to be asked for during the charter and typed in here. The single highest-return habit is asking every guest on the boat and filling the field the same day. Guests who already paid are worth far more than enquiries, so those are listed first below.
+          </div>
+
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <label style={{ fontSize: 12.5, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+              <input type="checkbox" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} />
+              Only show bookings with no email
+            </label>
+            <button type="button" onClick={exportMarketingCsv} disabled={withEmail.length === 0}
+              style={{ background: withEmail.length ? "linear-gradient(135deg, var(--purple), var(--pink))" : "transparent", color: withEmail.length ? "#0A0612" : "var(--muted)", border: withEmail.length ? "none" : "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "8px 14px", fontWeight: 700, fontSize: 12.5 }}>
+              Download contact list CSV{withEmail.length === 0 ? " (none yet)" : ""}
+            </button>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 820, fontSize: 12.5, color: "var(--text)" }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
+                  <th style={{ padding: "4px 8px" }}>Date</th>
+                  <th style={{ padding: "4px 8px" }}>Guest</th>
+                  <th style={{ padding: "4px 8px" }}>Status</th>
+                  <th style={{ padding: "4px 8px" }}>Platform</th>
+                  <th style={{ padding: "4px 8px" }}>Email</th>
+                </tr>
+              </thead>
+              <tbody>
+                {worklist.map((b) => (
+                  <tr key={b.id} style={{ background: "var(--card)" }}>
+                    <td className="mono" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", whiteSpace: "nowrap" }}>{fmtLedgerDate(b.date)}</td>
+                    <td style={{ padding: "6px 8px", fontWeight: 600 }}>{b.guestName || "Guest"}</td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: BOOKING_STATUS_COLOR[b.status], textTransform: "uppercase" }}>
+                        {BOOKING_STATUS_LABEL[b.status] || b.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{b.platform}</td>
+                    <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
+                      <input
+                        type="email" defaultValue={b.email || ""} placeholder="add an email…"
+                        onBlur={(e) => {
+                          const value = e.target.value.trim() || null;
+                          if (value !== b.email) onUpdateExternalBooking(b.id, { email: value });
+                        }}
+                        style={{ width: 230, padding: "5px 8px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)" }} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {repeatCandidates.length > 0 && (
+            <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text)" }}>Repeat-guest candidates</div>
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
+                Matched on guest name only, because no booking has an email yet. Most platform rows carry a first name alone, so treat these as &ldquo;check whether this is the same person&rdquo; — not as confirmed repeat customers.
+              </div>
+              <div style={{ display: "grid", gap: 5 }}>
+                {repeatCandidates.map((r) => (
+                  <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, color: "var(--text)" }}>
+                    <span style={{ fontWeight: 600 }}>{r.name}</span>
+                    <span className="mono" style={{ color: "var(--muted)", fontSize: 11.5 }}>
+                      {r.count} bookings ({r.completedCount} completed) · {r.dates.join(", ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
   const emptyForm = {
     vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), startTime: "", hours: 4,
@@ -622,6 +876,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
+      <GuestContactsPanel externalBookings={externalBookings} onUpdateExternalBooking={onUpdateExternalBooking} />
       <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
         <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 10 }}>
           Log a booking from GetMyBoat, Boatsetter, or elsewhere. Marking it completed reserves that day (its own hours, or the whole day at 8+ combined hours) on the public availability calendar. It'll show up below alongside site bookings, with its own booking ID.
@@ -1152,6 +1407,476 @@ function BreakdownPanel({ title, rows, color }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---- Reconciliation tab ----------------------------------------------
+//
+// Answers one question per booking: is the money for this charter actually
+// on the books? The two sides were never linked — LedgerEntry.bookingId is
+// free text, and in the live data it holds the *platform's* reservation
+// number ("4609513", "4615817"), not the app's "NY-YYYYMMDD-NN". So none of
+// the income rows join to a booking by ID, and matching has to fall back to
+// date + amount. See PLATFORM_PAYOUT_DELTA below for the one systematic
+// offset that fallback has to tolerate.
+
+// Boatsetter's base payout leg lands in the ledger exactly $0.30 under the
+// payout figure recorded on the booking. Observed on every completed
+// Boatsetter charter in the live data — 518.19→517.89, 253.71→253.41,
+// 252.33→252.03, 158.78→158.48, 220.78→220.48, 160.26→159.96 — so it's a
+// fixed per-transaction fee, not rounding. Without tolerating it, every
+// Boatsetter charter would be reported as unrecorded revenue.
+const PLATFORM_PAYOUT_DELTA = 0.30;
+// Amounts are dollars-and-cents; anything under half a cent is the same money.
+const AMOUNT_EPSILON = 0.005;
+// Platform payouts settle a few days after the charter, so an amount match
+// is still a match slightly outside the charter date.
+const MATCH_WINDOW_DAYS = 7;
+
+function daysBetweenDateKeys(a, b) {
+  return (new Date(a + "T00:00:00") - new Date(b + "T00:00:00")) / 86400000;
+}
+
+// How a booking lines up with the income side of the ledger, best first:
+//   "id"      — an income row carries this booking's bookingId
+//   "exact"   — same date, amount equals the booking's recorded price
+//   "payout"  — within the settlement window, amount equals price − the
+//               platform's fixed fee (see PLATFORM_PAYOUT_DELTA)
+//   "named"   — same date, and the note names this guest, but the amount
+//               disagrees; only the difference is unaccounted for
+//   "date"    — income exists on that date but nothing ties it to this
+//               charter; treated as entirely unrecorded
+//   "none"    — no income row plausibly belongs to this booking
+//   "unpriced"— the booking has no price, so nothing can be checked
+// Only the first three mean the revenue is fully on the books. "date" is
+// deliberately NOT counted as accounted-for: sharing a calendar day with
+// some unrelated payout is not evidence that this charter was recorded.
+const MATCH_LABEL = {
+  id: "Linked by ID", exact: "Amount matches", payout: "Payout matches",
+  named: "Amount disagrees", date: "Same date only", none: "Not in ledger",
+  unpriced: "No price recorded",
+};
+const MATCH_COLOR = {
+  id: "#7FE0B8", exact: "#7FE0B8", payout: "#7FE0B8",
+  named: "#E8934A", date: "#E8934A", none: "#F0559C", unpriced: "#F0559C",
+};
+const MATCH_ACCOUNTED = {
+  id: true, exact: true, payout: true,
+  named: false, date: false, none: false, unpriced: false,
+};
+
+// The guest's first name, when it's long enough to be worth matching on.
+// Platform rows are frequently first-name-only ("Sheena", "Jorge"), and the
+// imported income notes abbreviate the surname ("Katherine L - ..."), so the
+// first name is the only token reliably present on both sides.
+function guestNameToken(booking) {
+  const first = String(booking.guestName || "").trim().split(/\s+/)[0] || "";
+  return first.length >= 3 ? first.toLowerCase() : null;
+}
+
+function matchBookingToLedger(booking, incomeRows) {
+  const price = booking.pricePaid;
+
+  if (booking.bookingId) {
+    const byId = incomeRows.find((l) => l.bookingId && l.bookingId === booking.bookingId);
+    if (byId) return { tier: "id", row: byId };
+  }
+  if (price != null) {
+    const exact = incomeRows.find((l) => l.date === booking.date && Math.abs(l.amount - price) < AMOUNT_EPSILON);
+    if (exact) return { tier: "exact", row: exact };
+    const payout = incomeRows.find((l) => {
+      const gap = daysBetweenDateKeys(l.date, booking.date);
+      return gap >= -1 && gap <= MATCH_WINDOW_DAYS
+        && Math.abs(l.amount - (price - PLATFORM_PAYOUT_DELTA)) < AMOUNT_EPSILON;
+    });
+    if (payout) return { tier: "payout", row: payout };
+
+    // Same day and the note names the guest, but the figures disagree — the
+    // charter IS on the books, just for the wrong amount. Pick the largest
+    // such row so the reported shortfall is the conservative one.
+    const token = guestNameToken(booking);
+    if (token) {
+      const named = incomeRows
+        .filter((l) => l.date === booking.date && String(l.note || "").toLowerCase().includes(token))
+        .sort((a, b) => b.amount - a.amount)[0];
+      if (named) return { tier: "named", row: named };
+    }
+  }
+  const sameDate = incomeRows.find((l) => l.date === booking.date);
+  if (sameDate) return { tier: price == null ? "unpriced" : "date", row: sameDate };
+  return { tier: price == null ? "unpriced" : "none", row: null };
+}
+
+// An income row whose amount is exactly the sum of two OTHER income rows
+// from the same origin nearby is almost certainly the same money entered
+// twice — once as a lump sum, again as its two settlement legs. Live
+// example: the $877.74 Boatsetter row dated 2026-05-16 is exactly the
+// $517.89 (05-18) plus $359.85 (05-19) rows. Reported only, never removed —
+// which of the entries is the real one is the owner's call, not ours.
+//
+// Restricted to lump sums that carry non-zero cents. Round-dollar amounts
+// coincide by accident all the time (the live ledger has a $600 Zelle payout
+// that happens to equal a nearby $200 and $400 from the same source, which
+// is arithmetic, not a duplicate). Matching to the cent is strong evidence;
+// matching on round hundreds is not.
+function findSuspectedDoubleCounts(incomeRows) {
+  const hits = [];
+  for (const row of incomeRows) {
+    if (Math.round(row.amount * 100) % 100 === 0) continue;
+    const nearby = incomeRows.filter((l) =>
+      l.id !== row.id
+      && (l.origin || "") === (row.origin || "")
+      && Math.abs(daysBetweenDateKeys(l.date, row.date)) <= 10);
+    let found = null;
+    for (let i = 0; i < nearby.length && !found; i++) {
+      for (let j = i + 1; j < nearby.length && !found; j++) {
+        if (Math.abs(nearby[i].amount + nearby[j].amount - row.amount) < AMOUNT_EPSILON) {
+          found = [nearby[i], nearby[j]];
+        }
+      }
+    }
+    if (found) hits.push({ row, parts: found });
+  }
+  // Each pair surfaces once — keep the lump sum, drop the mirrored hits its
+  // own legs would generate.
+  const claimed = new Set();
+  return hits.filter((h) => {
+    if (claimed.has(h.row.id)) return false;
+    h.parts.forEach((p) => claimed.add(p.id));
+    return true;
+  });
+}
+
+// Expense categories are numbered ("01. Gas", "02. Food & Party", ...) and
+// that number is the bucket a bookkeeper sorts on. In the live ledger four of
+// those numbers carry more than one label, which breaks the Tax Report two
+// different ways:
+//
+//   - the same category typed two ways splits one total across two lines
+//     ("10. ADP & Employee payout" vs "10. ADP & Emplyee payout")
+//   - one number reused for two genuinely different categories collapses
+//     under a single code ("06. Truck Repairs/parts" vs "06. Utilities")
+//
+// Grouped by the leading number rather than by the words, because that is what
+// the two failures have in common and what the owner has to reconcile. Which
+// of the two a given group is has to be read off the labels — merging is right
+// for the first, renumbering for the second — so this reports and never edits.
+// Rows with no category at all are counted separately; they land in the report
+// as "Other / Uncategorized".
+function categoryCode(category) {
+  const m = String(category).match(/^(\d+)\./);
+  return m ? m[1] : null;
+}
+
+function findCategoryVariants(ledger) {
+  const byCode = new Map();
+  const uncategorized = { count: 0, total: 0 };
+  for (const l of ledger) {
+    if (l.type !== "expense") continue;
+    if (!l.category) {
+      uncategorized.count += 1;
+      uncategorized.total += Number(l.amount || 0);
+      continue;
+    }
+    const code = categoryCode(l.category);
+    if (!code) continue;
+    if (!byCode.has(code)) byCode.set(code, new Map());
+    const labels = byCode.get(code);
+    const cur = labels.get(l.category) || { label: l.category, count: 0, total: 0 };
+    cur.count += 1;
+    cur.total += Number(l.amount || 0);
+    labels.set(l.category, cur);
+  }
+  const variants = [];
+  for (const [code, labels] of byCode) {
+    if (labels.size > 1) {
+      variants.push({ code, labels: Array.from(labels.values()).sort((a, b) => b.total - a.total) });
+    }
+  }
+  variants.sort((a, b) => a.code.localeCompare(b.code));
+  return { variants, uncategorized };
+}
+
+// Every booking, priced or not, with its ledger verdict and the dollar
+// amount still unaccounted for attached.
+//
+// shortfall is the number that feeds the "revenue missing from ledger"
+// total, and it is deliberately conservative in both directions:
+//   - fully matched  -> 0
+//   - amount differs -> only the difference, and never below 0 (a ledger row
+//                       larger than the booking price means the money is
+//                       there, possibly with add-ons; it is not a shortfall)
+//   - nothing found  -> the whole recorded price
+//   - no price       -> null, i.e. unknown and excluded from the total
+//                       rather than silently counted as zero
+function buildReconciliation(bookings, ledger) {
+  const incomeRows = ledger.filter((l) => l.type === "income");
+  return bookings
+    .map((b) => {
+      const match = matchBookingToLedger(b, incomeRows);
+      const accounted = MATCH_ACCOUNTED[match.tier];
+      let shortfall;
+      if (b.pricePaid == null) shortfall = null;
+      else if (accounted) shortfall = 0;
+      else if (match.tier === "named") shortfall = Math.max(0, b.pricePaid - match.row.amount);
+      else shortfall = b.pricePaid;
+      return {
+        ...b,
+        match: match.tier,
+        matchRow: match.row,
+        accounted,
+        shortfall,
+      };
+    })
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+}
+
+function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }) {
+  const years = Array.from(new Set([
+    ...externalBookings.map((b) => b.date && b.date.slice(0, 4)),
+    ...ledger.map((l) => l.date && l.date.slice(0, 4)),
+  ].filter(Boolean))).sort((a, b) => b.localeCompare(a));
+  const [year, setYear] = useState("all");
+  const [onlyProblems, setOnlyProblems] = useState(true);
+
+  const inYear = (d) => year === "all" || (d || "").startsWith(year);
+  const scopedBookings = externalBookings.filter((b) => inYear(b.date));
+  const scopedLedger = ledger.filter((l) => inYear(l.date));
+  const scopedIncome = scopedLedger.filter((l) => l.type === "income");
+
+  const rows = buildReconciliation(scopedBookings, scopedLedger);
+
+  // A charter that never happened owes no revenue. Only "completed" rows are
+  // held to the standard of "this money should be on the books" — the
+  // "booked" pile is mostly platform enquiries that were imported as
+  // bookings and never confirmed (see the callout in the UI below).
+  const completed = rows.filter((r) => r.status === "completed");
+  const unpriced = completed.filter((r) => r.pricePaid == null);
+  const unaccounted = completed.filter((r) => r.shortfall > 0);
+  const missingRevenue = unaccounted.reduce((s, r) => s + r.shortfall, 0);
+  const accountedRevenue = completed.filter((r) => r.accounted).reduce((s, r) => s + (r.pricePaid || 0), 0);
+  const notCompleted = rows.filter((r) => r.status !== "completed");
+
+  const doubleCounts = findSuspectedDoubleCounts(scopedIncome);
+  const doubleCountTotal = doubleCounts.reduce((s, h) => s + h.row.amount, 0);
+
+  // The other direction: income the ledger has that no booking explains.
+  const claimedRowIds = new Set(rows.filter((r) => r.matchRow && r.accounted).map((r) => r.matchRow.id));
+  const orphanIncome = scopedIncome.filter((l) => !claimedRowIds.has(l.id));
+  const orphanTotal = orphanIncome.reduce((s, l) => s + l.amount, 0);
+
+  const totalIncome = scopedIncome.reduce((s, l) => s + l.amount, 0);
+  const totalExpense = scopedLedger.filter((l) => l.type === "expense").reduce((s, l) => s + l.amount, 0);
+  const correctedIncome = totalIncome - doubleCountTotal + missingRevenue;
+  const { variants: categoryVariants, uncategorized } = findCategoryVariants(scopedLedger);
+
+  const visible = onlyProblems ? rows.filter((r) => r.status === "completed" && !r.accounted) : rows;
+
+  function exportCsv() {
+    const csvRows = [
+      ["Booking ID", "Date", "Guest", "Platform", "Status", "Price recorded", "Ledger verdict", "Ledger amount", "Ledger date", "Unaccounted", "Note"],
+      ...rows.map((r) => [
+        r.bookingId || "", r.date, r.guestName || "", r.platform, r.status,
+        r.pricePaid == null ? "" : r.pricePaid.toFixed(2),
+        MATCH_LABEL[r.match],
+        r.matchRow ? r.matchRow.amount.toFixed(2) : "",
+        r.matchRow ? r.matchRow.date : "",
+        r.shortfall == null ? "unknown" : r.shortfall.toFixed(2),
+        r.note || "",
+      ]),
+    ];
+    downloadCsv(`nauti-yachti-reconciliation-${year}.csv`, csvRows);
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <label style={{ fontSize: 13, color: "var(--muted)" }}>
+          Year{" "}
+          <select value={year} onChange={(e) => setYear(e.target.value)}
+            style={{ padding: "7px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginLeft: 6 }}>
+            <option value="all">All time</option>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </label>
+        <label style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <input type="checkbox" checked={onlyProblems} onChange={(e) => setOnlyProblems(e.target.checked)} />
+          Only show completed charters that need attention
+        </label>
+        <button type="button" onClick={exportCsv}
+          style={{ background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 700, fontSize: 13 }}>
+          Download reconciliation CSV
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <StatCard label="Completed charters" value={String(completed.length)} color="var(--purple)" />
+        <StatCard label="Revenue on the books" value={currency(accountedRevenue)} color="#7FE0B8" />
+        <StatCard label="Revenue missing from ledger" value={currency(missingRevenue)} color="#F0559C" />
+        <StatCard label="Completed, no price recorded" value={String(unpriced.length)} color="#E8934A" />
+        <StatCard label="Suspected double-counted" value={currency(doubleCountTotal)} color="#E8934A" />
+      </div>
+
+      <div style={{ background: "var(--card)", borderRadius: 10, padding: 14, color: "var(--text)", fontSize: 13, lineHeight: 1.55 }}>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>What the corrected income figure looks like</div>
+        <div className="mono" style={{ display: "grid", gap: 3, fontSize: 12.5 }}>
+          <div>Ledger income as entered{"  "}<span style={{ color: "#7FE0B8" }}>{currency(totalIncome)}</span></div>
+          <div>− suspected double-counted{"  "}<span style={{ color: "#E8934A" }}>{currency(doubleCountTotal)}</span></div>
+          <div>+ completed charters missing from ledger{"  "}<span style={{ color: "#F0559C" }}>{currency(missingRevenue)}</span></div>
+          <div style={{ borderTop: "1px solid rgba(203,108,230,0.25)", paddingTop: 4, marginTop: 3, fontWeight: 700 }}>
+            = corrected income{"  "}<span style={{ color: "var(--purple)" }}>{currency(correctedIncome)}</span>
+            {"   vs expenses "}<span style={{ color: "#F0559C" }}>{currency(totalExpense)}</span>
+            {"   net "}<span style={{ color: correctedIncome - totalExpense >= 0 ? "#7FE0B8" : "#F0559C" }}>{currency(correctedIncome - totalExpense)}</span>
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
+          This still excludes any charter whose payout amount was never recorded anywhere ({unpriced.length} of them) — those can only come off a platform payout statement. Treat this as a floor, not a final number.
+        </div>
+      </div>
+
+      {notCompleted.length > 0 && (
+        <div style={{ background: "rgba(232,147,74,0.08)", border: "1px solid rgba(232,147,74,0.35)", borderRadius: 10, padding: 14, color: "var(--text)", fontSize: 13, lineHeight: 1.55 }}>
+          <span style={{ fontWeight: 700, color: "#E8934A" }}>{notCompleted.length} bookings are not marked completed</span> and are excluded from every figure above. Their notes say most were platform enquiries that never produced a confirmed booking or a payment. They are not missing revenue — but if any of them <em>did</em> sail, mark it completed and the amount will start counting here.
+        </div>
+      )}
+
+      <div>
+        <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
+          {onlyProblems ? `Completed charters needing attention (${visible.length})` : `All bookings (${visible.length})`}
+        </div>
+        {visible.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>Nothing outstanding for this selection.</div>}
+        {visible.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1000, fontSize: 12.5, color: "var(--text)" }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
+                  <th style={{ padding: "4px 8px" }}>Booking ID</th>
+                  <th style={{ padding: "4px 8px" }}>Date</th>
+                  <th style={{ padding: "4px 8px" }}>Guest</th>
+                  <th style={{ padding: "4px 8px" }}>Platform</th>
+                  <th style={{ padding: "4px 8px" }}>Status</th>
+                  <th style={{ padding: "4px 8px" }}>Price paid</th>
+                  <th style={{ padding: "4px 8px" }}>In the ledger?</th>
+                  <th style={{ padding: "4px 8px" }}>Unaccounted</th>
+                  <th style={{ padding: "4px 8px" }}>Ledger row</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((r) => (
+                  <tr key={r.id} style={{ background: "var(--card)" }}>
+                    <td className="mono" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", color: "#E8934A", whiteSpace: "nowrap" }}>{r.bookingId || "—"}</td>
+                    <td className="mono" style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{fmtLedgerDate(r.date)}</td>
+                    <td style={{ padding: "6px 8px", fontWeight: 600 }}>{r.guestName || "Guest"}</td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.platform}</td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: BOOKING_STATUS_COLOR[r.status], textTransform: "uppercase" }}>
+                        {BOOKING_STATUS_LABEL[r.status] || r.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      <input
+                        type="number" step="0.01" defaultValue={r.pricePaid ?? ""} placeholder="—"
+                        onBlur={(e) => {
+                          const value = e.target.value === "" ? null : Number(e.target.value);
+                          if (value !== r.pricePaid) onUpdateExternalBooking(r.id, { pricePaid: value });
+                        }}
+                        style={{ width: 86, padding: "4px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                    </td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: MATCH_COLOR[r.match], textTransform: "uppercase" }}>
+                        {MATCH_LABEL[r.match]}
+                      </span>
+                    </td>
+                    <td className="mono" style={{ padding: "6px 8px", whiteSpace: "nowrap", fontWeight: 700, color: r.shortfall ? "#F0559C" : "var(--muted)" }}>
+                      {r.shortfall == null ? "unknown" : r.shortfall > 0 ? currency(r.shortfall) : "—"}
+                    </td>
+                    <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0", color: "var(--muted)", fontSize: 11.5 }}>
+                      {r.matchRow
+                        ? `${fmtLedgerDate(r.matchRow.date)} · ${currency(r.matchRow.amount)} · ${r.matchRow.origin || "—"}`
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text)" }}>Suspected double-counted income</div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
+            A lump-sum row that exactly equals two nearby rows from the same source. Verify against the payout statement, then delete whichever entry is the duplicate.
+          </div>
+          {doubleCounts.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>None found.</div>}
+          <div style={{ display: "grid", gap: 8 }}>
+            {doubleCounts.map((h) => (
+              <div key={h.row.id} style={{ fontSize: 12.5, color: "var(--text)" }}>
+                <div className="mono" style={{ color: "#E8934A", fontWeight: 700 }}>
+                  {fmtLedgerDate(h.row.date)} · {currency(h.row.amount)} · {h.row.origin || "—"}
+                </div>
+                <div style={{ color: "var(--muted)", fontSize: 11.5 }}>{h.row.note}</div>
+                <div style={{ color: "var(--muted)", fontSize: 11.5, marginTop: 2 }}>
+                  = {h.parts.map((p) => `${fmtLedgerDate(p.date)} ${currency(p.amount)}`).join("  +  ")}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text)" }}>
+            Income with no matching booking ({orphanIncome.length} · {currency(orphanTotal)})
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
+            Money that came in without a booking row to explain it. Some are real charters that were never logged as bookings — add them so the calendar and the marketing list are complete.
+          </div>
+          <div style={{ display: "grid", gap: 5, maxHeight: 320, overflowY: "auto" }}>
+            {orphanIncome.map((l) => (
+              <div key={l.id} style={{ fontSize: 12, color: "var(--text)", display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <span style={{ minWidth: 0 }}>
+                  <span className="mono" style={{ color: "#E8934A" }}>{fmtLedgerDate(l.date)}</span>{" "}
+                  <span style={{ color: "var(--muted)" }}>{l.note || l.origin}</span>
+                </span>
+                <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700, whiteSpace: "nowrap" }}>{currency(l.amount)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {(categoryVariants.length > 0 || uncategorized.count > 0) && (
+        <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text)" }}>Expense codes used for more than one category</div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
+            Each of these numbers carries two different labels. Where the labels mean the same thing, one real total is split across two lines on the Tax Report — re-save the smaller set under the spelling you want to keep. Where they mean genuinely different things, the number has been reused and one of them needs renumbering.
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {categoryVariants.map((group) => (
+              <div key={group.code} style={{ fontSize: 12.5, color: "var(--text)" }}>
+                {group.labels.map((v) => (
+                  <div key={v.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                    <span>{v.label} <span style={{ color: "var(--muted)", fontSize: 11.5 }}>({v.count} {v.count === 1 ? "entry" : "entries"})</span></span>
+                    <span className="mono" style={{ color: "#E8934A", fontWeight: 700, whiteSpace: "nowrap" }}>{currency(v.total)}</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: "1px solid rgba(203,108,230,0.2)", marginTop: 3, paddingTop: 3, display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--muted)" }}>
+                  <span>code {group.code} total</span>
+                  <span className="mono" style={{ fontWeight: 700 }}>{currency(group.labels.reduce((s, v) => s + v.total, 0))}</span>
+                </div>
+              </div>
+            ))}
+            {uncategorized.count > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, color: "var(--text)" }}>
+                <span>No category set <span style={{ color: "var(--muted)", fontSize: 11.5 }}>({uncategorized.count} entries)</span></span>
+                <span className="mono" style={{ color: "#F0559C", fontWeight: 700, whiteSpace: "nowrap" }}>{currency(uncategorized.total)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -31,6 +31,10 @@ export default function NavBar() {
         <Link href="/#gallery" style={LINK_STYLE}>Gallery</Link>
         <Link href="/about" style={LINK_STYLE}>About</Link>
         <Link href="/events" style={LINK_STYLE}>Events</Link>
+        {/* Highlighted while the glow party is the live campaign — it's the
+            only dated, sellable event on the site and needs to be reachable
+            from every page in one tap. */}
+        <Link href="/glow" style={{ ...LINK_STYLE, color: "var(--pink)", fontWeight: 700 }}>Boatz &amp; Glowz</Link>
         <Link href="/#inquire" style={LINK_STYLE}>Book</Link>
         <Link href="/privacy-policy" style={LINK_STYLE}>Privacy Policy</Link>
         <Link href="/terms" style={LINK_STYLE}>Terms & Cancellation Policy</Link>
