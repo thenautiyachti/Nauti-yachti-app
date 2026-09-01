@@ -5,7 +5,7 @@ import { currency, localDateKey, imageFocus } from "../lib/pricing";
 import {
   GOOGLE_REVIEW_URL, GOOGLE_LISTING_URL, TEMPLATES, ASK_WINDOWS, DOCK_SCRIPT,
   channelFor, daysSince, askWindow, reviewMessage, reviewSubject, DEFAULT_TEMPLATE_FOR_DAYS,
-  smsHref,
+  smsHref, normalizePhone,
 } from "../lib/reviews";
 import { isCrewListRow, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -814,13 +814,56 @@ function normalizeGuestName(name) {
   return (name || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// A phone field that says whether what you typed can actually be texted.
+//
+// The review flow is a `sms:` deep link, and that link silently does nothing
+// when the number is not dialable — so a typo here looks identical to a guest
+// who never replied. Rather than reject the input, it stores what was typed and
+// marks it, because a half-remembered number is still worth keeping.
+function PhoneInput({ booking, onUpdateExternalBooking }) {
+  const [value, setValue] = useState(booking.phone || "");
+  const dialable = normalizePhone(value);
+  const flagged = value.trim() && !dialable;
+
+  function save() {
+    const raw = value.trim();
+    // Store the normalized +1XXXXXXXXXX when it parses, so every good number is
+    // held in one shape regardless of how it was typed.
+    const next = raw ? (normalizePhone(raw) || raw) : null;
+    if (next !== booking.phone) onUpdateExternalBooking(booking.id, { phone: next });
+    if (next) setValue(next);
+  }
+
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+      <input
+        type="tel" value={value} placeholder="add a phone…"
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        style={{
+          width: 170, padding: "5px 8px", borderRadius: 5,
+          border: `1px solid ${flagged ? "rgba(232,147,74,0.7)" : "rgba(203,108,230,0.3)"}`,
+          background: "transparent", color: "var(--text)",
+        }} />
+      {flagged && (
+        <span style={{ fontSize: 10, color: "#E8934A" }}>not textable — check digits</span>
+      )}
+    </span>
+  );
+}
+
 function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
   const [open, setOpen] = useState(false);
   const [onlyMissing, setOnlyMissing] = useState(true);
 
+  // Phone leads, because that is the contact guests actually hand over and the
+  // review flow texts rather than emails. Email is still worth keeping when it
+  // turns up, it just is not what gets a review asked for.
+  const withPhone = externalBookings.filter((b) => b.phone);
   const withEmail = externalBookings.filter((b) => b.email);
   const completed = externalBookings.filter((b) => b.status === "completed");
-  const completedMissing = completed.filter((b) => !b.email);
+  const completedMissing = completed.filter((b) => !b.phone);
 
   // Same normalized name on more than one booking — a repeat-guest candidate.
   const byName = new Map();
@@ -844,19 +887,22 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
   // Sorted so the guests worth contacting come first: completed charters
   // without an email, newest first.
   const worklist = [...externalBookings]
-    .filter((b) => (onlyMissing ? !b.email : true))
+    .filter((b) => (onlyMissing ? !b.phone : true))
     .sort((a, b) => {
       const rank = (x) => (x.status === "completed" ? 0 : 1);
       return rank(a) - rank(b) || (b.date || "").localeCompare(a.date || "");
     });
 
+  // Anyone reachable by either channel belongs in the export, so a guest with a
+  // phone and no email is not silently dropped from the contact list.
+  const reachable = externalBookings.filter((b) => b.phone || b.email);
+
   function exportMarketingCsv() {
     const rows = [
-      ["Booking ID", "Date", "Guest name", "Email", "Platform", "Status", "Party size", "Vessel", "Price paid"],
-      ...externalBookings
-        .filter((b) => b.email)
+      ["Booking ID", "Date", "Guest name", "Phone", "Email", "Platform", "Status", "Party size", "Vessel", "Price paid"],
+      ...reachable
         .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-        .map((b) => [b.bookingId || "", b.date, b.guestName || "", b.email, b.platform, b.status, b.partySize ?? "", b.vesselName, b.pricePaid ?? ""]),
+        .map((b) => [b.bookingId || "", b.date, b.guestName || "", b.phone || "", b.email || "", b.platform, b.status, b.partySize ?? "", b.vesselName, b.pricePaid ?? ""]),
     ];
     downloadCsv("nauti-yachti-guest-contacts.csv", rows);
   }
@@ -865,29 +911,30 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
     <div style={{ gridColumn: "1 / -1" }}>
       <button type="button" onClick={() => setOpen((v) => !v)}
         style={{ background: "transparent", color: completedMissing.length ? "#E8934A" : "var(--muted)", border: `1px solid ${completedMissing.length ? "rgba(232,147,74,0.5)" : "rgba(203,108,230,0.3)"}`, borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>
-        {open ? "▲" : "▼"} Guest contacts — {withEmail.length} of {externalBookings.length} bookings have an email
+        {open ? "▲" : "▼"} Guest contacts — {withPhone.length} of {externalBookings.length} bookings have a phone number
         {completedMissing.length > 0 ? ` · ${completedMissing.length} paying guests unreachable` : ""}
       </button>
       {open && (
         <div style={{ display: "grid", gap: 14, marginBottom: 18 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <StatCard label="Bookings with an email" value={`${withEmail.length} / ${externalBookings.length}`} color={withEmail.length ? "var(--purple)" : "#F0559C"} />
-            <StatCard label="Completed charters, no email" value={String(completedMissing.length)} color="#F0559C" />
+            <StatCard label="Bookings with a phone" value={`${withPhone.length} / ${externalBookings.length}`} color={withPhone.length ? "var(--purple)" : "#F0559C"} />
+            <StatCard label="Completed charters, no phone" value={String(completedMissing.length)} color="#F0559C" />
+            <StatCard label="Bookings with an email" value={`${withEmail.length} / ${externalBookings.length}`} color={withEmail.length ? "var(--purple)" : "var(--muted)"} />
             <StatCard label="Repeat-guest candidates" value={String(repeatCandidates.length)} color="#E8934A" />
           </div>
 
           <div style={{ background: "rgba(240,85,156,0.07)", border: "1px solid rgba(240,85,156,0.3)", borderRadius: 10, padding: 12, fontSize: 12.5, color: "var(--text)", lineHeight: 1.55 }}>
-            Boatsetter and GetMyBoat relay messages and hide the guest&apos;s real address, so an email will almost never arrive with the booking — it has to be asked for during the charter and typed in here. The single highest-return habit is asking every guest on the boat and filling the field the same day. Guests who already paid are worth far more than enquiries, so those are listed first below.
+            Neither platform will ever hand over a guest&apos;s phone number or email. Checked every one: Boatsetter forwards message text but guests almost never type a number into it, GetMyBoat forwards no message text at all, and its booking confirmations carry no contact details by design. So this table is the only way past charters get contact details — typed in from your own phone, or asked for on the boat and filled in the same day. Guests who already paid are worth far more than enquiries, so those are listed first.
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <label style={{ fontSize: 12.5, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
               <input type="checkbox" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} />
-              Only show bookings with no email
+              Only show bookings with no phone number
             </label>
-            <button type="button" onClick={exportMarketingCsv} disabled={withEmail.length === 0}
-              style={{ background: withEmail.length ? "linear-gradient(135deg, var(--purple), var(--pink))" : "transparent", color: withEmail.length ? "#0A0612" : "var(--muted)", border: withEmail.length ? "none" : "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "8px 14px", fontWeight: 700, fontSize: 12.5 }}>
-              Download contact list CSV{withEmail.length === 0 ? " (none yet)" : ""}
+            <button type="button" onClick={exportMarketingCsv} disabled={reachable.length === 0}
+              style={{ background: reachable.length ? "linear-gradient(135deg, var(--purple), var(--pink))" : "transparent", color: reachable.length ? "#0A0612" : "var(--muted)", border: reachable.length ? "none" : "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "8px 14px", fontWeight: 700, fontSize: 12.5 }}>
+              Download contact list CSV{reachable.length === 0 ? " (none yet)" : ""}
             </button>
           </div>
 
@@ -899,6 +946,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
                   <th style={{ padding: "4px 8px" }}>Guest</th>
                   <th style={{ padding: "4px 8px" }}>Status</th>
                   <th style={{ padding: "4px 8px" }}>Platform</th>
+                  <th style={{ padding: "4px 8px" }}>Phone</th>
                   <th style={{ padding: "4px 8px" }}>Email</th>
                 </tr>
               </thead>
@@ -913,6 +961,9 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
                       </span>
                     </td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{b.platform}</td>
+                    <td style={{ padding: "6px 8px" }}>
+                      <PhoneInput booking={b} onUpdateExternalBooking={onUpdateExternalBooking} />
+                    </td>
                     <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
                       <input
                         type="email" defaultValue={b.email || ""} placeholder="add an email…"
@@ -1093,6 +1144,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                   <th style={{ padding: "4px 8px" }}>Booking ID</th>
                   <th style={{ padding: "4px 8px" }}>Name</th>
+                  <th style={{ padding: "4px 8px" }}>Phone</th>
                   <th style={{ padding: "4px 8px" }}>Email</th>
                   <th style={{ padding: "4px 8px" }}>Vessel</th>
                   <th style={{ padding: "4px 8px" }}>Start</th>
@@ -1116,6 +1168,13 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                         <div style={{ fontWeight: 400, fontSize: 11, color: "var(--purple)", marginTop: 2 }}>
                           + {r.addOnIds.map((id) => addOns.find((a) => a.id === id)?.name || id).join(", ")}
                         </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                      {r.kind === "external" ? (
+                        <PhoneInput booking={r} onUpdateExternalBooking={onUpdateExternalBooking} />
+                      ) : (
+                        r.phone || "—"
                       )}
                     </td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
