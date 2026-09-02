@@ -99,33 +99,19 @@ export default function TermsPage() {
           <h1 className="display" style={{ fontSize: "clamp(32px, 5vw, 48px)", margin: 0, lineHeight: 1, fontWeight: 800, color: "var(--text)" }}>
             Terms & Cancellation Policy
           </h1>
-          <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 12 }}>Status: Cancellation & rescheduling policy confirmed — liability release published, awaiting final attorney sign-off</div>
+          <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 12 }}>Status: Cancellation & rescheduling policy and liability release both confirmed — reviewed by a Texas-licensed attorney</div>
         </div>
       </div>
 
       <div style={{ background: "var(--ink-soft)", padding: "10px 24px 60px" }}>
         <div style={{ maxWidth: 780, margin: "0 auto", display: "grid", gap: 26 }}>
 
-          <div style={{ border: "1px solid #F0555C", background: "rgba(240,85,92,0.1)", borderRadius: 10, padding: "16px 18px" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.06em", color: "#FF7A80", marginBottom: 6 }}>
-              ⚠ AWAITING FINAL ATTORNEY SIGN-OFF
-            </div>
-            <p style={{ fontSize: 14, color: "var(--text)", opacity: 0.9, lineHeight: 1.6, margin: 0 }}>
-              The cancellation and rescheduling policy below is confirmed. Section 5 now carries the full Release and Waiver of Liability, drafted from Texas statute and under review by a licensed attorney — it is published here so it can be read in place, and is not yet signed off. Remove this notice once the attorney approves it.
-            </p>
-          </div>
-
           {SECTIONS.map((s) => (
-            <div key={s.title}>
-              <h2 className="display" style={{ fontSize: 19, color: "var(--purple)", marginBottom: 8, fontWeight: 700 }}>{s.title}</h2>
-
-              {s.draftWarning && (
-                <div style={{ border: "1px solid #F0555C", background: "rgba(240,85,92,0.1)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
-                  <p style={{ fontSize: 13.5, fontWeight: 700, color: "#FF7A80", margin: 0, lineHeight: 1.5 }}>
-                    DRAFT — this section has not been reviewed by an attorney and must not be relied on as a binding legal waiver until it has been.
-                  </p>
-                </div>
-              )}
+            <div
+              key={s.title}
+              style={s.emphasis ? { border: "2px solid var(--purple)", borderRadius: 10, padding: "20px 22px", background: "rgba(203,108,230,0.06)" } : undefined}
+            >
+              <h2 className="display" style={{ fontSize: s.emphasis ? 22 : 19, color: "var(--purple)", marginBottom: 8, fontWeight: s.emphasis ? 800 : 700 }}>{s.title}</h2>
 
               {s.example && (
                 <div style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, letterSpacing: "0.06em", color: "#FFB454", border: "1px solid rgba(255,180,84,0.5)", background: "rgba(255,180,84,0.08)", borderRadius: 4, padding: "2px 8px", marginBottom: 8 }}>
