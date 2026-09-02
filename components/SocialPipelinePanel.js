@@ -233,6 +233,15 @@ export default function SocialPipelinePanel() {
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", opacity: r.status === "posted" || r.status === "rejected" ? 0.55 : 1 }}>
                   {(r.caption || "").split("\n")[0]}
                 </span>
+                {/* A scheduled post with nothing to post is the failure worth
+                    seeing early — it will not go out on the day, and the day is
+                    too late to find that out. */}
+                {r.status === "scheduled" && !r.mediaUrl && (
+                  <span title="This cannot be published without a photo or clip"
+                    style={{ fontSize: 9.5, fontWeight: 700, color: "#ffb454", border: "1px solid #ffb454", borderRadius: 3, padding: "0 4px", whiteSpace: "nowrap" }}>
+                    NO MEDIA
+                  </span>
+                )}
                 {r.scheduledDate && (
                   <span style={{ fontSize: 10, whiteSpace: "nowrap", color: overdue ? "#ff4d5e" : isToday ? "#ffb454" : "#1c7a86" }}>
                     {overdue ? "OVERDUE " : isToday ? "TODAY " : ""}{prettyDate(r.scheduledDate)}
