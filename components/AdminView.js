@@ -7,7 +7,7 @@ import {
   channelFor, daysSince, askWindow, reviewMessage, reviewSubject, DEFAULT_TEMPLATE_FOR_DAYS,
   smsHref, normalizePhone,
 } from "../lib/reviews";
-import { isCrewListRow, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
+import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialPipelinePanel from "./SocialPipelinePanel";
 
@@ -197,7 +197,7 @@ export default function AdminView({
 
   // Crew-list signups are mailing-list contacts stored in the Inquiry table
   // (lib/crewList.js) — they must not inflate either tab's count.
-  const bookingInquiries = inquiries.filter((i) => !isCrewListRow(i));
+  const bookingInquiries = inquiries.filter(isRealInquiry);
 
   // Fourteen peer tabs had no answer to "where does the next feature go?"
   // except another tab, so the row kept growing and everything had to be
@@ -560,7 +560,7 @@ function toUnifiedRows(inquiries, externalBookings) {
   // Crew-list signups live in the Inquiry table (see lib/crewList.js) but are
   // mailing-list contacts, not bookings — they'd otherwise show up here as
   // permanently "pending" reservations with no date and never clear.
-  const fromInquiries = inquiries.filter((i) => !isCrewListRow(i)).map((i) => ({
+  const fromInquiries = inquiries.filter(isRealInquiry).map((i) => ({
     kind: "inquiry",
     id: i.id,
     bookingId: i.bookingId,
@@ -612,6 +612,40 @@ const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none
 // and /glow/crew, not the booking form — so they get their own panel with a
 // one-click "copy all emails" rather than sitting in the inquiry queue where
 // they'd read as leads that were never followed up.
+
+// People who were aboard someone else's booking. Not a guest of their own
+// reservation and not an enquirer, so they get their own strip rather than
+// muddying either list. Distinct from GuestContactsPanel below, which is about
+// bookings whose contact details are missing.
+function ExtraContactsPanel({ contacts }) {
+  if (!contacts.length) return null;
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 8, padding: 14, marginBottom: 14, border: "1px solid rgba(127,224,184,0.3)" }}>
+      <div style={{ fontWeight: 700, color: "var(--text)" }}>
+        Extra guest contacts — {contacts.length}
+      </div>
+      <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2, marginBottom: 10 }}>
+        People who were on someone else&apos;s charter and whose number is worth keeping —
+        a second review ask from the same trip, or a follow-up. Deliberately not counted
+        as inquiries, and every actual guest is already listed under Bookings.
+      </div>
+      <div style={{ display: "grid", gap: 6 }}>
+        {contacts.map((c) => (
+          <div key={c.id} style={{ fontSize: 12.5, color: "var(--text)" }}>
+            <span style={{ fontWeight: 700 }}>{c.name}</span>
+            <span style={{ color: "var(--muted)" }}>
+              {c.phone ? " · " + prettyPhone(c.phone) : ""}
+              {c.date ? " · " + c.date : ""}
+              {c.reviewRequestedAt ? " · review asked" : " · never asked for a review"}
+            </span>
+            {c.message && <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>{c.message}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CrewListPanel({ signups, onUpdate }) {
   const [copied, setCopied] = useState(false);
 
@@ -690,9 +724,11 @@ function CrewListPanel({ signups, onUpdate }) {
 
 function InquiriesTab({ inquiries, onUpdate }) {
   const crewList = inquiries.filter(isCrewListRow);
-  const realInquiries = inquiries.filter((i) => !isCrewListRow(i));
+  const guestContacts = inquiries.filter(isGuestContactRow);
+  const realInquiries = inquiries.filter(isRealInquiry);
   return (
     <div style={{ display: "grid", gap: 10 }}>
+      <ExtraContactsPanel contacts={guestContacts} />
       <CrewListPanel signups={crewList} onUpdate={onUpdate} />
       {realInquiries.length === 0 && <div style={{ color: "var(--muted)" }}>No inquiries yet — they'll show up here the moment a customer submits the form.</div>}
       {realInquiries.map((i) => (
