@@ -483,7 +483,7 @@ export default function AdminView({
         )}
 
         {tab === "ledger" && (
-          <LedgerTab ledger={ledger} totals={totals} onAdd={onAddLedgerEntry} />
+          <LedgerTab ledger={ledger} totals={totals} onAdd={onAddLedgerEntry} externalBookings={externalBookings} />
         )}
 
         {tab === "reconcile" && (
@@ -1559,11 +1559,16 @@ function groupTotals(entries, keyFn) {
 // attributed to a specific reservation, so they're skipped. Sorted by net
 // profit descending so the best (and, scrolling down, worst) performing
 // bookings are easy to spot at a glance.
-function groupBookingProfit(entries) {
+function groupBookingProfit(entries, externalBookings = []) {
+  const byPk = new Map(externalBookings.map((b) => [b.id, b]));
   const groups = new Map();
   for (const entry of entries) {
     if (!entry.bookingId) continue;
-    const cur = groups.get(entry.bookingId) || { bookingId: entry.bookingId, income: 0, expense: 0 };
+    const cur = groups.get(entry.bookingId) || { bookingId: entry.bookingId, income: 0, expense: 0, guestName: null };
+    // Any one row of the group carrying the link is enough to name the charter.
+    if (!cur.guestName && entry.externalBookingId && byPk.has(entry.externalBookingId)) {
+      cur.guestName = byPk.get(entry.externalBookingId).guestName || null;
+    }
     if (entry.type === "income") cur.income += Number(entry.amount || 0);
     else if (entry.type === "expense") cur.expense += Number(entry.amount || 0);
     groups.set(entry.bookingId, cur);
@@ -1592,7 +1597,7 @@ function groupCommissionLost(entries) {
   return Array.from(groups.values()).sort((a, b) => b.total - a.total);
 }
 
-function LedgerTab({ ledger, totals, onAdd }) {
+function LedgerTab({ ledger, totals, onAdd, externalBookings = [] }) {
   const emptyForm = {
     type: "income", amount: "", grossAmount: "", note: "", date: localDateKey(new Date()),
     category: INCOME_CATEGORIES[0], origin: RESERVATION_ORIGINS[0], bookingId: "", subcategory: "",
@@ -1631,7 +1636,7 @@ function LedgerTab({ ledger, totals, onAdd }) {
     ledger.filter((l) => l.type === "income"),
     (l) => l.subcategory
   );
-  const bookingProfit = groupBookingProfit(ledger);
+  const bookingProfit = groupBookingProfit(ledger, externalBookings);
   const commissionLost = groupCommissionLost(ledger);
 
   return (
@@ -1760,8 +1765,9 @@ function BookingProfitPanel({ rows }) {
       <div style={{ display: "grid", gap: 6, maxHeight: 300, overflowY: "auto" }}>
         {rows.map((r) => (
           <div key={r.bookingId} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13.5, color: "var(--text)", gap: 10 }}>
-            <span className="mono" style={{ whiteSpace: "nowrap" }}>
-              {r.bookingId}{" "}
+            <span style={{ minWidth: 0 }}>
+              {r.guestName && <span style={{ fontWeight: 700 }}>{r.guestName} </span>}
+              <span className="mono" style={{ color: r.guestName ? "var(--muted)" : "var(--text)", fontSize: r.guestName ? 11.5 : 13.5 }}>{r.bookingId}</span>{" "}
               <span style={{ color: "var(--muted)", fontSize: 11.5 }}>
                 (+{currency(r.income)} / −{currency(r.expense)})
               </span>
@@ -3959,9 +3965,8 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
 
   // Income with no vessel on it cannot be attributed to a boat, which is worth
   // saying out loud rather than quietly folding into a bucket.
-  const unattributed = income
-    .filter((l) => !String(l.subcategory || "").trim())
-    .reduce((s, l) => s + Number(l.amount || 0), 0);
+  const unattributedRows = income.filter((l) => !String(l.subcategory || "").trim());
+  const unattributed = unattributedRows.reduce((s, l) => s + Number(l.amount || 0), 0);
 
   const activeSubs = subscriptions.filter((s) => s.active);
   const annualSubscriptionCost = activeSubs.reduce((sum, s) => sum + monthlyAmount(s) * 12, 0);
@@ -4034,9 +4039,25 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
 
       {unattributed > 0 && (
         <div style={{ fontSize: 12.5, color: "#E8934A", background: "rgba(232,147,74,0.08)", border: "1px solid rgba(232,147,74,0.35)", borderRadius: 8, padding: "10px 12px" }}>
-          <strong>{currency(unattributed)}</strong> of {year} income has no vessel recorded, so it cannot be
-          attributed to a boat above. Setting the vessel on those entries in the Income &amp; expenses tab
-          would make this breakdown complete.
+          <div style={{ marginBottom: 6 }}>
+            <strong>{currency(unattributed)}</strong> of {year} income has no vessel recorded, so it cannot be
+            attributed to a boat above. These are the entries — set a vessel on each in the Income &amp; expenses tab.
+          </div>
+          <div style={{ display: "grid", gap: 4 }}>
+            {unattributedRows
+              .slice()
+              .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
+              .map((l) => (
+                <div key={l.id} style={{ display: "flex", gap: 10, alignItems: "baseline", color: "var(--text)" }}>
+                  <span className="mono" style={{ whiteSpace: "nowrap", color: "#E8934A", fontWeight: 700 }}>{currency(l.amount)}</span>
+                  <span className="mono" style={{ whiteSpace: "nowrap", color: "var(--muted)", fontSize: 11.5 }}>{l.date}</span>
+                  <span style={{ color: "var(--muted)", fontSize: 11.5 }}>{l.origin || "—"}</span>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11.5 }}>
+                    {l.note || "(no note)"}
+                  </span>
+                </div>
+              ))}
+          </div>
         </div>
       )}
 
