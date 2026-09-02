@@ -20,7 +20,15 @@ html, body {
   background: var(--ink);
   color: var(--text);
   font-family: 'Work Sans', sans-serif;
+  /* A backstop, not a fix. If something too wide slips in, the page still
+     cannot be dragged sideways on a phone — which is the symptom a visitor
+     actually notices. Anything genuinely wide (a table, a code block) should
+     scroll inside its own container rather than rely on this. */
+  overflow-x: hidden;
 }
+
+/* Media should shrink to its container rather than set the page width. */
+img, video, canvas, svg, iframe { max-width: 100%; }
 
 .display {
   font-family: 'Big Shoulders Display', sans-serif;
@@ -88,6 +96,41 @@ input::placeholder, textarea::placeholder {
 @media (min-width: 1280px) {
   .jarvis-dashboard-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+/* Reviews beside the review form on a wide screen; stacked on a phone.
+   This was an inline two-column grid with a 280px minimum on the form, which on
+   a 375px handset left the reviews column too narrow to hold its own cards —
+   they overlapped the form and the text broke one word per line. Inline styles
+   cannot carry a media query, so the layout lives here. */
+.testimonials-layout {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .testimonials-layout { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 30px; }
+}
+/* Multi-column only where there is room for it. Below that a single column,
+   otherwise a card gets a column narrower than its own words. */
+.testimonials-columns { columns: 1; column-gap: 16px; }
+@media (min-width: 560px) { .testimonials-columns { columns: 240px 2; } }
+@media (min-width: 900px) { .testimonials-columns { columns: 240px 3; } }
+
+/* The booking section: pitch beside the form on a wide screen, stacked on a
+   phone. Its inline version demanded 260px + 360px + a 44px gap — 664px before
+   anything else — so it overflowed every handset made. */
+.inquire-layout {
+  display: grid;
+  gap: 28px;
+  align-items: start;
+  grid-template-columns: 1fr;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+@media (min-width: 900px) {
+  .inquire-layout { grid-template-columns: minmax(260px, 1fr) minmax(360px, 720px); gap: 44px; }
+}
+
 /* The Social Pipeline holds captions that have to be readable at a glance, so
    it takes two columns once there are at least two to take. Below that it stays
    full width like every other panel. In the 4-column layout this puts it in the

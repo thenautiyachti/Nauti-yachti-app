@@ -441,8 +441,8 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               <strong>Been aboard before?</strong> Every returning guest gets <strong>10% off</strong> their next trip — just use code <span className="mono" style={{ color: "var(--pink)", fontWeight: 700 }}>WELCOMEBACK10</span> when you book. And if you've got a minute, we'd genuinely love to hear how your trip went below!
             </span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(280px,1fr)", gap: 30, alignItems: "start" }}>
-            <div style={{ columns: "240px 3", columnGap: 16 }}>
+          <div className="testimonials-layout">
+            <div className="testimonials-columns">
               {testimonials.length === 0 && (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>No reviews yet — be the first to share your experience!</div>
               )}
@@ -455,7 +455,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       {/* INQUIRY */}
       <div id="inquire" style={{ background: "var(--ink-soft)", padding: "56px 24px 80px" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(260px,1fr) minmax(360px,720px)", gap: 44, alignItems: "start" }}>
+        <div className="inquire-layout">
           <div style={{ paddingTop: 6 }}>
             <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Check availability & inquire</h2>
             <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 26 }}>
