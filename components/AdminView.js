@@ -814,6 +814,16 @@ function normalizeGuestName(name) {
   return (name || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// Render a stored E.164 number the way a person reads one. US numbers get the
+// familiar grouping; anything international is shown as-is, since guessing at
+// another country's grouping is worse than not trying.
+function prettyPhone(raw) {
+  const e164 = normalizePhone(raw);
+  if (!e164) return raw || "—";
+  const m = e164.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
+  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : e164;
+}
+
 // A phone field that says whether what you typed can actually be texted.
 //
 // The review flow is a `sms:` deep link, and that link silently does nothing
@@ -2850,10 +2860,11 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
       {open && (
         <>
           <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8, marginBottom: 12, maxWidth: 760, lineHeight: 1.55 }}>
-            Boatsetter and GetMyBoat don&rsquo;t hand over guest email addresses, so nothing here can send itself. What it does is
-            write the message for you: hit <strong>Copy draft</strong>, open that booking&rsquo;s message thread on the platform it came
-            from, and paste. Copying ticks the charter off the list. Some platforms strip outbound links from message
-            threads — if that happens, switch the wording to <em>No link (platform-safe)</em>.
+            Neither platform hands over guest contact details, so every number here was typed in by you — and a guest with no
+            number is a review that never gets asked for. <strong>Text it</strong> opens your messaging app with the message
+            already written and ticks the charter off the list; <strong>Preview</strong> shows the wording first, and can copy it
+            for pasting into a platform message thread instead. Some platforms strip outbound links — if that happens, switch
+            the wording to <em>No link (platform-safe)</em>.
           </p>
 
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
@@ -2916,6 +2927,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                   <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                     <th style={{ padding: "4px 8px" }}>Charter</th>
                     <th style={{ padding: "4px 8px" }}>Guest</th>
+                    <th style={{ padding: "4px 8px" }}>Phone</th>
                     <th style={{ padding: "4px 8px" }}>Vessel</th>
                     <th style={{ padding: "4px 8px" }}>Ask via</th>
                     <th style={{ padding: "4px 8px" }}>Window</th>
@@ -2934,6 +2946,28 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                             <div style={{ color: "var(--muted)", fontSize: 11 }}>{r.date || "—"}</div>
                           </td>
                           <td style={{ padding: "6px 8px", fontWeight: 600 }}>{r.name || "Guest"}</td>
+                          {/* The number itself, not just whether one exists —
+                              this is the tab where you decide who to text, and
+                              a guest with no number is the whole reason a
+                              review never gets asked for. */}
+                          <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                            {r.phone ? (
+                              <a href={`tel:${normalizePhone(r.phone) || r.phone}`}
+                                className="mono"
+                                style={{ color: "var(--text)", fontSize: 12, textDecoration: "none", borderBottom: "1px dotted rgba(203,108,230,0.5)" }}>
+                                {prettyPhone(r.phone)}
+                              </a>
+                            ) : (
+                              <input
+                                type="tel"
+                                placeholder="Add phone…"
+                                defaultValue=""
+                                onBlur={(e) => { const v = e.target.value.trim(); if (v) savePhone(r, v); }}
+                                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                                style={{ width: 118, padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(232,147,74,0.5)", background: "transparent", color: "var(--text)", fontSize: 11.5 }}
+                              />
+                            )}
+                          </td>
                           <td style={{ padding: "6px 8px" }}>{r.vesselName || "—"}</td>
                           <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
                             {channelFor(r.source)}
@@ -2949,38 +2983,25 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                           </td>
                           <td style={{ padding: "6px 8px" }}>
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                              <button type="button" onClick={() => handleCopy(r)}
-                                style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 700, whiteSpace: "nowrap" }}>
-                                {flash === r.key ? "Copied ✓" : "Copy draft"}
-                              </button>
-                              <button type="button" onClick={() => setPreviewKey(previewKey === r.key ? null : r.key)}
-                                style={{ background: "transparent", color: "var(--text)", border: "1px solid rgba(203,108,230,0.35)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
-                                {previewKey === r.key ? "Hide" : "Preview"}
-                              </button>
-                              {/* Text first — guests give a phone number far more
-                                  readily than an email, and the review link opens
-                                  on the phone already in their hand. On a desktop
-                                  browser an sms: link may do nothing, which is why
-                                  "Copy draft" stays the primary action; this button
-                                  is for when the console is open on a phone. */}
+                              {/* Two actions: read it, send it. Texting is the
+                                  whole point — guests hand over a phone number
+                                  far more readily than an email, and the review
+                                  link opens on the phone already in their hand.
+                                  Copying lives inside the preview, next to the
+                                  text it copies, for when the console is open on
+                                  a desktop where an sms: link may not fire. */}
                               {smsHref(r.phone, draftFor(r)) && (
                                 <a
                                   href={smsHref(r.phone, draftFor(r))}
                                   onClick={() => markAsked(r.key, true, r)}
-                                  style={{ color: "#0A0612", background: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
+                                  style={{ color: "#0A0612", background: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
                                   Text it
                                 </a>
                               )}
-                              {!r.phone && (
-                                <input
-                                  type="tel"
-                                  placeholder="Add phone…"
-                                  defaultValue=""
-                                  onBlur={(e) => { const v = e.target.value.trim(); if (v) savePhone(r, v); }}
-                                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                                  style={{ width: 118, padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)", fontSize: 11.5 }}
-                                />
-                              )}
+                              <button type="button" onClick={() => setPreviewKey(previewKey === r.key ? null : r.key)}
+                                style={{ background: "transparent", color: "var(--text)", border: "1px solid rgba(203,108,230,0.35)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
+                                {previewKey === r.key ? "Hide" : "Preview"}
+                              </button>
                               {r.email && (
                                 <a
                                   href={`mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(reviewSubject())}&body=${encodeURIComponent(draftFor(r))}`}
@@ -3000,9 +3021,20 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                         </tr>
                         {previewKey === r.key && (
                           <tr>
-                            <td colSpan={6} style={{ padding: "0 8px 10px" }}>
+                            <td colSpan={7} style={{ padding: "0 8px 10px" }}>
                               <textarea readOnly value={draftFor(r)} rows={11}
                                 style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", background: "rgba(0,0,0,0.25)", color: "var(--text)", fontSize: 12.5, fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" }} />
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
+                                <button type="button" onClick={() => handleCopy(r)}
+                                  style={{ background: "transparent", color: "var(--purple)", border: "1px solid rgba(203,108,230,0.4)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 600 }}>
+                                  {flash === r.key ? "Copied ✓" : "Copy"}
+                                </button>
+                                <span style={{ color: "var(--muted)", fontSize: 11 }}>
+                                  {r.phone
+                                    ? "Text it opens your messaging app with this already written. On a desktop that may not fire — copy it instead."
+                                    : "Add a phone number above and this can be sent as a text."}
+                                </span>
+                              </div>
                             </td>
                           </tr>
                         )}
