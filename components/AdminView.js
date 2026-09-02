@@ -324,7 +324,7 @@ export default function AdminView({
 
       <div style={{ padding: 24 }}>
         {tab === "inquiries" && (
-          <InquiriesTab inquiries={inquiries} onUpdate={onUpdateInquiry} />
+          <InquiriesTab inquiries={inquiries} externalBookings={externalBookings} onUpdate={onUpdateInquiry} />
         )}
 
         {tab === "bookings" && (
@@ -838,7 +838,7 @@ function CrewListPanel({ signups, onUpdate }) {
   );
 }
 
-function InquiriesTab({ inquiries, onUpdate }) {
+function InquiriesTab({ inquiries, externalBookings = [], onUpdate }) {
   const crewList = inquiries.filter(isCrewListRow);
   const guestContacts = inquiries.filter(isGuestContactRow);
   const realInquiries = inquiries.filter(isRealInquiry);
