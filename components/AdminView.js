@@ -1186,7 +1186,10 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
     guestName: "", phone: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], referralSource: "", status: "booked", note: "", pricePaid: "",
   };
   const [form, setForm] = useState(emptyForm);
-  const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "completed" | "cancelled"
+  // "active" is the default: everything except cancellations. They are almost
+  // half the table and are a record, not work — scrolling past them to reach a
+  // live booking was the normal case.
+  const [filterStatus, setFilterStatus] = useState("active"); // "active" | "all" | "pending" | "booked" | "completed" | "cancelled"
   const [sortBy, setSortBy] = useState("date-desc"); // "date-desc" | "date-asc" | "status"
 
   function submit(e) {
@@ -1209,7 +1212,11 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
   // charters stay visible alongside upcoming ones — only the status filter
   // below narrows what's shown.
   const allRows = toUnifiedRows(inquiries, externalBookings);
-  const rows = (filterStatus === "all" ? allRows : allRows.filter((r) => r.statusBucket === filterStatus))
+  const rows = (
+    filterStatus === "all" ? allRows
+    : filterStatus === "active" ? allRows.filter((r) => r.statusBucket !== "cancelled")
+    : allRows.filter((r) => r.statusBucket === filterStatus)
+  )
     .sort((a, b) => {
       if (sortBy === "date-asc") return (a.date || "").localeCompare(b.date || "");
       if (sortBy === "status") return UNIFIED_STATUS_BUCKETS.indexOf(a.statusBucket) - UNIFIED_STATUS_BUCKETS.indexOf(b.statusBucket) || (b.date || "").localeCompare(a.date || "");
@@ -1306,10 +1313,13 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
 
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-          <div style={{ fontWeight: 700, color: "var(--text)" }}>All bookings ({rows.length}{filterStatus !== "all" ? ` of ${allRows.length}` : ""})</div>
+          <div style={{ fontWeight: 700, color: "var(--text)" }}>
+            {filterStatus === "all" ? "All bookings" : filterStatus === "active" ? "Active bookings" : `${BOOKING_STATUS_LABEL[filterStatus]} bookings`}
+            {" "}({rows.length}{filterStatus !== "all" ? ` of ${allRows.length}` : ""})
+          </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 4 }}>
-              {["all", ...UNIFIED_STATUS_BUCKETS].map((s) => (
+              {["active", "all", ...UNIFIED_STATUS_BUCKETS].map((s) => (
                 <button key={s} type="button" onClick={() => setFilterStatus(s)}
                   style={{
                     padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600, textTransform: "capitalize",
@@ -1317,7 +1327,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                     background: filterStatus === s ? "var(--purple)" : "transparent",
                     color: filterStatus === s ? "#0A0612" : "var(--text)",
                   }}>
-                  {s === "all" ? "All" : BOOKING_STATUS_LABEL[s]}
+                  {s === "active" ? "Active" : s === "all" ? "All" : BOOKING_STATUS_LABEL[s]}
                 </button>
               ))}
             </div>
