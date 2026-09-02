@@ -19,8 +19,10 @@ async function PATCH(req, { params }) {
   // Pipeline stages: proposed -> approved -> scheduled -> posted, with
   // rejected as the terminal "no". The older vocabulary is still accepted and
   // translated, so anything holding an old value keeps working.
+  // "delisted" is not the same as "rejected": it means the post went out and
+  // was then pulled down, which is worth being able to tell apart later.
   const LEGACY = { pending: "proposed", discussing: "proposed", skipped: "rejected" };
-  const STAGES = ["proposed", "approved", "scheduled", "posted", "rejected"];
+  const STAGES = ["proposed", "approved", "scheduled", "posted", "rejected", "delisted"];
   if ("status" in body) {
     const stage = LEGACY[body.status] || body.status;
     if (!STAGES.includes(stage)) {
@@ -36,7 +38,10 @@ async function PATCH(req, { params }) {
     // Reaching "posted" stamps the time; moving back off it clears the stamp,
     // so an undo does not leave a posted-at date on something not posted.
     if (body.status === "posted") data.postedAt = new Date();
-    else if (existing.status === "posted") data.postedAt = null;
+    // Delisting keeps the posted-at date — the post really did go out, and when
+    // it went out is the useful part of the record. Every other move off
+    // "posted" is an undo, so the stamp goes.
+    else if (existing.status === "posted" && body.status !== "delisted") data.postedAt = null;
   }
   if ("reviewNote" in body) data.reviewNote = body.reviewNote || null;
   // Scheduling — giving a draft a date is what moves it from approved to

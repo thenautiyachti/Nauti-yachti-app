@@ -19,6 +19,9 @@ const STAGES = [
   { id: "scheduled", label: "Scheduled", color: "#00d9ff", blurb: "Ready to go out" },
   { id: "posted", label: "Posted", color: "#7FE0B8", blurb: "Done" },
   { id: "rejected", label: "Rejected", color: "#ff4d5e", blurb: "Not going out" },
+  // Went out, then came down. Kept apart from "rejected" because a post that
+  // ran and was pulled is a different piece of history from one that never ran.
+  { id: "delisted", label: "Delisted", color: "#ffb454", blurb: "Was posted, since removed" },
 ];
 const STAGE = Object.fromEntries(STAGES.map((s) => [s.id, s]));
 
@@ -140,7 +143,7 @@ export default function SocialPipelinePanel() {
   // "Active" hides the terminal stages, because the useful question most of the
   // time is what still needs doing.
   const shown = view === "active"
-    ? rows.filter((r) => r.status !== "posted" && r.status !== "rejected")
+    ? rows.filter((r) => !["posted", "rejected", "delisted"].includes(r.status))
     : rows;
 
   // Anything with a date sorts by it; undated work floats to the top, since a
@@ -291,11 +294,22 @@ export default function SocialPipelinePanel() {
                       </button>
                     )}
 
-                    {(r.status === "posted" || r.status === "rejected") && (
+                    {/* A posted item has nowhere sensible to be "undone" to.
+                        The real action is pulling it down, which is recorded as
+                        delisted so it stays distinct from never having run. */}
+                    {r.status === "posted" && (
                       <button type="button" disabled={busy === r.id}
-                        onClick={() => move(r, r.scheduledDate ? "scheduled" : "approved")}
+                        onClick={() => { if (window.confirm("Recall this post?\n\nRemove it from the social account first — this only records that it came down. It moves to Delisted and can be re-approved later.")) move(r, "delisted"); }}
+                        className="jarvis-font" style={btn("#ffb454")}>
+                        RECALL POST
+                      </button>
+                    )}
+
+                    {(r.status === "rejected" || r.status === "delisted") && (
+                      <button type="button" disabled={busy === r.id}
+                        onClick={() => move(r, "proposed")}
                         className="jarvis-font" style={btn("#1c7a86")}>
-                        UNDO
+                        BACK TO REVIEW
                       </button>
                     )}
                   </div>

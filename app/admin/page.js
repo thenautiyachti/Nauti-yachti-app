@@ -225,6 +225,18 @@ export default function AdminPage() {
     const updated = await api(`/api/media-drafts/${id}`, { method: "PATCH", body: JSON.stringify({ status, ...(reviewNote !== undefined ? { reviewNote } : {}) }) });
     setMediaDrafts((prev) => prev.map((d) => (d.id === id ? updated : d)));
   }
+  async function attachMediaDraftMedia(draft) {
+    const url = window.prompt(
+      "Paste the image or video URL for this post.\n\nIt has to be a direct link to the file — the kind ending .jpg, .png or .mp4. Leave blank and press OK to remove the current one.",
+      draft.mediaUrl || ""
+    );
+    if (url === null) return; // cancelled, as opposed to cleared
+    const updated = await api(`/api/media-drafts/${draft.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ mediaUrl: url.trim() || null }),
+    });
+    setMediaDrafts((prev) => prev.map((d) => (d.id === draft.id ? updated : d)));
+  }
   async function deleteMediaDraft(id) {
     await api(`/api/media-drafts/${id}`, { method: "DELETE" });
     setMediaDrafts((prev) => prev.filter((d) => d.id !== id));
@@ -320,6 +332,7 @@ export default function AdminPage() {
       onUpdateSubscription={updateSubscription}
       onDeleteSubscription={deleteSubscription}
       onUpdateMediaDraftStatus={updateMediaDraftStatus}
+      onAttachMediaDraftMedia={attachMediaDraftMedia}
       onDeleteMediaDraft={deleteMediaDraft}
       onUpdateTestimonialStatus={updateTestimonialStatus}
       onDeleteTestimonial={deleteTestimonial}

@@ -32,7 +32,7 @@ export default function AdminView({
   onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
   onAddCoupon, onToggleCouponActive, onUpdateCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
-  onUpdateMediaDraftStatus, onDeleteMediaDraft,
+  onUpdateMediaDraftStatus, onDeleteMediaDraft, onAttachMediaDraftMedia,
   onUpdateTestimonialStatus, onDeleteTestimonial,
 }) {
   const [tab, setTab] = useState("inquiries");
@@ -461,7 +461,7 @@ export default function AdminView({
         )}
 
         {tab === "mediaDrafts" && (
-          <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} />
+          <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} onAttachMedia={onAttachMediaDraftMedia} />
         )}
 
         {tab === "testimonials" && (
@@ -2632,18 +2632,33 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onUpdate }) {
 
 const MEDIA_DRAFT_STATUS_COLORS = {
   pending: "rgba(203,108,230,0.12)",
+  proposed: "rgba(203,108,230,0.12)",
   approved: "var(--purple)",
+  scheduled: "rgba(0,217,255,0.18)",
   rejected: "rgba(240,85,156,0.18)",
+  delisted: "rgba(232,147,74,0.18)",
   posted: "#7FE0B8",
 };
 const MEDIA_DRAFT_STATUS_TEXT_COLORS = {
   pending: "var(--text)",
+  proposed: "var(--text)",
   approved: "#0A0612",
+  scheduled: "#4ff3ff",
   rejected: "var(--pink)",
+  delisted: "#E8934A",
   posted: "#0A0612",
 };
 
-function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete }) {
+// "Wed, Sep 2" from a YYYY-MM-DD key, without the timezone shift that
+// new Date("2026-09-02") would introduce.
+function mediaDraftDate(key) {
+  if (!key) return null;
+  const [y, m, d] = key.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }) {
   return (
     <div>
       <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Media drafts ({mediaDrafts.length})</div>
@@ -2654,7 +2669,26 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete }) {
         {mediaDrafts.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No drafts found — they'll show up here once the media agent queues one.</div>}
         {mediaDrafts.map((d) => (
           <div key={d.id} style={{ background: "var(--card)", borderRadius: 10, overflow: "hidden", color: "var(--text)" }}>
-            {d.mediaType === "video" ? (
+            {/* No media is the common case here, not the exception — most
+                drafts are written as copy plus a shot brief. An <img> with no
+                src drew a broken frame that said nothing; this says what is
+                missing and offers to fix it. */}
+            {!d.mediaUrl ? (
+              <button type="button" onClick={() => onAttachMedia(d)}
+                style={{
+                  width: "100%", height: 160, background: "rgba(232,147,74,0.08)", border: "none",
+                  borderBottom: "1px dashed rgba(232,147,74,0.5)", color: "#E8934A", textAlign: "center",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "10px 14px",
+                }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700 }}>No media attached</span>
+                {d.photoHint && (
+                  <span style={{ fontSize: 11, color: "var(--text)", opacity: 0.75, lineHeight: 1.4 }}>
+                    {d.photoHint.length > 90 ? d.photoHint.slice(0, 90) + "…" : d.photoHint}
+                  </span>
+                )}
+                <span style={{ fontSize: 11, textDecoration: "underline" }}>Attach a photo or clip</span>
+              </button>
+            ) : d.mediaType === "video" ? (
               <a href={d.mediaUrl} target="_blank" rel="noreferrer" style={{ width: "100%", height: 160, background: "rgba(203,108,230,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--purple)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
                 ▶ View video
               </a>
@@ -2676,10 +2710,25 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete }) {
                 </span>
               </div>
               <div style={{ fontSize: 12.5, marginBottom: 8 }}>{d.caption}</div>
+              {/* When it goes out, not when it was drafted — "scheduled" alone
+                  never said which day the work was due. */}
               <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
-                {[d.platform || "Platform TBD", new Date(d.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })].join(" · ")}
+                {d.platform || "Platform TBD"}
+                {d.status === "scheduled" && d.scheduledDate && (
+                  <span style={{ color: "#4ff3ff" }}> · goes out {mediaDraftDate(d.scheduledDate)}{d.scheduledTime ? ` at ${d.scheduledTime}` : ""}</span>
+                )}
+                {d.status === "posted" && d.postedAt && (
+                  <span style={{ color: "#7FE0B8" }}> · posted {new Date(d.postedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                )}
+                {d.status === "delisted" && d.postedAt && (
+                  <span style={{ color: "#E8934A" }}> · was posted {new Date(d.postedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}, since removed</span>
+                )}
+                {!["scheduled", "posted", "delisted"].includes(d.status) && d.scheduledDate && (
+                  <span> · for {mediaDraftDate(d.scheduledDate)}</span>
+                )}
               </div>
-              {d.status === "pending" ? (
+
+              {(d.status === "pending" || d.status === "proposed") && (
                 <div style={{ display: "flex", gap: 6 }}>
                   <button type="button" onClick={() => onUpdateStatus(d.id, "approved")}
                     style={{ flex: 1, background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
@@ -2690,11 +2739,39 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete }) {
                     Reject
                   </button>
                 </div>
-              ) : (
+              )}
+
+              {(d.status === "approved" || d.status === "scheduled") && (
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button type="button" onClick={() => onUpdateStatus(d.id, "pending")}
+                  <button type="button" onClick={() => onUpdateStatus(d.id, "posted")}
+                    style={{ flex: 1, background: "#7FE0B8", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    Mark posted
+                  </button>
+                  <button type="button" onClick={() => onUpdateStatus(d.id, "rejected")}
+                    style={{ flex: 1, background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
+                    Don&apos;t post
+                  </button>
+                </div>
+              )}
+
+              {/* Posted is not a draft state any more, so there is nothing to
+                  reset it to. The only real action left is pulling the post
+                  down, which is a different thing from never having run it. */}
+              {d.status === "posted" && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button type="button"
+                    onClick={() => { if (window.confirm("Recall this post?\n\nRemove it from the social account first — this only records that it came down. It moves to Delisted and can be re-approved later.")) onUpdateStatus(d.id, "delisted"); }}
+                    style={{ flex: 1, background: "transparent", color: "#E8934A", border: "1px solid #E8934A", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    Recall post
+                  </button>
+                </div>
+              )}
+
+              {(d.status === "rejected" || d.status === "delisted") && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button type="button" onClick={() => onUpdateStatus(d.id, "proposed")}
                     style={{ flex: 1, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
-                    Reset to pending
+                    Back to review
                   </button>
                   <button type="button" onClick={() => onDelete(d.id)}
                     style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
