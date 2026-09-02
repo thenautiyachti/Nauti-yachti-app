@@ -112,6 +112,12 @@ model Inquiry {
 
   addOnIds String? // JSON string: string[] of AddOn ids selected at booking
   reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
+
+  // When the guest ticked the terms box at checkout. A tick that is not
+  // recorded proves nothing: if the release is ever tested, what matters is
+  // being able to show WHO accepted and WHEN. Null means this booking predates
+  // the checkbox, which is different from someone having declined.
+  termsAcceptedAt DateTime?
 }
 
 model Coupon {

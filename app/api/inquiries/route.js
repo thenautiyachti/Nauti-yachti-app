@@ -41,6 +41,9 @@ async function POST(req) {
       message: body.message || null,
       priceQuoted: body.priceQuoted != null ? Number(body.priceQuoted) : null,
       bookingId,
+      // Stamped server-side, not taken from the client: a timestamp the browser
+      // supplies is worth nothing if the acceptance is ever questioned.
+      termsAcceptedAt: body.termsAccepted ? new Date() : null,
       addOnIds: Array.isArray(body.addOnIds) && body.addOnIds.length ? JSON.stringify(body.addOnIds) : null,
     },
   });

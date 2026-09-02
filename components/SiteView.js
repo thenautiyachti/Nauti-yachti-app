@@ -756,7 +756,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     if (pkg?.pricingType === "tiered-by-guests") priceQuoted = tierPrice(pkg.tiers, Number(form.partySize || 1));
 
     setSubmitting(true);
-    const ok = await handler({ ...form, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted });
+    const ok = await handler({ ...form, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted, termsAccepted: form.agreeTerms });
     // On a successful checkout redirect the browser navigates away entirely,
     // so `submitting` staying true until then is fine — there's no page left
     // to show a stuck button on.
@@ -880,6 +880,8 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "var(--purple)", textDecoration: "underline" }}>
             Terms &amp; Cancellation Policy
           </a>
+          , including the <strong style={{ color: "var(--text)" }}>Release and Waiver of Liability</strong> in Section 5,
+          on behalf of myself and everyone in my party.
         </span>
       </label>
       <button type="submit" disabled={submitting} style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "12px", fontWeight: 700, fontSize: 15, opacity: submitting ? 0.7 : 1 }}>
