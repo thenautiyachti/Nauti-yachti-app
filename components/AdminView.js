@@ -225,8 +225,8 @@ export default function AdminView({
     {
       id: "marketing", label: "Marketing", tabs: [
         { id: "media", label: "Media" },
-        { id: "mediaDrafts", label: `Media Drafts (${mediaDrafts.filter((d) => d.status === "pending").length})`, count: mediaDrafts.filter((d) => d.status === "pending").length },
-        { id: "testimonials", label: `Testimonials (${testimonials.filter((t) => t.status === "pending").length})`, count: testimonials.filter((t) => t.status === "pending").length },
+        { id: "mediaDrafts", label: tabLabel("Media Drafts", needsReviewCount(mediaDrafts)), count: needsReviewCount(mediaDrafts) },
+        { id: "testimonials", label: tabLabel("Testimonials", needsReviewCount(testimonials)), count: needsReviewCount(testimonials) },
       ],
     },
     {
@@ -2721,16 +2721,54 @@ function mediaDraftDate(key) {
   return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
-function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }) {
+// A tab badge counts what is WAITING ON THE OWNER, not how many rows exist.
+// Showing "(0)" for a tab holding 8 approved testimonials read as "this is
+// empty" and put him off opening it, so the number now appears only when there
+// is genuinely something to act on.
+//
+// "pending" is also a status that no longer exists — media drafts were renamed
+// to "proposed"/"discussing" — so the old count silently returned 0 even with
+// drafts genuinely queued. Both legacy and current names are matched.
+const NEEDS_REVIEW_STATUSES = ["pending", "proposed", "discussing"];
+function needsReviewCount(rows) {
+  return rows.filter((r) => NEEDS_REVIEW_STATUSES.includes(r.status)).length;
+}
+function tabLabel(base, n) {
+  return n > 0 ? base + " (" + n + ")" : base;
+}
+
+// Drafts are ordered by when they GO OUT, not when they were written. The API
+// returns them newest-drafted first, which bore no relation to the order the
+// work is actually due in.
+//
+// "Past" means the moment has gone: it went out, it was killed, or its date is
+// behind us. Those collapse, because the only list worth scanning is what is
+// still coming.
+function draftIsPast(d, todayKey) {
+  if (["posted", "rejected", "delisted"].includes(d.status)) return true;
+  return Boolean(d.scheduledDate) && d.scheduledDate < todayKey;
+}
+
+// "7:00 PM" -> 1140. Sorts same-day drafts into the order they actually fire.
+// Anything unparseable sorts to the end of its day rather than the start, so a
+// draft with no time never jumps ahead of one with a real slot.
+function draftMinutes(t) {
+  const m = String(t || "").match(/^(d{1,2}):(d{2})s*([AaPp])?/);
+  if (!m) return 24 * 60 + 1;
+  let h = Number(m[1]) % 12;
+  if (m[3] && /p/i.test(m[3])) h += 12;
+  return h * 60 + Number(m[2]);
+}
+
+function draftSortKey(d) {
+  // No date at all means nobody has decided when it runs, so it needs a
+  // decision before anything with a date. It sorts to the very top.
+  if (!d.scheduledDate) return "0000-00-00#0000";
+  return d.scheduledDate + "#" + String(draftMinutes(d.scheduledTime)).padStart(4, "0");
+}
+
+function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
   return (
-    <div>
-      <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Media drafts ({mediaDrafts.length})</div>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 14 }}>
-        These are AI-drafted social posts queued for your review — nothing here is ever posted automatically. Approve or reject each one; approved drafts still require a separate manual posting step.
-      </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
-        {mediaDrafts.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No drafts found — they'll show up here once the media agent queues one.</div>}
-        {mediaDrafts.map((d) => (
           <div key={d.id} style={{ background: "var(--card)", borderRadius: 10, overflow: "hidden", color: "var(--text)" }}>
             {/* No media is the common case here, not the exception — most
                 drafts are written as copy plus a shot brief. An <img> with no
@@ -2858,8 +2896,57 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
               )}
             </div>
           </div>
-        ))}
+  );
+}
+
+function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }) {
+  // Past drafts start hidden. They are a record, not a to-do list.
+  const [showPast, setShowPast] = useState(false);
+  const todayKey = localDateKey(new Date());
+
+  const upcoming = mediaDrafts
+    .filter((d) => !draftIsPast(d, todayKey))
+    .sort((a, b) => draftSortKey(a).localeCompare(draftSortKey(b)));
+  // Most recent first, so the thing that just went out is at the top.
+  const past = mediaDrafts
+    .filter((d) => draftIsPast(d, todayKey))
+    .sort((a, b) => draftSortKey(b).localeCompare(draftSortKey(a)));
+
+  const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
+  const cardProps = { onUpdateStatus, onDelete, onAttachMedia };
+
+  return (
+    <div>
+      <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>
+        Media drafts — {upcoming.length} coming up
+        {past.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {past.length} done</span>}
       </div>
+      <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 14 }}>
+        Soonest first. Nothing here is ever posted automatically — approve or reject each one.
+      </p>
+
+      <div style={GRID}>
+        {upcoming.length === 0 && (
+          <div style={{ color: "var(--muted)", fontSize: 13.5 }}>
+            Nothing scheduled ahead{past.length > 0 ? " — everything is in the done list below." : "."}
+          </div>
+        )}
+        {upcoming.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
+      </div>
+
+      {past.length > 0 && (
+        <div style={{ marginTop: 22 }}>
+          <button type="button" onClick={() => setShowPast((v) => !v)}
+            style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600 }}>
+            {showPast ? "▾" : "▸"} Already posted, denied or past ({past.length})
+          </button>
+          {showPast && (
+            <div style={{ ...GRID, marginTop: 12 }}>
+              {past.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
