@@ -3175,6 +3175,18 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
   const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
   const cardProps = { onUpdateStatus, onDelete, onAttachMedia };
 
+  // Bucket the upcoming posts by the day they go out. `upcoming` is already in
+  // date order, so walking it preserves that without sorting again — and a draft
+  // with no date lands in its own bucket rather than being silently grouped with
+  // whatever happened to be first.
+  const upcomingByDay = [];
+  for (const d of upcoming) {
+    const day = d.scheduledDate || "unscheduled";
+    const last = upcomingByDay[upcomingByDay.length - 1];
+    if (last && last.day === day) last.items.push(d);
+    else upcomingByDay.push({ day, items: [d] });
+  }
+
   return (
     <div>
       <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>
@@ -3201,14 +3213,57 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
         </div>
       )}
 
-      <div style={GRID}>
-        {upcoming.length === 0 && (
-          <div style={{ color: "var(--muted)", fontSize: 13.5 }}>
-            Nothing scheduled ahead{past.length > 0 ? " — everything is in the list above." : "."}
-          </div>
-        )}
-        {upcoming.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
+      {upcoming.length === 0 && (
+        <div style={{ color: "var(--muted)", fontSize: 13.5 }}>
+          Nothing scheduled ahead{past.length > 0 ? " — everything is in the list above." : "."}
+        </div>
+      )}
+
+      {/* Boxed by day. Three posts going out on the same date are one piece of
+          work in the owner's head -- the same idea told three ways -- and a flat
+          grid made them look like three unrelated jobs sitting next to each
+          other. Each day collapses, but opens by default: this is the list of
+          what is still to come, so hiding it would defeat the point. */}
+      <div style={{ display: "grid", gap: 14 }}>
+        {upcomingByDay.map(({ day, items }) => (
+          <DraftDayGroup key={day} day={day} items={items} grid={GRID} cardProps={cardProps} />
+        ))}
       </div>
+    </div>
+  );
+}
+
+// One day's posts, boxed together and collapsible. Open by default.
+function DraftDayGroup({ day, items, grid, cardProps }) {
+  const [open, setOpen] = useState(true);
+  const platforms = [...new Set(items.map((d) => d.platform).filter(Boolean))];
+  const label = day === "unscheduled" ? "No date set" : mediaDraftDate(day) || day;
+  // Every post that day shares a time in practice; show it once rather than on
+  // each card.
+  const time = items.find((d) => d.scheduledTime)?.scheduledTime;
+
+  return (
+    <div style={{ border: "1px solid rgba(203,108,230,0.28)", borderRadius: 10, overflow: "hidden" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: "100%", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap",
+          background: "rgba(203,108,230,0.08)", border: "none", borderBottom: open ? "1px solid rgba(203,108,230,0.2)" : "none",
+          padding: "9px 13px", textAlign: "left", color: "var(--text)",
+        }}
+      >
+        <span style={{ fontWeight: 700, fontSize: 13.5 }}>{open ? "▾" : "▸"} {label}</span>
+        {time && <span className="mono" style={{ fontSize: 11.5, color: "#4ff3ff" }}>{time}</span>}
+        <span style={{ fontSize: 11.5, color: "var(--muted)", marginLeft: "auto" }}>
+          {platforms.length ? platforms.join(" · ") : `${items.length} post${items.length === 1 ? "" : "s"}`}
+        </span>
+      </button>
+      {open && (
+        <div style={{ ...grid, padding: 13 }}>
+          {items.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
+        </div>
+      )}
     </div>
   );
 }
