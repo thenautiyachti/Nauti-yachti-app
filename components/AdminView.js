@@ -405,7 +405,7 @@ export default function AdminView({
                 )}
 
                 {p.pricingType === "tiered-by-guests" && (
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
                     {p.tiers.map((t, idx) => (
                       <label key={idx} style={{ fontSize: 12, color: "var(--muted)" }}>
                         {t.max == null ? `${(p.tiers[idx - 1]?.max || 0) + 1}+` : idx === 0 ? `≤${t.max}` : `${p.tiers[idx - 1].max + 1}–${t.max}`} guests
@@ -976,7 +976,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
       </button>
       {open && (
         <div style={{ display: "grid", gap: 14, marginBottom: 18 }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
             <StatCard label="Bookings with a phone" value={`${withPhone.length} / ${externalBookings.length}`} color={withPhone.length ? "var(--purple)" : "#F0559C"} />
             <StatCard label="Completed charters, no phone" value={String(completedMissing.length)} color="#F0559C" />
             <StatCard label="Bookings with an email" value={`${withEmail.length} / ${externalBookings.length}`} color={withEmail.length ? "var(--purple)" : "var(--muted)"} />
@@ -1510,7 +1510,7 @@ function LedgerTab({ ledger, totals, onAdd }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,360px) 1fr", gap: 24 }}>
       <div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, marginBottom: 16 }}>
           <StatCard label="Income" value={currency(totals.income)} color="var(--purple)" />
           <StatCard label="Expenses" value={currency(totals.expense)} color="var(--pink)" />
           <StatCard label="Net" value={currency(totals.net)} color="#E8934A" />
@@ -1992,7 +1992,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
         <StatCard label="Completed charters" value={String(completed.length)} color="var(--purple)" />
         <StatCard label="Revenue on the books" value={currency(accountedRevenue)} color="#7FE0B8" />
         <StatCard label="Revenue missing from ledger" value={currency(missingRevenue)} color="#F0559C" />
@@ -2267,7 +2267,7 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
   return (
     <div style={{ display: "grid", gap: 24 }}>
       <div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, marginBottom: 10 }}>
           {vesselHours.map(({ vessel, log }) => (
             <StatCard key={vessel.id} label={`${vessel.name} hours`} value={log ? `${log.hours.toLocaleString()} hrs` : "No log yet"} color="var(--purple)" />
           ))}
@@ -3517,7 +3517,7 @@ function TaxReportTab({ ledger, subscriptions }) {
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
         <StatCard label={`${year} total income`} value={currency(totalIncome)} color="var(--purple)" />
         <StatCard label={`${year} total expenses`} value={currency(totalExpense)} color="var(--pink)" />
         <StatCard label={`${year} net profit`} value={currency(net)} color="#E8934A" />
@@ -3573,7 +3573,7 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", gap: 10, maxWidth: 480 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, maxWidth: 480 }}>
         <StatCard label="Total monthly recurring cost" value={currency(totalMonthly)} color="var(--purple)" />
         <StatCard label="Active subscriptions" value={String(active.length)} color="#E8934A" />
       </div>
@@ -4313,9 +4313,11 @@ function StatCard({ label, value, color }) {
     // item — without it, a long value (e.g. a negative net like
     // "$-1,448.51") refuses to shrink and visually overflows into
     // whatever sits next to this card instead of wrapping/clipping.
-    <div style={{ flex: 1, minWidth: 0, background: "var(--card)", borderRadius: 10, padding: "10px 12px", borderTop: `3px solid ${color}` }}>
+    <div style={{ background: "var(--card)", borderRadius: 10, padding: "10px 12px", borderTop: `3px solid ${color}` }}>
       <div style={{ fontSize: 11, color: "var(--muted)" }}>{label}</div>
-      <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", overflowWrap: "break-word" }}>{value}</div>
+      {/* tabular-nums keeps digits the same width so figures line up down a
+          column; nowrap stops a dollar amount splitting mid-number. */}
+      <div className="mono" style={{ fontSize: 15.5, fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{value}</div>
     </div>
   );
 }
