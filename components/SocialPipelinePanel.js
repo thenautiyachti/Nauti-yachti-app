@@ -47,6 +47,7 @@ export default function SocialPipelinePanel() {
   const [copied, setCopied] = useState("");
   const [busy, setBusy] = useState("");
   const [view, setView] = useState("active"); // "active" | "all"
+  const [previewId, setPreviewId] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -93,6 +94,32 @@ export default function SocialPipelinePanel() {
       return;
     }
     move(row, "scheduled", { scheduledDate: date.trim() });
+  }
+
+  async function attachMedia(row) {
+    const url = window.prompt(
+      "Paste the image or video URL for this post.\n\nIt has to be a direct link to the file — the kind ending .jpg, .png or .mp4. Leave blank and press OK to remove the current one.",
+      row.mediaUrl || ""
+    );
+    if (url === null) return; // cancelled, as opposed to cleared
+    const value = url.trim();
+    setBusy(row.id);
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, mediaUrl: value || null } : r)));
+    try {
+      const res = await fetch(`/api/media-drafts/${row.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaUrl: value || null }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setRows((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
+      }
+    } catch {
+      // optimistic state stands; a reload re-reads the truth
+    } finally {
+      setBusy("");
+    }
   }
 
   function copy(row) {
@@ -211,8 +238,15 @@ export default function SocialPipelinePanel() {
                   {r.reviewNote && <div style={{ fontSize: 11.5, color: "#1c7a86", marginBottom: 8 }}>{r.reviewNote}</div>}
 
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {/* Preview first: the caption alone never showed whether a
+                        post actually has a photo or clip attached, and almost
+                        none of them do. */}
+                    <button type="button" onClick={() => setPreviewId(previewId === r.id ? null : r.id)}
+                      className="jarvis-font" style={btn(r.mediaUrl ? "#00d9ff" : "#ffb454", true)}>
+                      {previewId === r.id ? "HIDE PREVIEW" : r.mediaUrl ? "PREVIEW" : "PREVIEW · NO MEDIA"}
+                    </button>
                     <button type="button" onClick={() => copy(r)} className="jarvis-font"
-                      style={btn("#00d9ff", true)}>
+                      style={btn("#00d9ff")}>
                       {copied === r.id ? "COPIED ✓" : "COPY"}
                     </button>
 
@@ -265,6 +299,53 @@ export default function SocialPipelinePanel() {
                       </button>
                     )}
                   </div>
+
+                  {previewId === r.id && (
+                    <div style={{ marginTop: 12, border: "1px solid rgba(0,217,255,0.35)", borderRadius: 6, overflow: "hidden", background: "rgba(0,0,0,0.35)" }}>
+                      <div style={{ padding: "7px 10px", borderBottom: "1px solid rgba(0,217,255,0.2)", fontSize: 10.5, letterSpacing: "0.08em", color: PLATFORM_COLOR[r.platform] || "#4ff3ff", fontWeight: 700 }}>
+                        {(r.platform || "POST").toUpperCase()} — HOW IT GOES OUT
+                      </div>
+
+                      {r.mediaUrl ? (
+                        r.mediaType === "video"
+                          ? <video src={r.mediaUrl} controls style={{ width: "100%", maxHeight: 300, background: "#000", display: "block" }} />
+                          : <img src={r.mediaUrl} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "contain", background: "#000", display: "block" }} />
+                      ) : (
+                        // The honest empty state. These posts were written as
+                        // copy plus a shot brief, so "no media" is the norm and
+                        // the brief is the useful thing to show instead.
+                        <div style={{ padding: "18px 14px", textAlign: "center", background: "rgba(255,180,84,0.07)" }}>
+                          <div style={{ fontSize: 12.5, color: "#ffb454", fontWeight: 700, marginBottom: 6 }}>
+                            No photo or clip attached yet
+                          </div>
+                          {r.photoHint && (
+                            <div style={{ fontSize: 12, color: "#dffcff", opacity: 0.85, lineHeight: 1.5, maxWidth: 460, margin: "0 auto 10px" }}>
+                              Shot needed: {r.photoHint}
+                            </div>
+                          )}
+                          <button type="button" disabled={busy === r.id} onClick={() => attachMedia(r)}
+                            className="jarvis-font" style={btn("#ffb454", true)}>
+                            ATTACH MEDIA
+                          </button>
+                        </div>
+                      )}
+
+                      <div style={{ padding: "10px 12px" }}>
+                        <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 12.5, color: "#dffcff", lineHeight: 1.5, margin: 0 }}>
+                          {r.caption}
+                        </pre>
+                      </div>
+
+                      {r.mediaUrl && (
+                        <div style={{ padding: "0 12px 10px", display: "flex", gap: 6 }}>
+                          <button type="button" disabled={busy === r.id} onClick={() => attachMedia(r)}
+                            className="jarvis-font" style={btn("#1c7a86")}>
+                            REPLACE MEDIA
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

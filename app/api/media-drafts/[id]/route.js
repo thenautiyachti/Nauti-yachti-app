@@ -46,6 +46,17 @@ async function PATCH(req, { params }) {
   if ("platform" in body) data.platform = body.platform || null;
   if ("caption" in body && body.caption) data.caption = body.caption;
   if ("postUrl" in body) data.postUrl = body.postUrl || null;
+  // Attaching the actual photo or clip. Campaign posts arrive as copy plus a
+  // shot brief and nothing else, so until this could be set there was no way
+  // to put the media against the words and see the finished post.
+  if ("mediaUrl" in body) {
+    data.mediaUrl = body.mediaUrl || null;
+    if (!body.mediaUrl) data.mediaType = null;
+    else if (!("mediaType" in body)) {
+      data.mediaType = /\.(mp4|mov|webm|m4v)(\?|$)/i.test(body.mediaUrl) ? "video" : "image";
+    }
+  }
+  if ("mediaType" in body && body.mediaType) data.mediaType = body.mediaType;
 
   const updated = await prisma.mediaDraft.update({ where: { id }, data });
   return NextResponse.json(updated);
