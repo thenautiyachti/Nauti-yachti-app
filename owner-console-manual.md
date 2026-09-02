@@ -1,158 +1,234 @@
 # The Nauti Yachti — Owner Console Manual
-For employees using the admin dashboard at thenautiyachti.com/admin. Ask the owner for the login passcode — this manual doesn't include it.
+
+For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
+for the passcode — it is not in this manual.
+
+Last updated 2 September 2026.
 
 ---
 
-## Getting in
+## How the console is laid out
 
-Go to **thenautiyachti.com/admin** and enter the passcode. You'll land on the **Inquiries** tab by default. Tabs run along the top — click any tab name to switch. If you ever get logged out, just re-enter the passcode.
+Five groups run along the top. Clicking a group reveals its tabs underneath.
 
----
+| Group | Tabs |
+|---|---|
+| **Bookings** | Inquiries · Bookings · Availability |
+| **Money** | Income & expenses · Reconciliation · Tax Report · Subscriptions |
+| **Marketing** | Media · Media Drafts · Testimonials |
+| **Setup** | Packages & pricing · Add-ons · Coupons |
+| **Boat** | Maintenance |
 
-## 1. Inquiries
-
-Every lead that comes in through the website's own booking form lands here (not Boatsetter/GetMyBoat — those show up in **Bookings** instead).
-
-Each card shows the guest's name, package, contact info, requested date/vessel/party size, and price. On the right:
-- A **payment badge** (Unpaid / Paid / Refunded) — this updates automatically from Stripe, you don't set it by hand.
-- A **status dropdown** — this one you DO manage:
-  - **New** — just came in, nobody's responded yet.
-  - **Lapsed** — we never heard back / it fizzled out. Use this instead of just leaving it as "New" forever.
-  - **Pending** — we're actively talking with the guest, working out a date or a detail, not locked in yet.
-  - **Booked** — confirmed, they're on the calendar.
-  - **Completed** — the charter already happened. Mark bookings as Completed after the trip is over — don't leave them stuck on "Booked" forever.
-  - **Cancelled** — didn't happen. When you pick this, a refund section appears — choose **Full refund**, **Partial refund** (and enter the dollar amount), or **No refund**. This is our own record of what actually happened with the money, separate from whatever Stripe shows.
-
-**The general flow:** New → (Lapsed or Pending) → Booked → (Completed or Cancelled).
+A number in brackets after a tab name means **something is waiting on you**. No
+number means nothing needs doing — it does not mean the tab is empty. Testimonials
+holds eight approved reviews and still shows no number, because none of them need
+a decision.
 
 ---
 
-## 2. Bookings
+# Bookings
 
-This is the master list — every reservation from every source (our own site, Boatsetter, GetMyBoat, Facebook, Instagram) combined in one table.
+## Inquiries
 
-**Columns:** Booking ID, Name, Email, Vessel, Start time, Duration, Party size, Price paid, Source (which platform), Status, and an Actions column to change status or delete.
+Enquiries submitted through the website form. Each shows the guest, package, date
+and party size, and can be marked new / pending / booked / completed / cancelled.
 
-**Booking ID format:** `NY-YYYYMMDD-NN` — the date's baked right into the ID, so you don't need a separate date column to know when a booking is.
+Two separate lists live on this tab and are deliberately **not** counted as
+enquiries:
 
-**Filter and sort:** buttons across the top let you filter to just Pending / Booked / Completed / Cancelled, and a dropdown lets you sort newest-first, oldest-first, or grouped by status.
+- **Crew list** — name and email captures from the `/glow` page and the on-boat QR
+  code. This is the list to mail when a glow date is set. To honour an
+  unsubscribe, set that person's status to **lapsed** and they drop out of the
+  copy button.
+- **Extra guest contacts** — people who were aboard *someone else's* booking and
+  whose number is worth keeping, for a follow-up or a second review ask. Every
+  actual guest is already under Bookings, so this list is only ever the extra
+  people.
 
-**Logging a new booking manually** (e.g. you got a call, or a Boatsetter/GetMyBoat reservation that isn't in the system yet): use the form on the left — vessel, date, start time, duration, guest name/email, party size, platform, and status. It gets a real booking ID automatically.
+## Bookings
 
-**Editing an existing row:** most fields (email, start time, price paid) are click-and-type, right in the table — just click out of the field (or hit Tab) to save.
+Every charter, from any source — Boatsetter, GetMyBoat, the website, cash, Zelle.
+Add one with the form above the table.
 
-**Important:** marking a booking **Booked** or **Completed** blocks that date on the public availability calendar so nobody else can double-book it. **Cancelled** does not block it. Setting a manual booking's date/hours is what determines whether a day shows as "partial" or "fully booked" to customers.
+**Marking a booking "completed" now writes its income row automatically.** That
+was the single biggest hole in the system: the two records were only ever joined
+by hand, and six charters' income went missing that way. Two rules govern it:
 
----
+- It will not create a second row if one already exists, so re-saving a completed
+  booking is safe.
+- **No price means no income row.** It refuses to guess, because a made-up number
+  in the ledger is worse than an obviously missing one.
 
-## 3. Packages & Pricing
+A booking paid through the website checkout now appears here on its own, created
+from the Stripe webhook as **booked** (not completed — the trip has not happened
+yet).
 
-Every package (Tubing, Birthday, Bachelor/Bachelorette, Night Cruise, Party Cove, Boatz & Glowz, Corporate, Wake Surfing) is listed with its pricing. Click into a price field and type a new number, then click away to save.
+## Availability
 
-Different packages price differently — some are a flat number, some are per-guest, some vary by vessel/day-of-week/hours, and some are tiered by group size. The console shows whichever inputs are relevant to that package automatically.
-
-**Price change history:** at the bottom of this tab there's a collapsed **"Price change history"** button. Click it to see every price edit ever made — what changed, from what to what, and when. This is for tracking down a pricing discrepancy after the fact — it's internal only, customers never see it.
-
----
-
-## 4. Add-ons
-
-These are the extras customers can select when booking (champagne, decorations, etc.).
-
-- **Add a new one**: fill in the form on the left (name, price, unit like "per bottle," an optional blurb) and hit **Add add-on**.
-- **Edit** name, price, unit, or blurb: click directly into the field.
-- **Hide from site**: if you're temporarily out of something (e.g. no champagne in stock), click this instead of deleting — it stays in the system, just doesn't show to customers until you click "Show on site" again.
-- **Delete**: moves it to a collapsed **Archived** section at the bottom, it doesn't erase it. Click **Restore** there to bring it back if you ever need it again.
-
----
-
-## 5. Coupons
-
-Same idea as Add-ons: create a code, set a percent or fixed-dollar discount, an optional max-uses cap and expiration date.
-
-**"Returning guests only"** checkbox: if checked, the code only works for someone whose email matches a previous *paid* booking through our own site. It won't recognize a past Boatsetter/GetMyBoat guest automatically (those platforms don't give us a usable email) — if a repeat guest from one of those platforms wants the code, you'll need to verify them yourself (check the Bookings tab for their name) and either give them the code anyway or set up a one-time code just for them.
-
-**Delete** here also archives (doesn't erase) — same Archived-section-with-Restore pattern as Add-ons.
+Block days per vessel. A day with bookings that do not fill it shows as partially
+booked, calculated from the summed hours of that day's charters.
 
 ---
 
-## 6. Availability
+# Money
 
-A calendar per vessel, two months at a time. Click any day to toggle a full-day block. Color key at the top:
-- **Purple/solid** = open
-- **Orange/striped** = partially booked (has a reservation, but not enough hours to fill the whole day)
-- **Dark/blocked** = fully closed
+## Income & expenses
 
-You generally don't need to click days by hand for real bookings — marking a booking "Booked" or "Completed" in the Bookings tab handles that automatically. Use the calendar directly for things like maintenance days, personal use, or blocking a date for any other reason.
+Every dollar in or out. The form on the left adds an entry: Income or Expense, a
+category, an amount, a date, and for income the origin it came from. Linking an
+entry to a booking makes it appear in that booking's profit.
 
----
+Below the list: breakdowns by category, profit per booking, and commission lost to
+the platforms.
 
-## 7. Media & Media Drafts
+## Reconciliation
 
-**Media** tab: edit captions on existing gallery photos.
+Answers one question per booking — is this charter's money actually on the books?
+Matching is on the real foreign key between a booking and its ledger rows, not on
+date and amount.
 
-**Media Drafts** tab: this is the review queue for social media content. Some posts get drafted automatically (a daily automated pass pulls a real photo and writes a caption) — nothing is ever posted to real social media without a human clicking **Approve** here first. You can also **Reject** a draft (with a note saying why) or mark it **Discussing** if you want to talk it over before deciding.
+**Boatsetter pays in two legs**, the boat and the captain fee, often days apart.
+Two income rows against one charter is normal, not a duplicate.
 
----
+## Tax Report
 
-## 8. Testimonials
+Pick a year for totals, a CSV export, and breakdowns.
 
-Customer reviews submitted through the site sit here as **Pending** until approved. Approve to have them show up on the public Testimonials section; reject to keep them off the site. Only approved reviews are ever visible to visitors.
+Income is split **by vessel** and **by origin** rather than by category — every
+reservation is logged under the single category "Reservation", so a by-category
+panel would be one row totalling everything.
 
----
+It also shows **average per charter** and **average per hour**, which are the two
+numbers pricing actually turns on. These come from bookings rather than ledger
+rows, because a Boatsetter charter produces two income rows and counting rows
+would halve the apparent value of a trip.
 
-## 9. Income & Expenses (Ledger)
+If income has no vessel recorded, an amber note says how much. That is a prompt to
+fill it in, not a rounding error.
 
-Every dollar in or out. Add an entry with the form on the left — pick Income or Expense, a category, amount, date, and (for income) which platform it came from. You can link an entry to a specific booking ID so it shows up in that booking's profit calculation.
+## Subscriptions
 
-Below the entry list: breakdowns by category, profit by individual booking, and commission lost to third-party platforms (the gap between what a guest paid Boatsetter/GetMyBoat and what we actually got paid out).
-
----
-
-## 10. Tax Report
-
-Pick a year, see total income/expenses/net for that year, plus your active subscriptions' annual cost. Two download buttons export a CSV — one of the full year's ledger, one of your subscriptions — to hand to a bookkeeper or drop into tax software. This isn't a filed tax form, just an organized summary of what's already in the Ledger and Subscriptions tabs.
-
----
-
-## 11. Maintenance
-
-Track service items per the fleet (oil changes, inspections, etc.) against either elapsed months or engine hours. Log engine-hour readings and fuel fill-ups here too. Items flip to "overdue" automatically once their interval passes — those also show up as a count on the Jarvis dashboard.
+Recurring costs, normalised to a monthly figure so weekly, monthly and yearly
+items can be summed.
 
 ---
 
-## 12. Subscriptions
+# Marketing
 
-Recurring business costs — software, storage, utilities, anything billed monthly/yearly/weekly. Add one with a name, category, amount, and billing cycle; an optional "next due date" lets it show up on the Jarvis dashboard's "Subscriptions Due Soon" panel as it approaches.
+## Media
+
+The public gallery, grouped by package — bachelor, birthday, corporate, glowz,
+night, partycove, tubing. Grouping makes it obvious which package is thin.
+
+Captions edit in place. **+ Add** adds a tile to that category.
+
+New images belong in the site's `public/gallery/` folder and are referenced as
+`/gallery/name.jpg`. They are then served from our own repository. Most of the
+older tiles still point at BrandCrowd, a logo-design service — if that account
+ever lapses, those images disappear, which is why new ones go in our own folder.
+
+## Media Drafts
+
+Social posts queued for review. **Nothing is ever posted automatically.**
+
+Ordered by **when a post goes out**, soonest first. Anything whose moment has
+passed — posted, denied, or dated in the past — sits in a collapsed group at the
+top of the tab, newest first.
+
+Buttons on a scheduled post:
+
+- **Preview** — the caption as it will appear, with a copy button. Warns when
+  there is no media, because Instagram and TikTok refuse a still.
+- **Mark posted** · **Reschedule** · **Don't post**
+
+A posted draft offers **Recall post** — remove it from the social account first;
+this only records that it came down. A rejected one offers **Back to review** or
+**Delete**.
+
+## Testimonials
+
+Reviews shown on the public site, plus the panel for **asking past guests for a
+Google review**.
+
+Neither booking platform hands over contact details, so every number was typed in
+by hand — a guest with no number is a review that never gets asked for.
+
+**Text it** opens your phone's messaging app with the message already written and
+ticks the charter off. **It does nothing on a desktop** — this has to be done from
+a phone.
 
 ---
 
-## 13. Jarvis (the dashboard)
+# Setup
 
-The cyan-themed tab with the live voice waveform. This is the at-a-glance operations view:
+## Packages & pricing
 
-- **Upcoming Bookings** — what's coming up, with date, start time, guest, vessel, and party size. A weather warning badge appears if bad weather is forecast for that date.
-- **Needs Attention** — counts of new inquiries, booked-but-unpaid reservations, and overdue maintenance (with the specific item names listed).
-- **Revenue — last 30 days** — quick income/expense/net pulse.
-- **Subscriptions Due Soon** — upcoming recurring bills.
-- **To-Do** — a real checklist. Add a task, check it off, delete it. This is also where website issues (a layout bug, missing info, anything that needs fixing) get logged so nothing falls through the cracks — check it periodically.
-- **Media Queue** — pending social drafts, same as the Media Drafts tab, click to expand and approve/reject right here.
-- **Agent Activity** — a log of automated background tasks that have run (media drafts, daily reviews) and what they found.
+Per-package prices, per-guest rates, and the hourly grid per vessel for weekday
+and weekend. Every change is logged to price history.
 
-Click **"Enable Jarvis Audio"** once per session if you want Jarvis to speak updates aloud — browsers block audio until you click something first.
+## Add-ons · Coupons
+
+Extras that can be attached at checkout, and discount codes with optional expiry
+and usage limits.
 
 ---
 
-## Quick reference — where do I...
+# Boat
 
-- See a new website lead → **Inquiries**
-- Log a Boatsetter/GetMyBoat booking → **Bookings**
-- Check or change a price → **Packages & Pricing**
-- Turn an add-on on/off → **Add-ons**
-- Make a discount code → **Coupons**
-- Block a day off → **Availability**
-- Approve a social media post → **Media Drafts**
-- Approve a customer review → **Testimonials**
-- Log a gas/expense receipt → **Income & Expenses**
-- Pull tax numbers → **Tax Report**
-- Check what needs attention today → **Jarvis**
+## Maintenance
+
+Service items per vessel against elapsed months or engine hours, plus engine-hour
+readings and fuel fill-ups. Items flip to overdue automatically.
+
+**Logging fuel writes the expense for you** — the one other place besides
+completed bookings where the ledger fills itself in.
+
+---
+
+# What runs on its own
+
+Four scheduled agents, none of which post or spend anything without a human:
+
+| When | What it does |
+|---|---|
+| Daily | Executive review — reads the database and reports what needs attention |
+| Daily | Media agent — drafts social posts into Media Drafts for review |
+| Daily | Social publisher — publishes drafts already **approved** by a human |
+| Weekly | Review reminder — emails the owner which guests to ask for a Google review |
+| Weekly | Booking audit — reads Boatsetter/GetMyBoat email and reports anything missing from the ledger |
+
+The booking audit **proposes only**. It never writes a booking or a ledger row.
+Once it has been accurate for a while it can be switched to write directly.
+
+---
+
+## Quick reference — where do I…
+
+| I want to… | Go to |
+|---|---|
+| See a new website lead | Bookings → Inquiries |
+| Log a Boatsetter/GetMyBoat charter | Bookings → Bookings |
+| Record that a charter happened *(this logs the income too)* | Bookings → Bookings, set to completed |
+| Block a day off | Bookings → Availability |
+| Log a receipt | Money → Income & expenses |
+| Check a charter's money is on the books | Money → Reconciliation |
+| Pull tax numbers, or see per-charter and per-hour | Money → Tax Report |
+| Add a photo to the public gallery | Marketing → Media |
+| Approve or reschedule a social post | Marketing → Media Drafts |
+| Ask a past guest for a Google review | Marketing → Testimonials *(from your phone)* |
+| Change a price | Setup → Packages & pricing |
+| Log fuel or engine hours | Boat → Maintenance |
+
+---
+
+## Things that are easy to get wrong
+
+- **A tab with no number is not empty.** The number means "waiting on you".
+- **Two income rows on one Boatsetter charter is correct** — boat leg and captain
+  fee.
+- **The review "Text it" link does nothing on a desktop.** Use a phone.
+- **A completed booking with no price gets no income row.** Fill the price in.
+- **Filenames lie about dates.** A file named `19:43` may have been *saved* then
+  and shot at midday. Trust the timestamp inside the file, not the name.
+- **The Lake Bryan charters of 6 and 13 June 2026 are under NDA.** No media from
+  those may be posted, ever.
