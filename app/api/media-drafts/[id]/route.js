@@ -21,8 +21,11 @@ async function PATCH(req, { params }) {
   // translated, so anything holding an old value keeps working.
   // "delisted" is not the same as "rejected": it means the post went out and
   // was then pulled down, which is worth being able to tell apart later.
-  const LEGACY = { pending: "proposed", discussing: "proposed", skipped: "rejected" };
-  const STAGES = ["proposed", "approved", "scheduled", "posted", "rejected", "delisted"];
+  // "discussing" is a real stage again, not a synonym for proposed: it means
+  // the idea is good but the draft needs work, and the reviewNote says what.
+  // Collapsing it into proposed lost the only way to say "not yet, change this".
+  const LEGACY = { pending: "proposed", skipped: "rejected" };
+  const STAGES = ["proposed", "discussing", "approved", "scheduled", "posted", "rejected", "delisted"];
   if ("status" in body) {
     const stage = LEGACY[body.status] || body.status;
     if (!STAGES.includes(stage)) {

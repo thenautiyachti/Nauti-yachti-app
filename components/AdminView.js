@@ -814,6 +814,15 @@ function normalizeGuestName(name) {
   return (name || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// Shared field styling for the horizontal add-booking band. border-box matters
+// here: without it the padding widens each control past the width flex gave it,
+// and the row wraps a field earlier than it needs to.
+const FIELD = {
+  width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6,
+  border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)",
+};
+const FIELD_LABEL = { fontSize: 11, color: "var(--muted)", marginBottom: 3, whiteSpace: "nowrap" };
+
 // Render a stored E.164 number the way a person reads one. US numbers get the
 // familiar grouping; anything international is shown as-is, since guessing at
 // another country's grouping is worse than not trying.
@@ -918,7 +927,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
   }
 
   return (
-    <div style={{ gridColumn: "1 / -1" }}>
+    <div>
       <button type="button" onClick={() => setOpen((v) => !v)}
         style={{ background: "transparent", color: completedMissing.length ? "#E8934A" : "var(--muted)", border: `1px solid ${completedMissing.length ? "rgba(232,147,74,0.5)" : "rgba(203,108,230,0.3)"}`, borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>
         {open ? "▲" : "▼"} Guest contacts — {withPhone.length} of {externalBookings.length} bookings have a phone number
@@ -1050,84 +1059,91 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
     });
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
+    // A single column: contacts panel, then the add-booking band, then the
+    // table with the full width of the tab to itself.
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <GuestContactsPanel externalBookings={externalBookings} onUpdateExternalBooking={onUpdateExternalBooking} />
-      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
-        <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 10 }}>
-          Log a booking from GetMyBoat, Boatsetter, or elsewhere. Marking it completed reserves that day (its own hours, or the whole day at 8+ combined hours) on the public availability calendar. It'll show up below alongside site bookings, with its own booking ID.
+      {/* Laid out as a horizontal band above the table rather than a sidebar
+          beside it. The bookings table is wide — booking id through actions —
+          and surrendering a 340px column to this form pushed it off the screen,
+          so the tab could only be read zoomed out. */}
+      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 12 }}>
+          Log a booking from GetMyBoat, Boatsetter, or elsewhere. Marking it completed reserves that day (its own hours, or the whole day at 8+ combined hours) on the public availability calendar.
         </p>
-        <label style={{ display: "block", marginBottom: 8 }}>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Vessel</div>
-          <select value={form.vesselId} onChange={(e) => setForm({ ...form, vesselId: e.target.value })}
-            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
-            {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-          </select>
-        </label>
-        {/* Date on its own row. Three controls abreast overflowed this column:
-            a native select needs room for its arrow on top of its padding, and
-            at 90px wide the Duration menu was being clipped. */}
-        <label style={{ display: "block", marginBottom: 8 }}>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Date</div>
-          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
-            style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
-        </label>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <label style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Start time</div>
-            <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-              style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+          <label style={{ flex: "1 1 150px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Vessel</div>
+            <select value={form.vesselId} onChange={(e) => setForm({ ...form, vesselId: e.target.value })} style={FIELD}>
+              {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
           </label>
-          <label style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Duration</div>
-            <select value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })}
-              style={{ width: "100%", boxSizing: "border-box", padding: "9px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+          <label style={{ flex: "0 1 140px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Date</div>
+            <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} style={FIELD} />
+          </label>
+          <label style={{ flex: "0 1 110px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Start time</div>
+            <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} style={FIELD} />
+          </label>
+          <label style={{ flex: "0 1 100px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Duration</div>
+            <select value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} style={FIELD}>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((h) => <option key={h} value={h}>{h} hr{h === 1 ? "" : "s"}</option>)}
             </select>
           </label>
-        </div>
-        <input type="text" placeholder="Guest name" value={form.guestName} onChange={(e) => setForm({ ...form, guestName: e.target.value })}
-          style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
-        {/* Phone above email, and not marked optional — it is the contact that
-            actually gets a review asked for, and the one guests hand over. */}
-        <input type="tel" placeholder="Guest phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
-        <input type="email" placeholder="Guest email (optional)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-          style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
-        <input type="number" placeholder="Party size" min="1" value={form.partySize} onChange={(e) => setForm({ ...form, partySize: e.target.value })}
-          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
-        <label style={{ display: "block", marginBottom: 8 }}>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Platform</div>
-          <select value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}
-            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
-            {BOOKING_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </label>
-        <label style={{ display: "block", marginBottom: 8 }}>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>
-            How did they find us? <span style={{ opacity: 0.75 }}>— this is what tells you which channel is actually working</span>
+          <label style={{ flex: "1 1 150px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Guest name</div>
+            <input type="text" placeholder="Guest name" value={form.guestName} onChange={(e) => setForm({ ...form, guestName: e.target.value })} style={FIELD} />
+          </label>
+          <label style={{ flex: "1 1 140px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Phone</div>
+            <input type="tel" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={FIELD} />
+          </label>
+          <label style={{ flex: "1 1 170px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Email (optional)</div>
+            <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={FIELD} />
+          </label>
+          <label style={{ flex: "0 1 90px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Party size</div>
+            <input type="number" placeholder="—" min="1" value={form.partySize} onChange={(e) => setForm({ ...form, partySize: e.target.value })} style={FIELD} />
+          </label>
+          <label style={{ flex: "0 1 130px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Platform</div>
+            <select value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })} style={FIELD}>
+              {BOOKING_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </label>
+          <label style={{ flex: "1 1 160px", minWidth: 0 }}>
+            <div style={FIELD_LABEL} title="This is what tells you which channel is actually working">How did they find us?</div>
+            <select value={form.referralSource || ""} onChange={(e) => setForm({ ...form, referralSource: e.target.value })} style={FIELD}>
+              <option value="">— not recorded —</option>
+              {BOOKING_REFERRAL_SOURCES.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </label>
+          <label style={{ flex: "0 1 130px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Price paid</div>
+            <input type="number" placeholder="$ optional" value={form.pricePaid} onChange={(e) => setForm({ ...form, pricePaid: e.target.value })} style={FIELD} />
+          </label>
+          <label style={{ flex: "2 1 200px", minWidth: 0 }}>
+            <div style={FIELD_LABEL}>Note</div>
+            <input type="text" placeholder="Note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={FIELD} />
+          </label>
+          <div style={{ flex: "0 1 auto" }}>
+            <div style={FIELD_LABEL}>Status</div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {BOOKING_STATUS_BUCKETS.map((s) => (
+                <button key={s} type="button" onClick={() => setForm({ ...form, status: s })}
+                  style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid var(--purple)", background: form.status === s ? "var(--purple)" : "transparent", color: form.status === s ? "#0A0612" : "var(--text)", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>
+                  {BOOKING_STATUS_LABEL[s]}
+                </button>
+              ))}
+            </div>
           </div>
-          <select value={form.referralSource || ""} onChange={(e) => setForm({ ...form, referralSource: e.target.value })}
-            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
-            <option value="">— not recorded —</option>
-            {BOOKING_REFERRAL_SOURCES.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </label>
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-          {BOOKING_STATUS_BUCKETS.map((s) => (
-            <button key={s} type="button" onClick={() => setForm({ ...form, status: s })}
-              style={{ flex: 1, padding: "8px 4px", borderRadius: 6, border: "1px solid var(--purple)", background: form.status === s ? "var(--purple)" : "transparent", color: form.status === s ? "#0A0612" : "var(--text)", fontWeight: 600, fontSize: 12 }}>
-              {BOOKING_STATUS_LABEL[s]}
-            </button>
-          ))}
+          <button type="submit" style={{ flex: "0 1 auto", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px 20px", fontWeight: 700, whiteSpace: "nowrap" }}>
+            Add booking
+          </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-          <span className="mono" style={{ color: "var(--muted)" }}>$</span>
-          <input type="number" placeholder="Price paid (optional)" value={form.pricePaid} onChange={(e) => setForm({ ...form, pricePaid: e.target.value })}
-            style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
-        </div>
-        <input type="text" placeholder="Note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
-          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
-        <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add booking</button>
       </form>
 
       <div>
@@ -2633,6 +2649,7 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onUpdate }) {
 const MEDIA_DRAFT_STATUS_COLORS = {
   pending: "rgba(203,108,230,0.12)",
   proposed: "rgba(203,108,230,0.12)",
+  discussing: "rgba(232,106,168,0.18)",
   approved: "var(--purple)",
   scheduled: "rgba(0,217,255,0.18)",
   rejected: "rgba(240,85,156,0.18)",
@@ -2642,6 +2659,7 @@ const MEDIA_DRAFT_STATUS_COLORS = {
 const MEDIA_DRAFT_STATUS_TEXT_COLORS = {
   pending: "var(--text)",
   proposed: "var(--text)",
+  discussing: "#e86aa8",
   approved: "#0A0612",
   scheduled: "#4ff3ff",
   rejected: "var(--pink)",
@@ -2728,15 +2746,29 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
                 )}
               </div>
 
-              {(d.status === "pending" || d.status === "proposed") && (
-                <div style={{ display: "flex", gap: 6 }}>
+              {d.status === "discussing" && d.reviewNote && (
+                <div style={{ fontSize: 11.5, lineHeight: 1.45, color: "var(--text)", background: "rgba(232,106,168,0.1)", border: "1px solid rgba(232,106,168,0.35)", borderRadius: 6, padding: "7px 9px", marginBottom: 8 }}>
+                  <strong style={{ color: "#e86aa8" }}>Change requested: </strong>{d.reviewNote}
+                </div>
+              )}
+
+              {["pending", "proposed", "discussing"].includes(d.status) && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button type="button" onClick={() => onUpdateStatus(d.id, "approved")}
                     style={{ flex: 1, background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
                     Approve
                   </button>
+                  <button type="button"
+                    onClick={() => {
+                      const note = window.prompt("What needs changing? This is saved against the draft so it can be rewritten.", d.reviewNote || "");
+                      if (note !== null && note.trim()) onUpdateStatus(d.id, "discussing", note.trim());
+                    }}
+                    style={{ flex: 1, background: "transparent", color: "#e86aa8", border: "1px solid #e86aa8", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    {d.status === "discussing" ? "Edit notes" : "Needs work"}
+                  </button>
                   <button type="button" onClick={() => onUpdateStatus(d.id, "rejected")}
                     style={{ flex: 1, background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
-                    Reject
+                    Deny
                   </button>
                 </div>
               )}

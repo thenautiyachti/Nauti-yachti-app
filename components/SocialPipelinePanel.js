@@ -15,6 +15,10 @@ import { Fragment, useEffect, useState } from "react";
 
 const STAGES = [
   { id: "proposed", label: "Proposed", color: "#ffb454", blurb: "Waiting on your call" },
+  // The middle answer. Not every draft is a yes or a no — most are "nearly,
+  // change this bit", and without somewhere to say that the only options were
+  // to approve something you did not like or bin an idea that was fine.
+  { id: "discussing", label: "Needs work", color: "#e86aa8", blurb: "Good idea, draft needs changes" },
   { id: "approved", label: "Approved", color: "#4ff3ff", blurb: "Needs a date" },
   { id: "scheduled", label: "Scheduled", color: "#00d9ff", blurb: "Ready to go out" },
   { id: "posted", label: "Posted", color: "#7FE0B8", blurb: "Done" },
@@ -84,6 +88,17 @@ export default function SocialPipelinePanel() {
     } finally {
       setBusy("");
     }
+  }
+
+  function discuss(row) {
+    // The note is the whole point of this stage — "needs work" with no note is
+    // just a draft nobody can act on, so an empty answer cancels.
+    const note = window.prompt(
+      "What needs changing? This is saved against the draft so it can be rewritten.",
+      row.reviewNote || ""
+    );
+    if (note === null || !note.trim()) return;
+    move(row, "discussing", { reviewNote: note.trim() });
   }
 
   function schedule(row) {
@@ -238,7 +253,17 @@ export default function SocialPipelinePanel() {
                   <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13, color: "#dffcff", lineHeight: 1.5, margin: "0 0 8px", background: "rgba(0,0,0,0.3)", padding: 10, borderRadius: 4 }}>
                     {r.caption}
                   </pre>
-                  {r.reviewNote && <div style={{ fontSize: 11.5, color: "#1c7a86", marginBottom: 8 }}>{r.reviewNote}</div>}
+                  {r.reviewNote && (
+                    <div style={{
+                      fontSize: 12, lineHeight: 1.5, marginBottom: 8, padding: "8px 10px", borderRadius: 4,
+                      color: r.status === "discussing" ? "#dffcff" : "#1c7a86",
+                      background: r.status === "discussing" ? "rgba(232,106,168,0.12)" : "transparent",
+                      border: r.status === "discussing" ? "1px solid rgba(232,106,168,0.4)" : "none",
+                    }}>
+                      {r.status === "discussing" && <strong style={{ color: "#e86aa8" }}>Change requested: </strong>}
+                      {r.reviewNote}
+                    </div>
+                  )}
 
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {/* Preview first: the caption alone never showed whether a
@@ -248,24 +273,23 @@ export default function SocialPipelinePanel() {
                       className="jarvis-font" style={btn(r.mediaUrl ? "#00d9ff" : "#ffb454", true)}>
                       {previewId === r.id ? "HIDE PREVIEW" : r.mediaUrl ? "PREVIEW" : "PREVIEW · NO MEDIA"}
                     </button>
-                    <button type="button" onClick={() => copy(r)} className="jarvis-font"
-                      style={btn("#00d9ff")}>
-                      {copied === r.id ? "COPIED ✓" : "COPY"}
-                    </button>
-
-                    {r.status === "proposed" && (
+                    {/* Three answers, not two: yes, no, and "nearly". */}
+                    {(r.status === "proposed" || r.status === "discussing") && (
                       <>
                         <button type="button" disabled={busy === r.id} onClick={() => move(r, "approved")} className="jarvis-font" style={btn("#4ff3ff")}>
                           APPROVE
                         </button>
+                        <button type="button" disabled={busy === r.id} onClick={() => discuss(r)} className="jarvis-font" style={btn("#e86aa8")}>
+                          {r.status === "discussing" ? "EDIT NOTES" : "NEEDS WORK"}
+                        </button>
                         <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} className="jarvis-font" style={btn("#ff4d5e")}>
-                          REJECT
+                          DENY
                         </button>
                       </>
                     )}
 
                     {r.status === "approved" && (
-                      <button type="button" disabled={busy === r.id} onClick={() => schedule(r)} className="jarvis-font" style={btn("#00d9ff")}>
+                      <button type="button" disabled={busy === r.id} onClick={() => schedule(r)} className="jarvis-font" style={btn("#00d9ff", true)}>
                         SCHEDULE…
                       </button>
                     )}
@@ -350,14 +374,21 @@ export default function SocialPipelinePanel() {
                         </pre>
                       </div>
 
-                      {r.mediaUrl && (
-                        <div style={{ padding: "0 12px 10px", display: "flex", gap: 6 }}>
+                      {/* Copying lives here rather than on the row: nothing
+                          posts itself yet, so the caption still has to reach
+                          the app by hand — but that belongs next to the words,
+                          not among the decisions. */}
+                      <div style={{ padding: "0 12px 10px", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <button type="button" onClick={() => copy(r)} className="jarvis-font" style={btn("#00d9ff")}>
+                          {copied === r.id ? "COPIED ✓" : "COPY CAPTION"}
+                        </button>
+                        {r.mediaUrl && (
                           <button type="button" disabled={busy === r.id} onClick={() => attachMedia(r)}
                             className="jarvis-font" style={btn("#1c7a86")}>
                             REPLACE MEDIA
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
