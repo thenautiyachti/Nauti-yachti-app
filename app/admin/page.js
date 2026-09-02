@@ -150,6 +150,14 @@ export default function AdminPage() {
     await api(`/api/jarvis-todos/${id}`, { method: "DELETE" });
     setTodos((prev) => prev.filter((t) => t.id !== id));
   }
+  async function updateGalleryItem(id, fields) {
+    const updated = await api(`/api/gallery/${id}`, { method: "PATCH", body: JSON.stringify(fields) });
+    setGallery((prev) => prev.map((g) => (g.id === id ? updated : g)));
+  }
+  async function deleteGalleryItem(id) {
+    await api(`/api/gallery/${id}`, { method: "DELETE" });
+    setGallery((prev) => prev.filter((g) => g.id !== id));
+  }
   async function addGalleryItem({ image, caption, category }) {
     const created = await api("/api/gallery", {
       method: "POST",
@@ -350,6 +358,8 @@ export default function AdminPage() {
       onToggleBlocked={toggleBlocked}
       onUpdateCaption={updateCaption}
       onAddGalleryItem={addGalleryItem}
+      onUpdateGalleryItem={updateGalleryItem}
+      onDeleteGalleryItem={deleteGalleryItem}
       todos={todos}
       agentActivity={agentActivity}
       onAddTodo={addTodo}

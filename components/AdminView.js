@@ -31,7 +31,7 @@ const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Payp
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
   maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials, priceHistory,
-  todos = [], agentActivity = [], onAddTodo, onToggleTodo, onDeleteTodo, onAddGalleryItem,
+  todos = [], agentActivity = [], onAddTodo, onToggleTodo, onDeleteTodo, onAddGalleryItem, onUpdateGalleryItem, onDeleteGalleryItem,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onUpdateInquiry, onLogout,
   onUpdateAddonPrice, onUpdateAddon, onAddAddon, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
@@ -463,7 +463,7 @@ export default function AdminView({
         )}
 
         {tab === "media" && (
-          <GalleryTab gallery={gallery} onUpdateCaption={onUpdateCaption} onAddGalleryItem={onAddGalleryItem} />
+          <GalleryTab gallery={gallery} onUpdateCaption={onUpdateCaption} onAddGalleryItem={onAddGalleryItem} onUpdateGalleryItem={onUpdateGalleryItem} onDeleteGalleryItem={onDeleteGalleryItem} />
         )}
 
         {tab === "mediaDrafts" && (
@@ -3089,8 +3089,8 @@ function OverviewTab({ externalBookings, inquiries, maintenanceItems, mediaDraft
   );
 }
 
-function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem }) {
-  const [adding, setAdding] = useState(null); // category currently being added to
+function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem, onUpdateGalleryItem, onDeleteGalleryItem }) {
+  const [adding, setAdding] = useState(null);
   const [draft, setDraft] = useState({ image: "", caption: "" });
 
   const categories = Array.from(new Set(gallery.map((g) => g.category))).sort();
@@ -3098,6 +3098,9 @@ function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem }) {
     category: c,
     items: gallery.filter((g) => g.category === c).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)),
   }));
+  // Which package looks thin is the thing worth seeing at a glance, so it is
+  // stated rather than left for the reader to work out by scrolling.
+  const thin = byCategory.filter((c) => c.items.length < 5).map((c) => c.category);
 
   async function submit(category) {
     const image = draft.image.trim();
@@ -3107,30 +3110,60 @@ function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem }) {
     setAdding(null);
   }
 
+  function replaceImage(g) {
+    const url = window.prompt(
+      "Path or URL for this tile's image.\n\nImages in the site's own public/gallery/ folder are referenced as /gallery/name.jpg — those are served from our repo and cannot vanish because someone else's account lapsed.",
+      g.image || ""
+    );
+    if (url === null) return;
+    if (!url.trim()) { window.alert("An empty image would render a broken tile. Use Remove to take the tile down."); return; }
+    onUpdateGalleryItem(g.id, { image: url.trim() });
+  }
+
+  function move(items, index, delta) {
+    const other = items[index + delta];
+    if (!other) return;
+    const self = items[index];
+    // Swap the two sort values rather than renumbering the whole category.
+    onUpdateGalleryItem(self.id, { sortOrder: other.sortOrder ?? index + delta });
+    onUpdateGalleryItem(other.id, { sortOrder: self.sortOrder ?? index });
+  }
+
+  const BTN = { background: "transparent", border: "1px solid rgba(203,108,230,0.35)", color: "var(--muted)", borderRadius: 5, padding: "3px 7px", fontSize: 11, fontWeight: 600 };
+
   return (
-    <div style={{ display: "grid", gap: 18, maxWidth: 720 }}>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: 0 }}>
-        These are the tiles on the public gallery, grouped by package. Put new images in
-        the site&apos;s <code>public/gallery/</code> folder and reference them as
-        <code> /gallery/name.jpg</code> — served from our own repo rather than a third
-        party&apos;s account.
-      </p>
+    <div style={{ display: "grid", gap: 20 }}>
+      <div>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 4px" }}>
+          The tiles on the public gallery, grouped by package. Edit a caption in place; use the buttons on a
+          tile to swap its image, reorder it, or take it down. New images belong in the site&apos;s
+          <code> public/gallery/</code> folder, referenced as <code>/gallery/name.jpg</code> — served from our
+          own repo rather than a third party&apos;s account.
+        </p>
+        {thin.length > 0 && (
+          <p style={{ fontSize: 12.5, color: "#E8934A", margin: 0 }}>
+            Thin on photos: <strong>{thin.join(", ")}</strong> — under five tiles each.
+          </p>
+        )}
+      </div>
 
       {byCategory.map(({ category, items }) => (
         <div key={category}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 10 }}>
             <div style={{ fontSize: 12, color: "var(--purple)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
               {category}
-              <span style={{ color: "var(--muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}> · {items.length} {items.length === 1 ? "tile" : "tiles"}</span>
+              <span style={{ color: items.length < 5 ? "#E8934A" : "var(--muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+                {" "}· {items.length} {items.length === 1 ? "tile" : "tiles"}
+              </span>
             </div>
             <button type="button" onClick={() => { setAdding(adding === category ? null : category); setDraft({ image: "", caption: "" }); }}
-              style={{ background: "transparent", color: "var(--purple)", border: "1px solid rgba(203,108,230,0.4)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 700 }}>
+              style={{ ...BTN, color: "var(--purple)", padding: "4px 10px", fontSize: 11.5, fontWeight: 700 }}>
               {adding === category ? "Cancel" : "+ Add"}
             </button>
           </div>
 
           {adding === category && (
-            <div style={{ background: "var(--card)", borderRadius: 8, padding: 12, marginBottom: 8, display: "grid", gap: 8 }}>
+            <div style={{ background: "var(--card)", borderRadius: 8, padding: 12, marginBottom: 10, display: "grid", gap: 8, maxWidth: 520 }}>
               <input autoFocus placeholder="/gallery/2025-09-06_char-bachelorette.jpg" value={draft.image}
                 onChange={(e) => setDraft((d) => ({ ...d, image: e.target.value }))}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }} />
@@ -3144,12 +3177,24 @@ function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem }) {
             </div>
           )}
 
-          <div style={{ display: "grid", gap: 8 }}>
-            {items.map((g) => (
-              <div key={g.id} style={{ background: "var(--card)", borderRadius: 8, padding: 10, display: "flex", gap: 12, alignItems: "center" }}>
-                <img src={g.image} alt="" style={{ width: 56, height: 56, objectFit: "cover", objectPosition: imageFocus(g.image), borderRadius: 6, flexShrink: 0 }} />
-                <input defaultValue={g.caption} onBlur={(e) => onUpdateCaption(g.id, e.target.value)}
-                  style={{ flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+          {/* A grid, not a stack. One tile per row left most of the screen empty
+              and made a category of seven look far longer than it is. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
+            {items.map((g, i) => (
+              <div key={g.id} style={{ background: "var(--card)", borderRadius: 8, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                <img src={g.image} alt="" style={{ width: "100%", height: 128, objectFit: "cover", objectPosition: imageFocus(g.image), display: "block" }} />
+                <div style={{ padding: 8, display: "grid", gap: 6 }}>
+                  <input defaultValue={g.caption} onBlur={(e) => onUpdateCaption(g.id, e.target.value)} placeholder="Caption…"
+                    style={{ width: "100%", padding: "6px 8px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }} />
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => move(items, i, -1)} disabled={i === 0} style={{ ...BTN, opacity: i === 0 ? 0.3 : 1 }}>←</button>
+                    <button type="button" onClick={() => move(items, i, 1)} disabled={i === items.length - 1} style={{ ...BTN, opacity: i === items.length - 1 ? 0.3 : 1 }}>→</button>
+                    <button type="button" onClick={() => replaceImage(g)} style={BTN}>Image</button>
+                    <button type="button"
+                      onClick={() => { if (window.confirm("Remove this tile from the public gallery?\n\nThe image file stays in public/gallery/ and can be added back.")) onDeleteGalleryItem(g.id); }}
+                      style={{ ...BTN, color: "var(--pink)", borderColor: "rgba(240,85,156,0.4)", marginLeft: "auto" }}>Remove</button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
