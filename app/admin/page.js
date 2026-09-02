@@ -131,6 +131,13 @@ export default function AdminPage() {
     await api(`/api/gallery/${id}`, { method: "PATCH", body: JSON.stringify({ caption }) });
     setGallery((prev) => prev.map((g) => (g.id === id ? { ...g, caption } : g)));
   }
+  async function addGalleryItem({ image, caption, category }) {
+    const created = await api("/api/gallery", {
+      method: "POST",
+      body: JSON.stringify({ image, caption, category }),
+    });
+    setGallery((prev) => [...prev, created]);
+  }
   async function markInquiry(id, status) {
     await updateInquiry(id, { status });
   }
@@ -323,6 +330,7 @@ export default function AdminPage() {
       onAddLedgerEntry={addLedgerEntry}
       onToggleBlocked={toggleBlocked}
       onUpdateCaption={updateCaption}
+      onAddGalleryItem={addGalleryItem}
       onMarkInquiry={markInquiry}
       onUpdateInquiry={updateInquiry}
       onUpdateAddonPrice={updateAddonPrice}

@@ -448,21 +448,7 @@ export default function AdminView({
         )}
 
         {tab === "media" && (
-          <div style={{ display: "grid", gap: 10, maxWidth: 560 }}>
-            {gallery.map((g) => (
-              <div key={g.id} style={{ background: "var(--card)", borderRadius: 8, padding: 12, display: "flex", gap: 12, alignItems: "center" }}>
-                <img src={g.image} alt="" style={{ width: 64, height: 64, objectFit: "cover", objectPosition: imageFocus(g.image), borderRadius: 6, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: "var(--purple)", marginBottom: 4, textTransform: "uppercase" }}>{g.category}</div>
-                  <input defaultValue={g.caption} onBlur={(e) => onUpdateCaption(g.id, e.target.value)}
-                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
-                </div>
-              </div>
-            ))}
-            <p style={{ fontSize: 12.5, color: "var(--muted)" }}>
-              Photo/video uploads aren't wired up yet — this edits captions on the existing gallery tiles. Adding real uploads means storing files somewhere like S3 or Cloudinary; happy to wire that in next.
-            </p>
-          </div>
+          <GalleryTab gallery={gallery} onUpdateCaption={onUpdateCaption} onAddGalleryItem={onAddGalleryItem} />
         )}
 
         {tab === "mediaDrafts" && (
@@ -2975,6 +2961,81 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
               )}
             </div>
           </div>
+  );
+}
+
+
+// The gallery grouped by the categories the public site actually uses, because
+// a flat list of 35 tiles gives no sense of which package is thin. Corporate
+// having three tiles and Party Cove seven is the useful fact, and it was
+// invisible before.
+function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem }) {
+  const [adding, setAdding] = useState(null); // category currently being added to
+  const [draft, setDraft] = useState({ image: "", caption: "" });
+
+  const categories = Array.from(new Set(gallery.map((g) => g.category))).sort();
+  const byCategory = categories.map((c) => ({
+    category: c,
+    items: gallery.filter((g) => g.category === c).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)),
+  }));
+
+  async function submit(category) {
+    const image = draft.image.trim();
+    if (!image) return;
+    await onAddGalleryItem({ image, caption: draft.caption.trim(), category });
+    setDraft({ image: "", caption: "" });
+    setAdding(null);
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 18, maxWidth: 720 }}>
+      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: 0 }}>
+        These are the tiles on the public gallery, grouped by package. Put new images in
+        the site&apos;s <code>public/gallery/</code> folder and reference them as
+        <code> /gallery/name.jpg</code> — served from our own repo rather than a third
+        party&apos;s account.
+      </p>
+
+      {byCategory.map(({ category, items }) => (
+        <div key={category}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: "var(--purple)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
+              {category}
+              <span style={{ color: "var(--muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}> · {items.length} {items.length === 1 ? "tile" : "tiles"}</span>
+            </div>
+            <button type="button" onClick={() => { setAdding(adding === category ? null : category); setDraft({ image: "", caption: "" }); }}
+              style={{ background: "transparent", color: "var(--purple)", border: "1px solid rgba(203,108,230,0.4)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 700 }}>
+              {adding === category ? "Cancel" : "+ Add"}
+            </button>
+          </div>
+
+          {adding === category && (
+            <div style={{ background: "var(--card)", borderRadius: 8, padding: 12, marginBottom: 8, display: "grid", gap: 8 }}>
+              <input autoFocus placeholder="/gallery/2025-09-06_char-bachelorette.jpg" value={draft.image}
+                onChange={(e) => setDraft((d) => ({ ...d, image: e.target.value }))}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }} />
+              <input placeholder="Caption shown under the tile" value={draft.caption}
+                onChange={(e) => setDraft((d) => ({ ...d, caption: e.target.value }))}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }} />
+              <button type="button" onClick={() => submit(category)}
+                style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "8px 12px", fontSize: 12.5, fontWeight: 700, justifySelf: "start" }}>
+                Add to {category}
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gap: 8 }}>
+            {items.map((g) => (
+              <div key={g.id} style={{ background: "var(--card)", borderRadius: 8, padding: 10, display: "flex", gap: 12, alignItems: "center" }}>
+                <img src={g.image} alt="" style={{ width: 56, height: 56, objectFit: "cover", objectPosition: imageFocus(g.image), borderRadius: 6, flexShrink: 0 }} />
+                <input defaultValue={g.caption} onBlur={(e) => onUpdateCaption(g.id, e.target.value)}
+                  style={{ flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
