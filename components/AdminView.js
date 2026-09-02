@@ -11,10 +11,15 @@ import { isCrewListRow, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialPipelinePanel from "./SocialPipelinePanel";
 
+// Names only. The leading numbers came from a spreadsheet's sort order and had
+// started to do real damage: 05 was three different repair categories, 06 was
+// both Utilities and Truck Repairs, and 07 was two spellings of the phone bill —
+// so one real total sat split across two lines of the tax report. Sorted by how
+// much they actually cost, so the ones that matter are at the top of the list.
 const EXPENSE_CATEGORIES = [
-  "01. Gas", "02. Food & Party", "03. Cleaning Supplies", "04. Apparel & Advertisement",
-  "05. Boat & Truck Repairs/parts", "06. Utilities", "07. Cell Phone/Internet",
-  "08. Storage", "09. Training", "10. ADP & Employee payout", "11. Software & Subscriptions",
+  "Fuel", "Storage", "Utilities", "Repairs & Parts", "Food & Party Supplies",
+  "Apparel & Advertising", "Payroll", "Platform Fees & Commissions", "Insurance",
+  "Training", "Cleaning Supplies", "Software & Subscriptions", "Bank Fees",
 ];
 const INCOME_CATEGORIES = [
   "Reservation", "Add-On (+1 Hour)", "Add-On (+2 Hour)", "Add-On (+3 Hour)", "Add-On (+4 Hour)",
@@ -1330,10 +1335,8 @@ function AdminAvailabilityRow({ vesselId, blockedDates, partialDates, onToggle }
   );
 }
 
-// Expense categories are stored like "01. Gas" — the leading number was an
-// internal ordering scheme from the owner's old spreadsheet. Strip it only
-// for display; the stored value keeps the number so other code/imports can
-// keep relying on it.
+// Categories are plain names now. This survives for anything imported from the
+// old spreadsheet, which still writes "01. Gas" and the like.
 function stripCategoryPrefix(category) {
   if (!category) return category;
   return category.replace(/^\d+\.\s*/, "");
@@ -1764,22 +1767,17 @@ function findSuspectedDoubleCounts(incomeRows) {
   });
 }
 
-// Expense categories are numbered ("01. Gas", "02. Food & Party", ...) and
-// that number is the bucket a bookkeeper sorts on. In the live ledger four of
-// those numbers carry more than one label, which breaks the Tax Report two
-// different ways:
+// Numbered categories are gone — they were a spreadsheet's sort order, and by
+// the end 05 meant three different repair categories, 06 was both Utilities and
+// Truck Repairs, and 07 was two spellings of the phone bill, each splitting one
+// real total across two lines of the Tax Report. Everything is now a plain
+// name.
 //
-//   - the same category typed two ways splits one total across two lines
-//     ("10. ADP & Employee payout" vs "10. ADP & Emplyee payout")
-//   - one number reused for two genuinely different categories collapses
-//     under a single code ("06. Truck Repairs/parts" vs "06. Utilities")
-//
-// Grouped by the leading number rather than by the words, because that is what
-// the two failures have in common and what the owner has to reconcile. Which
-// of the two a given group is has to be read off the labels — merging is right
-// for the first, renumbering for the second — so this reports and never edits.
-// Rows with no category at all are counted separately; they land in the report
-// as "Other / Uncategorized".
+// This check stays as a tripwire: anything imported from the old sheet arrives
+// numbered, and if two labels ever share a number again this is what says so.
+// It reports and never edits, because whether the fix is a merge or a rename
+// can only be read off the labels. Rows with no category are counted
+// separately and land in the report as "Other / Uncategorized".
 function categoryCode(category) {
   const m = String(category).match(/^(\d+)\./);
   return m ? m[1] : null;
