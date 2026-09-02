@@ -618,6 +618,121 @@ const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none
 // reservation and not an enquirer, so they get their own strip rather than
 // muddying either list. Distinct from GuestContactsPanel below, which is about
 // bookings whose contact details are missing.
+
+// Everyone who has been on a boat, deduplicated into people rather than trips.
+//
+// Bookings answers "what charters have run"; a repeat guest appears three times
+// there and someone with no phone looks identical to someone reachable. This
+// answers the different question of "who can we actually contact", which is what
+// a review ask or a glow-night mailshot needs.
+//
+// Keyed on the phone digits, falling back to email then name. Two bookings by
+// the same person under slightly different spellings still collapse if the
+// number matches.
+function contactKey(name, phone, email) {
+  const digits = String(phone || "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+  if (digits) return "p:" + digits;
+  const mail = String(email || "").trim().toLowerCase();
+  if (mail.includes("@")) return "e:" + mail;
+  const n = String(name || "").trim().toLowerCase();
+  return n ? "n:" + n : null;
+}
+
+function buildContacts(externalBookings, inquiries) {
+  const map = new Map();
+  const add = (name, phone, email, date, status, source, optOut) => {
+    const key = contactKey(name, phone, email);
+    if (!key) return;
+    const e = map.get(key) || { name, phone, email, trips: 0, last: null, sources: new Set(), optOut: false, askedAt: null };
+    if (!e.name && name) e.name = name;
+    if (!e.phone && phone) e.phone = phone;
+    if (!e.email && email) e.email = email;
+    if (status === "completed") e.trips += 1;
+    if (date && (!e.last || date > e.last)) e.last = date;
+    if (optOut) e.optOut = true;
+    e.sources.add(source);
+    map.set(key, e);
+  };
+  for (const b of externalBookings) {
+    add(b.guestName, b.phone, b.email, b.date, b.status, "charter", b.marketingOptOut);
+    if (b.reviewRequestedAt) {
+      const e = map.get(contactKey(b.guestName, b.phone, b.email));
+      if (e) e.askedAt = b.reviewRequestedAt;
+    }
+  }
+  for (const i of inquiries) {
+    const source = isGuestContactRow(i) ? "extra contact" : isCrewListRow(i) ? "crew list" : "enquiry";
+    add(i.name, i.phone, i.email, i.date, i.status, source);
+    if (i.reviewRequestedAt) {
+      const e = map.get(contactKey(i.name, i.phone, i.email));
+      if (e) e.askedAt = i.reviewRequestedAt;
+    }
+  }
+  return [...map.values()].sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
+}
+
+function ContactsPanel({ externalBookings, inquiries }) {
+  const [open, setOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const all = buildContacts(externalBookings, inquiries);
+  const reachable = all.filter((c) => c.phone || String(c.email || "").includes("@"));
+  const unreachable = all.length - reachable.length;
+  const shown = showAll ? all : reachable;
+
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 8, padding: 14, marginBottom: 14, border: "1px solid rgba(203,108,230,0.3)" }}>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        style={{ background: "transparent", border: "none", padding: 0, textAlign: "left", width: "100%", color: "var(--text)" }}>
+        <div style={{ fontWeight: 700 }}>
+          {open ? "▾" : "▸"} Everyone we can contact — {reachable.length}
+          <span style={{ color: "var(--muted)", fontWeight: 400 }}> of {all.length} people who have been aboard</span>
+        </div>
+      </button>
+      <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
+        People, not trips — a repeat guest appears once. {unreachable > 0 && (
+          <span style={{ color: "#E8934A" }}>{unreachable} have no phone and no email, so they cannot be asked for a review or told about a glow night.</span>
+        )}
+      </div>
+
+      {open && (
+        <>
+          <div style={{ display: "flex", gap: 8, margin: "10px 0" }}>
+            <button type="button" onClick={() => setShowAll(false)}
+              style={{ background: showAll ? "transparent" : "var(--purple)", color: showAll ? "var(--muted)" : "#0A0612", border: "1px solid rgba(203,108,230,0.4)", borderRadius: 6, padding: "5px 11px", fontSize: 12, fontWeight: 700 }}>
+              Reachable ({reachable.length})
+            </button>
+            <button type="button" onClick={() => setShowAll(true)}
+              style={{ background: showAll ? "var(--purple)" : "transparent", color: showAll ? "#0A0612" : "var(--muted)", border: "1px solid rgba(203,108,230,0.4)", borderRadius: 6, padding: "5px 11px", fontSize: 12, fontWeight: 700 }}>
+              Everyone ({all.length})
+            </button>
+          </div>
+
+          <div style={{ display: "grid", gap: 3, maxHeight: 340, overflowY: "auto" }}>
+            {shown.map((c, i) => (
+              <div key={(c.phone || c.email || c.name || "") + i}
+                style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12.5, padding: "5px 0", borderBottom: "1px solid rgba(203,108,230,0.08)", opacity: c.optOut ? 0.5 : 1 }}>
+                <span style={{ fontWeight: 700, minWidth: 130 }}>{c.name || "(no name)"}</span>
+                <span className="mono" style={{ color: c.phone ? "var(--text)" : "var(--muted)", minWidth: 118 }}>
+                  {c.phone ? prettyPhone(c.phone) : "—"}
+                </span>
+                <span style={{ color: "var(--muted)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {c.email || ""}
+                </span>
+                {c.trips > 1 && <span style={{ color: "#7FE0B8", fontWeight: 700, whiteSpace: "nowrap" }}>{c.trips} trips</span>}
+                <span style={{ color: "var(--muted)", whiteSpace: "nowrap", fontSize: 11 }}>{c.last || ""}</span>
+                <span style={{ color: c.askedAt ? "var(--muted)" : "var(--purple)", whiteSpace: "nowrap", fontSize: 11 }}>
+                  {c.optOut ? "opted out" : c.askedAt ? "asked" : "not asked"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ExtraContactsPanel({ contacts }) {
   if (!contacts.length) return null;
   return (
@@ -729,6 +844,7 @@ function InquiriesTab({ inquiries, onUpdate }) {
   const realInquiries = inquiries.filter(isRealInquiry);
   return (
     <div style={{ display: "grid", gap: 10 }}>
+      <ContactsPanel externalBookings={externalBookings} inquiries={inquiries} />
       <ExtraContactsPanel contacts={guestContacts} />
       <CrewListPanel signups={crewList} onUpdate={onUpdate} />
       {realInquiries.length === 0 && <div style={{ color: "var(--muted)" }}>No inquiries yet — they'll show up here the moment a customer submits the form.</div>}
