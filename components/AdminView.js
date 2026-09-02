@@ -3395,9 +3395,9 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
           grid made them look like three unrelated jobs sitting next to each
           other. Each day collapses, but opens by default: this is the list of
           what is still to come, so hiding it would defeat the point. */}
-      <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(560px, 1fr))", gap: 14, alignItems: "start" }}>
         {upcomingByDay.map(({ day, items }) => (
-          <DraftDayGroup key={day} day={day} items={items} grid={GRID} cardProps={cardProps} />
+          <DraftDayGroup key={day} day={day} items={items} cardProps={cardProps} />
         ))}
       </div>
     </div>
@@ -3405,7 +3405,9 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
 }
 
 // One day's posts, boxed together and collapsible. Open by default.
-function DraftDayGroup({ day, items, grid, cardProps }) {
+function DraftDayGroup({ day, items, cardProps }) {
+  // Sized so three fit across a day box; they wrap on a narrow screen.
+  const DAY_GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))", gap: 10 };
   const [open, setOpen] = useState(true);
   const platforms = [...new Set(items.map((d) => d.platform).filter(Boolean))];
   const label = day === "unscheduled" ? "No date set" : mediaDraftDate(day) || day;
@@ -3431,7 +3433,7 @@ function DraftDayGroup({ day, items, grid, cardProps }) {
         </span>
       </button>
       {open && (
-        <div style={{ ...grid, padding: 13 }}>
+        <div style={{ ...DAY_GRID, padding: 12 }}>
           {items.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
         </div>
       )}
