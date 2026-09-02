@@ -2804,6 +2804,22 @@ function draftSortKey(d) {
 }
 
 function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Asks for the one fact that is missing rather than offering a dead end —
+  // the same prompt the Jarvis pipeline uses, so the two behave alike.
+  function reschedule() {
+    const suggested = d.scheduledDate || localDateKey(new Date());
+    const date = window.prompt("Date to post it (YYYY-MM-DD):", suggested);
+    if (!date) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+      window.alert("Please use YYYY-MM-DD, e.g. 2026-09-14.");
+      return;
+    }
+    onUpdateStatus(d.id, "scheduled", { scheduledDate: date.trim() });
+  }
+
   return (
           <div key={d.id} style={{ background: "var(--card)", borderRadius: 10, overflow: "hidden", color: "var(--text)" }}>
             {/* No media is the common case here, not the exception — most
@@ -2893,14 +2909,41 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
               )}
 
               {(d.status === "approved" || d.status === "scheduled") && (
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {/* Same four actions the Jarvis pipeline offers, so the two
+                      screens do not disagree about what can be done to a post. */}
+                  <button type="button" onClick={() => setPreviewOpen((v) => !v)}
+                    style={{ flex: "1 1 46%", background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    {previewOpen ? "Hide preview" : "Preview"}
+                  </button>
                   <button type="button" onClick={() => onUpdateStatus(d.id, "posted")}
-                    style={{ flex: 1, background: "#7FE0B8", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    style={{ flex: "1 1 46%", background: "#7FE0B8", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
                     Mark posted
                   </button>
+                  <button type="button" onClick={() => reschedule()}
+                    style={{ flex: "1 1 46%", background: "transparent", color: "#4ff3ff", border: "1px solid #4ff3ff", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    Reschedule
+                  </button>
                   <button type="button" onClick={() => onUpdateStatus(d.id, "rejected")}
-                    style={{ flex: 1, background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
+                    style={{ flex: "1 1 46%", background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
                     Don&apos;t post
+                  </button>
+                </div>
+              )}
+
+              {previewOpen && (
+                <div style={{ marginTop: 8, padding: 10, borderRadius: 6, background: "rgba(203,108,230,0.08)", border: "1px solid rgba(203,108,230,0.35)" }}>
+                  <div style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", fontWeight: 700, marginBottom: 6 }}>
+                    {d.platform || "Platform TBD"} — as it will go out
+                  </div>
+                  <div style={{ fontSize: 12.5, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{d.caption}</div>
+                  {d.mediaUrl
+                    ? <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, wordBreak: "break-all" }}>{d.mediaUrl}</div>
+                    : <div style={{ fontSize: 11, color: "#E8934A", marginTop: 6 }}>No media attached — Instagram and TikTok will refuse this.</div>}
+                  <button type="button"
+                    onClick={() => { navigator.clipboard?.writeText(d.caption || ""); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+                    style={{ marginTop: 8, background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
+                    {copied ? "Copied ✓" : "Copy caption"}
                   </button>
                 </div>
               )}
@@ -2957,32 +3000,34 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
         Media drafts — {upcoming.length} coming up
         {past.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {past.length} done</span>}
       </div>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 14 }}>
+      <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 12 }}>
         Soonest first. Nothing here is ever posted automatically — approve or reject each one.
       </p>
 
-      <div style={GRID}>
-        {upcoming.length === 0 && (
-          <div style={{ color: "var(--muted)", fontSize: 13.5 }}>
-            Nothing scheduled ahead{past.length > 0 ? " — everything is in the done list below." : "."}
-          </div>
-        )}
-        {upcoming.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
-      </div>
-
+      {/* The toggle sits above the grid, not below it. Underneath, it was past
+          the end of a long scroll of cards and easy to miss entirely. */}
       {past.length > 0 && (
-        <div style={{ marginTop: 22 }}>
+        <div style={{ marginBottom: 14 }}>
           <button type="button" onClick={() => setShowPast((v) => !v)}
             style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600 }}>
             {showPast ? "▾" : "▸"} Already posted, denied or past ({past.length})
           </button>
           {showPast && (
-            <div style={{ ...GRID, marginTop: 12 }}>
+            <div style={{ ...GRID, marginTop: 12, marginBottom: 6 }}>
               {past.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
             </div>
           )}
         </div>
       )}
+
+      <div style={GRID}>
+        {upcoming.length === 0 && (
+          <div style={{ color: "var(--muted)", fontSize: 13.5 }}>
+            Nothing scheduled ahead{past.length > 0 ? " — everything is in the list above." : "."}
+          </div>
+        )}
+        {upcoming.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
+      </div>
     </div>
   );
 }

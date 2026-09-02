@@ -221,8 +221,18 @@ export default function AdminPage() {
     await api(`/api/subscriptions/${id}`, { method: "DELETE" });
     setSubscriptions((prev) => prev.filter((s) => s.id !== id));
   }
-  async function updateMediaDraftStatus(id, status, reviewNote) {
-    const updated = await api(`/api/media-drafts/${id}`, { method: "PATCH", body: JSON.stringify({ status, ...(reviewNote !== undefined ? { reviewNote } : {}) }) });
+  // Third argument is either a review note (the original shape, kept working) or
+  // an object of extra fields. Rescheduling needs to send a scheduledDate, and
+  // there was no way to pass one.
+  async function updateMediaDraftStatus(id, status, extra) {
+    const fields =
+      typeof extra === "string" ? { reviewNote: extra }
+      : extra && typeof extra === "object" ? extra
+      : {};
+    const updated = await api(`/api/media-drafts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, ...fields }),
+    });
     setMediaDrafts((prev) => prev.map((d) => (d.id === id ? updated : d)));
   }
   async function attachMediaDraftMedia(draft) {
