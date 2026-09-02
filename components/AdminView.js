@@ -1016,7 +1016,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
 function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
   const emptyForm = {
     vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), startTime: "", hours: 4,
-    guestName: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], referralSource: "", status: "booked", note: "", pricePaid: "",
+    guestName: "", phone: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], referralSource: "", status: "booked", note: "", pricePaid: "",
   };
   const [form, setForm] = useState(emptyForm);
   const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "completed" | "cancelled"
@@ -1032,6 +1032,8 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
       hours: Number(form.hours),
       partySize: form.partySize ? Number(form.partySize) : null,
       pricePaid: form.pricePaid ? Number(form.pricePaid) : null,
+      // Stored in one shape whatever was typed, so the review flow can text it.
+      phone: form.phone.trim() ? (normalizePhone(form.phone) || form.phone.trim()) : null,
     });
     setForm(emptyForm);
   }
@@ -1061,29 +1063,36 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
             {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>
         </label>
+        {/* Date on its own row. Three controls abreast overflowed this column:
+            a native select needs room for its arrow on top of its padding, and
+            at 90px wide the Duration menu was being clipped. */}
+        <label style={{ display: "block", marginBottom: 8 }}>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Date</div>
+          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+            style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+        </label>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <label style={{ flex: 1 }}>
-            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Date</div>
-            <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
-              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
-          </label>
-          <label style={{ width: 100 }}>
+          <label style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Start time</div>
             <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+              style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
           </label>
-          <label style={{ width: 90 }}>
+          <label style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Duration</div>
             <select value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })}
-              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+              style={{ width: "100%", boxSizing: "border-box", padding: "9px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((h) => <option key={h} value={h}>{h} hr{h === 1 ? "" : "s"}</option>)}
             </select>
           </label>
         </div>
         <input type="text" placeholder="Guest name" value={form.guestName} onChange={(e) => setForm({ ...form, guestName: e.target.value })}
-          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+          style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+        {/* Phone above email, and not marked optional — it is the contact that
+            actually gets a review asked for, and the one guests hand over. */}
+        <input type="tel" placeholder="Guest phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
         <input type="email" placeholder="Guest email (optional)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-          style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+          style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
         <input type="number" placeholder="Party size" min="1" value={form.partySize} onChange={(e) => setForm({ ...form, partySize: e.target.value })}
           style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
         <label style={{ display: "block", marginBottom: 8 }}>

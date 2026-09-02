@@ -19,7 +19,7 @@ async function POST(req) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();
-  const { vesselId, vesselName, date, startTime, hours, guestName, email, partySize, platform, referralSource, status, note, pricePaid } = body;
+  const { vesselId, vesselName, date, startTime, hours, guestName, phone, email, partySize, platform, referralSource, status, note, pricePaid } = body;
   if (!vesselId || !vesselName || !date || !platform) {
     return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
   }
@@ -38,6 +38,9 @@ async function POST(req) {
       startTime: startTime || null,
       hours: hours ? Number(hours) : null,
       guestName: guestName || null,
+      // The contact the review flow actually uses. It was missing here, so a
+      // number typed on the add-booking form was silently thrown away.
+      phone: phone || null,
       email: email || null,
       partySize: partySize ? Number(partySize) : null,
       status: EXTERNAL_BOOKING_STATUSES.includes(status) ? status : "booked",
