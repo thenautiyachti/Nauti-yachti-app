@@ -36,6 +36,11 @@ export default function AdminPage() {
   const [mediaDrafts, setMediaDrafts] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [priceHistory, setPriceHistory] = useState([]);
+  // Lived only on the Jarvis dashboard until now. The console has grown into the
+  // real interface, so these move here and Jarvis stops being a second place to
+  // look for the same information.
+  const [todos, setTodos] = useState([]);
+  const [agentActivity, setAgentActivity] = useState([]);
 
   useEffect(() => {
     api("/api/admin/session")
@@ -45,7 +50,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph, td, aa] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -63,9 +68,11 @@ export default function AdminPage() {
       api("/api/media-drafts"),
       api("/api/testimonials"),
       api("/api/price-history"),
+      api("/api/jarvis-todos"),
+      api("/api/admin/agent-activity"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
-    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts); setPriceHistory(ph);
+    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts); setPriceHistory(ph); setTodos(td); setAgentActivity(aa);
     setLoading(false);
   }, []);
 
@@ -130,6 +137,18 @@ export default function AdminPage() {
   async function updateCaption(id, caption) {
     await api(`/api/gallery/${id}`, { method: "PATCH", body: JSON.stringify({ caption }) });
     setGallery((prev) => prev.map((g) => (g.id === id ? { ...g, caption } : g)));
+  }
+  async function addTodo(text) {
+    const created = await api("/api/jarvis-todos", { method: "POST", body: JSON.stringify({ text }) });
+    setTodos((prev) => [...prev, created]);
+  }
+  async function toggleTodo(id, done) {
+    const updated = await api(`/api/jarvis-todos/${id}`, { method: "PATCH", body: JSON.stringify({ done }) });
+    setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+  }
+  async function deleteTodo(id) {
+    await api(`/api/jarvis-todos/${id}`, { method: "DELETE" });
+    setTodos((prev) => prev.filter((t) => t.id !== id));
   }
   async function addGalleryItem({ image, caption, category }) {
     const created = await api("/api/gallery", {
@@ -331,6 +350,11 @@ export default function AdminPage() {
       onToggleBlocked={toggleBlocked}
       onUpdateCaption={updateCaption}
       onAddGalleryItem={addGalleryItem}
+      todos={todos}
+      agentActivity={agentActivity}
+      onAddTodo={addTodo}
+      onToggleTodo={toggleTodo}
+      onDeleteTodo={deleteTodo}
       onMarkInquiry={markInquiry}
       onUpdateInquiry={updateInquiry}
       onUpdateAddonPrice={updateAddonPrice}

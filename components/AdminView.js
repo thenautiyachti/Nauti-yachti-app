@@ -31,6 +31,7 @@ const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Payp
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
   maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials, priceHistory,
+  todos = [], agentActivity = [], onAddTodo, onToggleTodo, onDeleteTodo, onAddGalleryItem,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onUpdateInquiry, onLogout,
   onUpdateAddonPrice, onUpdateAddon, onAddAddon, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
@@ -40,7 +41,7 @@ export default function AdminView({
   onUpdateMediaDraftStatus, onDeleteMediaDraft, onAttachMediaDraftMedia,
   onUpdateTestimonialStatus, onDeleteTestimonial,
 }) {
-  const [tab, setTab] = useState("inquiries");
+  const [tab, setTab] = useState("overview");
 
   // Jarvis audio machinery lives here — not inside JarvisTab — so switching
   // admin console tabs doesn't tear down the AudioContext/gain/compressor
@@ -207,6 +208,11 @@ export default function AdminView({
   // Counts bubble up to the group header so a pending media draft or
   // testimonial is still visible without opening the group.
   const TAB_GROUPS = [
+    {
+      id: "overview", label: "Overview", tabs: [
+        { id: "overview", label: "Overview" },
+      ],
+    },
     {
       id: "bookings", label: "Bookings", tabs: [
         { id: "inquiries", label: `Inquiries (${bookingInquiries.length})`, count: bookingInquiries.length },
@@ -445,6 +451,15 @@ export default function AdminView({
               </div>
             ))}
           </div>
+        )}
+
+        {tab === "overview" && (
+          <OverviewTab
+            externalBookings={externalBookings} inquiries={inquiries}
+            maintenanceItems={maintenanceItems} mediaDrafts={mediaDrafts}
+            todos={todos} agentActivity={agentActivity}
+            onAddTodo={onAddTodo} onToggleTodo={onToggleTodo} onDeleteTodo={onDeleteTodo}
+          />
         )}
 
         {tab === "media" && (
@@ -2969,6 +2984,111 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 // a flat list of 35 tiles gives no sense of which package is thin. Corporate
 // having three tiles and Party Cove seven is the useful fact, and it was
 // invisible before.
+
+// The one screen that answers "what needs me today" without opening five tabs.
+//
+// Everything here previously lived only on the Jarvis dashboard, which had grown
+// into a second place to look for the same information the console already held.
+// The console won: it does everything else, and its tabs are where the work
+// actually happens. Only the to-do list and the agent log were unique to Jarvis,
+// so they move here.
+function OverviewTab({ externalBookings, inquiries, maintenanceItems, mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo }) {
+  const [text, setText] = useState("");
+  const today = localDateKey(new Date());
+
+  const upcoming = externalBookings
+    .filter((b) => b.status === "booked" && b.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 6);
+
+  const newInquiries = inquiries.filter((i) => isRealInquiry(i) && i.status === "new");
+  const overdue = (maintenanceItems || []).filter((m) => m.overdue);
+  const draftsWaiting = mediaDrafts.filter((d) => ["pending", "proposed", "discussing"].includes(d.status));
+  const openTodos = todos.filter((t) => !t.done);
+
+  const CARD = { background: "var(--card)", borderRadius: 10, padding: 14 };
+  const H = { fontWeight: 700, marginBottom: 10, color: "var(--text)", fontSize: 13.5 };
+  const EMPTY = { color: "var(--muted)", fontSize: 12.5, fontStyle: "italic" };
+
+  function submit(e) {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t) return;
+    onAddTodo(t);
+    setText("");
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
+      <div style={CARD}>
+        <div style={H}>Needs attention</div>
+        {newInquiries.length === 0 && overdue.length === 0 && draftsWaiting.length === 0 && (
+          <div style={EMPTY}>Nothing waiting.</div>
+        )}
+        <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
+          {newInquiries.length > 0 && <div>{newInquiries.length} new {newInquiries.length === 1 ? "enquiry" : "enquiries"} — Bookings → Inquiries</div>}
+          {overdue.length > 0 && <div style={{ color: "#E8934A" }}>{overdue.length} maintenance {overdue.length === 1 ? "item" : "items"} overdue — Boat</div>}
+          {draftsWaiting.length > 0 && <div>{draftsWaiting.length} social {draftsWaiting.length === 1 ? "draft" : "drafts"} to review — Marketing</div>}
+        </div>
+      </div>
+
+      <div style={CARD}>
+        <div style={H}>Upcoming charters</div>
+        {upcoming.length === 0 && <div style={EMPTY}>Nothing on the books ahead.</div>}
+        <div style={{ display: "grid", gap: 7 }}>
+          {upcoming.map((b) => (
+            <div key={b.id} style={{ fontSize: 13, display: "flex", justifyContent: "space-between", gap: 10 }}>
+              <span><strong>{b.guestName || "(no name)"}</strong> <span style={{ color: "var(--muted)" }}>{b.vesselName}</span></span>
+              <span className="mono" style={{ color: "var(--purple)", whiteSpace: "nowrap" }}>{b.date}{b.startTime ? " " + b.startTime : ""}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={CARD}>
+        <div style={H}>To-do {openTodos.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({openTodos.length} open)</span>}</div>
+        <form onSubmit={submit} style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a task…"
+            style={{ flex: 1, minWidth: 0, padding: "7px 9px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }} />
+          <button type="submit" style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "0 13px", fontWeight: 700 }}>+</button>
+        </form>
+        {todos.length === 0 && <div style={EMPTY}>Nothing on the list.</div>}
+        <div style={{ display: "grid", gap: 3, maxHeight: 260, overflowY: "auto" }}>
+          {/* Open items first: a list where done items float to the top stops
+              being a to-do list and becomes a history. */}
+          {[...todos].sort((a, b) => Number(a.done) - Number(b.done)).map((t) => (
+            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", borderBottom: "1px solid rgba(203,108,230,0.1)" }}>
+              <input type="checkbox" checked={t.done} onChange={(e) => onToggleTodo(t.id, e.target.checked)} style={{ accentColor: "var(--purple)", flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12.5, color: t.done ? "var(--muted)" : "var(--text)", textDecoration: t.done ? "line-through" : "none" }}>{t.text}</span>
+              <button type="button" onClick={() => onDeleteTodo(t.id)}
+                style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.6, flexShrink: 0 }}>✕</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={CARD}>
+        <div style={H}>Agent activity</div>
+        {(!agentActivity || agentActivity.length === 0) && <div style={EMPTY}>No agent runs logged yet.</div>}
+        <div style={{ display: "grid", gap: 7, maxHeight: 260, overflowY: "auto" }}>
+          {(agentActivity || []).slice(0, 10).map((a) => (
+            <div key={a.id} style={{ fontSize: 12.5 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <strong>{a.agent}</strong>
+                <span style={{ color: "var(--muted)", whiteSpace: "nowrap", fontSize: 11 }}>
+                  {a.startedAt ? new Date(a.startedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+                </span>
+              </div>
+              <div style={{ color: "var(--muted)" }}>{a.task}{a.status ? " · " + a.status : ""}</div>
+              {a.detail && <div style={{ color: "var(--muted)", fontSize: 11.5, marginTop: 2 }}>{String(a.detail).slice(0, 150)}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem }) {
   const [adding, setAdding] = useState(null); // category currently being added to
   const [draft, setDraft] = useState({ image: "", caption: "" });
