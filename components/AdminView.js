@@ -1669,16 +1669,16 @@ function daysBetweenDateKeys(a, b) {
 // deliberately NOT counted as accounted-for: sharing a calendar day with
 // some unrelated payout is not evidence that this charter was recorded.
 const MATCH_LABEL = {
-  id: "Linked by ID", exact: "Amount matches", payout: "Payout matches",
+  linked: "Reconciled", id: "Linked by ID", exact: "Amount matches", payout: "Payout matches",
   named: "Amount disagrees", date: "Same date only", none: "Not in ledger",
   unpriced: "No price recorded",
 };
 const MATCH_COLOR = {
-  id: "#7FE0B8", exact: "#7FE0B8", payout: "#7FE0B8",
+  linked: "#7FE0B8", id: "#7FE0B8", exact: "#7FE0B8", payout: "#7FE0B8",
   named: "#E8934A", date: "#E8934A", none: "#F0559C", unpriced: "#F0559C",
 };
 const MATCH_ACCOUNTED = {
-  id: true, exact: true, payout: true,
+  linked: true, id: true, exact: true, payout: true,
   named: false, date: false, none: false, unpriced: false,
 };
 
@@ -1828,8 +1828,46 @@ function findCategoryVariants(ledger) {
 //                       rather than silently counted as zero
 function buildReconciliation(bookings, ledger) {
   const incomeRows = ledger.filter((l) => l.type === "income");
+
+  // Every ledger row written against a booking carries its id. That link is the
+  // truth; date proximity is only a fallback for older rows that predate it.
+  //
+  // Matching on date alone was wrong three times over here. Boatsetter pays two
+  // or three days after the trip, so the money never shares the charter's date.
+  // It pays in two legs — boat, then captain fee — so one row is never the whole
+  // story. And income is recorded gross with the platform's cut booked as an
+  // expense, so the ledger figure is meant to exceed the payout. A charter is
+  // reconciled when its linked income MINUS its linked fees equals what was
+  // actually received.
+  const byBooking = new Map();
+  for (const l of ledger) {
+    if (!l.externalBookingId) continue;
+    if (!byBooking.has(l.externalBookingId)) byBooking.set(l.externalBookingId, []);
+    byBooking.get(l.externalBookingId).push(l);
+  }
+
   return bookings
     .map((b) => {
+      const linked = byBooking.get(b.id) || [];
+      if (linked.length) {
+        const gross = linked.filter((l) => l.type === "income").reduce((s, l) => s + l.amount, 0);
+        const fees = linked.filter((l) => l.type === "expense").reduce((s, l) => s + l.amount, 0);
+        const net = gross - fees;
+        const expected = b.pricePaid == null ? null : b.pricePaid;
+        const off = expected == null ? null : net - expected;
+        return {
+          ...b,
+          match: "linked",
+          matchRow: linked.find((l) => l.type === "income") || null,
+          linkedRows: linked,
+          linkedGross: gross,
+          linkedFees: fees,
+          linkedNet: net,
+          accounted: expected == null ? false : Math.abs(off) < 0.02,
+          shortfall: expected == null ? null : Math.max(0, -(off)),
+        };
+      }
+
       const match = matchBookingToLedger(b, incomeRows);
       const accounted = MATCH_ACCOUNTED[match.tier];
       let shortfall;
@@ -1837,13 +1875,7 @@ function buildReconciliation(bookings, ledger) {
       else if (accounted) shortfall = 0;
       else if (match.tier === "named") shortfall = Math.max(0, b.pricePaid - match.row.amount);
       else shortfall = b.pricePaid;
-      return {
-        ...b,
-        match: match.tier,
-        matchRow: match.row,
-        accounted,
-        shortfall,
-      };
+      return { ...b, match: match.tier, matchRow: match.row, linkedRows: [], accounted, shortfall };
     })
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
@@ -2007,8 +2039,23 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
                     <td className="mono" style={{ padding: "6px 8px", whiteSpace: "nowrap", fontWeight: 700, color: r.shortfall ? "#F0559C" : "var(--muted)" }}>
                       {r.shortfall == null ? "unknown" : r.shortfall > 0 ? currency(r.shortfall) : "—"}
                     </td>
+                    {/* Show the arithmetic, not just a verdict. A Boatsetter
+                        charter reconciles across two payout legs arriving days
+                        after the trip, less the platform's fees — stating that
+                        plainly is the difference between "trust me" and "here
+                        is why". */}
                     <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0", color: "var(--muted)", fontSize: 11.5 }}>
-                      {r.matchRow
+                      {r.linkedRows && r.linkedRows.length ? (
+                        <>
+                          <div style={{ color: "var(--text)" }}>
+                            {currency(r.linkedGross)} in
+                            {r.linkedFees > 0 ? ` − ${currency(r.linkedFees)} fees = ${currency(r.linkedNet)}` : ""}
+                          </div>
+                          <div style={{ fontSize: 11 }}>
+                            {r.linkedRows.filter((l) => l.type === "income").map((l) => `${fmtLedgerDate(l.date)} ${currency(l.amount)}`).join(" + ") || "—"}
+                          </div>
+                        </>
+                      ) : r.matchRow
                         ? `${fmtLedgerDate(r.matchRow.date)} · ${currency(r.matchRow.amount)} · ${r.matchRow.origin || "—"}`
                         : "—"}
                     </td>
