@@ -494,7 +494,7 @@ export default function AdminView({
         )}
 
         {tab === "taxReport" && (
-          <TaxReportTab ledger={ledger} subscriptions={subscriptions} />
+          <TaxReportTab ledger={ledger} subscriptions={subscriptions} externalBookings={externalBookings} />
         )}
 
         {tab === "maintenance" && (
@@ -3503,7 +3503,16 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
-function TaxReportTab({ ledger, subscriptions }) {
+// "The Nauti Explorer" and "Nauti Explorer" are the same boat, and both are in
+// the live data — $6,653 filed under one and $3,873 under the other. Without
+// this, a by-vessel breakdown shows the Explorer twice and neither figure is
+// the truth.
+function normalizeVesselLabel(name) {
+  const s = String(name || "").trim().replace(/^the\s+/i, "");
+  return s || "No vessel recorded";
+}
+
+function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
   const currentYear = new Date().getFullYear();
   const years = Array.from(new Set(ledger.map((l) => l.date && l.date.slice(0, 4)).filter(Boolean)));
   if (!years.includes(String(currentYear))) years.push(String(currentYear));
@@ -3520,6 +3529,30 @@ function TaxReportTab({ ledger, subscriptions }) {
 
   const expenseBreakdown = groupTotals(expenses, (l) => stripCategoryPrefix(l.category));
   const incomeBreakdown = groupTotals(income, (l) => stripCategoryPrefix(l.category));
+
+  // Every income row carries "Reservation" as its category, so grouping income
+  // by category produces a single row and tells you nothing. These answer
+  // questions that can actually change a decision.
+  const incomeByVessel = groupTotals(income, (l) => normalizeVesselLabel(l.subcategory));
+  const incomeByOrigin = groupTotals(income, (l) => String(l.origin || "").trim() || "No origin recorded");
+
+  // Averages need the bookings, not the ledger: a charter can produce two
+  // income rows (Boatsetter pays the boat leg and the captain fee separately),
+  // so counting ledger rows would understate what a trip is worth by roughly
+  // half.
+  const yearCharters = externalBookings.filter(
+    (b) => b.status === "completed" && b.date && b.date.startsWith(year)
+  );
+  const charterCount = yearCharters.length;
+  const totalHours = yearCharters.reduce((s, b) => s + (Number(b.hours) || 0), 0);
+  const perCharter = charterCount ? totalIncome / charterCount : 0;
+  const perHour = totalHours ? totalIncome / totalHours : 0;
+
+  // Income with no vessel on it cannot be attributed to a boat, which is worth
+  // saying out loud rather than quietly folding into a bucket.
+  const unattributed = income
+    .filter((l) => !String(l.subcategory || "").trim())
+    .reduce((s, l) => s + Number(l.amount || 0), 0);
 
   const activeSubs = subscriptions.filter((s) => s.active);
   const annualSubscriptionCost = activeSubs.reduce((sum, s) => sum + monthlyAmount(s) * 12, 0);
@@ -3573,9 +3606,36 @@ function TaxReportTab({ ledger, subscriptions }) {
         This isn't a filed tax form — it's a plain summary of everything logged in the Income &amp; expenses and Subscriptions tabs for the selected year, exportable as CSV to hand to a bookkeeper or drop into tax software. Categories below mirror the expense categories used when logging entries.
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      {/* Per charter and per hour are the two numbers that actually inform a
+          pricing decision, and neither existed anywhere before. */}
+      {charterCount > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
+          <StatCard label={`${year} completed charters`} value={String(charterCount)} color="var(--purple)" />
+          <StatCard label="Average per charter" value={currency(perCharter)} color="#7FE0B8" />
+          <StatCard label="Average per hour" value={totalHours ? currency(perHour) : "—"} color="#4ff3ff" />
+          <StatCard label="Hours on the water" value={totalHours ? `${totalHours} hr` : "—"} color="var(--muted)" />
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
         <BreakdownPanel title={`${year} expenses by category`} rows={expenseBreakdown} color="#F0559C" />
-        <BreakdownPanel title={`${year} income by category`} rows={incomeBreakdown} color="#7FE0B8" />
+        <BreakdownPanel title={`${year} income by vessel`} rows={incomeByVessel} color="#7FE0B8" />
+        <BreakdownPanel title={`${year} income by origin`} rows={incomeByOrigin} color="#00d9ff" />
+      </div>
+
+      {unattributed > 0 && (
+        <div style={{ fontSize: 12.5, color: "#E8934A", background: "rgba(232,147,74,0.08)", border: "1px solid rgba(232,147,74,0.35)", borderRadius: 8, padding: "10px 12px" }}>
+          <strong>{currency(unattributed)}</strong> of {year} income has no vessel recorded, so it cannot be
+          attributed to a boat above. Setting the vessel on those entries in the Income &amp; expenses tab
+          would make this breakdown complete.
+        </div>
+      )}
+
+      <div style={{ fontSize: 11.5, color: "var(--muted)", maxWidth: 720 }}>
+        Income by category is not shown: every reservation is logged under the single category
+        &ldquo;Reservation&rdquo;, so it would be one row totalling everything. Vessel and origin are the
+        splits that say something. Note that origin currently mixes how a booking was won
+        (Instagram, Friends) with how it was paid (Zelle, Venmo, Cash) — worth tidying at source.
       </div>
     </div>
   );
