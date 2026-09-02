@@ -101,6 +101,57 @@ async function POST(req) {
         paidInquiry = await prisma.inquiry.findFirst({ where: { stripeSessionId: session.id } });
       }
 
+      // A paid website booking used to stop here, as an Inquiry marked "paid".
+      // It never became a booking: it did not appear in the Bookings list, it
+      // was not on the calendar, and no money reached the ledger. Somebody could
+      // pay in full and, as far as every other screen was concerned, not exist.
+      //
+      // Deliberately created as "booked", not "completed" — the trip has not
+      // happened yet. The income row follows when the owner marks it completed,
+      // which keeps one rule for how a charter's money is recognised instead of
+      // a separate one for website bookings.
+      //
+      // Idempotent via platformRef: Stripe retries webhooks, and a retry must
+      // not mint a second booking. The session id is the natural key here, the
+      // same way a Boatsetter reservation number is for a platform booking.
+      if (paidInquiry) {
+        try {
+          const alreadyBooked = await prisma.externalBooking.findFirst({
+            where: { platformRef: session.id },
+          });
+          if (!alreadyBooked) {
+            // amount_total is what Stripe actually charged, in cents — it is
+            // the truth after coupons and gift certificates, which priceQuoted
+            // is not.
+            const paid = typeof session.amount_total === "number" ? session.amount_total / 100 : null;
+            const party = Number.parseInt(paidInquiry.partySize, 10);
+            await prisma.externalBooking.create({
+              data: {
+                vesselId: paidInquiry.vesselId || "unknown",
+                vesselName: paidInquiry.vesselName || paidInquiry.packageName || "Unassigned",
+                date: paidInquiry.date,
+                hours: paidInquiry.hours ?? null,
+                guestName: paidInquiry.name || null,
+                email: paidInquiry.email || null,
+                phone: paidInquiry.phone || null,
+                partySize: Number.isFinite(party) ? party : null,
+                platform: "Website",
+                status: "booked",
+                pricePaid: paid,
+                bookingId: paidInquiry.bookingId || null,
+                platformRef: session.id,
+                referralSource: "website",
+                note: "Booked and paid through the website checkout. Created automatically from the Stripe webhook.",
+              },
+            });
+          }
+        } catch (bookErr) {
+          // The guest has paid either way. Log loudly rather than failing the
+          // webhook, which would make Stripe retry forever.
+          console.error("[webhooks/stripe] Failed to create booking from paid inquiry:", bookErr);
+        }
+      }
+
       // If a gift certificate part-paid this booking, draw it down now —
       // payment has actually succeeded. Doing it at checkout instead would let
       // an abandoned session silently spend someone's certificate.
