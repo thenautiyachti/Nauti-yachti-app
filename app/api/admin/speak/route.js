@@ -6,6 +6,30 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wDsJlOXPqcvIUKdLXjDs"; // "Jarvis" preset
 const JARVIS_SERVICE_KEY = process.env.JARVIS_SERVICE_KEY;
 
+// Flash bills half a credit per character where multilingual_v2 bills a full
+// one, and for short spoken status lines the difference in quality is not worth
+// twice the price. Override with ELEVENLABS_MODEL_ID=eleven_multilingual_v2 to
+// go back.
+const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || "eleven_flash_v2_5";
+
+// Every character synthesized is billed, so an unbounded message is an
+// unbounded bill. The stored text is never truncated -- this only limits what
+// is read aloud. A 2,353-character message once went through here, which is
+// over two minutes of talking; nobody listens to that, they read it.
+const SPEECH_CHAR_CAP = Number(process.env.JARVIS_SPEECH_CAP || 350);
+
+// Trim to the last sentence that ends before the cap, so speech stops on a
+// full stop rather than mid-word. Falls back to a word boundary if the first
+// sentence is itself longer than the cap.
+function speakableFrom(full, cap) {
+  if (full.length <= cap) return full;
+  const head = full.slice(0, cap);
+  const lastStop = Math.max(head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
+  if (lastStop > cap * 0.4) return head.slice(0, lastStop + 1);
+  const lastSpace = head.lastIndexOf(" ");
+  return (lastSpace > 0 ? head.slice(0, lastSpace) : head).replace(/[,;:s]+$/, "") + "...";
+}
+
 // POST { text: string } -> synthesizes speech via ElevenLabs and stores the
 // resulting audio as a SpeechEvent row for the Jarvis tab to pick up on its
 // next poll. This replaces the standalone Jarvis-Voice-UI server's websocket
