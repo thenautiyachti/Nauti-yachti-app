@@ -455,7 +455,7 @@ export default function AdminView({
 
         {tab === "overview" && (
           <OverviewTab
-            externalBookings={externalBookings} inquiries={inquiries}
+            externalBookings={externalBookings} inquiries={inquiries} ledger={ledger}
             maintenanceItems={maintenanceItems} mediaDrafts={mediaDrafts}
             todos={todos} agentActivity={agentActivity}
             onAddTodo={onAddTodo} onToggleTodo={onToggleTodo} onDeleteTodo={onDeleteTodo}
@@ -3167,21 +3167,85 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 // The console won: it does everything else, and its tabs are where the work
 // actually happens. Only the to-do list and the agent log were unique to Jarvis,
 // so they move here.
-function OverviewTab({ externalBookings, inquiries, maintenanceItems, mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo }) {
+// The one screen that answers "what needs me today".
+//
+// Laid out three across and two down, because at one card per column the panels
+// were too narrow to hold a sentence and everything wrapped.
+function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo }) {
   const [text, setText] = useState("");
   const today = localDateKey(new Date());
+  const month = today.slice(0, 7);
+  const plus = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return localDateKey(d); };
 
+  // --- money this month -------------------------------------------------
+  const monthLedger = ledger.filter((l) => (l.date || "").startsWith(month));
+  const mIncome = monthLedger.filter((l) => l.type === "income").reduce((a, l) => a + Number(l.amount || 0), 0);
+  const mExpense = monthLedger.filter((l) => l.type === "expense").reduce((a, l) => a + Number(l.amount || 0), 0);
+  const monthCharters = externalBookings.filter((b) => b.status === "completed" && (b.date || "").startsWith(month)).length;
+
+  // --- charters: what is coming, then what just happened -----------------
   const upcoming = externalBookings
-    .filter((b) => b.status === "booked" && b.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 6);
+    .filter((b) => b.status === "booked" && (b.date || "") >= today)
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const recent = externalBookings
+    .filter((b) => b.status === "completed")
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const charters = [...upcoming, ...recent].slice(0, 5);
 
-  const newInquiries = inquiries.filter((i) => isRealInquiry(i) && i.status === "new");
-  const overdue = (maintenanceItems || []).filter((m) => m.overdue);
+  // --- what actually needs attention ------------------------------------
+  //
+  // The first version counted only drafts awaiting a decision, so it said
+  // "nothing waiting" while 23 posts sat scheduled and 21 guests had never been
+  // asked for a review. Anything that is genuinely a job goes here.
+  const soonPosts = mediaDrafts.filter((d) => d.status === "scheduled" && d.scheduledDate && d.scheduledDate <= plus(3) && d.scheduledDate >= today);
   const draftsWaiting = mediaDrafts.filter((d) => ["pending", "proposed", "discussing"].includes(d.status));
-  const openTodos = todos.filter((t) => !t.done);
+  const newInquiries = inquiries.filter((i) => isRealInquiry(i) && i.status === "new");
+  const overdue = maintenanceItems.filter((m) => m.overdue);
+  const neverAsked = externalBookings.filter((b) => b.status === "completed" && b.phone && !b.reviewRequestedAt && !b.marketingOptOut);
+  const noPhone = externalBookings.filter((b) => b.status === "completed" && !b.phone);
+  const noPrice = externalBookings.filter((b) => b.status === "completed" && b.pricePaid == null);
+  const looseIncome = ledger.filter((l) => l.type === "income" && !l.externalBookingId);
 
-  const CARD = { background: "var(--card)", borderRadius: 10, padding: 14 };
+  const attention = [
+    newInquiries.length && { t: `${newInquiries.length} new ${newInquiries.length === 1 ? "enquiry" : "enquiries"}`, w: "Bookings → Inquiries", urgent: true },
+    overdue.length && { t: `${overdue.length} maintenance ${overdue.length === 1 ? "item" : "items"} overdue`, w: "Boat", urgent: true },
+    draftsWaiting.length && { t: `${draftsWaiting.length} social ${draftsWaiting.length === 1 ? "draft" : "drafts"} to approve`, w: "Marketing → Media Drafts", urgent: true },
+    noPrice.length && { t: `${noPrice.length} completed ${noPrice.length === 1 ? "charter has" : "charters have"} no price`, w: "no income row is written without one", urgent: true },
+    soonPosts.length && { t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts" },
+    neverAsked.length && { t: `${neverAsked.length} guests never asked for a review`, w: "Marketing → Testimonials, from your phone" },
+    looseIncome.length && { t: `${looseIncome.length} income ${looseIncome.length === 1 ? "row is" : "rows are"} not tied to a charter`, w: "Money → Reconciliation" },
+    noPhone.length && { t: `${noPhone.length} past guests have no phone number`, w: "they cannot be asked for anything" },
+  ].filter(Boolean);
+
+  // --- social: what is actually going out -------------------------------
+  const nextPosts = mediaDrafts
+    .filter((d) => d.status === "scheduled" && d.scheduledDate && d.scheduledDate >= today)
+    .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
+  const nextByDay = [];
+  for (const d of nextPosts) {
+    const last = nextByDay[nextByDay.length - 1];
+    if (last && last.day === d.scheduledDate) last.platforms.push(d.platform);
+    else nextByDay.push({ day: d.scheduledDate, platforms: [d.platform] });
+  }
+
+  // --- agent activity ---------------------------------------------------
+  //
+  // One line per agent, its latest run only. The raw log repeats the same daily
+  // task and reads as noise; what matters is whether each agent ran and what it
+  // last said.
+  const latestByAgent = [];
+  const seenAgents = new Set();
+  for (const a of agentActivity || []) {
+    const name = a.agentName || "(unnamed agent)";
+    if (seenAgents.has(name)) continue;
+    seenAgents.add(name);
+    latestByAgent.push(a);
+  }
+
+  const openTodos = todos.filter((t) => !t.done);
+  const doneTodos = todos.filter((t) => t.done);
+
+  const CARD = { background: "var(--card)", borderRadius: 10, padding: 14, minWidth: 0 };
   const H = { fontWeight: 700, marginBottom: 10, color: "var(--text)", fontSize: 13.5 };
   const EMPTY = { color: "var(--muted)", fontSize: 12.5, fontStyle: "italic" };
 
@@ -3194,70 +3258,142 @@ function OverviewTab({ externalBookings, inquiries, maintenanceItems, mediaDraft
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, alignItems: "start" }}>
+
       <div style={CARD}>
-        <div style={H}>Needs attention</div>
-        {newInquiries.length === 0 && overdue.length === 0 && draftsWaiting.length === 0 && (
-          <div style={EMPTY}>Nothing waiting.</div>
-        )}
-        <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
-          {newInquiries.length > 0 && <div>{newInquiries.length} new {newInquiries.length === 1 ? "enquiry" : "enquiries"} — Bookings → Inquiries</div>}
-          {overdue.length > 0 && <div style={{ color: "#E8934A" }}>{overdue.length} maintenance {overdue.length === 1 ? "item" : "items"} overdue — Boat</div>}
-          {draftsWaiting.length > 0 && <div>{draftsWaiting.length} social {draftsWaiting.length === 1 ? "draft" : "drafts"} to review — Marketing</div>}
+        <div style={H}>This month</div>
+        <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--muted)" }}>Income</span>
+            <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(mIncome)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--muted)" }}>Expenses</span>
+            <span className="mono" style={{ color: "var(--pink)", fontWeight: 700 }}>{currency(mExpense)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(203,108,230,0.15)", paddingTop: 7 }}>
+            <span style={{ color: "var(--muted)" }}>Net</span>
+            <span className="mono" style={{ color: mIncome - mExpense >= 0 ? "#E8934A" : "var(--pink)", fontWeight: 700 }}>{currency(mIncome - mExpense)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", fontSize: 12.5 }}>
+            <span>Charters run</span><span className="mono">{monthCharters}</span>
+          </div>
         </div>
       </div>
 
       <div style={CARD}>
-        <div style={H}>Upcoming charters</div>
-        {upcoming.length === 0 && <div style={EMPTY}>Nothing on the books ahead.</div>}
+        <div style={H}>Charters</div>
+        {charters.length === 0 && <div style={EMPTY}>Nothing on the books.</div>}
         <div style={{ display: "grid", gap: 7 }}>
-          {upcoming.map((b) => (
-            <div key={b.id} style={{ fontSize: 13, display: "flex", justifyContent: "space-between", gap: 10 }}>
-              <span><strong>{b.guestName || "(no name)"}</strong> <span style={{ color: "var(--muted)" }}>{b.vesselName}</span></span>
-              <span className="mono" style={{ color: "var(--purple)", whiteSpace: "nowrap" }}>{b.date}{b.startTime ? " " + b.startTime : ""}</span>
+          {charters.map((b) => (
+            <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5 }}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <strong>{b.guestName || "(no name)"}</strong>
+                <span style={{ color: "var(--muted)" }}> {b.vesselName}</span>
+              </span>
+              <span style={{ whiteSpace: "nowrap" }}>
+                <span className="mono" style={{ color: "var(--muted)", fontSize: 11.5 }}>{b.date}</span>{" "}
+                <span style={{ fontSize: 10, fontWeight: 700, color: b.status === "booked" ? "#4FA8E8" : "#7FE0B8" }}>
+                  {b.status === "booked" ? "UPCOMING" : "DONE"}
+                </span>
+              </span>
             </div>
           ))}
         </div>
       </div>
 
       <div style={CARD}>
-        <div style={H}>To-do {openTodos.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({openTodos.length} open)</span>}</div>
+        <div style={H}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
+        {attention.length === 0 && <div style={EMPTY}>Genuinely nothing waiting.</div>}
+        <div style={{ display: "grid", gap: 7 }}>
+          {attention.map((a, i) => (
+            <div key={i} style={{ fontSize: 12.5 }}>
+              <div style={{ color: a.urgent ? "#E8934A" : "var(--text)", fontWeight: a.urgent ? 700 : 400 }}>{a.t}</div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>{a.w}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={CARD}>
+        <div style={H}>Going out next</div>
+        {nextByDay.length === 0 && <div style={EMPTY}>Nothing scheduled.</div>}
+        <div style={{ display: "grid", gap: 6 }}>
+          {nextByDay.slice(0, 6).map((d) => (
+            <div key={d.day} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5 }}>
+              <span className="mono" style={{ color: d.day === today ? "#E8934A" : "var(--text)", fontWeight: d.day === today ? 700 : 400, whiteSpace: "nowrap" }}>
+                {mediaDraftDate(d.day) || d.day}
+              </span>
+              <span style={{ color: "var(--muted)", fontSize: 11.5, textAlign: "right" }}>{d.platforms.join(" · ")}</span>
+            </div>
+          ))}
+          {nextByDay.length > 6 && (
+            <div style={{ color: "var(--muted)", fontSize: 11 }}>…and {nextByDay.length - 6} more days scheduled</div>
+          )}
+        </div>
+      </div>
+
+      <div style={CARD}>
+        <div style={H}>
+          To-do {openTodos.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({openTodos.length} open)</span>}
+        </div>
         <form onSubmit={submit} style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a task…"
             style={{ flex: 1, minWidth: 0, padding: "7px 9px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }} />
           <button type="submit" style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "0 13px", fontWeight: 700 }}>+</button>
         </form>
         {todos.length === 0 && <div style={EMPTY}>Nothing on the list.</div>}
-        <div style={{ display: "grid", gap: 3, maxHeight: 260, overflowY: "auto" }}>
-          {/* Open items first: a list where done items float to the top stops
-              being a to-do list and becomes a history. */}
-          {[...todos].sort((a, b) => Number(a.done) - Number(b.done)).map((t) => (
-            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", borderBottom: "1px solid rgba(203,108,230,0.1)" }}>
-              <input type="checkbox" checked={t.done} onChange={(e) => onToggleTodo(t.id, e.target.checked)} style={{ accentColor: "var(--purple)", flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 12.5, color: t.done ? "var(--muted)" : "var(--text)", textDecoration: t.done ? "line-through" : "none" }}>{t.text}</span>
-              <button type="button" onClick={() => onDeleteTodo(t.id)}
-                style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.6, flexShrink: 0 }}>✕</button>
-            </div>
+        <div style={{ display: "grid", gap: 5, maxHeight: 300, overflowY: "auto" }}>
+          {openTodos.map((t) => (
+            <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.4, cursor: "pointer" }}>
+              <input type="checkbox" checked={false} onChange={() => onToggleTodo(t.id, true)} style={{ accentColor: "var(--purple)", flexShrink: 0, marginTop: 2 }} />
+              <span style={{ flex: 1, minWidth: 0 }}>{t.text}</span>
+              <button type="button" onClick={(e) => { e.preventDefault(); onDeleteTodo(t.id); }}
+                style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.5, flexShrink: 0 }}>✕</button>
+            </label>
           ))}
+          {doneTodos.length > 0 && (
+            <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{doneTodos.length} done</div>
+              {doneTodos.slice(0, 4).map((t) => (
+                <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "var(--muted)", lineHeight: 1.4, cursor: "pointer" }}>
+                  <input type="checkbox" checked readOnly onClick={() => onToggleTodo(t.id, false)} style={{ accentColor: "var(--purple)", flexShrink: 0, marginTop: 2 }} />
+                  <span style={{ flex: 1, minWidth: 0, textDecoration: "line-through" }}>{t.text}</span>
+                  <button type="button" onClick={(e) => { e.preventDefault(); onDeleteTodo(t.id); }}
+                    style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.5, flexShrink: 0 }}>✕</button>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <div style={CARD}>
-        <div style={H}>Agent activity</div>
-        {(!agentActivity || agentActivity.length === 0) && <div style={EMPTY}>No agent runs logged yet.</div>}
-        <div style={{ display: "grid", gap: 7, maxHeight: 260, overflowY: "auto" }}>
-          {(agentActivity || []).slice(0, 10).map((a) => (
-            <div key={a.id} style={{ fontSize: 12.5 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <strong>{a.agent}</strong>
-                <span style={{ color: "var(--muted)", whiteSpace: "nowrap", fontSize: 11 }}>
-                  {a.startedAt ? new Date(a.startedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
-                </span>
+        <div style={H}>Agents</div>
+        {latestByAgent.length === 0 && <div style={EMPTY}>No agent runs logged yet.</div>}
+        <div style={{ display: "grid", gap: 9 }}>
+          {latestByAgent.slice(0, 6).map((a) => {
+            const when = a.startedAt ? new Date(a.startedAt) : null;
+            const days = when ? Math.floor((Date.now() - when.getTime()) / 86400000) : null;
+            // An agent that has not run in days is the thing worth noticing.
+            const stale = days != null && days > 2;
+            return (
+              <div key={a.id} style={{ fontSize: 12.5 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <strong style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.agentName || "(unnamed)"}</strong>
+                  <span style={{ color: stale ? "#E8934A" : "var(--muted)", fontSize: 11, whiteSpace: "nowrap" }}>
+                    {days == null ? "" : days === 0 ? "today" : days === 1 ? "yesterday" : days + " days ago"}
+                  </span>
+                </div>
+                {a.taskTitle && <div style={{ color: "var(--muted)", fontSize: 11.5 }}>{a.taskTitle}</div>}
+                {a.detail && (
+                  <div style={{ color: "var(--muted)", fontSize: 11.5, lineHeight: 1.4, marginTop: 2 }}>
+                    {String(a.detail).length > 120 ? String(a.detail).slice(0, 120) + "…" : a.detail}
+                  </div>
+                )}
               </div>
-              <div style={{ color: "var(--muted)" }}>{a.task}{a.status ? " · " + a.status : ""}</div>
-              {a.detail && <div style={{ color: "var(--muted)", fontSize: 11.5, marginTop: 2 }}>{String(a.detail).slice(0, 150)}</div>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
