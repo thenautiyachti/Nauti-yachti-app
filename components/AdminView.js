@@ -483,7 +483,7 @@ export default function AdminView({
         )}
 
         {tab === "ledger" && (
-          <LedgerTab ledger={ledger} totals={totals} onAdd={onAddLedgerEntry} externalBookings={externalBookings} />
+          <LedgerTab ledger={ledger} totals={totals} onAdd={onAddLedgerEntry} externalBookings={externalBookings} vessels={vessels} packages={packages} />
         )}
 
         {tab === "reconcile" && (
@@ -1597,7 +1597,7 @@ function groupCommissionLost(entries) {
   return Array.from(groups.values()).sort((a, b) => b.total - a.total);
 }
 
-function LedgerTab({ ledger, totals, onAdd, externalBookings = [] }) {
+function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [], packages = [] }) {
   const emptyForm = {
     type: "income", amount: "", grossAmount: "", note: "", date: localDateKey(new Date()),
     category: INCOME_CATEGORIES[0], origin: RESERVATION_ORIGINS[0], bookingId: "", subcategory: "",
@@ -1624,6 +1624,13 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [] }) {
     });
     setForm(emptyForm);
   }
+
+  // Completed charters first and most recent first: an entry being logged by
+  // hand is nearly always about a trip that just happened.
+  const bookingOptions = [...externalBookings]
+    .filter((b) => b.status !== "cancelled")
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    .slice(0, 60);
 
   const sortedLedger = [...ledger].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const visibleLedger = filterType === "all" ? sortedLedger : sortedLedger.filter((l) => l.type === filterType);
@@ -1665,6 +1672,10 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [] }) {
               {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10, lineHeight: 1.45 }}>
+            Charter income logs itself when a booking is marked completed — this form is for
+            everything else: expenses, and money that is not a charter.
+          </div>
           <input type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
             style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} required />
           <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
@@ -1676,11 +1687,28 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [] }) {
               {originOptions.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </label>
-          <input type="text" placeholder="Booking ID (links this to a reservation)" value={form.bookingId} onChange={(e) => setForm({ ...form, bookingId: e.target.value })}
-            style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+          <label style={{ display: "block", marginBottom: 8 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Charter this belongs to (optional)</div>
+            <select value={form.bookingId} onChange={(e) => setForm({ ...form, bookingId: e.target.value })}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+              <option value="">— not tied to a charter —</option>
+              {bookingOptions.map((b) => (
+                <option key={b.id} value={b.bookingId || b.id}>
+                  {b.date} · {b.guestName || "(no name)"} · {b.vesselName}
+                </option>
+              ))}
+            </select>
+          </label>
           {form.type === "income" && (
-            <input type="text" placeholder="Vessel / Package (e.g. The Nauti Explorer)" value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
-              style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} />
+            <label style={{ display: "block", marginBottom: 8 }}>
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Vessel or package</div>
+              <select value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
+                <option value="">— none —</option>
+                {vessels.map((v) => <option key={v.id} value={v.name}>{v.name}</option>)}
+                {packages.map((pk) => <option key={pk.id} value={pk.name}>{pk.name}</option>)}
+              </select>
+            </label>
           )}
           {form.type === "income" && (
             <input type="number" placeholder="Gross / list price (optional — before platform's cut)" value={form.grossAmount} onChange={(e) => setForm({ ...form, grossAmount: e.target.value })}
