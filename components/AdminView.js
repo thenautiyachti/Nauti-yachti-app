@@ -2077,7 +2077,22 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
   const doubleCountTotal = doubleCounts.reduce((s, h) => s + h.row.amount, 0);
 
   // The other direction: income the ledger has that no booking explains.
-  const claimedRowIds = new Set(rows.filter((r) => r.matchRow && r.accounted).map((r) => r.matchRow.id));
+  // Claim every row a booking is linked to, not just one.
+  //
+  // Two bugs lived in the old single-row version. A Boatsetter charter produces
+  // TWO income rows -- the boat leg and the captain fee, paid days apart -- so
+  // the second leg was never claimed and was reported as money nobody could
+  // explain. And requiring `accounted` meant a charter whose figures were a few
+  // cents out had its income counted as unexplained, which is a different
+  // problem and is already reported above.
+  //
+  // A row linked to a booking IS explained by that booking. Whether the amounts
+  // reconcile is a separate question.
+  const claimedRowIds = new Set();
+  for (const r of rows) {
+    for (const l of r.linkedRows || []) claimedRowIds.add(l.id);
+    if (r.matchRow && r.accounted) claimedRowIds.add(r.matchRow.id);
+  }
   const orphanIncome = scopedIncome.filter((l) => !claimedRowIds.has(l.id));
   const orphanTotal = orphanIncome.reduce((s, l) => s + l.amount, 0);
 
