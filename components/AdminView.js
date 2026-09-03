@@ -470,7 +470,7 @@ export default function AdminView({
             externalBookings={externalBookings} inquiries={inquiries} ledger={ledger}
             maintenanceItems={maintenanceItems} engineHours={engineHours} mediaDrafts={mediaDrafts}
             todos={todos} agentActivity={agentActivity}
-            testimonials={testimonials} giftCertificates={giftCertificates}
+            testimonials={testimonials} giftCertificates={giftCertificates} vessels={vessels}
             onAddTodo={onAddTodo} onToggleTodo={onToggleTodo} onDeleteTodo={onDeleteTodo}
             onGo={setTab}
           />
@@ -3538,7 +3538,7 @@ function PanelHead({ owners, children }) {
   );
 }
 
-function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, testimonials = [], giftCertificates = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
+function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, testimonials = [], giftCertificates = [], vessels = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
   const [text, setText] = useState("");
   const [showDone, setShowDone] = useState(false);
   // Which priority bands are expanded. High open, Medium and Low closed --
@@ -3582,12 +3582,14 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const seasonRuns = externalBookings.filter(
     (b) => b.status === "completed" && (b.date || "") >= SEASON_FROM
   );
-  // Every vessel that appears anywhere in the bookings, so a boat with zero
-  // trips this season still gets a row. Filtering to boats that ran would hide
-  // exactly the case worth seeing.
-  const fleetNames = Array.from(
-    new Set(externalBookings.map((b) => b.vesselName).filter(Boolean))
-  );
+  // The CURRENT fleet, from the Vessel table — not from booking history.
+  //
+  // History was wrong in both directions: it listed "Naughty Lexi (sold, no
+  // longer in fleet)" and the sold wave runners as idle, when a sold asset
+  // costs nothing and is not the point; and it left out the Nauti Islander
+  // entirely, because a boat that has never run has no bookings to derive a
+  // row from. The Islander is precisely the row worth seeing.
+  const fleetNames = (vessels || []).map((v) => v.name).filter(Boolean);
   const fleet = fleetNames.map((name) => {
     const runs = seasonRuns.filter((b) => b.vesselName === name);
     const lastRan = runs.map((b) => b.date).sort().pop() || null;
@@ -3777,10 +3779,8 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       {/* Pearl above the board: she is the one who reads every agent's
           input and decides what reaches him, so her card and the two panels
           she owns sit over the top of everything. */}
-      {/* Column widths live in CSS so they can respond. Inline
-          minmax(300px,...) x3 forced 900px of content onto a 375px phone and
-          took the whole page sideways with it. */}
-      <div className="orbit-lead">
+
+      <div className="orbit-left" style={{ display: "grid", gap: 14 }}>
         <div style={CARD}>
           <PanelHead owners={["Nauti Pearl"]}>
             <div style={{ ...H, marginBottom: 0 }}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
@@ -3811,82 +3811,6 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
             })}
           </div>
         </div>
-        <div className="orbit-lead-pearl"><CrewCard r={byName["Nauti Pearl"]} /></div>
-        <div style={CARD}>
-          <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="bookings">The fleet</Go></PanelHead>
-
-          {/* Next out, and how long the wait is. A gap is as much the news as
-              the booking. */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Next out</span>
-            {nextOut ? (
-              <span style={{ fontSize: 12.5, textAlign: "right" }}>
-                <strong>{nextOut.guestName || "(no name)"}</strong>
-                <span style={{ color: "var(--muted)" }}> · {nextOut.vesselName}</span>
-                <div className="mono" style={{ fontSize: 11.5, color: daysToNext > 14 ? "#E8934A" : "#4FA8E8" }}>
-                  {nextOut.date} · {daysToNext === 0 ? "today" : daysToNext === 1 ? "tomorrow" : "in " + daysToNext + " days"}
-                </div>
-              </span>
-            ) : (
-              <span style={{ fontSize: 12.5, color: "#E8934A", fontWeight: 700 }}>nothing booked</span>
-            )}
-          </div>
-
-          {/* Per boat, this season. The point of the panel: an idle hull still
-              costs insurance, storage and depreciation. */}
-          <div style={{ display: "grid", gap: 6, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
-            {fleet.map((v) => {
-              const cold = v.trips === 0;
-              const stale = v.idleDays != null && v.idleDays > 30;
-              return (
-                <div key={v.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5 }}>
-                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    <strong style={{ color: cold ? "#E2685F" : "var(--text)" }}>{v.name}</strong>
-                    <span style={{ color: "var(--muted)" }}> {v.trips} {v.trips === 1 ? "trip" : "trips"}</span>
-                  </span>
-                  <span style={{ whiteSpace: "nowrap", fontSize: 11.5 }}>
-                    {cold ? (
-                      <span style={{ color: "#E2685F", fontWeight: 700 }}>never ran this season</span>
-                    ) : (
-                      <>
-                        <span className="mono" style={{ color: "#7FE0B8" }}>{currency(v.earned)}</span>
-                        <span style={{ color: stale ? "#E8934A" : "var(--muted)" }}> · idle {v.idleDays}d</span>
-                      </>
-                    )}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* An empty Saturday is the most expensive thing the business owns,
-              so it belongs beside the boats rather than buried in a revenue
-              panel. */}
-          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 5, fontSize: 12.5 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--muted)" }}>Season so far</span>
-              <span className="mono">{seasonTrips} trips · {currency(seasonEarned)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--muted)" }}>Open weekends, next 8wks</span>
-              <span className="mono" style={{ color: openWeekends > 8 ? "#E8934A" : "var(--text)" }}>
-                {openWeekends} · {currency(openWeekends * avgCharter)}
-              </span>
-            </div>
-          </div>
-
-          {/* The names still matter, just not as the headline -- the Bookings
-              tab is one click away for the full list. */}
-          {charters.length > 0 && (
-            <div style={{ marginTop: 9, fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5 }}>
-              Recent: {charters.filter((b) => b.status === "completed").slice(0, 4)
-                .map((b) => (b.guestName || "?") + " " + String(b.date).slice(5)).join(" · ")}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="orbit-left" style={{ display: "grid", gap: 14 }}>
       <div className="orbit-group ">
         <div style={CARD}>
           <PanelHead owners={["Nauti Penny", "Nauti Shelly"]}><Go to="ledger">This month</Go></PanelHead>
@@ -3948,9 +3872,41 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           <CrewCard r={byName["Nauti Joy"]} compact />
         </div>
       </div>
+      <div className="orbit-group ">
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Nova"]}>
+            <div style={{ ...H, marginBottom: 0 }}>Research</div>
+          </PanelHead>
+          {novaItems.length === 0 ? (
+            <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
+              Nothing has cleared the bar.
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
+                She reports only what you would be annoyed to learn six months late — a grant that
+                closed, a rule that changed, money you were owed. Most weeks that is nothing, and an
+                empty panel here is her working.
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 7 }}>
+              {novaItems.slice(0, 3).map((t) => (
+                <div key={t.id} style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                  {t.text.replace(/^\[?NOVA[^\]]*\]?\s*:?\s*/i, "")}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)" }}>
+            {novaRun ? "Last looked " + agoWords(novaRun.startedAt) + "." : "First run is Monday."}
+          </div>
+        </div>
+        <div className="orbit-crew">
+          <CrewCard r={byName["Nauti Nova"]} compact />
+        </div>
+      </div>
       </div>
 
       <div className="orbit-center">
+        <div className="orbit-lead-pearl"><CrewCard r={byName["Nauti Pearl"]} /></div>
         <div style={{ ...CARD, borderColor: "rgba(203,108,230,0.4)" }}>
           <PanelHead owners={["Nauti Pearl"]}>
             <div style={{ ...H, marginBottom: 0, fontSize: 15 }}>
@@ -4058,6 +4014,93 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       </div>
 
       <div className="orbit-right" style={{ display: "grid", gap: 14 }}>
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="maintenance">The fleet</Go></PanelHead>
+
+          {/* Next out, and how long the wait is. A gap is as much the news as
+              the booking. */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Next out</span>
+            {nextOut ? (
+              <span style={{ fontSize: 12.5, textAlign: "right" }}>
+                <strong>{nextOut.guestName || "(no name)"}</strong>
+                <span style={{ color: "var(--muted)" }}> · {nextOut.vesselName}</span>
+                <div className="mono" style={{ fontSize: 11.5, color: daysToNext > 14 ? "#E8934A" : "#4FA8E8" }}>
+                  {nextOut.date} · {daysToNext === 0 ? "today" : daysToNext === 1 ? "tomorrow" : "in " + daysToNext + " days"}
+                </div>
+              </span>
+            ) : (
+              <span style={{ fontSize: 12.5, color: "#E8934A", fontWeight: 700 }}>nothing booked</span>
+            )}
+          </div>
+
+          {/* The bookings list is still one click away, just not behind a
+              heading that says "fleet". */}
+          {onGo && (
+            <button
+              type="button"
+              onClick={() => onGo("bookings")}
+              style={{
+                background: "transparent", border: "none", padding: 0, marginBottom: 10,
+                color: "var(--purple)", fontSize: 11.5, cursor: "pointer", textAlign: "left",
+              }}
+            >
+              View all bookings →
+            </button>
+          )}
+
+          {/* Per boat, this season. The point of the panel: an idle hull still
+              costs insurance, storage and depreciation. */}
+          <div style={{ display: "grid", gap: 6, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+            {fleet.map((v) => {
+              const cold = v.trips === 0;
+              const stale = v.idleDays != null && v.idleDays > 30;
+              return (
+                <div key={v.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5 }}>
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <strong style={{ color: cold ? "#E2685F" : "var(--text)" }}>{v.name}</strong>
+                    <span style={{ color: "var(--muted)" }}> {v.trips} {v.trips === 1 ? "trip" : "trips"}</span>
+                  </span>
+                  <span style={{ whiteSpace: "nowrap", fontSize: 11.5 }}>
+                    {cold ? (
+                      <span style={{ color: "#E2685F", fontWeight: 700 }}>never ran this season</span>
+                    ) : (
+                      <>
+                        <span className="mono" style={{ color: "#7FE0B8" }}>{currency(v.earned)}</span>
+                        <span style={{ color: stale ? "#E8934A" : "var(--muted)" }}> · idle {v.idleDays}d</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* An empty Saturday is the most expensive thing the business owns,
+              so it belongs beside the boats rather than buried in a revenue
+              panel. */}
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 5, fontSize: 12.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Season so far</span>
+              <span className="mono">{seasonTrips} trips · {currency(seasonEarned)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Open weekends, next 8wks</span>
+              <span className="mono" style={{ color: openWeekends > 8 ? "#E8934A" : "var(--text)" }}>
+                {openWeekends} · {currency(openWeekends * avgCharter)}
+              </span>
+            </div>
+          </div>
+
+          {/* The names still matter, just not as the headline -- the Bookings
+              tab is one click away for the full list. */}
+          {charters.length > 0 && (
+            <div style={{ marginTop: 9, fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5 }}>
+              Recent: {charters.filter((b) => b.status === "completed").slice(0, 4)
+                .map((b) => (b.guestName || "?") + " " + String(b.date).slice(5)).join(" · ")}
+            </div>
+          )}
+        </div>
       <div className="orbit-group ">
         <div style={CARD}>
           <PanelHead owners={["Nauti Siren", "Nauti Coral"]}><Go to="mediaDrafts">Going out next</Go></PanelHead>
@@ -4111,37 +4154,6 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
         </div>
         <div className="orbit-crew">
           <CrewCard r={byName["Nauti Reef"]} compact />
-        </div>
-      </div>
-      <div className="orbit-group ">
-        <div style={CARD}>
-          <PanelHead owners={["Nauti Nova"]}>
-            <div style={{ ...H, marginBottom: 0 }}>Research</div>
-          </PanelHead>
-          {novaItems.length === 0 ? (
-            <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
-              Nothing has cleared the bar.
-              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
-                She reports only what you would be annoyed to learn six months late — a grant that
-                closed, a rule that changed, money you were owed. Most weeks that is nothing, and an
-                empty panel here is her working.
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 7 }}>
-              {novaItems.slice(0, 3).map((t) => (
-                <div key={t.id} style={{ fontSize: 12.5, lineHeight: 1.45 }}>
-                  {t.text.replace(/^\[?NOVA[^\]]*\]?\s*:?\s*/i, "")}
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)" }}>
-            {novaRun ? "Last looked " + agoWords(novaRun.startedAt) + "." : "First run is Monday."}
-          </div>
-        </div>
-        <div className="orbit-crew">
-          <CrewCard r={byName["Nauti Nova"]} compact />
         </div>
       </div>
       </div>

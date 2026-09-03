@@ -219,29 +219,19 @@ input::placeholder, textarea::placeholder {
   grid-template-columns: 1fr;
   align-items: start;
 }
-.orbit-lead { order: -1; }
 
 @media (min-width: 1200px) {
   .console-orbit {
     grid-template-columns: 1fr 1.05fr 1fr;
     align-items: start;
   }
-  /* Pearl spans the top: she oversees rather than occupying one column. */
-  .orbit-lead {
-    grid-column: 1 / -1;
-    order: 0;
-  }
-  /* The board holds the centre for the whole height of the orbit. Without an
-     explicit row span it would sit in one cell and the columns beside it would
-     run past it. */
-  .orbit-center {
-    grid-column: 2;
-    grid-row: 2 / span 6;
-    position: sticky;
-    top: 12px;
-  }
-  .orbit-left  { grid-column: 1; }
-  .orbit-right { grid-column: 3; }
+  /* Three independent columns, each starting at the top. There is no
+     full-width row any more: a row spanning all three columns meant nothing
+     below could begin until the tallest card in it had finished, which left a
+     screenful of void under the two short ones. */
+  .orbit-left   { grid-column: 1; }
+  .orbit-center { grid-column: 2; }
+  .orbit-right  { grid-column: 3; }
 }
 
 /* A panel and the crew who own it, banded together so the pairing reads as
@@ -276,34 +266,23 @@ input::placeholder, textarea::placeholder {
 
    What a phone shows, top to bottom: Pearl, the board, what needs attention,
    then the panels with the crew who own them. */
-.orbit-lead {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: 1fr;
-  /* Each card sizes to its own content instead of stretching to match the
-     tallest in the row. Pearl's card is long -- greeting, status rundown and
-     her last-run summary -- and stretching the two panels beside her to match
-     produced a screenful of empty box that looked like missing information
-     rather than an absence of problems. */
-  align-items: start;
+/* Every column is a stack of cards that size to their own content. This is
+   what stopped the empty-box look: a card stretched to match a taller
+   neighbour reads as missing information rather than as an absence of
+   problems. */
+.orbit-left, .orbit-right, .orbit-center {
+  align-content: start;
 }
 
 @media (max-width: 1199px) {
+  /* Stacked, and the order is the design: the centre column carries Pearl and
+     the board, which is what a phone should reach first. */
   .console-orbit { display: flex; flex-direction: column; }
-  .orbit-lead    { order: 1; }
-  .orbit-center  { order: 2; }
-  .orbit-left    { order: 3; }
-  .orbit-right   { order: 4; }
-  /* Pearl above the two panels she owns, matching the desktop hierarchy. */
-  .orbit-lead    { display: flex; flex-direction: column; }
-  .orbit-lead-pearl { order: -1; }
+  .orbit-center  { order: 1; }
+  .orbit-left    { order: 2; }
+  .orbit-right   { order: 3; }
 }
 
-@media (min-width: 1200px) {
-  /* minmax(0, 1fr), never a px minimum: a px floor here is what overflowed
-     the page rather than letting the column shrink. */
-  .orbit-lead { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 
 /* Nothing inside the console may push the page sideways. Wide things
    (the chain-of-command chart, tables) scroll inside their own box instead. */
