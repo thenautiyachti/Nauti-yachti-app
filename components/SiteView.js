@@ -1073,6 +1073,26 @@ function AddOnsDropdown({ addOns, selectedIds, onChange }) {
   );
 }
 
+// "Christina Coronado" -> "Christina C." A guest who left a review on Google
+// under their full name has not agreed to it being republished in full on a
+// business's own site, and the surname adds nothing to the reader.
+function publicName(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return parts[0] || "";
+  const last = parts[parts.length - 1];
+  return parts.slice(0, -1).join(" ") + " " + last[0].toUpperCase() + ".";
+}
+
+// "August 2025" — the month they sailed. A precise day beside a named guest
+// pins down exactly where a real person was on a real date, which the review
+// itself never did.
+function charterMonth(d) {
+  if (!d) return "";
+  const [y, m] = String(d).split("-").map(Number);
+  if (!y || !m) return "";
+  return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
 function TestimonialCard({ t }) {
   return (
     <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 18, breakInside: "avoid", marginBottom: 16, display: "block" }}>
@@ -1082,8 +1102,12 @@ function TestimonialCard({ t }) {
       <p style={{ fontSize: 14, color: "var(--text)", opacity: 0.9, lineHeight: 1.6, margin: "0 0 14px" }}>
         &ldquo;{t.quote}&rdquo;
       </p>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{t.name}</div>
-      {t.packageOrVessel && <div style={{ fontSize: 12, color: "var(--purple)", marginTop: 2 }}>{t.packageOrVessel}</div>}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{publicName(t.name)}</span>
+        {t.charterDate && (
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>· sailed {charterMonth(t.charterDate)}</span>
+        )}
+      </div>
     </div>
   );
 }

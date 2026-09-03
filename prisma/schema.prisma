@@ -282,6 +282,9 @@ model Testimonial {
   status          String    @default("pending") // "pending" | "approved" | "rejected"
   submittedAt     DateTime  @default(now())
   reviewedAt      DateTime?
+  // The day they actually sailed, shown beside the name. Separate from
+  // submittedAt, which is when the review was written -- often months later.
+  charterDate     String? // "YYYY-MM-DD"
 }
 
 model SpeechEvent {
