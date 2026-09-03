@@ -139,3 +139,21 @@ input::placeholder, textarea::placeholder {
 @media (min-width: 700px) {
   .jarvis-panel-wide { grid-column: span 2; }
 }
+
+/* Overview panels: two rows of three rather than one long row of six.
+   auto-fit stretched them across as many columns as the screen allowed, so on
+   a wide monitor all six sat in a single band and each one was too narrow to
+   read. Fixed at three so the pairing is stable, dropping to two then one as
+   the screen narrows. */
+.overview-grid {
+  display: grid;
+  gap: 14px;
+  align-items: start;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 700px) {
+  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1100px) {
+  .overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

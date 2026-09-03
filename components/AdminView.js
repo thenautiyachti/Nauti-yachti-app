@@ -3311,7 +3311,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, alignItems: "start" }}>
+    <div className="overview-grid">
 
       <div style={CARD}>
         <Go to="ledger">This month</Go>

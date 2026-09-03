@@ -410,17 +410,23 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       <div id="testimonials" style={{ background: "var(--ink-soft)", padding: "50px 24px" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>What our guests say</h2>
-          {testimonials.length > 0 && (
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
-              <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text)" }}>
-                {(testimonials.reduce((s, t) => s + t.rating, 0) / testimonials.length).toFixed(1)}
-              </span>
-              <span style={{ color: "#E8934A", fontSize: 16, letterSpacing: 2 }}>★★★★★</span>
-              <span style={{ color: "var(--muted)", fontSize: 13.5 }}>
-                average from {testimonials.length} review{testimonials.length === 1 ? "" : "s"}
-              </span>
-            </div>
-          )}
+          {testimonials.length > 0 && (() => {
+            const avg = testimonials.reduce((s, t) => s + t.rating, 0) / testimonials.length;
+            // Drawn from the real average rather than a fixed five stars, so
+            // the row can never show more than the reviews actually gave.
+            const full = Math.floor(avg + 0.001);
+            return (
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+                <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text)" }}>{avg.toFixed(1)}</span>
+                <span style={{ color: "#E8934A", fontSize: 16, letterSpacing: 2 }}>
+                  {"★".repeat(full)}{avg - full >= 0.5 ? "½" : ""}{"☆".repeat(5 - full - (avg - full >= 0.5 ? 1 : 0))}
+                </span>
+                <span style={{ color: "var(--muted)", fontSize: 13.5 }}>
+                  average from {testimonials.length} review{testimonials.length === 1 ? "" : "s"}
+                </span>
+              </div>
+            );
+          })()}
           <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 16 }}>
             Real reviews from real charters — and we'd love to hear about yours.
           </p>
