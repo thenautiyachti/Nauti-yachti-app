@@ -3358,7 +3358,13 @@ function CrewChart({ rows }) {
   const direct = rows.filter((r) => !r.lead && r.name !== "Nauti Coral");
 
   const W = 980, colW = W / direct.length;
-  const yOwner = 26, yPearl = 96, yRow = 196, yCoral = 286;
+  // Vertical rhythm, derived rather than eyeballed. A node runs from cy-rad to
+  // cy+rad+28: the circle, its name at +15, its title at +28. Each row must
+  // therefore start below the previous row's title, and the viewBox must clear
+  // the LAST title -- Coral's used to land at y=335 in a 330-tall box, which is
+  // why her role was sliced off.
+  const yOwner = 34, yPearl = 130, yRow = 250, yCoral = 370;
+  const CHART_H = 440;
   const x = (i) => colW * i + colW / 2;
   const sirenI = direct.findIndex((r) => r.name === "Nauti Siren");
 
@@ -3414,9 +3420,9 @@ function CrewChart({ rows }) {
         the only loop that runs back upstream, because Siren is the only one who acts outside the business.
       </div>
       <div className="crew-chart" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <svg viewBox={`0 0 ${W} 330`} style={{ width: "100%", minWidth: 760, height: "auto", display: "block" }}>
+        <svg viewBox={`0 0 ${W} ${CHART_H}`} style={{ width: "100%", minWidth: 760, height: "auto", display: "block" }}>
           {/* owner -> pearl */}
-          {line(W / 2, yOwner + 34, W / 2, yPearl - 26)}
+          {line(W / 2, yOwner + 26, W / 2, yPearl - 26)}
           {/* pearl -> everyone direct */}
           {direct.map((r, i) => (
             <g key={"l" + r.name}>{line(W / 2, yPearl + 26, x(i), yRow - 21)}</g>
@@ -3425,7 +3431,7 @@ function CrewChart({ rows }) {
           {sirenI >= 0 && line(x(sirenI) - 10, yRow + 21, x(sirenI) - 10, yCoral - 21)}
           {sirenI >= 0 && line(x(sirenI) + 10, yCoral - 21, x(sirenI) + 10, yRow + 21, true)}
 
-          <Node cx={W / 2} cy={yOwner + 8} label="You" sub="the owner" big />
+          <Node cx={W / 2} cy={yOwner} label="You" sub="the owner" big />
           <Node cx={W / 2} cy={yPearl} r={pearl} label="Pearl" sub="Chief of Staff" big />
           {direct.map((r, i) => (
             <Node key={r.name} cx={x(i)} cy={yRow} r={r} label={r.name.replace("Nauti ", "")} sub={r.title} />
@@ -3434,7 +3440,7 @@ function CrewChart({ rows }) {
             <Node cx={x(sirenI)} cy={yCoral} r={coral} label="Coral" sub="Content Producer" />
           )}
           {sirenI >= 0 && (
-            <text x={x(sirenI) + 30} y={(yRow + yCoral) / 2 + 4} fontSize="9.5" fill="var(--muted)">
+            <text x={x(sirenI) + 26} y={yRow + 80} fontSize="9.5" fill="var(--muted)">
               audits
             </text>
           )}
