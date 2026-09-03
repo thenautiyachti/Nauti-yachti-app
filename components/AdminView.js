@@ -3806,7 +3806,11 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
                   <span style={{ fontSize: 10.5, color: "var(--muted)", opacity: 0.7, marginLeft: "auto" }}>hidden</span>
                 )}
               </button>
-              <div style={{ display: "grid", gap: 5 }} hidden={!openBands[band]}>
+              {/* Not the `hidden` attribute: it only sets display:none through
+                  the UA stylesheet, so an inline display:grid beats it and the
+                  band stayed open however many times you clicked. */}
+              {openBands[band] && (
+              <div style={{ display: "grid", gap: 5 }}>
                 {items.map((t) => (
                   <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.45, cursor: "pointer" }}>
                     <input type="checkbox" checked={false} onChange={() => onToggleTodo(t.id, true)}
@@ -3824,6 +3828,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
                   </label>
                 ))}
               </div>
+              )}
             </div>
           );
         })}
