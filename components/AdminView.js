@@ -3276,17 +3276,30 @@ function CrewTab({ agentActivity = [] }) {
           return (
             <div key={r.name} style={{ ...CARD, opacity: r.pending ? 0.62 : 1 }}>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                {/* Initials until the generated portraits exist. */}
+                {/* 72px, not the 46 I first picked: at 46 only bold colour
+                    survived and two of them were unrecognisable. Initials stay
+                    underneath as the fallback if a portrait fails to load. */}
                 <div
                   style={{
-                    width: 46, height: 46, borderRadius: "50%", flexShrink: 0,
+                    width: 72, height: 72, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
                     background: "linear-gradient(135deg, " + r.accent + ", rgba(10,6,18,0.85))",
-                    color: "#0A0612", fontWeight: 800, fontSize: 15,
+                    color: "#0A0612", fontWeight: 800, fontSize: 20,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     border: "2px solid " + r.accent,
+                    filter: r.pending ? "grayscale(0.7)" : "none",
                   }}
                 >
-                  {crewInitials(r.name)}
+                  {r.avatar ? (
+                    <img
+                      src={r.avatar}
+                      alt=""
+                      loading="lazy"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  ) : (
+                    crewInitials(r.name)
+                  )}
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
