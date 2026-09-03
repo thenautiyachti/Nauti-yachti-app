@@ -280,6 +280,12 @@ input::placeholder, textarea::placeholder {
   display: grid;
   gap: 12px;
   grid-template-columns: 1fr;
+  /* Each card sizes to its own content instead of stretching to match the
+     tallest in the row. Pearl's card is long -- greeting, status rundown and
+     her last-run summary -- and stretching the two panels beside her to match
+     produced a screenful of empty box that looked like missing information
+     rather than an absence of problems. */
+  align-items: start;
 }
 
 @media (max-width: 1199px) {

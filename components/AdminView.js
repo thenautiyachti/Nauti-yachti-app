@@ -3574,6 +3574,38 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const charters = [...upcoming, ...recent].slice(0, 5);
 
+  // --- the fleet, which is what the charter list was hiding ---------------
+  //
+  // Season starts in March. Counting from there rather than "all time" is what
+  // makes an idle boat visible: the Islander has history, it just has no 2026.
+  const SEASON_FROM = today.slice(0, 4) + "-03-01";
+  const seasonRuns = externalBookings.filter(
+    (b) => b.status === "completed" && (b.date || "") >= SEASON_FROM
+  );
+  // Every vessel that appears anywhere in the bookings, so a boat with zero
+  // trips this season still gets a row. Filtering to boats that ran would hide
+  // exactly the case worth seeing.
+  const fleetNames = Array.from(
+    new Set(externalBookings.map((b) => b.vesselName).filter(Boolean))
+  );
+  const fleet = fleetNames.map((name) => {
+    const runs = seasonRuns.filter((b) => b.vesselName === name);
+    const lastRan = runs.map((b) => b.date).sort().pop() || null;
+    const paid = runs.map((b) => Number(b.pricePaid || 0)).filter((n) => n > 0);
+    return {
+      name,
+      trips: runs.length,
+      lastRan,
+      idleDays: lastRan ? Math.round((new Date(today) - new Date(lastRan)) / 86400000) : null,
+      earned: paid.reduce((a, n) => a + n, 0),
+    };
+  }).sort((a, b) => b.trips - a.trips);
+
+  const seasonTrips = seasonRuns.length;
+  const seasonEarned = seasonRuns.reduce((a, b) => a + Number(b.pricePaid || 0), 0);
+  const nextOut = upcoming[0] || null;
+  const daysToNext = nextOut ? Math.round((new Date(nextOut.date) - new Date(today)) / 86400000) : null;
+
   // --- what actually needs attention ------------------------------------
   //
   // The first version counted only drafts awaiting a decision, so it said
@@ -3781,24 +3813,76 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
         </div>
         <div className="orbit-lead-pearl"><CrewCard r={byName["Nauti Pearl"]} /></div>
         <div style={CARD}>
-          <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="bookings">Charters</Go></PanelHead>
-          {charters.length === 0 && <div style={EMPTY}>Nothing on the books.</div>}
-          <div style={{ display: "grid", gap: 7 }}>
-            {charters.map((b) => (
-              <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5 }}>
-                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  <strong>{b.guestName || "(no name)"}</strong>
-                  <span style={{ color: "var(--muted)" }}> {b.vesselName}</span>
-                </span>
-                <span style={{ whiteSpace: "nowrap" }}>
-                  <span className="mono" style={{ color: "var(--muted)", fontSize: 11.5 }}>{b.date}</span>{" "}
-                  <span style={{ fontSize: 10, fontWeight: 700, color: b.status === "booked" ? "#4FA8E8" : "#7FE0B8" }}>
-                    {b.status === "booked" ? "UPCOMING" : "DONE"}
-                  </span>
-                </span>
-              </div>
-            ))}
+          <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="bookings">The fleet</Go></PanelHead>
+
+          {/* Next out, and how long the wait is. A gap is as much the news as
+              the booking. */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Next out</span>
+            {nextOut ? (
+              <span style={{ fontSize: 12.5, textAlign: "right" }}>
+                <strong>{nextOut.guestName || "(no name)"}</strong>
+                <span style={{ color: "var(--muted)" }}> · {nextOut.vesselName}</span>
+                <div className="mono" style={{ fontSize: 11.5, color: daysToNext > 14 ? "#E8934A" : "#4FA8E8" }}>
+                  {nextOut.date} · {daysToNext === 0 ? "today" : daysToNext === 1 ? "tomorrow" : "in " + daysToNext + " days"}
+                </div>
+              </span>
+            ) : (
+              <span style={{ fontSize: 12.5, color: "#E8934A", fontWeight: 700 }}>nothing booked</span>
+            )}
           </div>
+
+          {/* Per boat, this season. The point of the panel: an idle hull still
+              costs insurance, storage and depreciation. */}
+          <div style={{ display: "grid", gap: 6, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+            {fleet.map((v) => {
+              const cold = v.trips === 0;
+              const stale = v.idleDays != null && v.idleDays > 30;
+              return (
+                <div key={v.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5 }}>
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <strong style={{ color: cold ? "#E2685F" : "var(--text)" }}>{v.name}</strong>
+                    <span style={{ color: "var(--muted)" }}> {v.trips} {v.trips === 1 ? "trip" : "trips"}</span>
+                  </span>
+                  <span style={{ whiteSpace: "nowrap", fontSize: 11.5 }}>
+                    {cold ? (
+                      <span style={{ color: "#E2685F", fontWeight: 700 }}>never ran this season</span>
+                    ) : (
+                      <>
+                        <span className="mono" style={{ color: "#7FE0B8" }}>{currency(v.earned)}</span>
+                        <span style={{ color: stale ? "#E8934A" : "var(--muted)" }}> · idle {v.idleDays}d</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* An empty Saturday is the most expensive thing the business owns,
+              so it belongs beside the boats rather than buried in a revenue
+              panel. */}
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 5, fontSize: 12.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Season so far</span>
+              <span className="mono">{seasonTrips} trips · {currency(seasonEarned)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Open weekends, next 8wks</span>
+              <span className="mono" style={{ color: openWeekends > 8 ? "#E8934A" : "var(--text)" }}>
+                {openWeekends} · {currency(openWeekends * avgCharter)}
+              </span>
+            </div>
+          </div>
+
+          {/* The names still matter, just not as the headline -- the Bookings
+              tab is one click away for the full list. */}
+          {charters.length > 0 && (
+            <div style={{ marginTop: 9, fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5 }}>
+              Recent: {charters.filter((b) => b.status === "completed").slice(0, 4)
+                .map((b) => (b.guestName || "?") + " " + String(b.date).slice(5)).join(" · ")}
+            </div>
+          )}
         </div>
       </div>
 
@@ -3976,7 +4060,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       <div className="orbit-right" style={{ display: "grid", gap: 14 }}>
       <div className="orbit-group ">
         <div style={CARD}>
-          <PanelHead owners={["Nauti Coral", "Nauti Siren"]}><Go to="mediaDrafts">Going out next</Go></PanelHead>
+          <PanelHead owners={["Nauti Siren", "Nauti Coral"]}><Go to="mediaDrafts">Going out next</Go></PanelHead>
           {nextByDay.length === 0 && <div style={EMPTY}>Nothing scheduled.</div>}
           <div style={{ display: "grid", gap: 6 }}>
             {nextByDay.slice(0, 6).map((d) => (
@@ -3992,9 +4076,11 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
             )}
           </div>
         </div>
+        {/* Siren first: Coral reports to her and she gates before publish,
+            so the stack should read down the chain, not up it. */}
         <div className="orbit-crew">
-          <CrewCard r={byName["Nauti Coral"]} compact />
           <CrewCard r={byName["Nauti Siren"]} compact />
+          <CrewCard r={byName["Nauti Coral"]} compact />
         </div>
       </div>
       <div className="orbit-group ">
