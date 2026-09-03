@@ -9,10 +9,11 @@ Last updated 2 September 2026.
 
 ## How the console is laid out
 
-Five groups run along the top. Clicking a group reveals its tabs underneath.
+Six groups run along the top. Clicking a group reveals its tabs underneath.
 
 | Group | Tabs |
 |---|---|
+| **Overview** | The day at a glance, the board, and the crew |
 | **Bookings** | Inquiries · Bookings · Availability |
 | **Money** | Income & expenses · Reconciliation · Tax Report · Subscriptions |
 | **Marketing** | Media · Media Drafts · Testimonials |
@@ -21,7 +22,7 @@ Five groups run along the top. Clicking a group reveals its tabs underneath.
 
 A number in brackets after a tab name means **something is waiting on you**. No
 number means nothing needs doing — it does not mean the tab is empty. Testimonials
-holds eight approved reviews and still shows no number, because none of them need
+holds every approved review and still shows no number, because none of them need
 a decision.
 
 ---
@@ -209,18 +210,84 @@ completed bookings where the ledger fills itself in.
 
 # What runs on its own
 
-Four scheduled agents, none of which post or spend anything without a human:
+Nine scheduled tasks: eight named crew members and the standup that files their
+status. **None of them post, spend or send anything to a guest without you.**
+Only one acts outside the business at all.
 
-| When | What it does |
-|---|---|
-| Daily | Executive review — reads the database and reports what needs attention |
-| Daily | Media agent — drafts social posts into Media Drafts for review |
-| Daily | Social publisher — publishes drafts already **approved** by a human |
-| Weekly | Review reminder — emails the owner which guests to ask for a Google review |
-| Weekly | Booking audit — reads Boatsetter/GetMyBoat email and reports anything missing from the ledger |
+They run in dependency order, so the summary comes after the things it
+summarises:
 
-The booking audit **proposes only**. It never writes a booking or a ledger row.
-Once it has been accurate for a while it can be switched to write directly.
+| When | Who | What she does |
+|---|---|---|
+| Daily 8:19 | **Nauti Penny** · Accounts Receivable | Money in. Payouts against the ledger, and anything paid for that never ran. |
+| Daily 8:38 | **Nauti Coral** · Content Producer | Drafts a post from real fleet photos, audits the queue, and checks what Siren actually published. |
+| Daily 9:04 | **Nauti Siren** · Publishing & Brand Safety | The last gate before anything is public, then publishes what passes. |
+| Mon 9:26 | **Nauti Joy** · Guest Relations | Who to ask for a review, and who was left hanging without one. |
+| Mon 9:41 | **Nauti Reef** · Revenue Growth | Money the business is not collecting. |
+| Mon 10:04 | **Nauti Shelly** · Accounts Payable | What is being paid for against what is actually used. |
+| Mon 10:29 | **Nauti Nova** · Market Research | The outside world. Reports nothing most weeks, by design. |
+| Daily 10:51 | Crew Standup | Files a one-screen status for all eight. |
+| Daily 11:18 | **Nauti Pearl** · Chief of Staff | Reads everything, decides what reaches you. |
+
+Two task folders are still named for their old cadence — `weekly-booking-audit`
+runs daily and `monthly-spend-audit` runs weekly. The names are historical and
+were left alone on purpose: renaming a scheduled task means deleting and
+recreating it, which loses its saved tool approvals. **The schedule above is
+what is true.**
+
+## Who checks whom
+
+Everything routes through Pearl. Coral reports to Siren, and Siren reports to
+Pearl. The one loop that runs backwards is Coral auditing what Siren actually
+published the day before.
+
+That loop exists because **Siren is the only agent that acts outside the
+business.** Everyone else proposes, so a mistake costs a line on the board;
+hers is live on three platforms. Joy, Reef and Nova are deliberately *not*
+checked by anyone — putting a reviewer in front of an agent that only proposes
+buys delay and no safety.
+
+## The Board (To-do List)
+
+The centre panel on Overview. It is the shared workspace between you and the
+crew, not just your list — they write to it, read each other's items, and hand
+work over by naming another agent in an item.
+
+Items are ranked **High / Medium / Low**, not listed by date. Crew items carry
+their own priority; the ones you typed yourself are ranked by what they say —
+money being held, security, legal and overdue all go high. Anything falling due
+within two days is promoted regardless of wording. Only High is expanded when
+the page loads; Medium and Low fold open when you want them.
+
+**Pearl keeps the board.** She closes what the data shows is done, folds
+duplicates into the older entry, and rewrites anything Low that has sat
+untouched. She never edits or closes an item you wrote unless it is genuinely
+finished.
+
+## Their status cards
+
+Each agent files a status every morning **even on days she does not run**, so a
+card is never blank. Each greets in her own voice — *"Morning, Captain"* from
+Pearl, *"Books are open"* from Penny — and a card that shows a date instead
+means she has not filed today.
+
+A card reading **"Stopped mid-run"** means the run was killed partway, usually
+by a permission prompt nobody was there to answer. Open Routines and hit **Run
+now** to clear it.
+
+## What none of them may do
+
+Every brief forbids the same things, and the shared protocol overrides any
+brief that disagrees:
+
+- No agent writes to any table except the todo board and its own activity log.
+- No agent contacts a guest.
+- No agent spends, refunds or changes a price.
+- No agent publishes except Siren, and only drafts you have already scheduled.
+
+The full rulebook lives at
+`C:\Users\immex\.claude\scheduled-tasks\_crew-protocol.md`. If a rule is not in
+there, it is not a rule.
 
 ---
 
