@@ -3552,6 +3552,10 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     latestByAgent.push(a);
   }
 
+
+  const openTodos = todos.filter((t) => !t.done);
+  const doneTodos = todos.filter((t) => t.done);
+
   // --- Joy: guests -------------------------------------------------------
   const approvedReviews = (testimonials || []).filter((t) => t.status === "approved");
   const liveReviews = approvedReviews.length;
@@ -3597,9 +3601,6 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     const days = Math.floor((Date.now() - new Date(d)) / 86400000);
     return days <= 0 ? "today" : days === 1 ? "yesterday" : days + " days ago";
   }
-
-  const openTodos = todos.filter((t) => !t.done);
-  const doneTodos = todos.filter((t) => t.done);
 
   const CARD = { background: "var(--card)", borderRadius: 10, padding: 14, minWidth: 0 };
   const H = { fontWeight: 700, marginBottom: 10, color: "var(--text)", fontSize: 13.5 };
