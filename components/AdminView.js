@@ -3625,7 +3625,9 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
         {past.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {past.length} done</span>}
       </div>
       <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 12 }}>
-        Soonest first. Nothing here is ever posted automatically — approve or reject each one.
+        Soonest first. <strong style={{ color: "#E8934A" }}>Anything marked SCHEDULED goes out on its own</strong> —
+        the publisher runs each morning and posts whatever is due. Use <em>Don&rsquo;t post</em> to stop one.
+        Nothing in any other status is ever posted.
       </p>
 
       {/* The toggle sits above the grid, not below it. Underneath, it was past
@@ -3655,7 +3657,10 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
           grid made them look like three unrelated jobs sitting next to each
           other. Each day collapses, but opens by default: this is the list of
           what is still to come, so hiding it would defeat the point. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(560px, 1fr))", gap: 14, alignItems: "start" }}>
+      {/* Two days abreast, fixed. auto-fill fitted a third column on a wide
+          monitor, which squeezed each day's cards too narrow to read the
+          caption they are being approved on. */}
+      <div className="draft-days">
         {upcomingByDay.map(({ day, items }) => (
           <DraftDayGroup key={day} day={day} items={items} cardProps={cardProps} />
         ))}

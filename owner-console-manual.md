@@ -173,12 +173,34 @@ and usage limits.
 
 ---
 
+# The top bar
+
+| Button | What it is |
+|---|---|
+| **⚡ Jarvis** | Sits beside the title. A mode you switch into, not an action. |
+| **📱 On the dock** | The phone page: ask for reviews, log engine hours. Everything on it needs a phone — a text link has nothing to open on a desktop, and an hour reading is taken at the boat. Worth adding to your home screen. |
+| **📖 Manual** | This document. |
+| **← Back to site** | The public website. |
+| **Log out** | Ends the session. |
+
+The waiver draft link is gone. The Release and Waiver is published in the
+**Terms & Conditions** tab on the public site, and booking now records that a
+guest accepted it.
+
+---
+
 # Boat
 
 ## Maintenance
 
 Service items per vessel against elapsed months or engine hours, plus engine-hour
 readings and fuel fill-ups. Items flip to overdue automatically.
+
+**Nothing here can judge anything until engine hours are logged.** Thirteen items
+are configured against hour intervals and the panel will keep reporting "nothing
+overdue" while it has no readings — which looks identical to a healthy fleet. Log
+a reading after each outing from **On the dock** (see below); the intervals then
+work on their own.
 
 **Logging fuel writes the expense for you** — the one other place besides
 completed bookings where the ledger fills itself in.
@@ -215,9 +237,10 @@ Once it has been accurate for a while it can be switched to write directly.
 | Pull tax numbers, or see per-charter and per-hour | Money → Tax Report |
 | Add a photo to the public gallery | Marketing → Media |
 | Approve or reschedule a social post | Marketing → Media Drafts |
-| Ask a past guest for a Google review | Marketing → Testimonials *(from your phone)* |
+| Ask a past guest for a Google review | **On the dock** → Reviews *(phone)* |
 | Change a price | Setup → Packages & pricing |
-| Log fuel or engine hours | Boat → Maintenance |
+| Log engine hours after an outing | **On the dock** → Engine hours *(phone)* |
+| Log fuel, or set service intervals | Boat → Maintenance |
 
 ---
 
