@@ -219,8 +219,7 @@ export default function AdminView({
   const TAB_GROUPS = [
     {
       id: "overview", label: "Overview", tabs: [
-        { id: "overview", label: "Overview" },
-        { id: "crew", label: tabLabel("Crew", crewNeedingInput), count: crewNeedingInput },
+        { id: "overview", label: tabLabel("Overview", crewNeedingInput), count: crewNeedingInput },
       ],
     },
     {
@@ -474,8 +473,6 @@ export default function AdminView({
             onGo={setTab}
           />
         )}
-
-        {tab === "crew" && <CrewTab agentActivity={agentActivity} />}
 
         {tab === "media" && (
           <GalleryTab gallery={gallery} onUpdateCaption={onUpdateCaption} onAddGalleryItem={onAddGalleryItem} onUpdateGalleryItem={onUpdateGalleryItem} onDeleteGalleryItem={onDeleteGalleryItem} />
@@ -3205,7 +3202,7 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 // bounces, nothing errors on screen -- it simply stops appearing, and an empty
 // log reads exactly like a quiet week. So a run that has not reported within
 // about two of its own cycles is called out rather than left looking fine.
-function CrewTab({ agentActivity = [] }) {
+function CrewRoster({ agentActivity = [] }) {
   const CARD = { background: "var(--card)", borderRadius: 12, padding: 16, border: "1px solid rgba(203,108,230,0.16)" };
 
   const rows = CREW.map((c) => {
@@ -3233,13 +3230,14 @@ function CrewTab({ agentActivity = [] }) {
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div>
-        <h2 style={{ margin: "0 0 4px", fontSize: 21, color: "var(--text)" }}>The crew</h2>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: "62ch" }}>
-          Eight scheduled agents. Every one files a status each morning even on days it does not run,
-          so a card is never blank. Only <strong style={{ color: "var(--text)" }}>Nauti Siren</strong> acts
-          outside the business &mdash; she publishes. Everyone else proposes and waits for you.
+    <div style={{ display: "grid", gap: 16, marginTop: 20 }}>
+      <div style={{ borderTop: "1px solid rgba(203,108,230,0.18)", paddingTop: 18 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 19, color: "var(--text)" }}>The crew</h2>
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: "70ch" }}>
+          The faces above each panel own that panel. All eight file a status every morning even on
+          days they do not run, so a card is never blank. <strong style={{ color: "var(--text)" }}>Nauti Pearl</strong> is
+          the lead and everything routes through her; only <strong style={{ color: "var(--text)" }}>Nauti Siren</strong> acts
+          outside the business, and she is the last gate before anything goes public.
         </p>
       </div>
 
@@ -3326,13 +3324,21 @@ function CrewTab({ agentActivity = [] }) {
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                     <strong style={{ fontSize: 15.5, color: "var(--text)" }}>{r.name}</strong>
                     <span style={{ fontSize: 11.5, fontWeight: 700, color: st.color, whiteSpace: "nowrap" }}>{st.label}</span>
+                    {r.lead && (
+                      <span style={{ fontSize: 10.5, color: "#0A0612", background: r.accent, borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>
+                        LEAD
+                      </span>
+                    )}
                     {r.acts && (
                       <span style={{ fontSize: 10.5, color: "#0A0612", background: "var(--purple)", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>
                         POSTS
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>{r.schedule}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>
+                    {r.schedule}
+                    {r.reportsTo && <> &middot; reports to {r.reportsTo.replace("Nauti ", "")}</>}
+                  </div>
                   <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "var(--text)", opacity: 0.72, lineHeight: 1.45 }}>
                     {r.job}
                   </p>
@@ -3402,6 +3408,46 @@ function CrewTab({ agentActivity = [] }) {
         &ldquo;Last run&rdquo; is separate and only moves when an agent actually does its job &mdash; a
         weekly agent should show a fresh status every morning and a run once a week.
       </div>
+    </div>
+  );
+}
+
+// Who owns a panel. The owner's face sits in the panel header so the question
+// "who is watching this number" is answered where the number is, rather than on
+// a separate tab the owner had to go and cross-reference.
+function PanelOwners({ names = [] }) {
+  const rows = names.map((n) => CREW.find((c) => c.name === n)).filter(Boolean);
+  if (!rows.length) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }} title={rows.map((r) => r.name).join(" and ")}>
+      {rows.map((r) => (
+        <span
+          key={r.name}
+          style={{
+            width: 22, height: 22, borderRadius: "50%", overflow: "hidden", display: "block",
+            border: "1.5px solid " + r.accent, background: r.accent, flexShrink: 0,
+          }}
+        >
+          {r.avatar && (
+            <img src={r.avatar} alt={r.name} loading="lazy"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          )}
+        </span>
+      ))}
+      <span style={{ fontSize: 10.5, color: "var(--muted)", whiteSpace: "nowrap" }}>
+        {rows.map((r) => r.name.replace("Nauti ", "")).join(" · ")}
+      </span>
+    </div>
+  );
+}
+
+// A panel heading with its owners pushed to the right.
+function PanelHead({ owners, children }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+      <div style={{ minWidth: 0 }}>{children}</div>
+      <PanelOwners names={owners} />
     </div>
   );
 }
@@ -3533,10 +3579,11 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   }
 
   return (
+    <>
     <div className="overview-grid">
 
       <div style={CARD}>
-        <Go to="ledger">This month</Go>
+        <PanelHead owners={["Nauti Penny", "Nauti Shelly"]}><Go to="ledger">This month</Go></PanelHead>
         <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--muted)" }}>Income</span>
@@ -3557,7 +3604,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       </div>
 
       <div style={CARD}>
-        <Go to="bookings">Charters</Go>
+        <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="bookings">Charters</Go></PanelHead>
         {charters.length === 0 && <div style={EMPTY}>Nothing on the books.</div>}
         <div style={{ display: "grid", gap: 7 }}>
           {charters.map((b) => (
@@ -3578,7 +3625,9 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       </div>
 
       <div style={CARD}>
-        <div style={H}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
+        <PanelHead owners={["Nauti Pearl"]}>
+          <div style={{ ...H, marginBottom: 0 }}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
+        </PanelHead>
         {attention.length === 0 && <div style={EMPTY}>Genuinely nothing waiting.</div>}
         <div style={{ display: "grid", gap: 7 }}>
           {attention.map((a, i) => {
@@ -3607,7 +3656,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       </div>
 
       <div style={CARD}>
-        <Go to="mediaDrafts">Going out next</Go>
+        <PanelHead owners={["Nauti Coral", "Nauti Siren"]}><Go to="mediaDrafts">Going out next</Go></PanelHead>
         {nextByDay.length === 0 && <div style={EMPTY}>Nothing scheduled.</div>}
         <div style={{ display: "grid", gap: 6 }}>
           {nextByDay.slice(0, 6).map((d) => (
@@ -3626,7 +3675,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
 
       <div style={CARD}>
         <div style={H}>
-          To-do {openTodos.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({openTodos.length} open)</span>}
+          The board {openTodos.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({openTodos.length} open)</span>}
         </div>
         <form onSubmit={submit} style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a task…"
@@ -3659,35 +3708,13 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
         </div>
       </div>
 
-      <div style={CARD}>
-        <div style={H}>Agents</div>
-        {latestByAgent.length === 0 && <div style={EMPTY}>No agent runs logged yet.</div>}
-        <div style={{ display: "grid", gap: 9 }}>
-          {latestByAgent.slice(0, 6).map((a) => {
-            const when = a.startedAt ? new Date(a.startedAt) : null;
-            const days = when ? Math.floor((Date.now() - when.getTime()) / 86400000) : null;
-            // An agent that has not run in days is the thing worth noticing.
-            const stale = days != null && days > 2;
-            return (
-              <div key={a.id} style={{ fontSize: 12.5 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <strong style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.agentName || "(unnamed)"}</strong>
-                  <span style={{ color: stale ? "#E8934A" : "var(--muted)", fontSize: 11, whiteSpace: "nowrap" }}>
-                    {days == null ? "" : days === 0 ? "today" : days === 1 ? "yesterday" : days + " days ago"}
-                  </span>
-                </div>
-                {a.taskTitle && <div style={{ color: "var(--muted)", fontSize: 11.5 }}>{a.taskTitle}</div>}
-                {a.detail && (
-                  <div style={{ color: "var(--muted)", fontSize: 11.5, lineHeight: 1.4, marginTop: 2 }}>
-                    {String(a.detail).length > 120 ? String(a.detail).slice(0, 120) + "…" : a.detail}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
+
+    {/* The roster, under the panels it is accountable for. This used to be its
+        own tab, which meant the owner read the numbers in one place and who was
+        watching them in another. */}
+    <CrewRoster agentActivity={agentActivity} />
+    </>
   );
 }
 
