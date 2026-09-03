@@ -3682,10 +3682,30 @@ async function copyToClipboard(text) {
   }
 }
 
+// "asked 2 Sep" reads better than a flag saying only that it happened —
+// knowing when the message went out is what tells you whether to chase.
+function fmtAskedAt(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d)) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBooking, onUpdateInquiry }) {
   const [asked, setAsked] = useState({});
   const [templateChoice, setTemplateChoice] = useState("auto"); // "auto" | a TEMPLATES id
-  const [filter, setFilter] = useState("todo"); // "todo" | "all"
+  const [filter, setFilter] = useState("todo"); // "todo" | "asked" | "all"
+
+  // Whether this device can hand an sms: link to anything. Checked once after
+  // mount rather than during render, because navigator does not exist on the
+  // server and touching it there breaks the page.
+  const [canSendSms, setCanSendSms] = useState(false);
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = navigator.userAgent || "";
+    const touch = (navigator.maxTouchPoints || 0) > 0;
+    setCanSendSms(/iPhone|iPad|iPod|Android|Mobile/i.test(ua) || touch);
+  }, []);
   const [flash, setFlash] = useState(""); // key of the row that just got copied
   const [previewKey, setPreviewKey] = useState(null);
   const [open, setOpen] = useState(true);
@@ -3749,7 +3769,10 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   // write has not round-tripped yet.
   const wasAsked = (r) => Boolean(r.askedAt || asked[r.key]);
   const askedCount = completed.filter(wasAsked).length;
-  const rows = filter === "todo" ? completed.filter((r) => !wasAsked(r)) : completed;
+  const rows =
+    filter === "todo" ? completed.filter((r) => !wasAsked(r))
+    : filter === "asked" ? completed.filter((r) => wasAsked(r))
+    : completed;
 
   function draftFor(row) {
     const templateId = templateChoice === "auto" ? DEFAULT_TEMPLATE_FOR_DAYS(row.days) : templateChoice;
@@ -3823,7 +3846,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
               </select>
             </label>
             <div style={{ display: "flex", gap: 4 }}>
-              {[["todo", "Not yet asked"], ["all", "All completed"]].map(([id, label]) => (
+              {[["todo", "Still to ask"], ["asked", "Already asked"], ["all", "Every charter"]].map(([id, label]) => (
                 <button key={id} type="button" onClick={() => setFilter(id)}
                   style={{
                     padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600,
@@ -3899,11 +3922,13 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                             {r.email && <div style={{ color: "var(--muted)", fontSize: 11 }}>{r.email}</div>}
                           </td>
                           <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
-                            <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: w.color, textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                              {w.label}
+                            <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: isAsked ? "#7FE0B8" : w.color, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                              {isAsked ? "ASKED" : w.label}
                             </span>
                             <div style={{ color: "var(--muted)", fontSize: 11 }}>
-                              {r.days == null ? "—" : r.days === 0 ? "today" : `${r.days} day${r.days === 1 ? "" : "s"} ago`}
+                              {isAsked && r.askedAt
+                                ? fmtAskedAt(r.askedAt)
+                                : r.days == null ? "—" : r.days === 0 ? "today" : `${r.days} day${r.days === 1 ? "" : "s"} ago`}
                             </div>
                           </td>
                           <td style={{ padding: "6px 8px" }}>
@@ -3918,9 +3943,27 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                               {smsHref(r.phone, draftFor(r)) && (
                                 <a
                                   href={smsHref(r.phone, draftFor(r))}
-                                  onClick={() => markAsked(r.key, true, r)}
-                                  style={{ color: "#0A0612", background: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
-                                  Text it
+                                  onClick={(e) => {
+                                    // Marking someone asked for a message that
+                                    // cannot be sent is worse than not marking
+                                    // them: the record says done and the guest
+                                    // heard nothing.
+                                    if (!canSendSms) {
+                                      e.preventDefault();
+                                      window.alert(
+                                        "This only works on a phone.\n\nA desktop has nothing to hand an sms: link to, so no message would be sent — and ticking it off here would record an ask that never happened.\n\nOpen the console on your phone and tap Text it there, or use Preview to copy the wording and send it another way."
+                                      );
+                                      return;
+                                    }
+                                    markAsked(r.key, true, r);
+                                  }}
+                                  style={{
+                                    color: canSendSms ? "#0A0612" : "var(--muted)",
+                                    background: canSendSms ? "var(--pink)" : "transparent",
+                                    border: "1px solid " + (canSendSms ? "var(--pink)" : "rgba(203,108,230,0.3)"),
+                                    borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
+                                  }}>
+                                  {canSendSms ? "Text it" : "Text it (phone only)"}
                                 </a>
                               )}
                               <button type="button" onClick={() => setPreviewKey(previewKey === r.key ? null : r.key)}
