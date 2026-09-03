@@ -8,6 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
+import { CREW, AGENT_STATUS, crewInitials, latestRun, isStale } from "../lib/crew";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialPipelinePanel from "./SocialPipelinePanel";
 
@@ -208,10 +209,18 @@ export default function AdminView({
   //
   // Counts bubble up to the group header so a pending media draft or
   // testimonial is still visible without opening the group.
+  // Agents waiting on a decision. Everything else about a run can wait for
+  // you to look; this cannot, so it gets a badge like the other queues.
+  const crewNeedingInput = CREW.filter((c) => {
+    const run = latestRun(agentActivity, c.name);
+    return run && run.status === "needs-input";
+  }).length;
+
   const TAB_GROUPS = [
     {
       id: "overview", label: "Overview", tabs: [
         { id: "overview", label: "Overview" },
+        { id: "crew", label: tabLabel("Crew", crewNeedingInput), count: crewNeedingInput },
       ],
     },
     {
@@ -465,6 +474,8 @@ export default function AdminView({
             onGo={setTab}
           />
         )}
+
+        {tab === "crew" && <CrewTab agentActivity={agentActivity} />}
 
         {tab === "media" && (
           <GalleryTab gallery={gallery} onUpdateCaption={onUpdateCaption} onAddGalleryItem={onAddGalleryItem} onUpdateGalleryItem={onUpdateGalleryItem} onDeleteGalleryItem={onDeleteGalleryItem} />
@@ -3187,6 +3198,143 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 //
 // Laid out three across and two down, because at one card per column the panels
 // were too narrow to hold a sentence and everything wrapped.
+// The crew roster: who runs, when, what they are for, and whether any of them
+// is stuck waiting on the owner.
+//
+// The point of this panel is that a scheduled agent fails silently. Nothing
+// bounces, nothing errors on screen -- it simply stops appearing, and an empty
+// log reads exactly like a quiet week. So a run that has not reported within
+// about two of its own cycles is called out rather than left looking fine.
+function CrewTab({ agentActivity = [] }) {
+  const CARD = { background: "var(--card)", borderRadius: 12, padding: 16, border: "1px solid rgba(203,108,230,0.16)" };
+
+  const rows = CREW.map((c) => {
+    const run = latestRun(agentActivity, c.name);
+    const status = c.pending ? "unbuilt" : run ? run.status : "idle";
+    return { ...c, run, status, stale: isStale(run, c.schedule) };
+  });
+
+  const waiting = rows.filter((r) => r.status === "needs-input");
+  const broken = rows.filter((r) => r.status === "failed");
+  const quiet = rows.filter((r) => r.stale && r.status !== "needs-input" && r.status !== "failed");
+
+  function when(d) {
+    if (!d) return "never";
+    const day = Math.round((Date.now() - new Date(d)) / 86400000);
+    if (day <= 0) return "today";
+    if (day === 1) return "yesterday";
+    if (day < 14) return day + " days ago";
+    return String(d).slice(0, 10);
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div>
+        <h2 style={{ margin: "0 0 4px", fontSize: 21, color: "var(--text)" }}>The crew</h2>
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: "62ch" }}>
+          Eight scheduled agents. Only <strong style={{ color: "var(--text)" }}>Nauti Siren</strong> acts outside the
+          business &mdash; she publishes. Everyone else proposes and waits for you.
+        </p>
+      </div>
+
+      {waiting.length > 0 && (
+        <div style={{ ...CARD, borderColor: "#E8934A", borderLeft: "3px solid #E8934A" }}>
+          <div style={{ fontWeight: 700, color: "#E8934A", marginBottom: 8 }}>
+            Waiting on you ({waiting.length})
+          </div>
+          {waiting.map((r) => (
+            <div key={r.name} style={{ fontSize: 13.5, marginBottom: 6 }}>
+              <strong style={{ color: "var(--text)" }}>{r.name}</strong>
+              <span style={{ color: "var(--muted)" }}> &mdash; {r.run && r.run.detail ? r.run.detail : "stopped and needs a decision"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(broken.length > 0 || quiet.length > 0) && (
+        <div style={{ ...CARD, borderColor: "rgba(226,104,95,0.5)" }}>
+          {broken.map((r) => (
+            <div key={r.name} style={{ fontSize: 13.5, marginBottom: 4 }}>
+              <strong style={{ color: "#E2685F" }}>{r.name} failed</strong>
+              <span style={{ color: "var(--muted)" }}> &mdash; {r.run && r.run.detail ? r.run.detail : "no reason recorded"}</span>
+            </div>
+          ))}
+          {quiet.map((r) => (
+            <div key={r.name} style={{ fontSize: 13.5, marginBottom: 4 }}>
+              <strong style={{ color: "#E8934A" }}>{r.name} has gone quiet</strong>
+              <span style={{ color: "var(--muted)" }}>
+                {" "}&mdash; last reported {when(r.run && r.run.startedAt)}, and she runs {r.schedule.toLowerCase()}.
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, alignItems: "start" }}>
+        {rows.map((r) => {
+          const st = AGENT_STATUS[r.status] || AGENT_STATUS.idle;
+          return (
+            <div key={r.name} style={{ ...CARD, opacity: r.pending ? 0.62 : 1 }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                {/* Initials until the generated portraits exist. */}
+                <div
+                  style={{
+                    width: 46, height: 46, borderRadius: "50%", flexShrink: 0,
+                    background: "linear-gradient(135deg, " + r.accent + ", rgba(10,6,18,0.85))",
+                    color: "#0A0612", fontWeight: 800, fontSize: 15,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    border: "2px solid " + r.accent,
+                  }}
+                >
+                  {crewInitials(r.name)}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <strong style={{ fontSize: 15.5, color: "var(--text)" }}>{r.name}</strong>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: st.color, whiteSpace: "nowrap" }}>{st.label}</span>
+                    {r.acts && (
+                      <span style={{ fontSize: 10.5, color: "#0A0612", background: "var(--purple)", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>
+                        POSTS
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>{r.schedule}</div>
+                </div>
+              </div>
+
+              <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--text)", opacity: 0.88, lineHeight: 1.5 }}>
+                {r.job}
+              </p>
+
+              {r.run && (
+                <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Last run &middot; {when(r.run.startedAt)}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, marginTop: 3 }}>
+                    {r.run.detail || r.run.taskTitle || "no detail recorded"}
+                  </div>
+                </div>
+              )}
+              {!r.run && !r.pending && (
+                <div style={{ marginTop: 10, fontSize: 12.5, color: "var(--muted)", fontStyle: "italic" }}>
+                  Has not reported a run yet.
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ ...CARD, fontSize: 12.5, color: "var(--muted)" }}>
+        Each agent writes a row when it starts and updates it when it finishes. A card showing
+        &ldquo;has not reported&rdquo; means the agent has not run since logging was added, not that
+        anything is broken.
+      </div>
+    </div>
+  );
+}
+
 function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
   const [text, setText] = useState("");
   const today = localDateKey(new Date());
