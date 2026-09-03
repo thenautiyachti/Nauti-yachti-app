@@ -41,6 +41,11 @@ export default function AdminPage() {
   // look for the same information.
   const [todos, setTodos] = useState([]);
   const [agentActivity, setAgentActivity] = useState([]);
+  // Gift certificates: the model, purchase flow and validate endpoint have all
+  // existed for a while, but nothing in the console ever showed them.
+  const [giftCertificates, setGiftCertificates] = useState([]);
+  const [giftLiability, setGiftLiability] = useState(0);
+  const [giftsLoading, setGiftsLoading] = useState(true);
 
   useEffect(() => {
     api("/api/admin/session")
@@ -50,7 +55,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph, td, aa] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph, td, aa, gc] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -70,9 +75,11 @@ export default function AdminPage() {
       api("/api/price-history"),
       api("/api/jarvis-todos"),
       api("/api/admin/agent-activity"),
+      api("/api/gift-certificates"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
     setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts); setPriceHistory(ph); setTodos(td); setAgentActivity(aa);
+    setGiftCertificates(gc.certificates || []); setGiftLiability(gc.liability || 0); setGiftsLoading(false);
     setLoading(false);
   }, []);
 
@@ -137,6 +144,16 @@ export default function AdminPage() {
   async function updateCaption(id, caption) {
     await api(`/api/gallery/${id}`, { method: "PATCH", body: JSON.stringify({ caption }) });
     setGallery((prev) => prev.map((g) => (g.id === id ? { ...g, caption } : g)));
+  }
+  async function issueGiftCertificate(fields) {
+    const created = await api("/api/gift-certificates", { method: "POST", body: JSON.stringify(fields) });
+    setGiftCertificates((prev) => [created, ...prev]);
+    setGiftLiability((prev) => prev + Number(created.balance || 0));
+  }
+  async function redeemGiftCertificate(id, amount) {
+    const updated = await api(`/api/gift-certificates/${id}`, { method: "PATCH", body: JSON.stringify({ action: "redeem", amount }) });
+    setGiftCertificates((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+    setGiftLiability((prev) => Math.max(0, prev - Number(amount || 0)));
   }
   async function addTodo(text) {
     const created = await api("/api/jarvis-todos", { method: "POST", body: JSON.stringify({ text }) });
@@ -360,6 +377,11 @@ export default function AdminPage() {
       onAddGalleryItem={addGalleryItem}
       onUpdateGalleryItem={updateGalleryItem}
       onDeleteGalleryItem={deleteGalleryItem}
+      giftCertificates={giftCertificates}
+      giftLiability={giftLiability}
+      giftsLoading={giftsLoading}
+      onIssueGiftCertificate={issueGiftCertificate}
+      onRedeemGiftCertificate={redeemGiftCertificate}
       todos={todos}
       agentActivity={agentActivity}
       onAddTodo={addTodo}

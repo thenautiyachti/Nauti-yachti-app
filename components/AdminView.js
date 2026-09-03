@@ -32,6 +32,7 @@ export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
   maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials, priceHistory,
   todos = [], agentActivity = [], onAddTodo, onToggleTodo, onDeleteTodo, onAddGalleryItem, onUpdateGalleryItem, onDeleteGalleryItem,
+  giftCertificates = [], giftLiability = 0, giftsLoading = false, onIssueGiftCertificate, onRedeemGiftCertificate,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onUpdateInquiry, onLogout,
   onUpdateAddonPrice, onUpdateAddon, onAddAddon, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
@@ -225,6 +226,7 @@ export default function AdminView({
         { id: "ledger", label: "Income & expenses" },
         { id: "reconcile", label: "Reconciliation" },
         { id: "taxReport", label: "Tax Report" },
+        { id: "giftCertificates", label: "Gift certificates" },
         { id: "subscriptions", label: "Subscriptions" },
       ],
     },
@@ -507,6 +509,13 @@ export default function AdminView({
             onUpdateItem={onUpdateMaintenanceItem}
             onAddEngineHoursLog={onAddEngineHoursLog}
             onAddFuelLog={onAddFuelLog}
+          />
+        )}
+
+        {tab === "giftCertificates" && (
+          <GiftCertificatesTab
+            certificates={giftCertificates} liability={giftLiability}
+            onIssue={onIssueGiftCertificate} onRedeem={onRedeemGiftCertificate} loading={giftsLoading}
           />
         )}
 
@@ -4304,6 +4313,159 @@ function monthlyAmount(sub) {
   if (sub.billingCycle === "yearly") return sub.amount / 12;
   if (sub.billingCycle === "weekly") return sub.amount * 4.33;
   return sub.amount;
+}
+
+// Gift certificates.
+//
+// The model, the purchase flow and the validate endpoint have all existed for a
+// while; there was simply no way to see any of it. Somebody could buy one on the
+// site and the owner would have no way to know it existed, check a balance, or
+// answer "is this code still good" when a guest reads it down the phone.
+//
+// The outstanding balance is a real liability -- money already taken for
+// charters not yet run -- so it leads.
+function GiftCertificatesTab({ certificates = [], liability = 0, onIssue, onRedeem, loading }) {
+  const empty = { initialAmount: "", purchaserName: "", purchaserEmail: "", recipientName: "", expiresAt: "", message: "" };
+  const [form, setForm] = useState(empty);
+  const [showIssue, setShowIssue] = useState(false);
+
+  const active = certificates.filter((c) => c.status === "active" && c.balance > 0);
+  const spent = certificates.filter((c) => c.balance <= 0 || c.status === "redeemed");
+  const voided = certificates.filter((c) => c.status === "void");
+
+  async function submit(e) {
+    e.preventDefault();
+    const amount = Number(form.initialAmount);
+    if (!amount || amount <= 0) return;
+    await onIssue({ ...form, initialAmount: amount });
+    setForm(empty);
+    setShowIssue(false);
+  }
+
+  function redeem(c) {
+    const raw = window.prompt(
+      `How much of ${c.code} is being used?\n\nBalance is ${currency(c.balance)}. Enter a smaller figure to part-redeem it — the rest stays on the certificate.`,
+      String(c.balance)
+    );
+    if (raw === null) return;
+    const amount = Number(raw);
+    if (!amount || amount <= 0 || amount > c.balance) {
+      window.alert("That has to be a number above zero and no more than the remaining balance.");
+      return;
+    }
+    onRedeem(c.id, amount);
+  }
+
+  const CARD = { background: "var(--card)", borderRadius: 10, padding: 14 };
+
+  function Row({ c }) {
+    const used = (c.initialAmount || 0) - (c.balance || 0);
+    return (
+      <div style={{ padding: "9px 0", borderBottom: "1px solid rgba(203,108,230,0.1)" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mono" style={{ fontWeight: 700, color: "var(--purple)" }}>{c.code}</span>
+          <span className="mono" style={{ fontWeight: 700, color: c.balance > 0 ? "#7FE0B8" : "var(--muted)" }}>
+            {currency(c.balance)}
+          </span>
+          {used > 0 && <span style={{ fontSize: 11.5, color: "var(--muted)" }}>of {currency(c.initialAmount)} · {currency(used)} used</span>}
+          {c.expiresAt && <span style={{ fontSize: 11.5, color: "#E8934A" }}>expires {c.expiresAt}</span>}
+          {c.stripeSessionId && <span style={{ fontSize: 10.5, color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 4, padding: "1px 6px" }}>bought online</span>}
+          {c.balance > 0 && c.status === "active" && (
+            <button type="button" onClick={() => redeem(c)}
+              style={{ marginLeft: "auto", background: "transparent", color: "var(--purple)", border: "1px solid rgba(203,108,230,0.4)", borderRadius: 5, padding: "3px 10px", fontSize: 11.5, fontWeight: 700 }}>
+              Redeem
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+          {c.purchaserName ? `from ${c.purchaserName}` : "purchaser not recorded"}
+          {c.recipientName ? ` · for ${c.recipientName}` : ""}
+          {c.purchaserEmail ? ` · ${c.purchaserEmail}` : ""}
+          {c.issuedAt ? ` · issued ${String(c.issuedAt).slice(0, 10)}` : ""}
+        </div>
+        {c.redemptions && c.redemptions.length > 0 && (
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>
+            {c.redemptions.map((r) => `${currency(r.amount)} on ${String(r.redeemedAt).slice(0, 10)}${r.bookingId ? " · " + r.bookingId : ""}`).join("  ·  ")}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
+        <StatCard label="Outstanding balance" value={currency(liability)} color="#E8934A" />
+        <StatCard label="Active certificates" value={String(active.length)} color="var(--purple)" />
+        <StatCard label="Fully used" value={String(spent.length)} color="var(--muted)" />
+        <StatCard label="Issued in total" value={String(certificates.length)} color="#4ff3ff" />
+      </div>
+
+      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: 0, maxWidth: 680 }}>
+        The outstanding balance is money already taken for charters not yet run — a real liability, not
+        income. A certificate bought on the website appears here on its own; use <strong>Issue one</strong>
+        for a certificate sold by hand.
+      </p>
+
+      <div>
+        <button type="button" onClick={() => setShowIssue((v) => !v)}
+          style={{ background: showIssue ? "transparent" : "var(--purple)", color: showIssue ? "var(--purple)" : "#0A0612", border: "1px solid var(--purple)", borderRadius: 6, padding: "8px 14px", fontWeight: 700, fontSize: 13 }}>
+          {showIssue ? "Cancel" : "Issue one"}
+        </button>
+        {showIssue && (
+          <form onSubmit={submit} style={{ ...CARD, marginTop: 10, display: "grid", gap: 8, maxWidth: 460 }}>
+            <input type="number" step="0.01" placeholder="Face value, e.g. 250" required value={form.initialAmount}
+              onChange={(e) => setForm({ ...form, initialAmount: e.target.value })}
+              style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+            <input placeholder="Who bought it" value={form.purchaserName}
+              onChange={(e) => setForm({ ...form, purchaserName: e.target.value })}
+              style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+            <input placeholder="Their email (optional)" value={form.purchaserEmail}
+              onChange={(e) => setForm({ ...form, purchaserEmail: e.target.value })}
+              style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+            <input placeholder="Who it is for (optional)" value={form.recipientName}
+              onChange={(e) => setForm({ ...form, recipientName: e.target.value })}
+              style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+            <label style={{ fontSize: 11.5, color: "var(--muted)" }}>
+              Expires (leave blank for never)
+              <input type="date" value={form.expiresAt}
+                onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginTop: 3 }} />
+            </label>
+            <input placeholder="Message on the certificate (optional)" value={form.message}
+              onChange={(e) => setForm({ ...form, message: e.target.value })}
+              style={{ padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
+            <button type="submit"
+              style={{ background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>
+              Issue certificate
+            </button>
+          </form>
+        )}
+      </div>
+
+      <div style={CARD}>
+        <div style={{ fontWeight: 700, marginBottom: 6, color: "var(--text)" }}>
+          Still has a balance ({active.length})
+        </div>
+        {loading && <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading…</div>}
+        {!loading && active.length === 0 && (
+          <div style={{ color: "var(--muted)", fontSize: 13.5, fontStyle: "italic" }}>
+            None outstanding. Certificates bought on the website will appear here automatically.
+          </div>
+        )}
+        {active.map((c) => <Row key={c.id} c={c} />)}
+      </div>
+
+      {(spent.length > 0 || voided.length > 0) && (
+        <div style={CARD}>
+          <div style={{ fontWeight: 700, marginBottom: 6, color: "var(--muted)" }}>
+            Fully used or void ({spent.length + voided.length})
+          </div>
+          {[...spent, ...voided].map((c) => <Row key={c.id} c={c} />)}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
