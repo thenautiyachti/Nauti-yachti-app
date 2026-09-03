@@ -8,7 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
-import { CREW, AGENT_STATUS, crewInitials, latestRun, isStale } from "../lib/crew";
+import { CREW, AGENT_STATUS, crewInitials, latestRun, isStale, isStalled } from "../lib/crew";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialPipelinePanel from "./SocialPipelinePanel";
 
@@ -3210,13 +3210,16 @@ function CrewTab({ agentActivity = [] }) {
 
   const rows = CREW.map((c) => {
     const run = latestRun(agentActivity, c.name);
-    const status = c.pending ? "unbuilt" : run ? run.status : "idle";
-    return { ...c, run, status, stale: isStale(run, c.schedule) };
+    // A run left open for hours is not working, it was killed. Reporting it as
+    // "Working" is how Pearl looked healthy for three days while doing nothing.
+    const stalled = isStalled(run);
+    const status = c.pending ? "unbuilt" : stalled ? "stalled" : run ? run.status : "idle";
+    return { ...c, run, status, stalled, stale: isStale(run, c.schedule) };
   });
 
   const waiting = rows.filter((r) => r.status === "needs-input");
-  const broken = rows.filter((r) => r.status === "failed");
-  const quiet = rows.filter((r) => r.stale && r.status !== "needs-input" && r.status !== "failed");
+  const broken = rows.filter((r) => r.status === "failed" || r.status === "stalled");
+  const quiet = rows.filter((r) => r.stale && !["needs-input", "failed", "stalled"].includes(r.status));
 
   function when(d) {
     if (!d) return "never";
@@ -3255,8 +3258,12 @@ function CrewTab({ agentActivity = [] }) {
         <div style={{ ...CARD, borderColor: "rgba(226,104,95,0.5)" }}>
           {broken.map((r) => (
             <div key={r.name} style={{ fontSize: 13.5, marginBottom: 4 }}>
-              <strong style={{ color: "#E2685F" }}>{r.name} failed</strong>
-              <span style={{ color: "var(--muted)" }}> &mdash; {r.run && r.run.detail ? r.run.detail : "no reason recorded"}</span>
+              <strong style={{ color: "#E2685F" }}>{r.name} {r.stalled ? "stopped mid-run" : "failed"}</strong>
+              <span style={{ color: "var(--muted)" }}>
+                {r.stalled
+                  ? " — started " + when(r.run && r.run.startedAt) + " and never finished. Open Scheduled and hit Run now."
+                  : " — " + (r.run && r.run.detail ? r.run.detail : "no reason recorded")}
+              </span>
             </div>
           ))}
           {quiet.map((r) => (
