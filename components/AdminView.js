@@ -3285,6 +3285,7 @@ function CrewCard({ r, compact = false }) {
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
             {r.schedule}
             {r.reportsTo && <> &middot; reports to {r.reportsTo.replace("Nauti ", "")}</>}
+            {r.checks && <> &middot; checks {r.checks.replace("Nauti ", "")}</>}
           </div>
         </div>
       </div>
