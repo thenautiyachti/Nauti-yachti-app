@@ -461,6 +461,7 @@ export default function AdminView({
             maintenanceItems={maintenanceItems} engineHours={engineHours} mediaDrafts={mediaDrafts}
             todos={todos} agentActivity={agentActivity}
             onAddTodo={onAddTodo} onToggleTodo={onToggleTodo} onDeleteTodo={onDeleteTodo}
+            onGo={setTab}
           />
         )}
 
@@ -1728,7 +1729,9 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
           <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add entry</button>
         </form>
       </div>
-      <div>
+      {/* A flex column so the list below can absorb whatever height the form
+          column has, instead of stopping short at a fixed cap. */}
+      <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ fontWeight: 700, color: "var(--text)" }}>Recent entries</div>
           <div style={{ display: "flex", gap: 4 }}>
@@ -1745,7 +1748,10 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
             ))}
           </div>
         </div>
-        <div style={{ display: "grid", gap: 6, maxHeight: 380, overflowY: "auto" }}>
+        {/* Runs level with the bottom of the form beside it: the row's height
+            comes from whichever column is taller, and the list takes the rest.
+            The floor keeps it usable when the form is the shorter of the two. */}
+        <div style={{ display: "grid", gap: 6, flex: 1, minHeight: 380, overflowY: "auto", alignContent: "start" }}>
           {visibleLedger.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
           {visibleLedger.map((l) => {
             const isIncome = l.type === "income";
@@ -3180,7 +3186,7 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 //
 // Laid out three across and two down, because at one card per column the panels
 // were too narrow to hold a sentence and everything wrapped.
-function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo }) {
+function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
   const [text, setText] = useState("");
   const today = localDateKey(new Date());
   const month = today.slice(0, 7);
@@ -3226,20 +3232,22 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const noPrice = externalBookings.filter((b) => b.status === "completed" && b.pricePaid == null);
   const looseIncome = ledger.filter((l) => l.type === "income" && !l.externalBookingId);
 
+  // `go` is the tab that can actually act on the item, so the line is a link
+  // rather than an instruction to go and find it yourself.
   const attention = [
-    newInquiries.length && { t: `${newInquiries.length} new ${newInquiries.length === 1 ? "enquiry" : "enquiries"}`, w: "Bookings → Inquiries", urgent: true },
-    overdue.length && { t: `${overdue.length} maintenance ${overdue.length === 1 ? "item" : "items"} overdue`, w: "Boat", urgent: true },
-    dueSoon.length && { t: `${dueSoon.length} maintenance ${dueSoon.length === 1 ? "item" : "items"} due soon`, w: "Boat" },
+    newInquiries.length && { t: `${newInquiries.length} new ${newInquiries.length === 1 ? "enquiry" : "enquiries"}`, w: "Bookings → Inquiries", go: "inquiries", urgent: true },
+    overdue.length && { t: `${overdue.length} maintenance ${overdue.length === 1 ? "item" : "items"} overdue`, w: "Boat", go: "maintenance", urgent: true },
+    dueSoon.length && { t: `${dueSoon.length} maintenance ${dueSoon.length === 1 ? "item" : "items"} due soon`, w: "Boat", go: "maintenance" },
     unjudgeable.length === maintenanceItems.length && maintenanceItems.length > 0 && {
       t: `No maintenance can be judged — ${maintenanceItems.length} items, nothing logged`,
-      w: "Boat: add engine hours or a last-serviced date", urgent: true,
+      w: "Boat: add engine hours or a last-serviced date", go: "maintenance", urgent: true,
     },
-    draftsWaiting.length && { t: `${draftsWaiting.length} social ${draftsWaiting.length === 1 ? "draft" : "drafts"} to approve`, w: "Marketing → Media Drafts", urgent: true },
-    noPrice.length && { t: `${noPrice.length} completed ${noPrice.length === 1 ? "charter has" : "charters have"} no price`, w: "no income row is written without one", urgent: true },
-    soonPosts.length && { t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts" },
-    neverAsked.length && { t: `${neverAsked.length} guests never asked for a review`, w: "Marketing → Testimonials, from your phone" },
-    looseIncome.length && { t: `${looseIncome.length} income ${looseIncome.length === 1 ? "row is" : "rows are"} not tied to a charter`, w: "Money → Reconciliation" },
-    noPhone.length && { t: `${noPhone.length} past guests have no phone number`, w: "they cannot be asked for anything" },
+    draftsWaiting.length && { t: `${draftsWaiting.length} social ${draftsWaiting.length === 1 ? "draft" : "drafts"} to approve`, w: "Marketing → Media Drafts", go: "mediaDrafts", urgent: true },
+    noPrice.length && { t: `${noPrice.length} completed ${noPrice.length === 1 ? "charter has" : "charters have"} no price`, w: "no income row is written without one", go: "bookings", urgent: true },
+    soonPosts.length && { t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts", go: "mediaDrafts" },
+    neverAsked.length && { t: `${neverAsked.length} guests never asked for a review`, w: "Marketing → Testimonials, from your phone", go: "testimonials" },
+    looseIncome.length && { t: `${looseIncome.length} income ${looseIncome.length === 1 ? "row is" : "rows are"} not tied to a charter`, w: "Money → Reconciliation", go: "reconcile" },
+    noPhone.length && { t: `${noPhone.length} past guests have no phone number`, w: "they cannot be asked for anything", go: "bookings" },
   ].filter(Boolean);
 
   // --- social: what is actually going out -------------------------------
@@ -3274,6 +3282,26 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const H = { fontWeight: 700, marginBottom: 10, color: "var(--text)", fontSize: 13.5 };
   const EMPTY = { color: "var(--muted)", fontSize: 12.5, fontStyle: "italic" };
 
+  // A panel here is a summary, not a destination. Clicking its heading opens
+  // the tab that can actually act on what it is reporting.
+  function Go({ to, children }) {
+    if (!onGo || !to) return <div style={H}>{children}</div>;
+    return (
+      <button
+        type="button"
+        onClick={() => onGo(to)}
+        style={{
+          ...H, display: "flex", alignItems: "center", gap: 6, width: "100%",
+          background: "transparent", border: "none", padding: 0, textAlign: "left",
+          cursor: "pointer", font: "inherit", fontWeight: 700, fontSize: 13.5, color: "var(--text)",
+        }}
+      >
+        {children}
+        <span style={{ color: "var(--purple)", fontSize: 12 }}>→</span>
+      </button>
+    );
+  }
+
   function submit(e) {
     e.preventDefault();
     const t = text.trim();
@@ -3286,7 +3314,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, alignItems: "start" }}>
 
       <div style={CARD}>
-        <div style={H}>This month</div>
+        <Go to="ledger">This month</Go>
         <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--muted)" }}>Income</span>
@@ -3307,7 +3335,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       </div>
 
       <div style={CARD}>
-        <div style={H}>Charters</div>
+        <Go to="bookings">Charters</Go>
         {charters.length === 0 && <div style={EMPTY}>Nothing on the books.</div>}
         <div style={{ display: "grid", gap: 7 }}>
           {charters.map((b) => (
@@ -3331,17 +3359,33 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
         <div style={H}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
         {attention.length === 0 && <div style={EMPTY}>Genuinely nothing waiting.</div>}
         <div style={{ display: "grid", gap: 7 }}>
-          {attention.map((a, i) => (
-            <div key={i} style={{ fontSize: 12.5 }}>
-              <div style={{ color: a.urgent ? "#E8934A" : "var(--text)", fontWeight: a.urgent ? 700 : 400 }}>{a.t}</div>
-              <div style={{ color: "var(--muted)", fontSize: 11 }}>{a.w}</div>
-            </div>
-          ))}
+          {attention.map((a, i) => {
+            const body = (
+              <>
+                <div style={{ color: a.urgent ? "#E8934A" : "var(--text)", fontWeight: a.urgent ? 700 : 400 }}>{a.t}</div>
+                <div style={{ color: "var(--muted)", fontSize: 11 }}>{a.w}</div>
+              </>
+            );
+            if (!onGo || !a.go) return <div key={i} style={{ fontSize: 12.5 }}>{body}</div>;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onGo(a.go)}
+                style={{
+                  textAlign: "left", width: "100%", cursor: "pointer",
+                  background: "transparent", border: "none", padding: 0, font: "inherit", fontSize: 12.5,
+                }}
+              >
+                {body}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div style={CARD}>
-        <div style={H}>Going out next</div>
+        <Go to="mediaDrafts">Going out next</Go>
         {nextByDay.length === 0 && <div style={EMPTY}>Nothing scheduled.</div>}
         <div style={{ display: "grid", gap: 6 }}>
           {nextByDay.slice(0, 6).map((d) => (

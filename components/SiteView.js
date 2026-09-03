@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { currency, tierPrice, dayTypeForDate, imageFocus, imageFit, imageZoom } from "../lib/pricing";
+import { currency, tierPrice, dayTypeForDate, imageFocus } from "../lib/pricing";
 import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
 import NavBar from "./NavBar";
@@ -398,12 +398,14 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                   <div className="mono" style={{ color: "var(--purple)", fontSize: 12.5, letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase" }}>
                     {pkgName}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14 }}>
+                  {/* Photos keep their own shape. A fixed portrait tile cropped
+                      every landscape shot, cutting guests out at the sides, and
+                      the column layout also spares whoever uploads the next
+                      photo from having to crop it to match. */}
+                  <div style={{ columns: "200px", columnGap: 14 }}>
                     {items.map((g) => (
-                      <div key={g.id} style={{ borderRadius: 10, overflow: "hidden", background: "var(--card)", border: "1px solid rgba(203,108,230,0.15)" }}>
-                        <div style={{ aspectRatio: "3 / 4", overflow: "hidden" }}>
-                          <img src={g.image} alt={g.caption} style={{ width: "100%", height: "100%", objectFit: imageFit(g.image), objectPosition: imageFocus(g.image), transform: `scale(${imageZoom(g.image)})`, display: "block" }} />
-                        </div>
+                      <div key={g.id} style={{ breakInside: "avoid", marginBottom: 14, borderRadius: 10, overflow: "hidden", background: "var(--card)", border: "1px solid rgba(203,108,230,0.15)" }}>
+                        <img src={g.image} alt={g.caption} style={{ width: "100%", height: "auto", display: "block" }} />
                         <div style={{ color: "var(--text)", fontSize: 12, fontWeight: 600, padding: "8px 10px" }}>
                           {g.caption}
                         </div>
