@@ -53,14 +53,9 @@ export default async function HomePage() {
   const blocked = groupBlockedDates(blockedRows);
   const partialDates = groupExternalBookingState(externalBookingRows);
 
-  // Surnames are cut to an initial here, before the data ever leaves the
-  // server. Doing it in the component only changed what was drawn -- the full
-  // name still travelled to the browser in the page payload.
-  const publicTestimonials = testimonials.map((t) => {
-    const parts = String(t.name || "").trim().split(/\s+/).filter(Boolean);
-    const name = parts.length < 2 ? (parts[0] || "") : parts.slice(0, -1).join(" ") + " " + parts[parts.length - 1][0].toUpperCase() + ".";
-    return { ...t, name };
-  });
+  // Full names are shown, on the owner's call: the site already publishes
+  // guests' faces, so withholding a surname protected nothing.
+  const publicTestimonials = testimonials;
 
   return (
     <SiteView

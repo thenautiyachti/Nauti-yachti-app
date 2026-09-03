@@ -1073,19 +1073,8 @@ function AddOnsDropdown({ addOns, selectedIds, onChange }) {
   );
 }
 
-// "Christina Coronado" -> "Christina C." A guest who left a review on Google
-// under their full name has not agreed to it being republished in full on a
-// business's own site, and the surname adds nothing to the reader.
-function publicName(name) {
-  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length < 2) return parts[0] || "";
-  const last = parts[parts.length - 1];
-  return parts.slice(0, -1).join(" ") + " " + last[0].toUpperCase() + ".";
-}
-
-// "August 2025" — the month they sailed. A precise day beside a named guest
-// pins down exactly where a real person was on a real date, which the review
-// itself never did.
+// "August 2025" — the month they sailed. Month and year rather than the exact
+// day: it dates the review without pinning a named guest to a specific date.
 function charterMonth(d) {
   if (!d) return "";
   const [y, m] = String(d).split("-").map(Number);
@@ -1103,7 +1092,7 @@ function TestimonialCard({ t }) {
         &ldquo;{t.quote}&rdquo;
       </p>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{publicName(t.name)}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{t.name}</span>
         {t.charterDate && (
           <span style={{ fontSize: 12, color: "var(--muted)" }}>· sailed {charterMonth(t.charterDate)}</span>
         )}
