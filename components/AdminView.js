@@ -3296,7 +3296,9 @@ function CrewCard({ r, compact = false }) {
 
       <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
         <div style={{ fontSize: 10.5, color: fresh ? r.accent : "#E8934A", textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 700 }}>
-          {r.status ? (fresh ? "This morning" : "Last filed " + crewAgo(r.status.startedAt)) : "No status yet"}
+          {r.status
+            ? (fresh ? (r.greeting || "This morning") : "Last filed " + crewAgo(r.status.startedAt))
+            : "No status yet"}
         </div>
         {lines.length > 0 ? (
           <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 3 }}>
@@ -3340,6 +3342,108 @@ function CrewCard({ r, compact = false }) {
 // The things that need saying before any panel: somebody is blocked, somebody
 // broke, somebody went silent. Sits at the very top because a stalled agent
 // invalidates whatever its panel is showing.
+// The chain of command, drawn. Built from CREW rather than hand-placed, so it
+// cannot drift out of step with the roster the way a picture in a document
+// would -- rename an agent or change who she reports to and this follows.
+//
+// Reading it: solid lines are reporting, the dashed line is Coral auditing what
+// Siren actually published. That loop is the only one that goes back upstream,
+// and it exists because Siren is the only agent who acts outside the business.
+function CrewChart({ rows }) {
+  const by = Object.fromEntries(rows.map((r) => [r.name, r]));
+  const pearl = by["Nauti Pearl"];
+  const siren = by["Nauti Siren"];
+  const coral = by["Nauti Coral"];
+  // Everyone who answers straight to Pearl, in the order they run.
+  const direct = rows.filter((r) => !r.lead && r.name !== "Nauti Coral");
+
+  const W = 980, colW = W / direct.length;
+  const yOwner = 26, yPearl = 96, yRow = 196, yCoral = 286;
+  const x = (i) => colW * i + colW / 2;
+  const sirenI = direct.findIndex((r) => r.name === "Nauti Siren");
+
+  function Node({ cx, cy, r: agent, label, sub, big }) {
+    const rad = big ? 26 : 21;
+    return (
+      <g>
+        {agent && agent.avatar ? (
+          <>
+            <clipPath id={"clip-" + (agent.name || label).replace(/\s+/g, "")}>
+              <circle cx={cx} cy={cy} r={rad} />
+            </clipPath>
+            <image
+              href={agent.avatar} x={cx - rad} y={cy - rad} width={rad * 2} height={rad * 2}
+              clipPath={`url(#clip-${(agent.name || label).replace(/\s+/g, "")})`}
+              preserveAspectRatio="xMidYMid slice"
+            />
+            <circle cx={cx} cy={cy} r={rad} fill="none" stroke={agent.accent} strokeWidth="2.5" />
+          </>
+        ) : (
+          <circle cx={cx} cy={cy} r={rad} fill="rgba(203,108,230,0.16)" stroke="var(--purple)" strokeWidth="2" />
+        )}
+        {!agent && (
+          <text x={cx} y={cy + 5} textAnchor="middle" fontSize="15" fill="var(--text)" fontWeight="700">
+            {label === "You" ? "⚓" : ""}
+          </text>
+        )}
+        <text x={cx} y={cy + rad + 15} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text)">
+          {label}
+        </text>
+        {sub && (
+          <text x={cx} y={cy + rad + 28} textAnchor="middle" fontSize="10" fill="var(--muted)">
+            {sub}
+          </text>
+        )}
+      </g>
+    );
+  }
+
+  const line = (x1, y1, x2, y2, dash) => (
+    <path
+      d={`M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`}
+      fill="none" stroke="rgba(203,108,230,0.42)" strokeWidth="1.6"
+      strokeDasharray={dash ? "5 4" : undefined}
+    />
+  );
+
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 12, padding: "14px 16px 6px", border: "1px solid rgba(203,108,230,0.16)" }}>
+      <div style={{ fontWeight: 700, color: "var(--text)", fontSize: 13.5, marginBottom: 2 }}>Chain of command</div>
+      <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 6, lineHeight: 1.45 }}>
+        Everything routes through Pearl. The dashed line is Coral checking what Siren actually published &mdash;
+        the only loop that runs back upstream, because Siren is the only one who acts outside the business.
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <svg viewBox={`0 0 ${W} 330`} style={{ width: "100%", minWidth: 760, height: "auto", display: "block" }}>
+          {/* owner -> pearl */}
+          {line(W / 2, yOwner + 34, W / 2, yPearl - 26)}
+          {/* pearl -> everyone direct */}
+          {direct.map((r, i) => (
+            <g key={"l" + r.name}>{line(W / 2, yPearl + 26, x(i), yRow - 21)}</g>
+          ))}
+          {/* coral -> siren, and the audit back */}
+          {sirenI >= 0 && line(x(sirenI) - 10, yRow + 21, x(sirenI) - 10, yCoral - 21)}
+          {sirenI >= 0 && line(x(sirenI) + 10, yCoral - 21, x(sirenI) + 10, yRow + 21, true)}
+
+          <Node cx={W / 2} cy={yOwner + 8} label="You" sub="the owner" big />
+          <Node cx={W / 2} cy={yPearl} r={pearl} label="Pearl" sub="Chief of Staff" big />
+          {direct.map((r, i) => (
+            <Node key={r.name} cx={x(i)} cy={yRow} r={r} label={r.name.replace("Nauti ", "")} sub={r.title} />
+          ))}
+          {sirenI >= 0 && (
+            <Node cx={x(sirenI)} cy={yCoral} r={coral} label="Coral" sub="Content Producer" />
+          )}
+          {sirenI >= 0 && (
+            <text x={x(sirenI) + 30} y={(yRow + yCoral) / 2 + 4} fontSize="9.5" fill="var(--muted)">
+              audits
+            </text>
+          )}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 function CrewAlerts({ rows }) {
   const CARD = { background: "var(--card)", borderRadius: 12, padding: 14, border: "1px solid rgba(203,108,230,0.16)" };
   const waiting = rows.filter((r) => r.state === "needs-input");
@@ -3946,6 +4050,13 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
         </div>
       </div>
       </div>
+    </div>
+
+    {/* The chain of command, at the foot rather than the head: it is a
+        reference you check occasionally, not something to scroll past
+        every morning to reach the numbers. */}
+    <div style={{ marginTop: 16 }}>
+      <CrewChart rows={crew} />
     </div>
     </>
   );
