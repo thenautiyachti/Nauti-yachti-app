@@ -23,7 +23,7 @@ async function GET(req) {
 
   const rows = await prisma.agentActivity.findMany({
     orderBy: { startedAt: "desc" },
-    take: 25,
+    take: 120,
   });
 
   return NextResponse.json(rows);

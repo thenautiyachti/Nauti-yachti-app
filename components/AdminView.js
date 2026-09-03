@@ -8,7 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
-import { CREW, AGENT_STATUS, crewInitials, latestRun, isStale, isStalled } from "../lib/crew";
+import { CREW, AGENT_STATUS, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialPipelinePanel from "./SocialPipelinePanel";
 
@@ -3210,16 +3210,18 @@ function CrewTab({ agentActivity = [] }) {
 
   const rows = CREW.map((c) => {
     const run = latestRun(agentActivity, c.name);
+    const status = latestStatus(agentActivity, c.name);
     // A run left open for hours is not working, it was killed. Reporting it as
     // "Working" is how Pearl looked healthy for three days while doing nothing.
     const stalled = isStalled(run);
-    const status = c.pending ? "unbuilt" : stalled ? "stalled" : run ? run.status : "idle";
-    return { ...c, run, status, stalled, stale: isStale(run, c.schedule) };
+    const state = c.pending ? "unbuilt" : stalled ? "stalled" : run ? run.status : "idle";
+    return { ...c, run, status, stalled, state, stale: isStale(run, c.schedule) };
   });
 
-  const waiting = rows.filter((r) => r.status === "needs-input");
-  const broken = rows.filter((r) => r.status === "failed" || r.status === "stalled");
-  const quiet = rows.filter((r) => r.stale && !["needs-input", "failed", "stalled"].includes(r.status));
+  const waiting = rows.filter((r) => r.state === "needs-input");
+  const broken = rows.filter((r) => r.state === "failed" || r.state === "stalled");
+  const quiet = rows.filter((r) => r.stale && !["needs-input", "failed", "stalled"].includes(r.state));
+  const silent = rows.filter((r) => !r.status);
 
   function when(d) {
     if (!d) return "never";
@@ -3235,8 +3237,9 @@ function CrewTab({ agentActivity = [] }) {
       <div>
         <h2 style={{ margin: "0 0 4px", fontSize: 21, color: "var(--text)" }}>The crew</h2>
         <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: "62ch" }}>
-          Eight scheduled agents. Only <strong style={{ color: "var(--text)" }}>Nauti Siren</strong> acts outside the
-          business &mdash; she publishes. Everyone else proposes and waits for you.
+          Eight scheduled agents. Every one files a status each morning even on days it does not run,
+          so a card is never blank. Only <strong style={{ color: "var(--text)" }}>Nauti Siren</strong> acts
+          outside the business &mdash; she publishes. Everyone else proposes and waits for you.
         </p>
       </div>
 
@@ -3254,7 +3257,7 @@ function CrewTab({ agentActivity = [] }) {
         </div>
       )}
 
-      {(broken.length > 0 || quiet.length > 0) && (
+      {(broken.length > 0 || quiet.length > 0 || silent.length > 0) && (
         <div style={{ ...CARD, borderColor: "rgba(226,104,95,0.5)" }}>
           {broken.map((r) => (
             <div key={r.name} style={{ fontSize: 13.5, marginBottom: 4 }}>
@@ -3274,14 +3277,25 @@ function CrewTab({ agentActivity = [] }) {
               </span>
             </div>
           ))}
+          {silent.length > 0 && (
+            <div style={{ fontSize: 13.5, color: "var(--muted)" }}>
+              <strong style={{ color: "#E8934A" }}>No standup filed</strong> &mdash;{" "}
+              {silent.map((r) => r.name.replace("Nauti ", "")).join(", ")}. The morning standup did not run.
+            </div>
+          )}
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, alignItems: "start" }}>
+      {/* Four to a row on a wide screen, so eight agents fill two even rows.
+          Cards stretch to match their neighbours and the run footer is pinned
+          to the bottom, which is what stops the ragged staircase this was. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 12, alignItems: "stretch" }}>
         {rows.map((r) => {
-          const st = AGENT_STATUS[r.status] || AGENT_STATUS.idle;
+          const st = AGENT_STATUS[r.state] || AGENT_STATUS.idle;
+          const lines = statusLines(r.status);
+          const fresh = isToday(r.status);
           return (
-            <div key={r.name} style={{ ...CARD, opacity: r.pending ? 0.62 : 1 }}>
+            <div key={r.name} style={{ ...CARD, opacity: r.pending ? 0.62 : 1, display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                 {/* 72px, not the 46 I first picked: at 46 only bold colour
                     survived and two of them were unrecognisable. Initials stay
@@ -3319,47 +3333,74 @@ function CrewTab({ agentActivity = [] }) {
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>{r.schedule}</div>
+                  <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "var(--text)", opacity: 0.72, lineHeight: 1.45 }}>
+                    {r.job}
+                  </p>
                 </div>
               </div>
 
-              <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--text)", opacity: 0.88, lineHeight: 1.5 }}>
-                {r.job}
-              </p>
+              {/* The standup, which is the part he reads. Sits above the run
+                  footer because on most days it is the newer of the two. */}
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
+                <div style={{ fontSize: 11, color: fresh ? r.accent : "#E8934A", textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 700 }}>
+                  {r.status ? (fresh ? "This morning" : "Last filed " + when(r.status.startedAt)) : "No status yet"}
+                </div>
+                {lines.length > 0 ? (
+                  <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 3 }}>
+                    {lines.map((l, i) => (
+                      <li
+                        key={i}
+                        style={{
+                          fontSize: 13, color: "var(--text)", lineHeight: 1.45,
+                          // First line is the headline, the rest are the rundown.
+                          opacity: i === 0 ? 0.95 : 0.8,
+                          paddingLeft: i === 0 ? 0 : 12,
+                          position: "relative",
+                          fontWeight: i === 0 ? 600 : 400,
+                        }}
+                      >
+                        {i > 0 && (
+                          <span style={{ position: "absolute", left: 0, color: r.accent, opacity: 0.75 }}>&middot;</span>
+                        )}
+                        {l}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", fontStyle: "italic", marginTop: 5 }}>
+                    She has not filed a standup yet.
+                  </div>
+                )}
+              </div>
 
               {/* Without this, a run that found nothing reads as a run that
                   did nothing, and the agent designed to stay silent looks
                   like the one that quietly broke. */}
               {r.quietIsNormal && (
-                <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)", lineHeight: 1.45 }}>
-                  Expect most weeks to be empty. She reports only what passes the bar &mdash; silence
-                  here is her working, not failing.
+                <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
+                  Most weeks are empty by design &mdash; silence is her working, not failing.
                 </div>
               )}
 
-              {r.run && (
-                <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Last run &middot; {when(r.run.startedAt)}
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, marginTop: 3 }}>
-                    {r.run.detail || r.run.taskTitle || "no detail recorded"}
-                  </div>
+              <div style={{ marginTop: "auto", paddingTop: 10 }}>
+                <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                  {r.run ? "Last run · " + when(r.run.startedAt) : "Last run · none recorded"}
                 </div>
-              )}
-              {!r.run && !r.pending && (
-                <div style={{ marginTop: 10, fontSize: 12.5, color: "var(--muted)", fontStyle: "italic" }}>
-                  Has not reported a run yet.
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>
+                  {r.run
+                    ? (r.run.detail || r.run.taskTitle || "no detail recorded")
+                    : "Has not reported a run since logging was added."}
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
       </div>
 
       <div style={{ ...CARD, fontSize: 12.5, color: "var(--muted)" }}>
-        Each agent writes a row when it starts and updates it when it finishes. A card showing
-        &ldquo;has not reported&rdquo; means the agent has not run since logging was added, not that
-        anything is broken.
+        The morning standup files a status for all eight, whether or not they are due to run that day.
+        &ldquo;Last run&rdquo; is separate and only moves when an agent actually does its job &mdash; a
+        weekly agent should show a fresh status every morning and a run once a week.
       </div>
     </div>
   );
@@ -3447,7 +3488,9 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // last said.
   const latestByAgent = [];
   const seenAgents = new Set();
-  for (const a of agentActivity || []) {
+  // Standup rows are excluded: this panel answers "did each agent run", and a
+  // daily status line filed by the standup is not that agent having run.
+  for (const a of (agentActivity || []).filter((x) => !isStatusRow(x))) {
     const name = a.agentName || "(unnamed agent)";
     if (seenAgents.has(name)) continue;
     seenAgents.add(name);
@@ -5000,6 +5043,9 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
   const [dashboardError, setDashboardError] = useState(false);
   const [agentActivity, setAgentActivity] = useState(null);
   const [agentActivityError, setAgentActivityError] = useState(false);
+  // Runs only — the morning standup files eight status rows a day, which would
+  // bury the actual work this panel exists to show.
+  const jarvisRuns = (agentActivity || []).filter((a) => !isStatusRow(a));
   const [todos, setTodos] = useState([]);
   const [todoText, setTodoText] = useState("");
   const [todoError, setTodoError] = useState("");
@@ -5432,13 +5478,15 @@ function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNot
           </JarvisPanel>
 
 
+          {/* This is a feed of work, so the eight standup lines filed every
+              morning are filtered out — they would otherwise be most of it. */}
           <JarvisPanel title="Agent Activity">
             {agentActivityError && !agentActivity && <div style={{ color: "#ff4d5e", fontSize: 12.5 }}>Unable to load agent activity.</div>}
             {!agentActivity && !agentActivityError && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
-            {agentActivity && agentActivity.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No active tasks.</div>}
-            {agentActivity && agentActivity.length > 0 && (
+            {agentActivity && jarvisRuns.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No active tasks.</div>}
+            {agentActivity && jarvisRuns.length > 0 && (
               <div style={{ display: "grid", gap: 10, flex: 1, minHeight: 140, overflowY: "auto", alignContent: "start" }}>
-                {agentActivity.map((a) => {
+                {jarvisRuns.map((a) => {
                   const s = JARVIS_STATUS_STYLE[a.status] || JARVIS_STATUS_STYLE.running;
                   return (
                     <div key={a.id} style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 12.5, color: "#dffcff" }}>
