@@ -267,3 +267,52 @@ input::placeholder, textarea::placeholder {
   .orbit-left  > .orbit-crew,
   .orbit-right > .orbit-crew { grid-template-columns: 1fr; }
 }
+
+/* ---- Owner console: the orbit on a small screen ------------------------
+   The desktop layout is a solar system; a phone cannot be one. Below the
+   three-column breakpoint everything stacks, and the stacking ORDER is the
+   design: source order would bury the board under two panels and put Pearl
+   in the middle of the lead row.
+
+   What a phone shows, top to bottom: Pearl, the board, what needs attention,
+   then the panels with the crew who own them. */
+.orbit-lead {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1199px) {
+  .console-orbit { display: flex; flex-direction: column; }
+  .orbit-lead    { order: 1; }
+  .orbit-center  { order: 2; }
+  .orbit-left    { order: 3; }
+  .orbit-right   { order: 4; }
+  /* Pearl above the two panels she owns, matching the desktop hierarchy. */
+  .orbit-lead    { display: flex; flex-direction: column; }
+  .orbit-lead-pearl { order: -1; }
+}
+
+@media (min-width: 1200px) {
+  /* minmax(0, 1fr), never a px minimum: a px floor here is what overflowed
+     the page rather than letting the column shrink. */
+  .orbit-lead { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Nothing inside the console may push the page sideways. Wide things
+   (the chain-of-command chart, tables) scroll inside their own box instead. */
+.console-orbit, .orbit-group, .orbit-left, .orbit-right, .orbit-center { min-width: 0; }
+
+/* The blanket max-width below must NOT reach the chain-of-command SVG. That
+   chart is 980px wide by design and lives in an overflow-x:auto box so it can
+   be dragged sideways; squashing it to 375px would make it unreadable rather
+   than scrollable, which is worse than not showing it. */
+.console-orbit > *:not(.crew-chart) *:not(svg) { max-width: 100%; }
+.crew-chart svg { max-width: none; }
+
+@media (max-width: 620px) {
+  /* One crew card per row: two 240px cards side by side do not fit, and a
+     half-legible card defeats the point of showing her at all. */
+  .orbit-group > .orbit-crew { grid-template-columns: 1fr; }
+  .orbit-group { padding: 6px; }
+}

@@ -3413,7 +3413,7 @@ function CrewChart({ rows }) {
         Everything routes through Pearl. The dashed line is Coral checking what Siren actually published &mdash;
         the only loop that runs back upstream, because Siren is the only one who acts outside the business.
       </div>
-      <div style={{ overflowX: "auto" }}>
+      <div className="crew-chart" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <svg viewBox={`0 0 ${W} 330`} style={{ width: "100%", minWidth: 760, height: "auto", display: "block" }}>
           {/* owner -> pearl */}
           {line(W / 2, yOwner + 34, W / 2, yPearl - 26)}
@@ -3739,7 +3739,10 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       {/* Pearl above the board: she is the one who reads every agent's
           input and decides what reaches him, so her card and the two panels
           she owns sit over the top of everything. */}
-      <div className="orbit-lead" style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(300px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr)" }}>
+      {/* Column widths live in CSS so they can respond. Inline
+          minmax(300px,...) x3 forced 900px of content onto a 375px phone and
+          took the whole page sideways with it. */}
+      <div className="orbit-lead">
         <div style={CARD}>
           <PanelHead owners={["Nauti Pearl"]}>
             <div style={{ ...H, marginBottom: 0 }}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
@@ -3770,7 +3773,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
             })}
           </div>
         </div>
-        <CrewCard r={byName["Nauti Pearl"]} />
+        <div className="orbit-lead-pearl"><CrewCard r={byName["Nauti Pearl"]} /></div>
         <div style={CARD}>
           <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="bookings">Charters</Go></PanelHead>
           {charters.length === 0 && <div style={EMPTY}>Nothing on the books.</div>}
