@@ -316,3 +316,18 @@ input::placeholder, textarea::placeholder {
   .orbit-group > .orbit-crew { grid-template-columns: 1fr; }
   .orbit-group { padding: 6px; }
 }
+
+/* A single long token is enough to push a panel off a phone. The board is the
+   worst offender because the crew write file paths, URLs and media ids into
+   items -- a 59-character Windows path is ~410px and does not fit a 375px
+   screen. Break anywhere rather than let one word set the panel's width.
+
+   `anywhere` rather than `break-word`: break-word will not break a token that
+   is alone on its line, which is exactly this case. */
+.console-orbit, .console-orbit p, .console-orbit li, .console-orbit span, .console-orbit label {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+/* Keep numbers and short mono values intact -- breaking a currency figure or a
+   date mid-token is worse than a little overflow. */
+.console-orbit .mono { overflow-wrap: normal; }
