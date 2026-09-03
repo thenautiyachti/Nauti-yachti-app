@@ -469,6 +469,7 @@ export default function AdminView({
             externalBookings={externalBookings} inquiries={inquiries} ledger={ledger}
             maintenanceItems={maintenanceItems} engineHours={engineHours} mediaDrafts={mediaDrafts}
             todos={todos} agentActivity={agentActivity}
+            testimonials={testimonials} giftCertificates={giftCertificates}
             onAddTodo={onAddTodo} onToggleTodo={onToggleTodo} onDeleteTodo={onDeleteTodo}
             onGo={setTab}
           />
@@ -3335,7 +3336,15 @@ function CrewRoster({ agentActivity = [] }) {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>
+                  {r.title && (
+                    <div style={{ fontSize: 12, color: r.accent, fontWeight: 700, letterSpacing: "0.02em", marginTop: 2 }}>
+                      {r.title}
+                      {r.rank && (
+                        <span style={{ color: "var(--muted)", fontWeight: 400, fontStyle: "italic" }}> &middot; {r.rank}</span>
+                      )}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
                     {r.schedule}
                     {r.reportsTo && <> &middot; reports to {r.reportsTo.replace("Nauti ", "")}</>}
                   </div>
@@ -3419,7 +3428,7 @@ function PanelOwners({ names = [] }) {
   const rows = names.map((n) => CREW.find((c) => c.name === n)).filter(Boolean);
   if (!rows.length) return null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }} title={rows.map((r) => r.name).join(" and ")}>
+    <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }} title={rows.map((r) => r.name + (r.title ? " \u2014 " + r.title : "")).join(", ")}>
       {rows.map((r) => (
         <span
           key={r.name}
@@ -3452,7 +3461,7 @@ function PanelHead({ owners, children }) {
   );
 }
 
-function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
+function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, testimonials = [], giftCertificates = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
   const [text, setText] = useState("");
   const today = localDateKey(new Date());
   const month = today.slice(0, 7);
@@ -3541,6 +3550,52 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     if (seenAgents.has(name)) continue;
     seenAgents.add(name);
     latestByAgent.push(a);
+  }
+
+  // --- Joy: guests -------------------------------------------------------
+  const approvedReviews = (testimonials || []).filter((t) => t.status === "approved");
+  const liveReviews = approvedReviews.length;
+  const pendingReviews = (testimonials || []).filter((t) => t.status === "pending").length;
+  const avgRating = liveReviews
+    ? (approvedReviews.reduce((s, t) => s + (t.rating || 0), 0) / liveReviews).toFixed(2)
+    : null;
+  // A completed charter nobody has asked. Opt-outs are not candidates.
+  // Distinct from `neverAsked` above, which already excludes anyone with no
+  // phone. This is everyone owed an ask; the split below is the useful part.
+  const unaskedGuests = (externalBookings || []).filter(
+    (b) => b.status === "completed" && !b.reviewRequestedAt && !b.marketingOptOut
+  );
+  const askable = unaskedGuests.filter((b) => b.phone || b.email).length;
+  const unreachable = unaskedGuests.length - askable;
+
+  // --- Reef: money not collected ----------------------------------------
+  const revenueIdeas = openTodos.filter((t) => /REVENUE IDEA|\[REEF/i.test(t.text || "")).length;
+  const bookedDays = new Set(
+    (externalBookings || [])
+      .filter((b) => b.status === "booked" || b.status === "completed")
+      .map((b) => String(b.date).slice(0, 10))
+  );
+  let openWeekends = 0;
+  for (let i = 0; i < 56; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) continue;
+    const key = d.toISOString().slice(0, 10);
+    if (!bookedDays.has(key)) openWeekends++;
+  }
+  // Average of what charters actually took, not a list price.
+  const charterIncome = (ledger || []).filter((e) => e.type === "income" && e.amount > 0);
+  const avgCharter = charterIncome.length
+    ? Math.round(charterIncome.reduce((s, e) => s + e.amount, 0) / charterIncome.length)
+    : 0;
+
+  // --- Nova: research ----------------------------------------------------
+  const novaItems = openTodos.filter((t) => /^\[?NOVA/i.test(t.text || ""));
+  const novaRun = latestRun(agentActivity, "Nauti Nova");
+  function agoWords(d) {
+    const days = Math.floor((Date.now() - new Date(d)) / 86400000);
+    return days <= 0 ? "today" : days === 1 ? "yesterday" : days + " days ago";
   }
 
   const openTodos = todos.filter((t) => !t.done);
@@ -3670,6 +3725,95 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           {nextByDay.length > 6 && (
             <div style={{ color: "var(--muted)", fontSize: 11 }}>…and {nextByDay.length - 6} more days scheduled</div>
           )}
+        </div>
+      </div>
+
+      {/* Joy. Reviews are the visible half; the half that costs money is a
+          guest nobody can contact any more. */}
+      <div style={CARD}>
+        <PanelHead owners={["Nauti Joy"]}><Go to="testimonials">Guests</Go></PanelHead>
+        <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--muted)" }}>Reviews live</span>
+            <span className="mono" style={{ fontWeight: 700 }}>
+              {liveReviews}{avgRating ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {avgRating}★</span> : null}
+            </span>
+          </div>
+          {pendingReviews > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#E8934A" }}>Waiting on your approval</span>
+              <span className="mono" style={{ color: "#E8934A", fontWeight: 700 }}>{pendingReviews}</span>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--muted)" }}>Never asked</span>
+            <span className="mono" style={{ fontWeight: 700 }}>{unaskedGuests.length}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: unreachable > 0 ? "#E8934A" : "var(--muted)" }}>…of those, no way to reach them</span>
+            <span className="mono" style={{ color: unreachable > 0 ? "#E8934A" : "var(--text)", fontWeight: 700 }}>{unreachable}</span>
+          </div>
+        </div>
+        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
+          {askable > 0
+            ? askable + " can still be asked. Joy mails you the list on Mondays."
+            : "Nobody left who can be reached — the gap is contact details at booking, not the asking."}
+        </div>
+      </div>
+
+      {/* Reef. Every line here is money that exists and is not being taken. */}
+      <div style={CARD}>
+        <PanelHead owners={["Nauti Reef"]}><Go to="giftCertificates">Money on the table</Go></PanelHead>
+        <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--muted)" }}>Open weekend dates, next 8 weeks</span>
+            <span className="mono" style={{ fontWeight: 700 }}>{openWeekends}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--muted)" }}>…roughly worth</span>
+            <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(openWeekends * avgCharter)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: giftCertificates.length === 0 ? "#E8934A" : "var(--muted)" }}>Gift certificates sold</span>
+            <span className="mono" style={{ color: giftCertificates.length === 0 ? "#E8934A" : "var(--text)", fontWeight: 700 }}>{giftCertificates.length}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--muted)" }}>Ideas open on the board</span>
+            <span className="mono" style={{ fontWeight: 700 }}>{revenueIdeas}</span>
+          </div>
+        </div>
+        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
+          An empty Saturday is the most expensive thing the business owns. Valued at the
+          {" "}{currency(avgCharter)} average charter.
+        </div>
+      </div>
+
+      {/* Nova. The only panel whose good state is empty, which is why it says
+          so rather than showing a zero and looking broken. */}
+      <div style={CARD}>
+        <PanelHead owners={["Nauti Nova"]}>
+          <div style={{ ...H, marginBottom: 0 }}>Research</div>
+        </PanelHead>
+        {novaItems.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
+            Nothing has cleared the bar.
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
+              She reports only what you would be annoyed to learn six months late — a grant that
+              closed, a rule that changed, money you were owed. Most weeks that is nothing, and an
+              empty panel here is her working.
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 7 }}>
+            {novaItems.slice(0, 3).map((t) => (
+              <div key={t.id} style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                {t.text.replace(/^\[?NOVA[^\]]*\]?\s*:?\s*/i, "")}
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)" }}>
+          {novaRun ? "Last looked " + agoWords(novaRun.startedAt) + "." : "First run is Monday."}
         </div>
       </div>
 
