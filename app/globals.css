@@ -207,3 +207,63 @@ input::placeholder, textarea::placeholder {
   .console-header { justify-content: flex-start; }
   .console-btn { font-size: 12.5px; height: 34px; padding: 0 11px; }
 }
+
+
+/* ---- Owner console: the orbit -------------------------------------------
+   Pearl on top, the board in the middle, every other panel paired with the
+   crew card of whoever owns it. Three columns only when there is genuinely
+   room; one column otherwise, in reading order. */
+.console-orbit {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+.orbit-lead { order: -1; }
+
+@media (min-width: 1200px) {
+  .console-orbit {
+    grid-template-columns: 1fr 1.05fr 1fr;
+    align-items: start;
+  }
+  /* Pearl spans the top: she oversees rather than occupying one column. */
+  .orbit-lead {
+    grid-column: 1 / -1;
+    order: 0;
+  }
+  /* The board holds the centre for the whole height of the orbit. Without an
+     explicit row span it would sit in one cell and the columns beside it would
+     run past it. */
+  .orbit-center {
+    grid-column: 2;
+    grid-row: 2 / span 6;
+    position: sticky;
+    top: 12px;
+  }
+  .orbit-left  { grid-column: 1; }
+  .orbit-right { grid-column: 3; }
+}
+
+/* A panel and the crew who own it, banded together so the pairing reads as
+   deliberate rather than as two cards that happen to be adjacent. */
+.orbit-group {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(203,108,230,0.13);
+  border-radius: 14px;
+  padding: 8px;
+  background: rgba(203,108,230,0.028);
+}
+.orbit-group > .orbit-crew {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 620px) {
+  .orbit-group > .orbit-crew { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+}
+@media (min-width: 1200px) {
+  /* Inside a narrow column two cards side by side become unreadable. */
+  .orbit-left  > .orbit-crew,
+  .orbit-right > .orbit-crew { grid-template-columns: 1fr; }
+}

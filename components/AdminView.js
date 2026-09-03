@@ -9,6 +9,7 @@ import {
 } from "../lib/reviews";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
+import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialPipelinePanel from "./SocialPipelinePanel";
 
@@ -3203,10 +3204,16 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 // bounces, nothing errors on screen -- it simply stops appearing, and an empty
 // log reads exactly like a quiet week. So a run that has not reported within
 // about two of its own cycles is called out rather than left looking fine.
-function CrewRoster({ agentActivity = [] }) {
-  const CARD = { background: "var(--card)", borderRadius: 12, padding: 16, border: "1px solid rgba(203,108,230,0.16)" };
+// The crew, computed once. Both the alert banners and the individual cards
+// need the same derived state, and duplicating it was how the Crew tab and the
+// Overview panel drifted apart in the first place.
+function crewAccent(shortName) {
+  const c = CREW.find((x) => x.name.toUpperCase().endsWith(" " + String(shortName).toUpperCase()));
+  return c ? c.accent : "var(--muted)";
+}
 
-  const rows = CREW.map((c) => {
+function crewRows(agentActivity = []) {
+  return CREW.map((c) => {
     const run = latestRun(agentActivity, c.name);
     const status = latestStatus(agentActivity, c.name);
     // A run left open for hours is not working, it was killed. Reporting it as
@@ -3215,215 +3222,174 @@ function CrewRoster({ agentActivity = [] }) {
     const state = c.pending ? "unbuilt" : stalled ? "stalled" : run ? run.status : "idle";
     return { ...c, run, status, stalled, state, stale: isStale(run, c.schedule) };
   });
+}
 
+function crewAgo(d) {
+  if (!d) return "never";
+  const day = Math.round((Date.now() - new Date(d)) / 86400000);
+  if (day <= 0) return "today";
+  if (day === 1) return "yesterday";
+  if (day < 14) return day + " days ago";
+  return String(d).slice(0, 10);
+}
+
+// One agent's card. Sits next to the panel she owns, so `compact` trims the
+// parts that would repeat what the panel already says.
+function CrewCard({ r, compact = false }) {
+  const CARD = { background: "var(--card)", borderRadius: 12, padding: 14, border: "1px solid rgba(203,108,230,0.16)" };
+  const st = AGENT_STATUS[r.state] || AGENT_STATUS.idle;
+  const lines = statusLines(r.status);
+  const fresh = isToday(r.status);
+  const AV = compact ? 54 : 72;
+
+  return (
+    <div style={{ ...CARD, opacity: r.pending ? 0.62 : 1, display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
+        {/* Never below 54px: at 46 only bold colour survived and two of them
+            were unrecognisable. Initials remain the fallback. */}
+        <div
+          style={{
+            width: AV, height: AV, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
+            background: "linear-gradient(135deg, " + r.accent + ", rgba(10,6,18,0.85))",
+            color: "#0A0612", fontWeight: 800, fontSize: 18,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            border: "2px solid " + r.accent,
+            filter: r.pending ? "grayscale(0.7)" : "none",
+          }}
+        >
+          {r.avatar ? (
+            <img src={r.avatar} alt="" loading="lazy"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ) : (
+            crewInitials(r.name)
+          )}
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" }}>
+            <strong style={{ fontSize: 14.5, color: "var(--text)" }}>{r.name}</strong>
+            <span style={{ fontSize: 11, fontWeight: 700, color: st.color, whiteSpace: "nowrap" }}>{st.label}</span>
+            {r.lead && (
+              <span style={{ fontSize: 10, color: "#0A0612", background: r.accent, borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>LEAD</span>
+            )}
+            {r.acts && (
+              <span style={{ fontSize: 10, color: "#0A0612", background: "var(--purple)", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>POSTS</span>
+            )}
+          </div>
+          {r.title && (
+            <div style={{ fontSize: 11.5, color: r.accent, fontWeight: 700, marginTop: 2 }}>
+              {r.title}
+              {r.rank && <span style={{ color: "var(--muted)", fontWeight: 400, fontStyle: "italic" }}> &middot; {r.rank}</span>}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+            {r.schedule}
+            {r.reportsTo && <> &middot; reports to {r.reportsTo.replace("Nauti ", "")}</>}
+          </div>
+        </div>
+      </div>
+
+      {!compact && (
+        <p style={{ margin: "9px 0 0", fontSize: 12.5, color: "var(--text)", opacity: 0.75, lineHeight: 1.45 }}>{r.job}</p>
+      )}
+
+      <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
+        <div style={{ fontSize: 10.5, color: fresh ? r.accent : "#E8934A", textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 700 }}>
+          {r.status ? (fresh ? "This morning" : "Last filed " + crewAgo(r.status.startedAt)) : "No status yet"}
+        </div>
+        {lines.length > 0 ? (
+          <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 3 }}>
+            {lines.map((l, i) => (
+              <li key={i} style={{
+                fontSize: 12.5, color: "var(--text)", lineHeight: 1.45,
+                opacity: i === 0 ? 0.95 : 0.78,
+                paddingLeft: i === 0 ? 0 : 12, position: "relative",
+                fontWeight: i === 0 ? 600 : 400,
+              }}>
+                {i > 0 && <span style={{ position: "absolute", left: 0, color: r.accent, opacity: 0.75 }}>&middot;</span>}
+                {l}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic", marginTop: 5 }}>
+            She has not filed a standup yet.
+          </div>
+        )}
+      </div>
+
+      {r.quietIsNormal && !compact && (
+        <div style={{ marginTop: 8, fontSize: 11, color: "var(--muted)", lineHeight: 1.45 }}>
+          Most weeks are empty by design &mdash; silence is her working, not failing.
+        </div>
+      )}
+
+      <div style={{ marginTop: "auto", paddingTop: 9 }}>
+        <div style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+          {r.run ? "Last run · " + crewAgo(r.run.startedAt) : "Last run · none recorded"}
+        </div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>
+          {r.run ? (r.run.detail || r.run.taskTitle || "no detail recorded") : "Has not reported a run since logging was added."}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The things that need saying before any panel: somebody is blocked, somebody
+// broke, somebody went silent. Sits at the very top because a stalled agent
+// invalidates whatever its panel is showing.
+function CrewAlerts({ rows }) {
+  const CARD = { background: "var(--card)", borderRadius: 12, padding: 14, border: "1px solid rgba(203,108,230,0.16)" };
   const waiting = rows.filter((r) => r.state === "needs-input");
   const broken = rows.filter((r) => r.state === "failed" || r.state === "stalled");
   const quiet = rows.filter((r) => r.stale && !["needs-input", "failed", "stalled"].includes(r.state));
   const silent = rows.filter((r) => !r.status);
 
-  function when(d) {
-    if (!d) return "never";
-    const day = Math.round((Date.now() - new Date(d)) / 86400000);
-    if (day <= 0) return "today";
-    if (day === 1) return "yesterday";
-    if (day < 14) return day + " days ago";
-    return String(d).slice(0, 10);
-  }
+  if (!waiting.length && !broken.length && !quiet.length && !silent.length) return null;
 
   return (
-    <div style={{ display: "grid", gap: 16, marginTop: 20 }}>
-      <div style={{ borderTop: "1px solid rgba(203,108,230,0.18)", paddingTop: 18 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 19, color: "var(--text)" }}>The crew</h2>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: "70ch" }}>
-          The faces above each panel own that panel. All eight file a status every morning even on
-          days they do not run, so a card is never blank. <strong style={{ color: "var(--text)" }}>Nauti Pearl</strong> is
-          the lead and everything routes through her; only <strong style={{ color: "var(--text)" }}>Nauti Siren</strong> acts
-          outside the business, and she is the last gate before anything goes public.
-        </p>
-      </div>
-
+    <div style={{ display: "grid", gap: 10 }}>
       {waiting.length > 0 && (
         <div style={{ ...CARD, borderColor: "#E8934A", borderLeft: "3px solid #E8934A" }}>
-          <div style={{ fontWeight: 700, color: "#E8934A", marginBottom: 8 }}>
-            Waiting on you ({waiting.length})
-          </div>
+          <div style={{ fontWeight: 700, color: "#E8934A", marginBottom: 8 }}>Waiting on you ({waiting.length})</div>
           {waiting.map((r) => (
-            <div key={r.name} style={{ fontSize: 13.5, marginBottom: 6 }}>
+            <div key={r.name} style={{ fontSize: 13, marginBottom: 5 }}>
               <strong style={{ color: "var(--text)" }}>{r.name}</strong>
               <span style={{ color: "var(--muted)" }}> &mdash; {r.run && r.run.detail ? r.run.detail : "stopped and needs a decision"}</span>
             </div>
           ))}
         </div>
       )}
-
       {(broken.length > 0 || quiet.length > 0 || silent.length > 0) && (
         <div style={{ ...CARD, borderColor: "rgba(226,104,95,0.5)" }}>
           {broken.map((r) => (
-            <div key={r.name} style={{ fontSize: 13.5, marginBottom: 4 }}>
+            <div key={r.name} style={{ fontSize: 13, marginBottom: 4 }}>
               <strong style={{ color: "#E2685F" }}>{r.name} {r.stalled ? "stopped mid-run" : "failed"}</strong>
               <span style={{ color: "var(--muted)" }}>
                 {r.stalled
-                  ? " — started " + when(r.run && r.run.startedAt) + " and never finished. Open Scheduled and hit Run now."
+                  ? " — started " + crewAgo(r.run && r.run.startedAt) + " and never finished. Open Routines and hit Run now."
                   : " — " + (r.run && r.run.detail ? r.run.detail : "no reason recorded")}
               </span>
             </div>
           ))}
           {quiet.map((r) => (
-            <div key={r.name} style={{ fontSize: 13.5, marginBottom: 4 }}>
+            <div key={r.name} style={{ fontSize: 13, marginBottom: 4 }}>
               <strong style={{ color: "#E8934A" }}>{r.name} has gone quiet</strong>
-              <span style={{ color: "var(--muted)" }}>
-                {" "}&mdash; last reported {when(r.run && r.run.startedAt)}, and she runs {r.schedule.toLowerCase()}.
-              </span>
+              <span style={{ color: "var(--muted)" }}> &mdash; last reported {crewAgo(r.run && r.run.startedAt)}, and she runs {r.schedule.toLowerCase()}.</span>
             </div>
           ))}
           {silent.length > 0 && (
-            <div style={{ fontSize: 13.5, color: "var(--muted)" }}>
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>
               <strong style={{ color: "#E8934A" }}>No standup filed</strong> &mdash;{" "}
               {silent.map((r) => r.name.replace("Nauti ", "")).join(", ")}. The morning standup did not run.
             </div>
           )}
         </div>
       )}
-
-      {/* Four to a row on a wide screen, so eight agents fill two even rows.
-          Cards stretch to match their neighbours and the run footer is pinned
-          to the bottom, which is what stops the ragged staircase this was. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 12, alignItems: "stretch" }}>
-        {rows.map((r) => {
-          const st = AGENT_STATUS[r.state] || AGENT_STATUS.idle;
-          const lines = statusLines(r.status);
-          const fresh = isToday(r.status);
-          return (
-            <div key={r.name} style={{ ...CARD, opacity: r.pending ? 0.62 : 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                {/* 72px, not the 46 I first picked: at 46 only bold colour
-                    survived and two of them were unrecognisable. Initials stay
-                    underneath as the fallback if a portrait fails to load. */}
-                <div
-                  style={{
-                    width: 72, height: 72, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
-                    background: "linear-gradient(135deg, " + r.accent + ", rgba(10,6,18,0.85))",
-                    color: "#0A0612", fontWeight: 800, fontSize: 20,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    border: "2px solid " + r.accent,
-                    filter: r.pending ? "grayscale(0.7)" : "none",
-                  }}
-                >
-                  {r.avatar ? (
-                    <img
-                      src={r.avatar}
-                      alt=""
-                      loading="lazy"
-                      onError={(e) => { e.currentTarget.style.display = "none"; }}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  ) : (
-                    crewInitials(r.name)
-                  )}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                    <strong style={{ fontSize: 15.5, color: "var(--text)" }}>{r.name}</strong>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: st.color, whiteSpace: "nowrap" }}>{st.label}</span>
-                    {r.lead && (
-                      <span style={{ fontSize: 10.5, color: "#0A0612", background: r.accent, borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>
-                        LEAD
-                      </span>
-                    )}
-                    {r.acts && (
-                      <span style={{ fontSize: 10.5, color: "#0A0612", background: "var(--purple)", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>
-                        POSTS
-                      </span>
-                    )}
-                  </div>
-                  {r.title && (
-                    <div style={{ fontSize: 12, color: r.accent, fontWeight: 700, letterSpacing: "0.02em", marginTop: 2 }}>
-                      {r.title}
-                      {r.rank && (
-                        <span style={{ color: "var(--muted)", fontWeight: 400, fontStyle: "italic" }}> &middot; {r.rank}</span>
-                      )}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                    {r.schedule}
-                    {r.reportsTo && <> &middot; reports to {r.reportsTo.replace("Nauti ", "")}</>}
-                  </div>
-                  <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "var(--text)", opacity: 0.72, lineHeight: 1.45 }}>
-                    {r.job}
-                  </p>
-                </div>
-              </div>
-
-              {/* The standup, which is the part he reads. Sits above the run
-                  footer because on most days it is the newer of the two. */}
-              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
-                <div style={{ fontSize: 11, color: fresh ? r.accent : "#E8934A", textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 700 }}>
-                  {r.status ? (fresh ? "This morning" : "Last filed " + when(r.status.startedAt)) : "No status yet"}
-                </div>
-                {lines.length > 0 ? (
-                  <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 3 }}>
-                    {lines.map((l, i) => (
-                      <li
-                        key={i}
-                        style={{
-                          fontSize: 13, color: "var(--text)", lineHeight: 1.45,
-                          // First line is the headline, the rest are the rundown.
-                          opacity: i === 0 ? 0.95 : 0.8,
-                          paddingLeft: i === 0 ? 0 : 12,
-                          position: "relative",
-                          fontWeight: i === 0 ? 600 : 400,
-                        }}
-                      >
-                        {i > 0 && (
-                          <span style={{ position: "absolute", left: 0, color: r.accent, opacity: 0.75 }}>&middot;</span>
-                        )}
-                        {l}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", fontStyle: "italic", marginTop: 5 }}>
-                    She has not filed a standup yet.
-                  </div>
-                )}
-              </div>
-
-              {/* Without this, a run that found nothing reads as a run that
-                  did nothing, and the agent designed to stay silent looks
-                  like the one that quietly broke. */}
-              {r.quietIsNormal && (
-                <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
-                  Most weeks are empty by design &mdash; silence is her working, not failing.
-                </div>
-              )}
-
-              <div style={{ marginTop: "auto", paddingTop: 10 }}>
-                <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  {r.run ? "Last run · " + when(r.run.startedAt) : "Last run · none recorded"}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>
-                  {r.run
-                    ? (r.run.detail || r.run.taskTitle || "no detail recorded")
-                    : "Has not reported a run since logging was added."}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ ...CARD, fontSize: 12.5, color: "var(--muted)" }}>
-        The morning standup files a status for all eight, whether or not they are due to run that day.
-        &ldquo;Last run&rdquo; is separate and only moves when an agent actually does its job &mdash; a
-        weekly agent should show a fresh status every morning and a run once a week.
-      </div>
     </div>
   );
 }
-
-// Who owns a panel. The owner's face sits in the panel header so the question
-// "who is watching this number" is answered where the number is, rather than on
-// a separate tab the owner had to go and cross-reference.
 function PanelOwners({ names = [] }) {
   const rows = names.map((n) => CREW.find((c) => c.name === n)).filter(Boolean);
   if (!rows.length) return null;
@@ -3463,6 +3429,7 @@ function PanelHead({ owners, children }) {
 
 function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, testimonials = [], giftCertificates = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
   const [text, setText] = useState("");
+  const [showDone, setShowDone] = useState(false);
   const today = localDateKey(new Date());
   const month = today.slice(0, 7);
   const plus = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return localDateKey(d); };
@@ -3556,6 +3523,17 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const openTodos = todos.filter((t) => !t.done);
   const doneTodos = todos.filter((t) => t.done);
 
+  // The crew, and a lookup so a panel can pull the card of whoever owns it.
+  const crew = crewRows(agentActivity);
+  const byName = Object.fromEntries(crew.map((c) => [c.name, c]));
+
+  // Ranked once, with the owner prefix split off so it can be shown as a tag
+  // rather than as literal "[PENNY · T1]" text in the middle of a sentence.
+  const rankedTodos = sortBoard(openTodos).map((t) => {
+    const { owner, body } = parseItem(t.text);
+    return { ...t, owner, body, priority: priorityOf(t.text) };
+  });
+
   // --- Joy: guests -------------------------------------------------------
   const approvedReviews = (testimonials || []).filter((t) => t.status === "approved");
   const liveReviews = approvedReviews.length;
@@ -3636,229 +3614,302 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
 
   return (
     <>
-    <div className="overview-grid">
+    <CrewAlerts rows={crew} />
 
-      <div style={CARD}>
-        <PanelHead owners={["Nauti Penny", "Nauti Shelly"]}><Go to="ledger">This month</Go></PanelHead>
-        <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--muted)" }}>Income</span>
-            <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(mIncome)}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--muted)" }}>Expenses</span>
-            <span className="mono" style={{ color: "var(--pink)", fontWeight: 700 }}>{currency(mExpense)}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(203,108,230,0.15)", paddingTop: 7 }}>
-            <span style={{ color: "var(--muted)" }}>Net</span>
-            <span className="mono" style={{ color: mIncome - mExpense >= 0 ? "#E8934A" : "var(--pink)", fontWeight: 700 }}>{currency(mIncome - mExpense)}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", fontSize: 12.5 }}>
-            <span>Charters run</span><span className="mono">{monthCharters}</span>
-          </div>
-        </div>
-      </div>
-
-      <div style={CARD}>
-        <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="bookings">Charters</Go></PanelHead>
-        {charters.length === 0 && <div style={EMPTY}>Nothing on the books.</div>}
-        <div style={{ display: "grid", gap: 7 }}>
-          {charters.map((b) => (
-            <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5 }}>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                <strong>{b.guestName || "(no name)"}</strong>
-                <span style={{ color: "var(--muted)" }}> {b.vesselName}</span>
-              </span>
-              <span style={{ whiteSpace: "nowrap" }}>
-                <span className="mono" style={{ color: "var(--muted)", fontSize: 11.5 }}>{b.date}</span>{" "}
-                <span style={{ fontSize: 10, fontWeight: 700, color: b.status === "booked" ? "#4FA8E8" : "#7FE0B8" }}>
-                  {b.status === "booked" ? "UPCOMING" : "DONE"}
-                </span>
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={CARD}>
-        <PanelHead owners={["Nauti Pearl"]}>
-          <div style={{ ...H, marginBottom: 0 }}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
-        </PanelHead>
-        {attention.length === 0 && <div style={EMPTY}>Genuinely nothing waiting.</div>}
-        <div style={{ display: "grid", gap: 7 }}>
-          {attention.map((a, i) => {
-            const body = (
-              <>
-                <div style={{ color: a.urgent ? "#E8934A" : "var(--text)", fontWeight: a.urgent ? 700 : 400 }}>{a.t}</div>
-                <div style={{ color: "var(--muted)", fontSize: 11 }}>{a.w}</div>
-              </>
-            );
-            if (!onGo || !a.go) return <div key={i} style={{ fontSize: 12.5 }}>{body}</div>;
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => onGo(a.go)}
-                style={{
-                  textAlign: "left", width: "100%", cursor: "pointer",
-                  background: "transparent", border: "none", padding: 0, font: "inherit", fontSize: 12.5,
-                }}
-              >
-                {body}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div style={CARD}>
-        <PanelHead owners={["Nauti Coral", "Nauti Siren"]}><Go to="mediaDrafts">Going out next</Go></PanelHead>
-        {nextByDay.length === 0 && <div style={EMPTY}>Nothing scheduled.</div>}
-        <div style={{ display: "grid", gap: 6 }}>
-          {nextByDay.slice(0, 6).map((d) => (
-            <div key={d.day} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5 }}>
-              <span className="mono" style={{ color: d.day === today ? "#E8934A" : "var(--text)", fontWeight: d.day === today ? 700 : 400, whiteSpace: "nowrap" }}>
-                {mediaDraftDate(d.day) || d.day}
-              </span>
-              <span style={{ color: "var(--muted)", fontSize: 11.5, textAlign: "right" }}>{d.platforms.join(" · ")}</span>
-            </div>
-          ))}
-          {nextByDay.length > 6 && (
-            <div style={{ color: "var(--muted)", fontSize: 11 }}>…and {nextByDay.length - 6} more days scheduled</div>
-          )}
-        </div>
-      </div>
-
-      {/* Joy. Reviews are the visible half; the half that costs money is a
-          guest nobody can contact any more. */}
-      <div style={CARD}>
-        <PanelHead owners={["Nauti Joy"]}><Go to="testimonials">Guests</Go></PanelHead>
-        <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--muted)" }}>Reviews live</span>
-            <span className="mono" style={{ fontWeight: 700 }}>
-              {liveReviews}{avgRating ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {avgRating}★</span> : null}
-            </span>
-          </div>
-          {pendingReviews > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#E8934A" }}>Waiting on your approval</span>
-              <span className="mono" style={{ color: "#E8934A", fontWeight: 700 }}>{pendingReviews}</span>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--muted)" }}>Never asked</span>
-            <span className="mono" style={{ fontWeight: 700 }}>{unaskedGuests.length}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: unreachable > 0 ? "#E8934A" : "var(--muted)" }}>…of those, no way to reach them</span>
-            <span className="mono" style={{ color: unreachable > 0 ? "#E8934A" : "var(--text)", fontWeight: 700 }}>{unreachable}</span>
-          </div>
-        </div>
-        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
-          {askable > 0
-            ? askable + " can still be asked. Joy mails you the list on Mondays."
-            : "Nobody left who can be reached — the gap is contact details at booking, not the asking."}
-        </div>
-      </div>
-
-      {/* Reef. Every line here is money that exists and is not being taken. */}
-      <div style={CARD}>
-        <PanelHead owners={["Nauti Reef"]}><Go to="giftCertificates">Money on the table</Go></PanelHead>
-        <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--muted)" }}>Open weekend dates, next 8 weeks</span>
-            <span className="mono" style={{ fontWeight: 700 }}>{openWeekends}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--muted)" }}>…roughly worth</span>
-            <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(openWeekends * avgCharter)}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: giftCertificates.length === 0 ? "#E8934A" : "var(--muted)" }}>Gift certificates sold</span>
-            <span className="mono" style={{ color: giftCertificates.length === 0 ? "#E8934A" : "var(--text)", fontWeight: 700 }}>{giftCertificates.length}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--muted)" }}>Ideas open on the board</span>
-            <span className="mono" style={{ fontWeight: 700 }}>{revenueIdeas}</span>
-          </div>
-        </div>
-        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
-          An empty Saturday is the most expensive thing the business owns. Valued at the
-          {" "}{currency(avgCharter)} average charter.
-        </div>
-      </div>
-
-      {/* Nova. The only panel whose good state is empty, which is why it says
-          so rather than showing a zero and looking broken. */}
-      <div style={CARD}>
-        <PanelHead owners={["Nauti Nova"]}>
-          <div style={{ ...H, marginBottom: 0 }}>Research</div>
-        </PanelHead>
-        {novaItems.length === 0 ? (
-          <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
-            Nothing has cleared the bar.
-            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
-              She reports only what you would be annoyed to learn six months late — a grant that
-              closed, a rule that changed, money you were owed. Most weeks that is nothing, and an
-              empty panel here is her working.
-            </div>
-          </div>
-        ) : (
+    <div className="console-orbit" style={{ marginTop: 14 }}>
+      {/* Pearl above the board: she is the one who reads every agent's
+          input and decides what reaches him, so her card and the two panels
+          she owns sit over the top of everything. */}
+      <div className="orbit-lead" style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(300px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr)" }}>
+        <CrewCard r={byName["Nauti Pearl"]} />
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Pearl"]}>
+            <div style={{ ...H, marginBottom: 0 }}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
+          </PanelHead>
+          {attention.length === 0 && <div style={EMPTY}>Genuinely nothing waiting.</div>}
           <div style={{ display: "grid", gap: 7 }}>
-            {novaItems.slice(0, 3).map((t) => (
-              <div key={t.id} style={{ fontSize: 12.5, lineHeight: 1.45 }}>
-                {t.text.replace(/^\[?NOVA[^\]]*\]?\s*:?\s*/i, "")}
+            {attention.map((a, i) => {
+              const body = (
+                <>
+                  <div style={{ color: a.urgent ? "#E8934A" : "var(--text)", fontWeight: a.urgent ? 700 : 400 }}>{a.t}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 11 }}>{a.w}</div>
+                </>
+              );
+              if (!onGo || !a.go) return <div key={i} style={{ fontSize: 12.5 }}>{body}</div>;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onGo(a.go)}
+                  style={{
+                    textAlign: "left", width: "100%", cursor: "pointer",
+                    background: "transparent", border: "none", padding: 0, font: "inherit", fontSize: 12.5,
+                  }}
+                >
+                  {body}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="bookings">Charters</Go></PanelHead>
+          {charters.length === 0 && <div style={EMPTY}>Nothing on the books.</div>}
+          <div style={{ display: "grid", gap: 7 }}>
+            {charters.map((b) => (
+              <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5 }}>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <strong>{b.guestName || "(no name)"}</strong>
+                  <span style={{ color: "var(--muted)" }}> {b.vesselName}</span>
+                </span>
+                <span style={{ whiteSpace: "nowrap" }}>
+                  <span className="mono" style={{ color: "var(--muted)", fontSize: 11.5 }}>{b.date}</span>{" "}
+                  <span style={{ fontSize: 10, fontWeight: 700, color: b.status === "booked" ? "#4FA8E8" : "#7FE0B8" }}>
+                    {b.status === "booked" ? "UPCOMING" : "DONE"}
+                  </span>
+                </span>
               </div>
             ))}
           </div>
-        )}
-        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)" }}>
-          {novaRun ? "Last looked " + agoWords(novaRun.startedAt) + "." : "First run is Monday."}
         </div>
       </div>
 
-      <div style={CARD}>
-        <div style={H}>
-          The board {openTodos.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({openTodos.length} open)</span>}
+      <div className="orbit-left" style={{ display: "grid", gap: 14 }}>
+      <div className="orbit-group ">
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Penny", "Nauti Shelly"]}><Go to="ledger">This month</Go></PanelHead>
+          <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Income</span>
+              <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(mIncome)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Expenses</span>
+              <span className="mono" style={{ color: "var(--pink)", fontWeight: 700 }}>{currency(mExpense)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(203,108,230,0.15)", paddingTop: 7 }}>
+              <span style={{ color: "var(--muted)" }}>Net</span>
+              <span className="mono" style={{ color: mIncome - mExpense >= 0 ? "#E8934A" : "var(--pink)", fontWeight: 700 }}>{currency(mIncome - mExpense)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", fontSize: 12.5 }}>
+              <span>Charters run</span><span className="mono">{monthCharters}</span>
+            </div>
+          </div>
         </div>
+        <div className="orbit-crew">
+          <CrewCard r={byName["Nauti Penny"]} compact />
+          <CrewCard r={byName["Nauti Shelly"]} compact />
+        </div>
+      </div>
+      <div className="orbit-group ">
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Joy"]}><Go to="testimonials">Guests</Go></PanelHead>
+          <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Reviews live</span>
+              <span className="mono" style={{ fontWeight: 700 }}>
+                {liveReviews}{avgRating ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {avgRating}★</span> : null}
+              </span>
+            </div>
+            {pendingReviews > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#E8934A" }}>Waiting on your approval</span>
+                <span className="mono" style={{ color: "#E8934A", fontWeight: 700 }}>{pendingReviews}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Never asked</span>
+              <span className="mono" style={{ fontWeight: 700 }}>{unaskedGuests.length}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: unreachable > 0 ? "#E8934A" : "var(--muted)" }}>…of those, no way to reach them</span>
+              <span className="mono" style={{ color: unreachable > 0 ? "#E8934A" : "var(--text)", fontWeight: 700 }}>{unreachable}</span>
+            </div>
+          </div>
+          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
+            {askable > 0
+              ? askable + " can still be asked. Joy mails you the list on Mondays."
+              : "Nobody left who can be reached — the gap is contact details at booking, not the asking."}
+          </div>
+        </div>
+        <div className="orbit-crew">
+          <CrewCard r={byName["Nauti Joy"]} compact />
+        </div>
+      </div>
+      </div>
+
+      <div className="orbit-center">
+        <div style={{ ...CARD, borderColor: "rgba(203,108,230,0.4)" }}>
+          <PanelHead owners={["Nauti Pearl"]}>
+            <div style={{ ...H, marginBottom: 0, fontSize: 15 }}>
+              The Board <span style={{ color: "var(--muted)", fontWeight: 400 }}>(To-do List)</span>
+            </div>
+          </PanelHead>
+
         <form onSubmit={submit} style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a task…"
             style={{ flex: 1, minWidth: 0, padding: "7px 9px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }} />
           <button type="submit" style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "0 13px", fontWeight: 700 }}>+</button>
         </form>
-        {todos.length === 0 && <div style={EMPTY}>Nothing on the list.</div>}
-        <div style={{ display: "grid", gap: 5, maxHeight: 300, overflowY: "auto" }}>
-          {openTodos.map((t) => (
-            <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.4, cursor: "pointer" }}>
-              <input type="checkbox" checked={false} onChange={() => onToggleTodo(t.id, true)} style={{ accentColor: "var(--purple)", flexShrink: 0, marginTop: 2 }} />
-              <span style={{ flex: 1, minWidth: 0 }}>{t.text}</span>
-              <button type="button" onClick={(e) => { e.preventDefault(); onDeleteTodo(t.id); }}
-                style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.5, flexShrink: 0 }}>✕</button>
-            </label>
-          ))}
-          {doneTodos.length > 0 && (
-            <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{doneTodos.length} done</div>
-              {doneTodos.slice(0, 4).map((t) => (
-                <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "var(--muted)", lineHeight: 1.4, cursor: "pointer" }}>
-                  <input type="checkbox" checked readOnly onClick={() => onToggleTodo(t.id, false)} style={{ accentColor: "var(--purple)", flexShrink: 0, marginTop: 2 }} />
-                  <span style={{ flex: 1, minWidth: 0, textDecoration: "line-through" }}>{t.text}</span>
-                  <button type="button" onClick={(e) => { e.preventDefault(); onDeleteTodo(t.id); }}
-                    style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.5, flexShrink: 0 }}>✕</button>
-                </label>
-              ))}
+
+        {openTodos.length === 0 && <div style={EMPTY}>Nothing on the list.</div>}
+
+        {/* Ranked, not chronological. A board this long read as a wall of
+            equal-weight text, and the thing that is actually urgent could sit
+            anywhere in it. */}
+        {["high", "medium", "low"].map((band) => {
+          const items = rankedTodos.filter((t) => t.priority === band);
+          if (!items.length) return null;
+          const p = PRIORITY[band];
+          return (
+            <div key={band} style={{ marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: p.color, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                  {p.label}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>{items.length}</span>
+              </div>
+              <div style={{ display: "grid", gap: 5 }}>
+                {items.map((t) => (
+                  <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.45, cursor: "pointer" }}>
+                    <input type="checkbox" checked={false} onChange={() => onToggleTodo(t.id, true)}
+                      style={{ accentColor: p.color, flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      {t.owner && (
+                        <span style={{ color: crewAccent(t.owner), fontWeight: 700, fontSize: 11, marginRight: 5 }}>
+                          {t.owner}
+                        </span>
+                      )}
+                      {t.body}
+                    </span>
+                    <button type="button" onClick={(e) => { e.preventDefault(); onDeleteTodo(t.id); }}
+                      style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.4, flexShrink: 0 }}>✕</button>
+                  </label>
+                ))}
+              </div>
             </div>
-          )}
+          );
+        })}
+
+        {/* Completed items are folded away rather than deleted -- closing one
+            is a record that it happened, and the crew read it back. */}
+        {doneTodos.length > 0 && (
+          <div style={{ marginTop: 4, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+            <button type="button" onClick={() => setShowDone((v) => !v)}
+              style={{ background: "transparent", border: "none", color: "var(--muted)", fontSize: 11.5, padding: 0, cursor: "pointer" }}>
+              {showDone ? "▾" : "▸"} {doneTodos.length} done
+            </button>
+            {showDone && (
+              <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
+                {doneTodos.map((t) => (
+                  <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "var(--muted)", lineHeight: 1.4, cursor: "pointer" }}>
+                    <input type="checkbox" checked readOnly onClick={() => onToggleTodo(t.id, false)}
+                      style={{ accentColor: "var(--purple)", flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ flex: 1, minWidth: 0, textDecoration: "line-through" }}>{t.text}</span>
+                    <button type="button" onClick={(e) => { e.preventDefault(); onDeleteTodo(t.id); }}
+                      style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.4, flexShrink: 0 }}>✕</button>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11, color: "var(--muted)", lineHeight: 1.45 }}>
+          Pearl keeps this board. The crew write to it, she ranks it and folds the duplicates,
+          and anything marked High stays in her morning brief until it is closed.
+        </div>
         </div>
       </div>
 
+      <div className="orbit-right" style={{ display: "grid", gap: 14 }}>
+      <div className="orbit-group ">
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Coral", "Nauti Siren"]}><Go to="mediaDrafts">Going out next</Go></PanelHead>
+          {nextByDay.length === 0 && <div style={EMPTY}>Nothing scheduled.</div>}
+          <div style={{ display: "grid", gap: 6 }}>
+            {nextByDay.slice(0, 6).map((d) => (
+              <div key={d.day} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5 }}>
+                <span className="mono" style={{ color: d.day === today ? "#E8934A" : "var(--text)", fontWeight: d.day === today ? 700 : 400, whiteSpace: "nowrap" }}>
+                  {mediaDraftDate(d.day) || d.day}
+                </span>
+                <span style={{ color: "var(--muted)", fontSize: 11.5, textAlign: "right" }}>{d.platforms.join(" · ")}</span>
+              </div>
+            ))}
+            {nextByDay.length > 6 && (
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>…and {nextByDay.length - 6} more days scheduled</div>
+            )}
+          </div>
+        </div>
+        <div className="orbit-crew">
+          <CrewCard r={byName["Nauti Coral"]} compact />
+          <CrewCard r={byName["Nauti Siren"]} compact />
+        </div>
+      </div>
+      <div className="orbit-group ">
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Reef"]}><Go to="giftCertificates">Money on the table</Go></PanelHead>
+          <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Open weekend dates, next 8 weeks</span>
+              <span className="mono" style={{ fontWeight: 700 }}>{openWeekends}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>…roughly worth</span>
+              <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(openWeekends * avgCharter)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: giftCertificates.length === 0 ? "#E8934A" : "var(--muted)" }}>Gift certificates sold</span>
+              <span className="mono" style={{ color: giftCertificates.length === 0 ? "#E8934A" : "var(--text)", fontWeight: 700 }}>{giftCertificates.length}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Ideas open on the board</span>
+              <span className="mono" style={{ fontWeight: 700 }}>{revenueIdeas}</span>
+            </div>
+          </div>
+          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
+            An empty Saturday is the most expensive thing the business owns. Valued at the
+            {" "}{currency(avgCharter)} average charter.
+          </div>
+        </div>
+        <div className="orbit-crew">
+          <CrewCard r={byName["Nauti Reef"]} compact />
+        </div>
+      </div>
+      <div className="orbit-group ">
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Nova"]}>
+            <div style={{ ...H, marginBottom: 0 }}>Research</div>
+          </PanelHead>
+          {novaItems.length === 0 ? (
+            <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
+              Nothing has cleared the bar.
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
+                She reports only what you would be annoyed to learn six months late — a grant that
+                closed, a rule that changed, money you were owed. Most weeks that is nothing, and an
+                empty panel here is her working.
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 7 }}>
+              {novaItems.slice(0, 3).map((t) => (
+                <div key={t.id} style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                  {t.text.replace(/^\[?NOVA[^\]]*\]?\s*:?\s*/i, "")}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)" }}>
+            {novaRun ? "Last looked " + agoWords(novaRun.startedAt) + "." : "First run is Monday."}
+          </div>
+        </div>
+        <div className="orbit-crew">
+          <CrewCard r={byName["Nauti Nova"]} compact />
+        </div>
+      </div>
+      </div>
     </div>
-
-    {/* The roster, under the panels it is accountable for. This used to be its
-        own tab, which meant the owner read the numbers in one place and who was
-        watching them in another. */}
-    <CrewRoster agentActivity={agentActivity} />
     </>
   );
 }
