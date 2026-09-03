@@ -3596,12 +3596,21 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // Season starts in March. Counting from there rather than "all time" is what
   // makes an idle boat visible: the Islander has history, it just has no 2026.
   const SEASON_FROM = today.slice(0, 4) + "-03-01";
+  // Average of what charters actually took this season. Declared here because
+  // both the fleet panel and the money panel need it, and the ledger-wide
+  // avgCharter further down is a different figure (all income rows, all time).
+  const seasonPaid = externalBookings
+    .filter((b) => b.status === "completed" && (b.date || "") >= today.slice(0, 4) + "-03-01")
+    .map((b) => Number(b.pricePaid || 0)).filter((n) => n > 0);
+  const avgCharterSeason = seasonPaid.length
+    ? Math.round(seasonPaid.reduce((a, n) => a + n, 0) / seasonPaid.length)
+    : 0;
   const seasonRuns = externalBookings.filter(
     (b) => b.status === "completed" && (b.date || "") >= SEASON_FROM
   );
   // The CURRENT fleet, from the Vessel table — not from booking history.
   //
-  // History was wrong in both directions: it listed "Naughty Lexi (sold, no
+  // History was wrong in both directions: it listed "Nauti Lexi (sold, no
   // longer in fleet)" and the sold wave runners as idle, when a sold asset
   // costs nothing and is not the point; and it left out the Nauti Islander
   // entirely, because a boat that has never run has no bookings to derive a
@@ -3619,6 +3628,40 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       earned: paid.reduce((a, n) => a + n, 0),
     };
   }).sort((a, b) => b.trips - a.trips);
+
+  // --- the season, which is the honest unit for a seasonal business --------
+  //
+  // A calendar month is a misleading frame here: on the 3rd it shows a month of
+  // fixed bills against three days of income. March is when the season starts.
+  const seasonLedger = ledger.filter((e) => (e.date || "") >= SEASON_FROM);
+  const seasonIn = seasonLedger.filter((e) => e.type === "income")
+    .reduce((a, e) => a + Number(e.amount || 0), 0);
+  const seasonOut = seasonLedger.filter((e) => e.type === "expense")
+    .reduce((a, e) => a + Number(e.amount || 0), 0);
+  const seasonNet = seasonIn - seasonOut;
+  const monthsElapsed = Math.max(
+    1,
+    new Set(seasonLedger.map((e) => String(e.date).slice(0, 7))).size
+  );
+  const avgMonthOut = seasonOut / monthsElapsed;
+  // What a month has to earn to stand still, expressed as charters, because
+  // "five charters" is a thing you can act on and "$2,048" is not.
+  const breakEven = avgCharterSeason > 0 ? Math.ceil(avgMonthOut / avgCharterSeason) : null;
+  const tripsPerMonth = seasonRuns.length / monthsElapsed;
+  const dayOfMonth = Number(today.slice(8, 10));
+
+  // Money taken for a charter that has not been delivered. Undated bookings
+  // count: a booking goes undated precisely because it never got rescheduled,
+  // and filtering on a parseable date would drop exactly those.
+  const heldMoney = externalBookings
+    .filter((b) => {
+      if (Number(b.pricePaid) <= 0) return false;
+      if (b.status === "completed") return false;
+      const d = String(b.date || "");
+      const dated = /^d{4}-d{2}-d{2}$/.test(d);
+      return !dated || d < today;
+    })
+    .reduce((a, b) => a + Number(b.pricePaid || 0), 0);
 
   const seasonTrips = seasonRuns.length;
   const seasonEarned = seasonRuns.reduce((a, b) => a + Number(b.pricePaid || 0), 0);
@@ -3850,23 +3893,70 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
         </div>
       <div className="orbit-group ">
         <div style={CARD}>
-          <PanelHead owners={["Nauti Penny", "Nauti Shelly"]}><Go to="ledger">This month</Go></PanelHead>
-          <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
+          <PanelHead owners={["Nauti Penny", "Nauti Shelly"]}><Go to="ledger">Money</Go></PanelHead>
+
+          {/* The season first. A seasonal business does not live in calendar
+              months, and on the 3rd a month view shows a month of bills against
+              three days of income. */}
+          <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--muted)" }}>Income</span>
-              <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(mIncome)}</span>
+              <span style={{ color: "var(--muted)" }}>Season in</span>
+              <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(seasonIn)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--muted)" }}>Expenses</span>
-              <span className="mono" style={{ color: "var(--pink)", fontWeight: 700 }}>{currency(mExpense)}</span>
+              <span style={{ color: "var(--muted)" }}>Season out</span>
+              <span className="mono" style={{ color: "var(--pink)" }}>{currency(seasonOut)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(203,108,230,0.15)", paddingTop: 7 }}>
-              <span style={{ color: "var(--muted)" }}>Net</span>
-              <span className="mono" style={{ color: mIncome - mExpense >= 0 ? "#E8934A" : "var(--pink)", fontWeight: 700 }}>{currency(mIncome - mExpense)}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 5, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+              <span style={{ fontWeight: 700 }}>Net since March</span>
+              <span className="mono" style={{ fontWeight: 700, color: seasonNet >= 0 ? "#7FE0B8" : "#E2685F" }}>
+                {seasonNet >= 0 ? "+" : ""}{currency(seasonNet)}
+              </span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", fontSize: 12.5 }}>
-              <span>Charters run</span><span className="mono">{monthCharters}</span>
+          </div>
+
+          {/* What a month must clear to stand still, in charters rather than
+              dollars, because charters are the thing you can go and get. */}
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 6, fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Costs, per month</span>
+              <span className="mono">{currency(avgMonthOut)}</span>
             </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Break-even</span>
+              <span className="mono">
+                {breakEven ? breakEven + " charters/mo" : "—"}
+                <span style={{ color: "var(--muted)" }}> @ {currency(avgCharterSeason)}</span>
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Running at</span>
+              <span className="mono" style={{ color: breakEven && tripsPerMonth < breakEven ? "#E8934A" : "#7FE0B8" }}>
+                {tripsPerMonth.toFixed(1)} charters/mo
+              </span>
+            </div>
+          </div>
+
+          {/* This month, kept but honestly labelled with how far into it we are
+              so a low income figure is read as "early", not "broke". */}
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 12.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>
+                This month <span style={{ opacity: 0.7 }}>· day {dayOfMonth}</span>
+              </span>
+              <span className="mono">
+                <span style={{ color: "#7FE0B8" }}>{currency(mIncome)}</span>
+                <span style={{ color: "var(--muted)" }}> in · </span>
+                <span style={{ color: "var(--pink)" }}>{currency(mExpense)}</span>
+                <span style={{ color: "var(--muted)" }}> out</span>
+              </span>
+            </div>
+            {heldMoney > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
+                <span style={{ color: "#E8934A" }}>Held, undelivered</span>
+                <span className="mono" style={{ color: "#E8934A", fontWeight: 700 }}>{currency(heldMoney)}</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="orbit-crew">
@@ -4057,9 +4147,9 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           {/* Next out, and how long the wait is. A gap is as much the news as
               the booking. */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Next out</span>
+            <span style={{ fontSize: 12.5, color: "var(--muted)", flex: "0 0 auto" }}>Next out</span>
             {nextOut ? (
-              <span style={{ fontSize: 12.5, textAlign: "right" }}>
+              <span style={{ fontSize: 12.5, textAlign: "right", minWidth: 0, flex: "1 1 auto" }}>
                 <strong>{nextOut.guestName || "(no name)"}</strong>
                 <span style={{ color: "var(--muted)" }}> · {nextOut.vesselName}</span>
                 <div className="mono" style={{ fontSize: 11.5, color: daysToNext > 14 ? "#E8934A" : "#4FA8E8" }}>
@@ -4094,11 +4184,14 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
               const stale = v.idleDays != null && v.idleDays > 30;
               return (
                 <div key={v.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5 }}>
-                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {/* The name takes whatever is left and truncates; the figures
+                      never shrink. Both halves flexing is what pushed the money
+                      column off the edge of the card. */}
+                  <span style={{ minWidth: 0, flex: "1 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <strong style={{ color: cold ? "#E2685F" : "var(--text)" }}>{v.name}</strong>
                     <span style={{ color: "var(--muted)" }}> {v.trips} {v.trips === 1 ? "trip" : "trips"}</span>
                   </span>
-                  <span style={{ whiteSpace: "nowrap", fontSize: 11.5 }}>
+                  <span style={{ whiteSpace: "nowrap", fontSize: 11.5, flex: "0 0 auto" }}>
                     {cold ? (
                       <span style={{ color: "#E2685F", fontWeight: 700 }}>never ran this season</span>
                     ) : (
