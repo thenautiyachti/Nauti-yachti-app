@@ -3319,6 +3319,16 @@ function CrewTab({ agentActivity = [] }) {
                 {r.job}
               </p>
 
+              {/* Without this, a run that found nothing reads as a run that
+                  did nothing, and the agent designed to stay silent looks
+                  like the one that quietly broke. */}
+              {r.quietIsNormal && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)", lineHeight: 1.45 }}>
+                  Expect most weeks to be empty. She reports only what passes the bar &mdash; silence
+                  here is her working, not failing.
+                </div>
+              )}
+
               {r.run && (
                 <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
                   <div style={{ fontSize: 11.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
