@@ -3433,21 +3433,16 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // Which priority bands are expanded. High open, Medium and Low closed --
   // ranking exists so the top band is the part he has to read, and 32 of the
   // 37 items live in the two below it.
+  // High open, Medium and Low collapsed, on every load.
+  //
+  // Deliberately NOT remembered. I had this persisting to localStorage, which
+  // sounds helpful and does the opposite: open Medium once to check something
+  // and it stays open forever after, so the board is back to its full length
+  // the next morning. Expanding a band is a thing you do for one look, not a
+  // preference you are setting.
   const [openBands, setOpenBands] = useState({ high: true, medium: false, low: false });
-  // Remembered per browser so his choice survives a reload. Wrapped because
-  // storage throws outright in a private window or with site data blocked.
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem("ny.board.bands");
-      if (raw) setOpenBands((v) => ({ ...v, ...JSON.parse(raw) }));
-    } catch {}
-  }, []);
   function toggleBand(band) {
-    setOpenBands((v) => {
-      const next = { ...v, [band]: !v[band] };
-      try { window.localStorage.setItem("ny.board.bands", JSON.stringify(next)); } catch {}
-      return next;
-    });
+    setOpenBands((v) => ({ ...v, [band]: !v[band] }));
   }
   const today = localDateKey(new Date());
   const month = today.slice(0, 7);
