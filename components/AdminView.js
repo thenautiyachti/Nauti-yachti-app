@@ -3430,6 +3430,25 @@ function PanelHead({ owners, children }) {
 function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, testimonials = [], giftCertificates = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
   const [text, setText] = useState("");
   const [showDone, setShowDone] = useState(false);
+  // Which priority bands are expanded. High open, Medium and Low closed --
+  // ranking exists so the top band is the part he has to read, and 32 of the
+  // 37 items live in the two below it.
+  const [openBands, setOpenBands] = useState({ high: true, medium: false, low: false });
+  // Remembered per browser so his choice survives a reload. Wrapped because
+  // storage throws outright in a private window or with site data blocked.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("ny.board.bands");
+      if (raw) setOpenBands((v) => ({ ...v, ...JSON.parse(raw) }));
+    } catch {}
+  }, []);
+  function toggleBand(band) {
+    setOpenBands((v) => {
+      const next = { ...v, [band]: !v[band] };
+      try { window.localStorage.setItem("ny.board.bands", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
   const today = localDateKey(new Date());
   const month = today.slice(0, 7);
   const plus = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return localDateKey(d); };
@@ -3621,7 +3640,6 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           input and decides what reaches him, so her card and the two panels
           she owns sit over the top of everything. */}
       <div className="orbit-lead" style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(300px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr)" }}>
-        <CrewCard r={byName["Nauti Pearl"]} />
         <div style={CARD}>
           <PanelHead owners={["Nauti Pearl"]}>
             <div style={{ ...H, marginBottom: 0 }}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
@@ -3652,6 +3670,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
             })}
           </div>
         </div>
+        <CrewCard r={byName["Nauti Pearl"]} />
         <div style={CARD}>
           <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="bookings">Charters</Go></PanelHead>
           {charters.length === 0 && <div style={EMPTY}>Nothing on the books.</div>}
@@ -3762,15 +3781,32 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           if (!items.length) return null;
           const p = PRIORITY[band];
           return (
-            <div key={band} style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+            <div key={band} style={{ marginBottom: 10 }}>
+              <button
+                type="button"
+                onClick={() => toggleBand(band)}
+                aria-expanded={!!openBands[band]}
+                style={{
+                  display: "flex", alignItems: "center", gap: 7, width: "100%",
+                  background: "transparent", border: "none", padding: "3px 0", marginBottom: 6,
+                  cursor: "pointer", textAlign: "left",
+                }}
+              >
+                <span style={{ color: p.color, fontSize: 10, width: 9, flexShrink: 0 }}>
+                  {openBands[band] ? "▾" : "▸"}
+                </span>
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flexShrink: 0 }} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: p.color, textTransform: "uppercase", letterSpacing: "0.07em" }}>
                   {p.label}
                 </span>
+                {/* The count stays visible when collapsed -- a hidden band with
+                    no number would just look like the band is empty. */}
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>{items.length}</span>
-              </div>
-              <div style={{ display: "grid", gap: 5 }}>
+                {!openBands[band] && (
+                  <span style={{ fontSize: 10.5, color: "var(--muted)", opacity: 0.7, marginLeft: "auto" }}>hidden</span>
+                )}
+              </button>
+              <div style={{ display: "grid", gap: 5 }} hidden={!openBands[band]}>
                 {items.map((t) => (
                   <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.45, cursor: "pointer" }}>
                     <input type="checkbox" checked={false} onChange={() => onToggleTodo(t.id, true)}
