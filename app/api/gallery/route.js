@@ -1,6 +1,24 @@
+const fs = require("fs");
+const path = require("path");
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
+const { imageSize, remoteImageSize } = require("../../../lib/imageSize");
+
+// The gallery lays out justified rows, which needs each photo's shape up front.
+// Measuring on the way in means a photo added through the console lays out
+// correctly straight away, with no list for anyone to remember to update.
+async function measure(image) {
+  try {
+    if (/^https?:\/\//i.test(image)) return await remoteImageSize(image);
+    const file = path.join(process.cwd(), "public", image.replace(/^\//, ""));
+    return imageSize(fs.readFileSync(file));
+  } catch {
+    // A photo whose size cannot be read still gets added; the gallery falls
+    // back to a portrait shape for it rather than refusing the upload.
+    return null;
+  }
+}
 
 async function GET() {
   const items = await prisma.galleryItem.findMany({ orderBy: { sortOrder: "asc" } });
@@ -34,12 +52,16 @@ async function POST(req) {
     return m ? Math.max(max, Number(m[1])) : max;
   }, 0) + 1;
 
+  const size = await measure(image);
+
   const item = await prisma.galleryItem.create({
     data: {
       id: `g-${category}-${nextNum}`,
       image,
       caption: String(body.caption || "").trim(),
       category,
+      width: size ? size.width : null,
+      height: size ? size.height : null,
       // Sorting is per-category in the public gallery, so a new tile goes last
       // within its own group rather than last overall.
       sortOrder: siblings.length ? Math.max(...siblings.map((g) => g.sortOrder || 0)) + 1 : 1,

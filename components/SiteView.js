@@ -398,20 +398,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                   <div className="mono" style={{ color: "var(--purple)", fontSize: 12.5, letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase" }}>
                     {pkgName}
                   </div>
-                  {/* Photos keep their own shape. A fixed portrait tile cropped
-                      every landscape shot, cutting guests out at the sides, and
-                      the column layout also spares whoever uploads the next
-                      photo from having to crop it to match. */}
-                  <div style={{ columns: "200px", columnGap: 14 }}>
-                    {items.map((g) => (
-                      <div key={g.id} style={{ breakInside: "avoid", marginBottom: 14, borderRadius: 10, overflow: "hidden", background: "var(--card)", border: "1px solid rgba(203,108,230,0.15)" }}>
-                        <img src={g.image} alt={g.caption} style={{ width: "100%", height: "auto", display: "block" }} />
-                        <div style={{ color: "var(--text)", fontSize: 12, fontWeight: 600, padding: "8px 10px" }}>
-                          {g.caption}
-                        </div>
-                      </div>
-                    ))}
-                </div>
+                  <JustifiedGallery items={items} />
               </div>
             );
             });
@@ -502,6 +489,129 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
         </div>
       )}
     </div>
+  );
+}
+
+// Justified rows, the way a photo gallery normally reads: every row is the
+// full width of the section and every photo in a row shares one height, with
+// widths set by each photo's own shape. Nothing is cropped and nothing is
+// letterboxed -- the row height flexes instead of the picture.
+//
+// This replaced a fixed 3:4 tile, which cut guests out of the 15 landscape
+// photos, and then a column layout, which stopped the cropping but left the
+// rows ragged.
+const ROW_TARGET = 250; // px; the height a row aims for before it is justified
+const ROW_GAP = 12;
+const MIN_ROW = 170; // px; below this a row reads as a strip rather than photos
+
+function buildRows(items, width, target, gap) {
+  const ratio = (g) => (g.width && g.height ? g.width / g.height : 0.75);
+  if (!width) return [items]; // pre-measure: one pass, corrected on mount
+  const rows = [];
+  let row = [];
+  let sum = 0;
+  const heightOf = (n, s) => (width - gap * (n - 1)) / s;
+
+  for (let i = 0; i < items.length; i++) {
+    const g = items[i];
+    row.push(g);
+    sum += ratio(g);
+    // Close the row once the photos at target height would overrun the width.
+    if (sum * target + gap * (row.length - 1) >= width) {
+      // On a narrow screen a row of wide photos can justify down to a strip
+      // barely a hundred pixels tall. Rather than accept that, drop the last
+      // photo back to the next row and let this one breathe.
+      if (row.length > 1 && heightOf(row.length, sum) < MIN_ROW) {
+        const dropped = row.pop();
+        sum -= ratio(dropped);
+        i--; // reconsider it at the start of the next row
+      }
+      rows.push({ items: row, height: heightOf(row.length, sum) });
+      row = [];
+      sum = 0;
+    }
+  }
+  // The last row is justified too, so a category that fits on one line still
+  // runs the full width instead of trailing off. But only up to a point: two
+  // leftover photos stretched across the whole section would tower over every
+  // row above them, so past that the row keeps the target height and simply
+  // ends early.
+  if (row.length) {
+    const full = (width - gap * (row.length - 1)) / sum;
+    rows.push({ items: row, height: full <= target * 1.6 ? full : target });
+  }
+  return rows;
+}
+
+function JustifiedGallery({ items }) {
+  const ref = useRef(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setWidth(el.clientWidth);
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const rows = buildRows(items, width, ROW_TARGET, ROW_GAP);
+
+  // Before the width is known there is nothing to justify against, so render
+  // the photos at their own shape rather than guessing a row height.
+  if (!width) {
+    return (
+      <div ref={ref} style={{ display: "flex", flexWrap: "wrap", gap: ROW_GAP }}>
+        {items.map((g) => (
+          <div key={g.id} style={{ width: 200 }}>
+            <GalleryTile g={g} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} style={{ display: "grid", gap: ROW_GAP }}>
+      {rows.map((row, i) => (
+        <div key={i} style={{ display: "flex", gap: ROW_GAP }}>
+          {row.items.map((g) => {
+            const r = g.width && g.height ? g.width / g.height : 0.75;
+            return (
+              <div key={g.id} style={{ width: r * row.height, flexShrink: 0 }}>
+                <GalleryTile g={g} height={row.height} />
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GalleryTile({ g, height }) {
+  return (
+    <figure style={{ margin: 0, position: "relative", borderRadius: 10, overflow: "hidden", background: "var(--card)", border: "1px solid rgba(203,108,230,0.15)" }}>
+      <img
+        src={g.image}
+        alt={g.caption}
+        loading="lazy"
+        style={{ width: "100%", height: height || "auto", objectFit: "cover", display: "block" }}
+      />
+      {/* Over the photo rather than below it, so a row's height is the picture
+          height and captions of different lengths cannot misalign the row. */}
+      <figcaption
+        style={{
+          position: "absolute", left: 0, right: 0, bottom: 0,
+          background: "linear-gradient(to top, rgba(10,6,18,0.92), rgba(10,6,18,0))",
+          color: "var(--text)", fontSize: 12, fontWeight: 600, padding: "18px 10px 8px",
+        }}
+      >
+        {g.caption}
+      </figcaption>
+    </figure>
   );
 }
 

@@ -59,6 +59,11 @@ model GalleryItem {
   caption   String
   category  String // matches a Package id
   sortOrder Int    @default(0)
+  // Real pixel size of the source photo, read from the file header when the
+  // item is added. The gallery lays out justified rows from these, which it
+  // cannot do without knowing each photo's shape before it loads.
+  width     Int?
+  height    Int?
 }
 
 model BlockedDate {
