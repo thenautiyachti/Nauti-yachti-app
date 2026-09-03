@@ -3207,6 +3207,23 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 // The crew, computed once. Both the alert banners and the individual cards
 // need the same derived state, and duplicating it was how the Crew tab and the
 // Overview panel drifted apart in the first place.
+// What an attention item is about. Each carries an icon and the accent of the
+// crew member whose patch it is, so the panel reads as the same system as the
+// cards below it.
+//
+// Emoji rather than an icon font: no dependency, no sprite sheet, and they
+// render at any size in both themes. Deliberately literal — a wrench reads as
+// maintenance to everyone, where an abstract glyph needs a legend.
+const ATTENTION_KIND = {
+  boat:     { icon: "🔧", color: "#4FBF8B", label: "Boat" },        // Pearl's green
+  media:    { icon: "📸", color: "#E86AA8", label: "Media" },       // Coral's pink
+  reviews:  { icon: "⭐", color: "#FFB454", label: "Reviews" },      // Joy's gold
+  guests:   { icon: "📇", color: "#FFB454", label: "Guests" },      // Joy again
+  money:    { icon: "💵", color: "#4FF3FF", label: "Money" },       // Penny's cyan
+  bookings: { icon: "⛵", color: "#4FA8E8", label: "Bookings" },
+  enquiry:  { icon: "📨", color: "#CB6CE6", label: "Enquiries" },
+};
+
 function crewAccent(shortName) {
   const c = CREW.find((x) => x.name.toUpperCase().endsWith(" " + String(shortName).toUpperCase()));
   return c ? c.accent : "var(--muted)";
@@ -3636,19 +3653,20 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // `go` is the tab that can actually act on the item, so the line is a link
   // rather than an instruction to go and find it yourself.
   const attention = [
-    newInquiries.length && { t: `${newInquiries.length} new ${newInquiries.length === 1 ? "enquiry" : "enquiries"}`, w: "Bookings → Inquiries", go: "inquiries", urgent: true },
-    overdue.length && { t: `${overdue.length} maintenance ${overdue.length === 1 ? "item" : "items"} overdue`, w: "Boat", go: "maintenance", urgent: true },
-    dueSoon.length && { t: `${dueSoon.length} maintenance ${dueSoon.length === 1 ? "item" : "items"} due soon`, w: "Boat", go: "maintenance" },
+    newInquiries.length && { k: "enquiry", t: `${newInquiries.length} new ${newInquiries.length === 1 ? "enquiry" : "enquiries"}`, w: "Bookings → Inquiries", go: "inquiries", urgent: true },
+    overdue.length && { k: "boat", t: `${overdue.length} maintenance ${overdue.length === 1 ? "item" : "items"} overdue`, w: "Boat", go: "maintenance", urgent: true },
+    dueSoon.length && { k: "boat", t: `${dueSoon.length} maintenance ${dueSoon.length === 1 ? "item" : "items"} due soon`, w: "Boat", go: "maintenance" },
     unjudgeable.length === maintenanceItems.length && maintenanceItems.length > 0 && {
+      k: "boat",
       t: `No maintenance can be judged — ${maintenanceItems.length} items, nothing logged`,
       w: "Boat: add engine hours or a last-serviced date", go: "maintenance", urgent: true,
     },
-    draftsWaiting.length && { t: `${draftsWaiting.length} social ${draftsWaiting.length === 1 ? "draft" : "drafts"} to approve`, w: "Marketing → Media Drafts", go: "mediaDrafts", urgent: true },
-    noPrice.length && { t: `${noPrice.length} completed ${noPrice.length === 1 ? "charter has" : "charters have"} no price`, w: "no income row is written without one", go: "bookings", urgent: true },
-    soonPosts.length && { t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts", go: "mediaDrafts" },
-    neverAsked.length && { t: `${neverAsked.length} guests never asked for a review`, w: "Marketing → Testimonials, from your phone", go: "testimonials" },
-    looseIncome.length && { t: `${looseIncome.length} income ${looseIncome.length === 1 ? "row is" : "rows are"} not tied to a charter`, w: "Money → Reconciliation", go: "reconcile" },
-    noPhone.length && { t: `${noPhone.length} past guests have no phone number`, w: "they cannot be asked for anything", go: "bookings" },
+    draftsWaiting.length && { k: "media", t: `${draftsWaiting.length} social ${draftsWaiting.length === 1 ? "draft" : "drafts"} to approve`, w: "Marketing → Media Drafts", go: "mediaDrafts", urgent: true },
+    noPrice.length && { k: "money", t: `${noPrice.length} completed ${noPrice.length === 1 ? "charter has" : "charters have"} no price`, w: "no income row is written without one", go: "bookings", urgent: true },
+    soonPosts.length && { k: "media", t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts", go: "mediaDrafts" },
+    neverAsked.length && { k: "reviews", t: `${neverAsked.length} guests never asked for a review`, w: "Marketing → Testimonials, from your phone", go: "testimonials" },
+    looseIncome.length && { k: "money", t: `${looseIncome.length} income ${looseIncome.length === 1 ? "row is" : "rows are"} not tied to a charter`, w: "Money → Reconciliation", go: "reconcile" },
+    noPhone.length && { k: "guests", t: `${noPhone.length} past guests have no phone number`, w: "they cannot be asked for anything", go: "bookings" },
   ].filter(Boolean);
 
   // --- social: what is actually going out -------------------------------
@@ -3788,11 +3806,30 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           {attention.length === 0 && <div style={EMPTY}>Genuinely nothing waiting.</div>}
           <div style={{ display: "grid", gap: 7 }}>
             {attention.map((a, i) => {
+              const kind = ATTENTION_KIND[a.k] || ATTENTION_KIND.bookings;
               const body = (
-                <>
-                  <div style={{ color: a.urgent ? "#E8934A" : "var(--text)", fontWeight: a.urgent ? 700 : 400 }}>{a.t}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 11 }}>{a.w}</div>
-                </>
+                <div style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                  {/* A coloured rail rather than a tinted row: it marks the
+                      domain without washing the text, which has to stay
+                      readable in both themes. */}
+                  <span
+                    aria-hidden="true"
+                    title={kind.label}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
+                      background: kind.color + "22",
+                      border: "1px solid " + kind.color + "55",
+                      fontSize: 12, lineHeight: 1,
+                    }}
+                  >
+                    {kind.icon}
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ color: a.urgent ? "#E8934A" : "var(--text)", fontWeight: a.urgent ? 700 : 400 }}>{a.t}</div>
+                    <div style={{ color: kind.color, opacity: 0.75, fontSize: 11 }}>{a.w}</div>
+                  </span>
+                </div>
               );
               if (!onGo || !a.go) return <div key={i} style={{ fontSize: 12.5 }}>{body}</div>;
               return (
