@@ -259,8 +259,10 @@ export default function AdminView({
       {/* Persists across tab switches — see the Jarvis audio state above. */}
       <audio ref={audioElRef} style={{ display: "none" }} />
       <div style={{ background: "var(--ink-soft)", color: "var(--text)", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(203,108,230,0.2)" }}>
-        <div className="display" style={{ fontSize: 20, fontWeight: 700 }}>OWNER CONSOLE</div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        {/* Jarvis sits beside the title rather than out on the right: it is a
+            mode you switch into, not an action like Manual or Log out. */}
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <div className="display" style={{ fontSize: 20, fontWeight: 700 }}>OWNER CONSOLE</div>
           <button
             onClick={() => setTab("jarvis")}
             style={{
@@ -272,11 +274,15 @@ export default function AdminView({
           >
             ⚡ Jarvis
           </button>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {/* The dock page. Everything on it needs a phone -- an sms: link, and
+              an engine-hour reading taken at the boat rather than at a desk. */}
+          <a href="/admin/ask" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+            📱 On the dock
+          </a>
           <a href="/owner-console-manual.pdf" target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             📖 Manual
-          </a>
-          <a href="/api/admin/documents/waiver" target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-            Waiver (draft)
           </a>
           <a href="/" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             ← Back to site

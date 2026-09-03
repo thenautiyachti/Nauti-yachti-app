@@ -21,6 +21,11 @@ async function api(path, options) {
   return res.json();
 }
 
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
 export default function AskPage() {
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
@@ -30,6 +35,15 @@ export default function AskPage() {
   const [busy, setBusy] = useState("");
   const [showDone, setShowDone] = useState(false);
   const [canText, setCanText] = useState(true);
+
+  // Engine hours. Thirteen maintenance items are configured against hour
+  // intervals and not one has ever been judged, because no reading has ever
+  // been taken -- which is how a breakdown reached the 4th of July unannounced.
+  const [screen, setScreen] = useState("ask"); // "ask" | "hours"
+  const [vessels, setVessels] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [hoursForm, setHoursForm] = useState({ vesselId: "", hours: "", note: "" });
+  const [hoursSaved, setHoursSaved] = useState("");
 
   useEffect(() => {
     api("/api/admin/session").then((r) => setAuthed(r.authenticated)).catch(() => {}).finally(() => setChecking(false));
@@ -63,7 +77,53 @@ export default function AskPage() {
     }
   }, []);
 
-  useEffect(() => { if (authed) load(); }, [authed, load]);
+  const loadHours = useCallback(async () => {
+    try {
+      const [v, l] = await Promise.all([api("/api/vessels"), api("/api/engine-hours")]);
+      setVessels(v);
+      setLogs(l);
+      setHoursForm((f) => ({ ...f, vesselId: f.vesselId || (v[0] && v[0].id) || "" }));
+    } catch { /* the ask list still works without this */ }
+  }, []);
+
+  useEffect(() => { if (authed) { load(); loadHours(); } }, [authed, load, loadHours]);
+
+  // The last reading for a boat, so a new one can be sanity-checked against it.
+  function lastFor(vesselId) {
+    return logs.filter((l) => l.vesselId === vesselId).sort((a, b) => String(b.date).localeCompare(String(a.date)))[0] || null;
+  }
+
+  async function saveHours(e) {
+    e.preventDefault();
+    const hours = Number(hoursForm.hours);
+    if (!hoursForm.vesselId || !Number.isFinite(hours) || hours <= 0) return;
+    const last = lastFor(hoursForm.vesselId);
+    // An hour meter only counts up. A lower number is a typo or the wrong boat,
+    // and saving it would corrupt every interval calculated from it.
+    if (last && hours < Number(last.hours)) {
+      window.alert(
+        "That is lower than the last reading for this boat (" + last.hours + " on " + last.date + ").\n\n" +
+        "An hour meter only goes up, so this is probably a typo or the wrong boat."
+      );
+      return;
+    }
+    setBusy("hours");
+    try {
+      await api("/api/engine-hours", {
+        method: "POST",
+        body: JSON.stringify({ vesselId: hoursForm.vesselId, date: todayKey(), hours, note: hoursForm.note || null }),
+      });
+      const name = (vessels.find((v) => v.id === hoursForm.vesselId) || {}).name || "the boat";
+      setHoursSaved(name + " logged at " + hours + " hours");
+      setHoursForm((f) => ({ ...f, hours: "", note: "" }));
+      loadHours();
+      setTimeout(() => setHoursSaved(""), 4000);
+    } catch {
+      window.alert("Could not save that. Check signal and try again.");
+    } finally {
+      setBusy("");
+    }
+  }
 
   async function login(e) {
     e.preventDefault();
@@ -126,10 +186,109 @@ export default function AskPage() {
 
   return (
     <div style={S.page}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
-        <h1 style={{ fontSize: 21, margin: 0 }}>Ask for reviews</h1>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
+        <h1 style={{ fontSize: 21, margin: 0 }}>On the dock</h1>
         <a href="/admin" style={{ color: "var(--purple, #CB6CE6)", fontSize: 14, textDecoration: "none" }}>Console →</a>
       </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        {[["ask", "Reviews"], ["hours", "Engine hours"]].map(([id, label]) => (
+          <button
+            key={id} type="button" onClick={() => setScreen(id)}
+            style={{
+              flex: 1, padding: "12px 8px", borderRadius: 10, fontSize: 15.5, fontWeight: 700,
+              border: "1px solid var(--purple, #CB6CE6)",
+              background: screen === id ? "var(--purple, #CB6CE6)" : "transparent",
+              color: screen === id ? "#0A0612" : "var(--text, #ECE7F5)",
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {screen === "hours" && (
+        <div>
+          <p style={{ color: "var(--muted, #9A8FB4)", fontSize: 13.5, margin: "0 0 14px" }}>
+            One reading after each outing. Thirteen service items are already set up against hour
+            intervals — they stay unjudgeable until this has numbers in it.
+          </p>
+
+          {hoursSaved && (
+            <div style={{ ...S.card, borderColor: "#7FE0B8" }}>
+              <strong style={{ color: "#7FE0B8" }}>{hoursSaved}</strong>
+            </div>
+          )}
+
+          <form onSubmit={saveHours} style={{ ...S.card, display: "grid", gap: 10 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              {vessels.map((v) => {
+                const last = lastFor(v.id);
+                const on = hoursForm.vesselId === v.id;
+                return (
+                  <button
+                    key={v.id} type="button" onClick={() => setHoursForm((f) => ({ ...f, vesselId: v.id }))}
+                    style={{
+                      textAlign: "left", padding: "13px 14px", borderRadius: 10, fontSize: 16, fontWeight: 700,
+                      border: "1px solid " + (on ? "var(--purple, #CB6CE6)" : "rgba(203,108,230,0.3)"),
+                      background: on ? "rgba(203,108,230,0.18)" : "transparent",
+                      color: "var(--text, #ECE7F5)",
+                    }}
+                  >
+                    {v.name}
+                    <div style={{ fontSize: 12.5, fontWeight: 400, color: "var(--muted, #9A8FB4)", marginTop: 2 }}>
+                      {last ? "last logged " + last.hours + " hrs on " + last.date : "never logged"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <input
+              type="number" inputMode="decimal" step="0.1" min="0" required
+              placeholder="Hour meter reading"
+              value={hoursForm.hours}
+              onChange={(e) => setHoursForm((f) => ({ ...f, hours: e.target.value }))}
+              style={{ padding: "15px 13px", fontSize: 19, borderRadius: 10, border: "1px solid rgba(203,108,230,0.4)", background: "var(--card, #171029)", color: "inherit", fontVariantNumeric: "tabular-nums" }}
+            />
+            <input
+              type="text" placeholder="Anything worth noting (optional)"
+              value={hoursForm.note}
+              onChange={(e) => setHoursForm((f) => ({ ...f, note: e.target.value }))}
+              style={{ padding: "13px", fontSize: 15.5, borderRadius: 10, border: "1px solid rgba(203,108,230,0.3)", background: "var(--card, #171029)", color: "inherit" }}
+            />
+            <button
+              type="submit" disabled={busy === "hours" || !hoursForm.vesselId}
+              style={{ ...S.tap, background: "var(--pink, #E86AA8)", color: "#0A0612", opacity: hoursForm.vesselId ? 1 : 0.5 }}
+            >
+              {busy === "hours" ? "Saving…" : "Log it"}
+            </button>
+          </form>
+
+          {logs.length > 0 && (
+            <div style={S.card}>
+              <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 15 }}>Recent readings</div>
+              {logs.slice(0, 8).map((l) => {
+                const v = vessels.find((x) => x.id === l.vesselId);
+                return (
+                  <div key={l.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "7px 0", borderBottom: "1px solid rgba(203,108,230,0.1)", fontSize: 14 }}>
+                    <span>{(v && v.name) || l.vesselId}</span>
+                    <span style={{ color: "var(--muted, #9A8FB4)", fontVariantNumeric: "tabular-nums" }}>{l.hours} hrs · {l.date}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {logs.length === 0 && (
+            <div style={{ ...S.card, color: "var(--muted, #9A8FB4)", fontSize: 14 }}>
+              Nothing logged yet. The first reading is the one that starts the clock.
+            </div>
+          )}
+        </div>
+      )}
+
+      {screen === "ask" && (
+      <>
       <p style={{ color: "var(--muted, #9A8FB4)", fontSize: 13.5, margin: "0 0 14px" }}>
         Warmest first. Tapping opens your messages app with the wording already written — you still send it.
       </p>
@@ -241,6 +400,8 @@ export default function AskPage() {
           Open the review link yourself →
         </a>
       </div>
+      </>
+      )}
     </div>
   );
 }
