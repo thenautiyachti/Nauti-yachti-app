@@ -458,7 +458,7 @@ export default function AdminView({
         {tab === "overview" && (
           <OverviewTab
             externalBookings={externalBookings} inquiries={inquiries} ledger={ledger}
-            maintenanceItems={maintenanceItems} mediaDrafts={mediaDrafts}
+            maintenanceItems={maintenanceItems} engineHours={engineHours} mediaDrafts={mediaDrafts}
             todos={todos} agentActivity={agentActivity}
             onAddTodo={onAddTodo} onToggleTodo={onToggleTodo} onDeleteTodo={onDeleteTodo}
           />
@@ -3180,7 +3180,7 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 //
 // Laid out three across and two down, because at one card per column the panels
 // were too narrow to hold a sentence and everything wrapped.
-function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo }) {
+function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, onAddTodo, onToggleTodo, onDeleteTodo }) {
   const [text, setText] = useState("");
   const today = localDateKey(new Date());
   const month = today.slice(0, 7);
@@ -3209,7 +3209,18 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const soonPosts = mediaDrafts.filter((d) => d.status === "scheduled" && d.scheduledDate && d.scheduledDate <= plus(3) && d.scheduledDate >= today);
   const draftsWaiting = mediaDrafts.filter((d) => ["pending", "proposed", "discussing"].includes(d.status));
   const newInquiries = inquiries.filter((i) => isRealInquiry(i) && i.status === "new");
-  const overdue = maintenanceItems.filter((m) => m.overdue);
+  // Judged against the highest engine-hour reading in the fleet, which is what
+  // the Maintenance tab does — the worst case, so nothing slips through.
+  const fleetHours = (engineHours || []).map((h) => h.hours).filter((h) => h != null);
+  const maxHours = fleetHours.length ? Math.max(...fleetHours) : null;
+  const overdue = maintenanceItems.filter((m) => maintenanceStatus(m, maxHours).status === "overdue");
+  const dueSoon = maintenanceItems.filter((m) => maintenanceStatus(m, maxHours).status === "due-soon");
+  // Items that cannot be judged at all. 13 items are configured and not one can
+  // be assessed, because no engine hours or last-serviced dates were ever
+  // entered -- so the whole maintenance system reports "fine" while knowing
+  // nothing. Silence from an empty system looks identical to silence from a
+  // healthy one, which is the dangerous part.
+  const unjudgeable = maintenanceItems.filter((m) => maintenanceStatus(m, maxHours).status === "unknown");
   const neverAsked = externalBookings.filter((b) => b.status === "completed" && b.phone && !b.reviewRequestedAt && !b.marketingOptOut);
   const noPhone = externalBookings.filter((b) => b.status === "completed" && !b.phone);
   const noPrice = externalBookings.filter((b) => b.status === "completed" && b.pricePaid == null);
@@ -3218,6 +3229,11 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const attention = [
     newInquiries.length && { t: `${newInquiries.length} new ${newInquiries.length === 1 ? "enquiry" : "enquiries"}`, w: "Bookings → Inquiries", urgent: true },
     overdue.length && { t: `${overdue.length} maintenance ${overdue.length === 1 ? "item" : "items"} overdue`, w: "Boat", urgent: true },
+    dueSoon.length && { t: `${dueSoon.length} maintenance ${dueSoon.length === 1 ? "item" : "items"} due soon`, w: "Boat" },
+    unjudgeable.length === maintenanceItems.length && maintenanceItems.length > 0 && {
+      t: `No maintenance can be judged — ${maintenanceItems.length} items, nothing logged`,
+      w: "Boat: add engine hours or a last-serviced date", urgent: true,
+    },
     draftsWaiting.length && { t: `${draftsWaiting.length} social ${draftsWaiting.length === 1 ? "draft" : "drafts"} to approve`, w: "Marketing → Media Drafts", urgent: true },
     noPrice.length && { t: `${noPrice.length} completed ${noPrice.length === 1 ? "charter has" : "charters have"} no price`, w: "no income row is written without one", urgent: true },
     soonPosts.length && { t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts" },
