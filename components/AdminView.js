@@ -258,36 +258,31 @@ export default function AdminView({
     <div style={{ minHeight: "100vh", background: "var(--ink)" }}>
       {/* Persists across tab switches — see the Jarvis audio state above. */}
       <audio ref={audioElRef} style={{ display: "none" }} />
-      <div style={{ background: "var(--ink-soft)", color: "var(--text)", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(203,108,230,0.2)" }}>
+      <div className="console-header" style={{ background: "var(--ink-soft)", color: "var(--text)", padding: "14px 24px", borderBottom: "1px solid rgba(203,108,230,0.2)" }}>
         {/* Jarvis sits beside the title rather than out on the right: it is a
             mode you switch into, not an action like Manual or Log out. */}
-        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-          <div className="display" style={{ fontSize: 20, fontWeight: 700 }}>OWNER CONSOLE</div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div className="display" style={{ fontSize: 20, fontWeight: 700, whiteSpace: "nowrap" }}>OWNER CONSOLE</div>
           <button
+            className="console-btn"
             onClick={() => setTab("jarvis")}
             style={{
               background: tab === "jarvis" ? "linear-gradient(135deg, #00d9ff, #0ea5e9)" : "rgba(0,217,255,0.08)",
               color: tab === "jarvis" ? "#04070a" : "#4ff3ff",
-              border: "1px solid #0ea5e9", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 700,
-              letterSpacing: "0.04em", boxShadow: tab === "jarvis" ? "0 0 14px rgba(0,217,255,0.5)" : "none",
+              borderColor: "#0ea5e9", fontWeight: 700, letterSpacing: "0.04em",
+              boxShadow: tab === "jarvis" ? "0 0 14px rgba(0,217,255,0.5)" : "none",
             }}
           >
             ⚡ Jarvis
           </button>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {/* The dock page. Everything on it needs a phone -- an sms: link, and
               an engine-hour reading taken at the boat rather than at a desk. */}
-          <a href="/admin/ask" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-            📱 On the dock
-          </a>
-          <a href="/owner-console-manual.pdf" target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-            📖 Manual
-          </a>
-          <a href="/" style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-            ← Back to site
-          </a>
-          <button onClick={onLogout} style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 13, fontWeight: 700 }}>
+          <a className="console-btn" href="/admin/ask">📱 On the dock</a>
+          <a className="console-btn" href="/owner-console-manual.pdf" target="_blank" rel="noopener noreferrer">📖 Manual</a>
+          <a className="console-btn" href="/">← Back to site</a>
+          <button className="console-btn" onClick={onLogout} style={{ background: "var(--purple)", color: "#0A0612", borderColor: "var(--purple)", fontWeight: 700 }}>
             Log out
           </button>
         </div>

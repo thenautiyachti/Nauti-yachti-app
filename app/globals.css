@@ -170,3 +170,40 @@ input::placeholder, textarea::placeholder {
 @media (min-width: 1150px) {
   .draft-days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Console header. On a phone the labels were wrapping mid-word — "On the dock"
+   became three lines while "Jarvis" stayed one, so every button was a
+   different height and "Back to site" ran off the edge. Fixed height, no
+   wrapping inside a button, and the bar itself wraps onto a second row instead
+   of overflowing. */
+.console-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.console-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  border: 1px solid var(--purple);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+@media (max-width: 620px) {
+  /* Both groups share one wrapping row rather than being pushed apart, which
+     is what forced the last button off the screen. */
+  .console-header { justify-content: flex-start; }
+  .console-btn { font-size: 12.5px; height: 34px; padding: 0 11px; }
+}
