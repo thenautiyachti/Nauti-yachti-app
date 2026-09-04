@@ -325,6 +325,19 @@ Same rule as the task folders below: **rename what people read, leave what
 machines depend on.** If you see one of these in an error message, it is not a
 leftover anyone forgot.
 
+## Why the routines are named oddly
+
+In the Claude sidebar each routine now reads as its crew member -- "Nauti Pearl
+· Chief of Staff", "Nauti Coral · Content Producer" -- because that is the line
+you actually read. The underlying task IDs still say things like
+`daily-exec-review`, and they are staying that way.
+
+A task ID cannot be renamed. Changing one means deleting the task and creating a
+new one, and a new task starts with no saved tool approvals -- so every routine
+would go back to stopping mid-run to ask permission for things it has already
+been allowed to do. That is the exact fault that was stalling the crew before,
+and it is not worth paying again for a tidier identifier nobody sees.
+
 Two task folders are still named for their old cadence — `weekly-booking-audit`
 runs daily and `monthly-spend-audit` runs weekly. The names are historical and
 were left alone on purpose: renaming a scheduled task means deleting and
