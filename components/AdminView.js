@@ -4426,14 +4426,17 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
             <div style={{ display: "grid", gap: 5 }}>
               {capturePeriods.map((p) => (
                 <div key={p.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5 }}>
-                  <span style={{ width: 72, flexShrink: 0, color: "var(--muted)" }}>{p.label}</span>
+                  <span style={{ width: 64, flexShrink: 0, color: "var(--muted)", whiteSpace: "nowrap" }}>{p.label}</span>
                   <span style={{ flex: 1, height: 6, background: "rgba(203,108,230,0.12)", borderRadius: 3, overflow: "hidden" }}>
                     <span style={{
                       display: "block", height: "100%", width: p.pct + "%",
                       background: p.pct >= 80 ? "#7FE0B8" : p.pct >= 50 ? "#E8934A" : "#E2685F",
                     }} />
                   </span>
-                  <span className="mono" style={{ width: 52, textAlign: "right", flexShrink: 0 }}>
+                  {/* Wide enough for the longest real value, and never wrapping. At 52px
+                      "36% 4/11" broke across two lines, so the percentage and the count
+                      it came from stacked and the row read as two unrelated numbers. */}
+                  <span className="mono" style={{ width: 74, textAlign: "right", flexShrink: 0, whiteSpace: "nowrap" }}>
                     {p.pct}% <span style={{ color: "var(--muted)" }}>{p.reach}/{p.n}</span>
                   </span>
                 </div>
