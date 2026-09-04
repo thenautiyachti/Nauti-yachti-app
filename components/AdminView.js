@@ -2633,6 +2633,10 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
   const statuses = maintenanceItems.map((item) => ({ item, ...maintenanceStatus(item, fleetMaxHours) }));
   const overdueCount = statuses.filter((s) => s.status === "overdue").length;
   const dueSoonCount = statuses.filter((s) => s.status === "due-soon").length;
+  // Items nothing can be said about, because they have neither a last-done date
+  // nor last-done hours. Without this the two zeroes above read as a clean bill
+  // of health when they actually mean the system has never been told anything.
+  const unknownCount = statuses.filter((s) => s.status === "unknown").length;
 
   const fuelGaps = vessels.map((v) => {
     const lastFuel = latestFuel[v.id];
@@ -2653,7 +2657,23 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
           ))}
           <StatCard label="Overdue items" value={String(overdueCount)} color="var(--pink)" />
           <StatCard label="Due soon" value={String(dueSoonCount)} color="#E8934A" />
+          {unknownCount > 0 && (
+            <StatCard label="Cannot be judged" value={String(unknownCount)} color="var(--muted)" />
+          )}
         </div>
+        {unknownCount === statuses.length && statuses.length > 0 && (
+          <div style={{ background: "var(--card)", borderRadius: 8, padding: 12, borderLeft: "3px solid #E8934A", marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 4 }}>
+              Nothing above is a clean bill of health
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.45 }}>
+              All {statuses.length} items show zero overdue because not one of them can be
+              assessed — none has a last-serviced date or an hours reading. One engine-hours
+              entry per boat turns every line below from a guess into an answer.
+            </div>
+          </div>
+        )}
+
         {fuelGaps.length > 0 && (
           <div style={{ background: "var(--card)", borderRadius: 8, padding: 12, borderLeft: "3px solid #E8934A" }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 4 }}>Fuel gap warning</div>
