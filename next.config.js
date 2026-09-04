@@ -101,6 +101,27 @@ const nextConfig = {
           // The admin console holds guest contact details and the ledger.
           // Framing it elsewhere is the setup for a clickjacking attack, and
           // nothing here is meant to be embedded on another site.
+          // Content-Security-Policy, in REPORT-ONLY mode. Nothing is blocked.
+          // The browser evaluates this, posts what it WOULD have blocked to
+          // /api/csp-report, and renders the page exactly as before.
+          //
+          // It is report-only because getting script-src wrong does not throw:
+          // every page still renders and returns 200 while nothing interactive
+          // works -- no booking form, no date picker, no console login -- and
+          // nothing appears in any log. A guest who cannot book is how you find
+          // out. So: watch the Vercel logs for "[csp]" for a week of real
+          // traffic, add whatever legitimately appears, and only then rename
+          // this header to Content-Security-Policy.
+          //
+          // Note what is NOT here: Stripe. Checkout is created server-side and
+          // the browser is navigated to checkout.stripe.com, so the card form
+          // runs on Stripe's origin under Stripe's own policy, and Stripe.js
+          // never loads on our pages. The note that used to sit in this file
+          // claimed a wrong policy would break payment. It would not.
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; frame-src https://embed.windy.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; report-uri /api/csp-report",
+          },
           { key: "X-Frame-Options", value: "DENY" },
           // Stop a browser from second-guessing a declared Content-Type, which
           // is how an uploaded file gets treated as a script.
