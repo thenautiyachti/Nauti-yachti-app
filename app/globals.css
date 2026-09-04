@@ -12,11 +12,85 @@
   /* Console panels only. --card stays a flat colour because the public site
      uses it too, and a textured tile behind a booking form would be noise.
 
-     Three layers: the graticule and soundings of a chart, a soft wash from the
-     top edge so the surface reads as lit rather than filled, then the base
-     colour. Everything is far fainter than it looks in isolation -- these
-     panels carry dense figures, and anything legible as texture competes with
-     the numbers, which is the one thing a console cannot afford. */
+     Each panel gets a different plate from public/map/: a coast or two, an
+     archipelago, mountain ranges, ships, and on most of them a compass rose
+     with rhumb lines fanning out of it. They are generated, not drawn by hand
+     -- see scripts/generate-map-regions.js, which is seeded, so re-running it
+     reproduces exactly these twelve rather than reshuffling the console.
+
+     Four layers each: the graticule ruled over everything, the plate beneath
+     it, a wash from the top edge so the sheet reads as lit, then the base
+     colour. The plate is sized to cover, so a tall panel shows a vertical slice
+     of its region and a wide one shows a horizontal band -- which is why the
+     regions are square and composed to survive being cropped either way.
+
+     Everything on a plate is drawn inside one group at 42% opacity. These sit
+     behind live figures: at full strength the maps are handsome and the money
+     is unreadable, which is the wrong trade every time. */
+  --paper-1:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-1.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-2:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-2.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-3:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-3.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-4:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-4.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-5:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-5.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-6:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-6.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-7:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-7.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-8:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-8.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-9:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-9.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-10:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-10.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-11:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-11.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-12:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/region-12.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
+
+  /* The plain variant, no plate. Kept for anything that wants the ruled paper
+     without a region -- the chain-of-command chart's panel, for instance, rules
+     its own graticule at a different pitch and must not carry a second one. */
   --paper:
     url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
     radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
