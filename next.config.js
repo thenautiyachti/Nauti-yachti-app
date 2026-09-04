@@ -1,3 +1,16 @@
+// Runs before anything else, because it has to happen before Turbopack opens
+// its cache. Google Drive drops a desktop.ini into the cache directory and
+// Turbopack parses every filename there as a number, so the build dies on
+// "invalid digit found in string" -- always on the build after a successful one,
+// since a successful build is what creates the folder for Drive to decorate.
+// See scripts/clean-drive-junk.js. On Vercel this finds nothing and costs a
+// single failed readdir.
+try {
+  require("./scripts/clean-drive-junk.js").cleanBuildCache(__dirname);
+} catch (e) {
+  // A janitor that throws is worse than a dirty cache.
+}
+
 // The console links to a PDF of the manual, and every edit is made to the
 // markdown. Nothing connected the two, so it drifted -- at commissioning the
 // served PDF was fourteen hours stale and still contained a line that was
