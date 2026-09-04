@@ -3749,6 +3749,28 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const nextPosts = mediaDrafts
     .filter((d) => d.status === "scheduled" && d.scheduledDate && d.scheduledDate >= today)
     .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
+  // --- the media pipeline, which the day list was hiding -------------------
+  const scheduledDrafts = mediaDrafts.filter((d) => d.status === "scheduled");
+  const queueEnds = scheduledDrafts
+    .map((d) => d.scheduledDate).filter(Boolean).sort().pop() || null;
+  const runwayDays = queueEnds
+    ? Math.round((new Date(queueEnds) - new Date(today)) / 86400000) : 0;
+  // Per platform, because reach is uneven and a list of dates cannot show it.
+  const byPlatform = {};
+  for (const d of scheduledDrafts) {
+    const p = d.platform || "—";
+    byPlatform[p] = (byPlatform[p] || 0) + 1;
+  }
+  const platformRows = Object.entries(byPlatform).sort((a, b) => b[1] - a[1]);
+  const maxPlatform = platformRows.length ? platformRows[0][1] : 1;
+  // Proof of publication, not a status flag. A draft marked "posted" with no
+  // timestamp and no URL is not evidence that anything went out.
+  const trulyPublished = mediaDrafts.filter((d) => d.postedAt);
+  const lastPublished = trulyPublished
+    .map((d) => String(d.postedAt).slice(0, 10)).sort().pop() || null;
+  const draftsNeedingYou = mediaDrafts.filter((d) =>
+    ["pending", "proposed", "discussing"].includes(d.status)).length;
+
   const nextByDay = [];
   for (const d of nextPosts) {
     const last = nextByDay[nextByDay.length - 1];
@@ -4270,18 +4292,68 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       <div className="orbit-group ">
         <div style={CARD}>
           <PanelHead owners={["Nauti Siren", "Nauti Coral"]}><Go to="mediaDrafts">Going out next</Go></PanelHead>
-          {nextByDay.length === 0 && <div style={EMPTY}>Nothing scheduled.</div>}
-          <div style={{ display: "grid", gap: 6 }}>
-            {nextByDay.slice(0, 6).map((d) => (
-              <div key={d.day} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5 }}>
-                <span className="mono" style={{ color: d.day === today ? "#E8934A" : "var(--text)", fontWeight: d.day === today ? 700 : 400, whiteSpace: "nowrap" }}>
-                  {mediaDraftDate(d.day) || d.day}
+
+          {/* What is next, plainly. */}
+          {nextByDay.length === 0 ? (
+            <div style={EMPTY}>Nothing scheduled.</div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5, marginBottom: 10 }}>
+              <span style={{ flex: "0 0 auto", color: "var(--muted)" }}>Next up</span>
+              <span style={{ textAlign: "right", minWidth: 0, flex: "1 1 auto" }}>
+                <strong style={{ color: nextByDay[0].day === today ? "#E8934A" : "var(--text)" }}>
+                  {mediaDraftDate(nextByDay[0].day) || nextByDay[0].day}
+                </strong>
+                <div style={{ color: "var(--muted)", fontSize: 11.5 }}>{nextByDay[0].platforms.join(" · ")}</div>
+              </span>
+            </div>
+          )}
+
+          {/* Runway. A content queue's first duty is to say when it runs out,
+              and this one stops before the season does. */}
+          <div style={{ display: "grid", gap: 6, fontSize: 12.5, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Queue runs to</span>
+              <span className="mono" style={{ color: runwayDays < 10 ? "#E8934A" : "var(--text)" }}>
+                {queueEnds || "—"}{queueEnds ? " · " + runwayDays + "d" : ""}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Scheduled</span>
+              <span className="mono">{scheduledDrafts.length} posts · {nextByDay.length} days</span>
+            </div>
+            {draftsNeedingYou > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#E8934A" }}>Waiting on you</span>
+                <span className="mono" style={{ color: "#E8934A", fontWeight: 700 }}>{draftsNeedingYou}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Reach per platform. Facebook carries every day; the two that need
+              video carry half as many, and a list of dates cannot show that. */}
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 5 }}>
+            {platformRows.map(([name, n]) => (
+              <div key={name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5 }}>
+                <span style={{ width: 66, flexShrink: 0, color: "var(--muted)" }}>{name}</span>
+                <span style={{ flex: 1, height: 6, background: "rgba(203,108,230,0.12)", borderRadius: 3, overflow: "hidden" }}>
+                  <span style={{ display: "block", height: "100%", width: Math.round((n / maxPlatform) * 100) + "%", background: "var(--purple)", opacity: 0.75 }} />
                 </span>
-                <span style={{ color: "var(--muted)", fontSize: 11.5, textAlign: "right" }}>{d.platforms.join(" · ")}</span>
+                <span className="mono" style={{ width: 18, textAlign: "right", flexShrink: 0 }}>{n}</span>
               </div>
             ))}
-            {nextByDay.length > 6 && (
-              <div style={{ color: "var(--muted)", fontSize: 11 }}>…and {nextByDay.length - 6} more days scheduled</div>
+          </div>
+
+          {/* Publication, evidenced. "posted" with no timestamp and no URL is
+              not proof that anything went out. */}
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, lineHeight: 1.45 }}>
+            {lastPublished ? (
+              <span style={{ color: "var(--muted)" }}>
+                Last confirmed publish <span className="mono">{lastPublished}</span> · {trulyPublished.length} on record
+              </span>
+            ) : (
+              <span style={{ color: "#E8934A" }}>
+                Nothing has published yet with a timestamp to prove it — the next one is the first.
+              </span>
             )}
           </div>
         </div>
