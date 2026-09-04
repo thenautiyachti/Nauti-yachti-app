@@ -3899,15 +3899,20 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       .filter((b) => b.status === "booked" || b.status === "completed")
       .map((b) => String(b.date).slice(0, 10))
   );
-  let openWeekends = 0;
+  // Keep the DATES, not just a tally. This was a bare counter, and the Reef
+  // panel then called .filter on it to pull out the Saturdays -- a TypeError
+  // that took the whole console down the moment Overview rendered. The name
+  // matched an array in facts.js and I carried the wrong shape across.
+  const openWeekendDates = [];
   for (let i = 0; i < 56; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     const dow = d.getDay();
     if (dow !== 0 && dow !== 6) continue;
     const key = d.toISOString().slice(0, 10);
-    if (!bookedDays.has(key)) openWeekends++;
+    if (!bookedDays.has(key)) openWeekendDates.push(key);
   }
+  const openWeekends = openWeekendDates.length;
   // Average of what charters actually took, not a list price.
   const charterIncome = (ledger || []).filter((e) => e.type === "income" && e.amount > 0);
   const avgCharter = charterIncome.length
@@ -3920,7 +3925,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // two Sundays in six months. So the opportunity is counted in Saturdays, and
   // valued at the rate Saturdays actually convert rather than at 100%.
   const isSat = (k) => new Date(k + "T12:00:00").getDay() === 6;
-  const openSaturdays = openWeekends.filter(isSat);
+  const openSaturdays = openWeekendDates.filter(isSat);
   let satTotal = 0, satRan = 0;
   {
     const d = new Date(SEASON_FROM + "T12:00:00");
