@@ -125,6 +125,28 @@ async function POST(req) {
 
     await prisma.speechEvent.create({ data: { text, audioB64 } });
 
+    // Age the audio out as we go. Each of these rows carries the whole MP3 as
+    // base64, and in one week that reached 128.8MB across 172 rows -- about a
+    // quarter of the free tier ceiling, made of lines already spoken and heard.
+    //
+    // The text is never touched: it is the transcript, the console shows it on
+    // open, and it costs nothing. Only the audio ages out, and only past the
+    // window, and no row is ever deleted -- so the record of what was said stays
+    // whole and nothing referencing a row can break.
+    //
+    // Failure here must not fail the request. The caller has already been
+    // spoken; housekeeping that throws would turn a successful message into an
+    // error and lose it.
+    try {
+      const keepDays = Number(process.env.SPEECH_AUDIO_KEEP_DAYS || 3);
+      await prisma.speechEvent.updateMany({
+        where: { createdAt: { lt: new Date(Date.now() - keepDays * 86400000) }, NOT: { audioB64: null } },
+        data: { audioB64: null },
+      });
+    } catch (e) {
+      console.error("[speak] audio prune skipped:", e.message);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[speak] threw:", err);
