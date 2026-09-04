@@ -322,7 +322,12 @@ export default function AdminView({
         })}
       </div>
 
-      {/* Tabs within the selected group. */}
+      {/* Tabs within the selected group — hidden when the group holds only
+          one, because a lone sub-tab repeating its group's name is a row of
+          chrome that says nothing. Overview is the only group like that today;
+          the condition is on the count rather than the id so it stays true if
+          Overview ever gains a sibling. */}
+      {activeGroup.tabs.length > 1 && (
       <div style={{ display: "flex", gap: 6, padding: "10px 24px 0", flexWrap: "nowrap", overflowX: "auto", whiteSpace: "nowrap" }}>
         {activeGroup.tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -333,6 +338,7 @@ export default function AdminView({
           }}>{t.label}</button>
         ))}
       </div>
+      )}
 
       <div style={{ padding: 24 }}>
         {tab === "inquiries" && (
@@ -3470,6 +3476,67 @@ function CrewChart({ rows }) {
       </div>
       <div className="crew-chart" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <svg viewBox={`0 0 ${W} ${CHART_H}`} style={{ width: "100%", minWidth: 760, height: "auto", display: "block" }}>
+          <defs>
+            {/* Graticule: the lat/long grid every chart carries. Drawn as a
+                pattern so it tiles regardless of how wide the box gets. */}
+            <pattern id="cc-grid" width="70" height="70" patternUnits="userSpaceOnUse">
+              <path d="M70 0V70M0 70H70" fill="none" stroke="var(--purple)" strokeWidth="0.5" opacity="0.14" />
+            </pattern>
+            {/* Depth soundings, the stippling on a real chart's shallows. */}
+            <pattern id="cc-sound" width="26" height="26" patternUnits="userSpaceOnUse">
+              <circle cx="4" cy="4" r="0.7" fill="var(--purple)" opacity="0.13" />
+              <circle cx="17" cy="15" r="0.7" fill="var(--purple)" opacity="0.09" />
+            </pattern>
+          </defs>
+
+          {/* Everything in this group is background. It is deliberately faint:
+              eight portraits and sixteen labels sit on top of it, and a chart
+              you can actually read would compete with them. */}
+          <g aria-hidden="true">
+            <rect x="0" y="0" width={W} height={CHART_H} fill="url(#cc-grid)" />
+            <rect x="0" y="0" width={W} height={CHART_H} fill="url(#cc-sound)" />
+
+            {/* Depth contours. Hand-drawn curves rather than concentric circles
+                — a real chart's isobaths follow a coastline, and regular rings
+                would read as a target. */}
+            <g fill="none" stroke="var(--purple)" strokeWidth="0.8" opacity="0.15">
+              <path d="M-20 300 C 120 268, 250 322, 400 296 S 700 250, 1000 292" />
+              <path d="M-20 340 C 140 312, 260 360, 420 336 S 720 296, 1000 332" />
+              <path d="M-20 384 C 160 360, 280 400, 440 378 S 740 340, 1000 374" />
+            </g>
+            <g fill="none" stroke="var(--purple)" strokeWidth="0.8" opacity="0.08" strokeDasharray="3 5">
+              <path d="M-20 96 C 160 74, 300 118, 460 92 S 760 52, 1000 88" />
+            </g>
+
+            {/* Compass rose, bottom left — the corner the tree leaves empty,
+                since Coral hangs below Siren on the left of the row above. */}
+            <g transform={`translate(74, ${CHART_H - 74})`} opacity="0.22">
+              <circle r="40" fill="none" stroke="var(--purple)" strokeWidth="0.7" />
+              <circle r="27" fill="none" stroke="var(--purple)" strokeWidth="0.5" />
+              <circle r="4" fill="none" stroke="var(--purple)" strokeWidth="0.6" />
+              {/* Eight points: the four cardinals long, the intercardinals short. */}
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                <line
+                  key={deg} x1="0" y1="0" x2="0" y2={deg % 90 === 0 ? -40 : -27}
+                  stroke="var(--purple)" strokeWidth={deg % 90 === 0 ? 0.9 : 0.5}
+                  transform={`rotate(${deg})`}
+                />
+              ))}
+              {/* The north needle, filled, as every rose has. */}
+              <path d="M0 -40 L5 -8 L0 0 L-5 -8 Z" fill="var(--purple)" opacity="0.5" />
+              <text x="0" y="-46" textAnchor="middle" fontSize="9" fill="var(--purple)" opacity="0.7">N</text>
+            </g>
+
+            {/* Rhumb lines radiating from the rose, the way a portolan chart
+                rules them across the water. */}
+            <g stroke="var(--purple)" strokeWidth="0.4" opacity="0.06">
+              {[15, 35, 55, 75].map((deg) => (
+                <line
+                  key={deg} x1="74" y1={CHART_H - 74} x2={W} y2={CHART_H - 74 - (W - 74) * Math.tan((deg * Math.PI) / 180) / 3}
+                />
+              ))}
+            </g>
+          </g>
           {/* owner -> pearl */}
           {line(W / 2, yOwner + 26, W / 2, yPearl - 26)}
           {/* pearl -> everyone direct */}
@@ -3847,6 +3914,47 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     ? Math.round(charterIncome.reduce((s, e) => s + e.amount, 0) / charterIncome.length)
     : 0;
 
+  // --- Reef: what is realistically still winnable -------------------------
+  //
+  // Saturday is the business: 14 of 24 completed charters this season, against
+  // two Sundays in six months. So the opportunity is counted in Saturdays, and
+  // valued at the rate Saturdays actually convert rather than at 100%.
+  const isSat = (k) => new Date(k + "T12:00:00").getDay() === 6;
+  const openSaturdays = openWeekends.filter(isSat);
+  let satTotal = 0, satRan = 0;
+  {
+    const d = new Date(SEASON_FROM + "T12:00:00");
+    const end = new Date(today + "T12:00:00");
+    const ranOn = new Set(
+      externalBookings.filter((b) => b.status === "completed").map((b) => b.date)
+    );
+    for (; d <= end; d.setDate(d.getDate() + 1)) {
+      if (d.getDay() !== 6) continue;
+      satTotal++;
+      if (ranOn.has(d.toISOString().slice(0, 10))) satRan++;
+    }
+  }
+  const satFillRate = satTotal ? satRan / satTotal : 0;
+  const likelySales = Math.round(openSaturdays.length * satFillRate);
+
+  // --- Joy: is the intake fixed, or still leaking? -------------------------
+  //
+  // The total tells you nothing you can act on. The trend tells you whether the
+  // problem is behind you or still happening every weekend.
+  const completedThisYear = externalBookings.filter(
+    (b) => b.status === "completed" && (b.date || "") >= today.slice(0, 4) + "-01-01"
+  );
+  const capturePeriods = [
+    { label: "Before May", from: "0000", to: today.slice(0, 4) + "-05-01" },
+    { label: "May–Jun", from: today.slice(0, 4) + "-05-01", to: today.slice(0, 4) + "-07-01" },
+    { label: "Jul onward", from: today.slice(0, 4) + "-07-01", to: "9999" },
+  ].map((p) => {
+    const rows = completedThisYear.filter((b) => (b.date || "") >= p.from && (b.date || "") < p.to);
+    const reach = rows.filter((b) => b.phone || b.email).length;
+    return { ...p, n: rows.length, reach, pct: rows.length ? Math.round((reach / rows.length) * 100) : null };
+  }).filter((p) => p.n > 0);
+  const recentCapture = capturePeriods.length ? capturePeriods[capturePeriods.length - 1] : null;
+
   // --- Nova: research ----------------------------------------------------
   const novaItems = openTodos.filter((t) => /^\[?NOVA/i.test(t.text || ""));
   const novaRun = latestRun(agentActivity, "Nauti Nova");
@@ -4035,19 +4143,47 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
                 <span className="mono" style={{ color: "#E8934A", fontWeight: 700 }}>{pendingReviews}</span>
               </div>
             )}
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--muted)" }}>Never asked</span>
-              <span className="mono" style={{ fontWeight: 700 }}>{unaskedGuests.length}</span>
+          </div>
+
+          {/* The trend, not the total. A total reads as a sunk cost; the trend
+              says whether guests are still walking off the boat uncontactable
+              this weekend. */}
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 6 }}>
+              Contact details captured, by when they sailed
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: unreachable > 0 ? "#E8934A" : "var(--muted)" }}>…of those, no way to reach them</span>
-              <span className="mono" style={{ color: unreachable > 0 ? "#E8934A" : "var(--text)", fontWeight: 700 }}>{unreachable}</span>
+            <div style={{ display: "grid", gap: 5 }}>
+              {capturePeriods.map((p) => (
+                <div key={p.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5 }}>
+                  <span style={{ width: 72, flexShrink: 0, color: "var(--muted)" }}>{p.label}</span>
+                  <span style={{ flex: 1, height: 6, background: "rgba(203,108,230,0.12)", borderRadius: 3, overflow: "hidden" }}>
+                    <span style={{
+                      display: "block", height: "100%", width: p.pct + "%",
+                      background: p.pct >= 80 ? "#7FE0B8" : p.pct >= 50 ? "#E8934A" : "#E2685F",
+                    }} />
+                  </span>
+                  <span className="mono" style={{ width: 52, textAlign: "right", flexShrink: 0 }}>
+                    {p.pct}% <span style={{ color: "var(--muted)" }}>{p.reach}/{p.n}</span>
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
-          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
-            {askable > 0
-              ? askable + " can still be asked. Joy mails you the list on Mondays."
-              : "Nobody left who can be reached — the gap is contact details at booking, not the asking."}
+
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 6, fontSize: 12.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Can be asked now</span>
+              <span className="mono" style={{ fontWeight: 700 }}>{askable}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>Unreachable, ever</span>
+              <span className="mono" style={{ color: "var(--muted)" }}>{unreachable}</span>
+            </div>
+          </div>
+          <div style={{ marginTop: 9, fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
+            {recentCapture && recentCapture.pct < 90
+              ? `Still leaking: ${recentCapture.n - recentCapture.reach} of the last ${recentCapture.n} guests left with no phone or email on file. The fix is at the dock, not in the asking.`
+              : "Capture is holding. Every recent guest can be reached."}
           </div>
         </div>
         <div className="orbit-crew">
@@ -4369,25 +4505,39 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           <PanelHead owners={["Nauti Reef"]}><Go to="giftCertificates">Money on the table</Go></PanelHead>
           <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--muted)" }}>Open weekend dates, next 8 weeks</span>
-              <span className="mono" style={{ fontWeight: 700 }}>{openWeekends}</span>
+              <span style={{ color: "var(--muted)" }}>Open Saturdays, next 8wks</span>
+              <span className="mono" style={{ fontWeight: 700 }}>{openSaturdays.length}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--muted)" }}>…roughly worth</span>
-              <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(openWeekends * avgCharter)}</span>
+              <span style={{ color: "var(--muted)" }}>Saturdays that fill</span>
+              <span className="mono">
+                {Math.round(satFillRate * 100)}%
+                <span style={{ color: "var(--muted)" }}> · {satRan} of {satTotal} since Mar</span>
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 5, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+              <span style={{ fontWeight: 700 }}>Likely to sell</span>
+              <span className="mono" style={{ fontWeight: 700, color: "#7FE0B8" }}>
+                ~{likelySales} · {currency(likelySales * avgCharterSeason)}
+              </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--muted)" }}>If every one sold</span>
+              <span className="mono" style={{ color: "var(--muted)" }}>{currency(openSaturdays.length * avgCharterSeason)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 5, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
               <span style={{ color: giftCertificates.length === 0 ? "#E8934A" : "var(--muted)" }}>Gift certificates sold</span>
               <span className="mono" style={{ color: giftCertificates.length === 0 ? "#E8934A" : "var(--text)", fontWeight: 700 }}>{giftCertificates.length}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "var(--muted)" }}>Ideas open on the board</span>
-              <span className="mono" style={{ fontWeight: 700 }}>{revenueIdeas}</span>
+              <span className="mono">{revenueIdeas}</span>
             </div>
           </div>
           <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
-            An empty Saturday is the most expensive thing the business owns. Valued at the
-            {" "}{currency(avgCharter)} average charter.
+            Counted in Saturdays, not weekend days: Saturday carried 14 of 24 charters this
+            season and Sunday ran twice in six months. Valued at the {currency(avgCharterSeason)} the
+            season actually took, and at the rate Saturdays actually fill.
           </div>
         </div>
         <div className="orbit-crew">
