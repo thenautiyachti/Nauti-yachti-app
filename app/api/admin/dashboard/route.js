@@ -113,7 +113,7 @@ async function GET() {
         select: { label: true, intervalHours: true, intervalMonths: true, lastDoneDate: true, lastDoneHours: true },
       }),
       prisma.engineHoursLog.aggregate({ _max: { hours: true } }),
-      // The Jarvis Media Queue panel scrolls through recent drafts of any
+      // The media pipeline scrolls through recent drafts of any
       // status, not just pending ones -- the owner wants at least the last
       // three visible so an approved or rejected draft can still be reviewed
       // after the fact.
@@ -233,7 +233,7 @@ async function GET() {
 
     // Last-30-days income/expense pulse, straight off the same LedgerEntry
     // rows the Ledger and Tax Report tabs use — a quick "how's the business
-    // doing right now" snapshot for the Jarvis dashboard.
+    // doing right now" snapshot for the console Overview.
     let revenue30dIncome = 0;
     let revenue30dExpense = 0;
     for (const entry of recentLedger) {

@@ -31,7 +31,7 @@ function speakableFrom(full, cap) {
 }
 
 // POST { text: string } -> synthesizes speech via ElevenLabs and stores the
-// resulting audio as a SpeechEvent row for the Jarvis tab to pick up on its
+// resulting audio as a SpeechEvent row for the console to pick up on its
 // next poll. This replaces the standalone Jarvis-Voice-UI server's websocket
 // push — Vercel serverless functions can't hold a long-lived websocket, so
 // the frontend polls GET /api/admin/speak?since=... instead.
@@ -53,7 +53,7 @@ async function POST(req) {
   }
   // The text is the point; the voice is a bonus. If synthesis is unavailable
   // for any reason — no API key, an exhausted ElevenLabs quota, an outage —
-  // store the message as text so it still reaches the Jarvis tab. Previously
+  // store the message as text so it still reaches the console. Previously
   // this returned early and the words were lost along with the audio, which
   // meant a credit problem silently turned into a communication blackout.
   async function saveTextOnly(reason) {
@@ -104,7 +104,7 @@ async function POST(req) {
 }
 
 // GET ?since=<ISO timestamp> -> any SpeechEvent rows created after `since`,
-// oldest-first. Polled every ~2s by the Jarvis tab while it's open.
+// oldest-first. Polled every ~2s by the console while it's open.
 async function GET(req) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -116,10 +116,10 @@ async function GET(req) {
   const valid = sinceDate && !isNaN(sinceDate.getTime());
 
   // With no `since`, return the most recent messages rather than the whole
-  // history. The Jarvis tab calls it this way on load so the panel opens with
-  // what Jarvis has already said — previously it only ever asked for messages
+  // history. The console calls it this way on load so the panel opens with
+  // what Pearl has already said — previously it only ever asked for messages
   // newer than the moment the page opened, so the panel was always empty until
-  // something new arrived, and anything said while the tab was shut was lost
+  // something new arrived, and anything said while the console was shut was lost
   // to the owner entirely.
   if (!valid) {
     const recent = await prisma.speechEvent.findMany({

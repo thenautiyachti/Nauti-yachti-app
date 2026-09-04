@@ -279,50 +279,50 @@ export default function SocialPipelinePanel() {
                         post actually has a photo or clip attached, and almost
                         none of them do. */}
                     <button type="button" onClick={() => setPreviewId(previewId === r.id ? null : r.id)}
-                      className="jarvis-font" style={btn(r.mediaUrl ? "#00d9ff" : "#ffb454", true)}>
+                      style={btn(r.mediaUrl ? "#00d9ff" : "#ffb454", true)}>
                       {previewId === r.id ? "HIDE PREVIEW" : r.mediaUrl ? "PREVIEW" : "PREVIEW · NO MEDIA"}
                     </button>
                     {/* Three answers, not two: yes, no, and "nearly". */}
                     {(r.status === "proposed" || r.status === "discussing") && (
                       <>
-                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "approved")} className="jarvis-font" style={btn("#4ff3ff")}>
+                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "approved")} style={btn("#4ff3ff")}>
                           APPROVE
                         </button>
-                        <button type="button" disabled={busy === r.id} onClick={() => discuss(r)} className="jarvis-font" style={btn("#e86aa8")}>
+                        <button type="button" disabled={busy === r.id} onClick={() => discuss(r)} style={btn("#e86aa8")}>
                           {r.status === "discussing" ? "EDIT NOTES" : "NEEDS WORK"}
                         </button>
-                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} className="jarvis-font" style={btn("#ff4d5e")}>
+                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} style={btn("#ff4d5e")}>
                           DENY
                         </button>
                       </>
                     )}
 
                     {r.status === "approved" && (
-                      <button type="button" disabled={busy === r.id} onClick={() => schedule(r)} className="jarvis-font" style={btn("#00d9ff", true)}>
+                      <button type="button" disabled={busy === r.id} onClick={() => schedule(r)} style={btn("#00d9ff", true)}>
                         SCHEDULE…
                       </button>
                     )}
 
                     {r.status === "scheduled" && (
                       <>
-                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "posted")} className="jarvis-font" style={btn("#7FE0B8")}>
+                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "posted")} style={btn("#7FE0B8")}>
                           MARK POSTED
                         </button>
-                        <button type="button" disabled={busy === r.id} onClick={() => schedule(r)} className="jarvis-font" style={btn("#4ff3ff")}>
+                        <button type="button" disabled={busy === r.id} onClick={() => schedule(r)} style={btn("#4ff3ff")}>
                           RESCHEDULE
                         </button>
                         {/* Killing a scheduled post was impossible before: reject
                             only existed at the proposal stage, so changing your
                             mind after scheduling left no way out but posting it
                             or pushing the date back forever. */}
-                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} className="jarvis-font" style={btn("#ff4d5e")}>
+                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} style={btn("#ff4d5e")}>
                           DON&apos;T POST
                         </button>
                       </>
                     )}
 
                     {r.status === "approved" && (
-                      <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} className="jarvis-font" style={btn("#ff4d5e")}>
+                      <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} style={btn("#ff4d5e")}>
                         DON&apos;T POST
                       </button>
                     )}
@@ -333,7 +333,7 @@ export default function SocialPipelinePanel() {
                     {r.status === "posted" && (
                       <button type="button" disabled={busy === r.id}
                         onClick={() => { if (window.confirm("Recall this post?\n\nRemove it from the social account first — this only records that it came down. It moves to Delisted and can be re-approved later.")) move(r, "delisted"); }}
-                        className="jarvis-font" style={btn("#ffb454")}>
+                        style={btn("#ffb454")}>
                         RECALL POST
                       </button>
                     )}
@@ -341,7 +341,7 @@ export default function SocialPipelinePanel() {
                     {(r.status === "rejected" || r.status === "delisted") && (
                       <button type="button" disabled={busy === r.id}
                         onClick={() => move(r, "proposed")}
-                        className="jarvis-font" style={btn("#1c7a86")}>
+                        style={btn("#1c7a86")}>
                         BACK TO REVIEW
                       </button>
                     )}
@@ -371,7 +371,7 @@ export default function SocialPipelinePanel() {
                             </div>
                           )}
                           <button type="button" disabled={busy === r.id} onClick={() => attachMedia(r)}
-                            className="jarvis-font" style={btn("#ffb454", true)}>
+                            style={btn("#ffb454", true)}>
                             ATTACH MEDIA
                           </button>
                         </div>
@@ -388,12 +388,12 @@ export default function SocialPipelinePanel() {
                           the app by hand — but that belongs next to the words,
                           not among the decisions. */}
                       <div style={{ padding: "0 12px 10px", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <button type="button" onClick={() => copy(r)} className="jarvis-font" style={btn("#00d9ff")}>
+                        <button type="button" onClick={() => copy(r)} style={btn("#00d9ff")}>
                           {copied === r.id ? "COPIED ✓" : "COPY CAPTION"}
                         </button>
                         {r.mediaUrl && (
                           <button type="button" disabled={busy === r.id} onClick={() => attachMedia(r)}
-                            className="jarvis-font" style={btn("#1c7a86")}>
+                            style={btn("#1c7a86")}>
                             REPLACE MEDIA
                           </button>
                         )}

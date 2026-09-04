@@ -14,7 +14,7 @@ async function authorized(req) {
 }
 
 // GET -> most recent AgentActivity rows (limit ~25), newest first. Polled by
-// the Jarvis tab's "Agent Activity" panel. Requires the human admin session
+// the crew cards on the console Overview. Requires the human admin session
 // (this is a console-view read, not a machine write).
 async function GET(req) {
   if (!(await isAdminAuthenticated())) {

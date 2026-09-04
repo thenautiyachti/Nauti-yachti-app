@@ -36,8 +36,8 @@ export default function AdminPage() {
   const [mediaDrafts, setMediaDrafts] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [priceHistory, setPriceHistory] = useState([]);
-  // Lived only on the Jarvis dashboard until now. The console has grown into the
-  // real interface, so these move here and Jarvis stops being a second place to
+  // Lived only on the voice dashboard until now. The console has grown into the
+  // real interface, so these move here and that dashboard stops being a second place to
   // look for the same information.
   const [todos, setTodos] = useState([]);
   const [agentActivity, setAgentActivity] = useState([]);

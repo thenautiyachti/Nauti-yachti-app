@@ -46,12 +46,15 @@ export default function AdminView({
 }) {
   const [tab, setTab] = useState("overview");
 
-  // Jarvis audio machinery lives here — not inside JarvisTab — so switching
+  // Pearl's audio machinery lives at this level so switching
   // admin console tabs doesn't tear down the AudioContext/gain/compressor
   // graph or the 2s speech-polling loop. AdminView stays mounted for the
   // whole console session; only a full page reload should require the owner
-  // to re-click "Enable Jarvis Audio". See JarvisTab below for the render
-  // side of this (the button/status badge still live on the Jarvis tab).
+  // to re-click the enable button. That button is in the console header now;
+  // the Jarvis tab that used to hold it was retired on 3 Sep 2026, because six
+  // of its seven panels had become duplicates of the Overview and the seventh
+  // was the media pipeline, which moved to Marketing → Media Drafts where it
+  // belonged.
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [lastSpoken, setLastSpoken] = useState("");
   const [audioNote, setAudioNote] = useState("");
@@ -60,13 +63,13 @@ export default function AdminView({
   const gainNodeRef = useRef(null);
   const analyserRef = useRef(null);
   const sinceRef = useRef(null);
-  // A running log of what Jarvis has said, so the tab shows a transcript
+  // A running log of what Pearl has said, kept so a transcript
   // rather than only the single most recent line.
   const [messages, setMessages] = useState([]);
 
   // Speech poll — every 2s, only once audio has been unlocked by a click.
   useEffect(() => {
-    // Polling deliberately does NOT depend on audioEnabled. Jarvis messages are
+    // Polling deliberately does NOT depend on audioEnabled. Pearl's messages are
     // worth reading whether or not you want them read aloud, and polling costs
     // nothing — it only reads rows that already exist. ElevenLabs is billed at
     // send time, so nothing here consumes credits.
@@ -77,7 +80,7 @@ export default function AdminView({
       if (inFlight) return;
       inFlight = true;
       // First call of the session has no cursor: ask for recent history so the
-      // panel opens with what Jarvis has already said. Anything said while the
+      // panel opens with what Pearl has already said. Anything said while the
       // tab was closed used to be invisible, which made the whole channel look
       // broken whenever the voice was down.
       const first = !sinceRef.current;
@@ -135,7 +138,7 @@ export default function AdminView({
     el.play()
       .then(() => setAudioNote(""))
       .catch((err) => {
-        console.error("Jarvis audio playback blocked:", err);
+        console.error("Pearl audio playback blocked:", err);
         setAudioNote("Playback blocked — click anywhere on the page to retry.");
         const retry = () => {
           audioCtxRef.current && audioCtxRef.current.resume();
@@ -181,7 +184,7 @@ export default function AdminView({
         compressor.connect(audioCtxRef.current.destination);
 
         // Tapped off the same post-gain/compressor signal that actually
-        // plays, so the visualizer reacts to what Jarvis is really saying —
+        // plays, so the visualizer reacts to what Pearl is really saying —
         // not the raw pre-boost audio.
         const analyser = audioCtxRef.current.createAnalyser();
         analyser.fftSize = 1024;
@@ -191,7 +194,7 @@ export default function AdminView({
 
         gainNodeRef.current = gain;
       } catch (err) {
-        console.error("Jarvis audio gain boost setup failed:", err);
+        console.error("Pearl audio gain boost setup failed:", err);
       }
     }
 
@@ -265,24 +268,35 @@ export default function AdminView({
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--ink)" }}>
-      {/* Persists across tab switches — see the Jarvis audio state above. */}
+      {/* Persists across tab switches — see Pearl's audio state above. */}
       <audio ref={audioElRef} style={{ display: "none" }} />
       <div className="console-header" style={{ background: "var(--ink-soft)", color: "var(--text)", padding: "14px 24px", borderBottom: "1px solid rgba(203,108,230,0.2)" }}>
-        {/* Jarvis sits beside the title rather than out on the right: it is a
-            mode you switch into, not an action like Manual or Log out. */}
+        {/* Pearl's voice. This was the Jarvis button and a whole tab behind it;
+            in substance it was only ever a browser audio permission plus
+            whatever she last said, so it is a control rather than a mode.
+            Browsers refuse to play audio until a real click, which is the only
+            reason this button has to exist at all. */}
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div className="display" style={{ fontSize: 20, fontWeight: 700, whiteSpace: "nowrap" }}>OWNER CONSOLE</div>
           <button
             className="console-btn"
-            onClick={() => setTab("jarvis")}
+            onClick={audioEnabled ? undefined : enableAudio}
+            title={
+              lastSpoken
+                ? "Pearl last said: " + lastSpoken
+                : audioEnabled
+                  ? "Pearl can speak. Nothing said yet."
+                  : "Click to let Pearl speak in this browser"
+            }
             style={{
-              background: tab === "jarvis" ? "linear-gradient(135deg, #00d9ff, #0ea5e9)" : "rgba(0,217,255,0.08)",
-              color: tab === "jarvis" ? "#04070a" : "#4ff3ff",
-              borderColor: "#0ea5e9", fontWeight: 700, letterSpacing: "0.04em",
-              boxShadow: tab === "jarvis" ? "0 0 14px rgba(0,217,255,0.5)" : "none",
+              background: audioEnabled ? "rgba(79,191,139,0.14)" : "rgba(203,108,230,0.10)",
+              color: audioEnabled ? "#7FE0B8" : "var(--purple)",
+              borderColor: audioEnabled ? "#4FBF8B" : "var(--purple)",
+              fontWeight: 700, letterSpacing: "0.03em",
+              cursor: audioEnabled ? "default" : "pointer",
             }}
           >
-            ⚡ Jarvis
+            {audioEnabled ? "🔊 Pearl" : "🔈 Enable Pearl"}
           </button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -477,6 +491,7 @@ export default function AdminView({
             maintenanceItems={maintenanceItems} engineHours={engineHours} mediaDrafts={mediaDrafts}
             todos={todos} agentActivity={agentActivity}
             testimonials={testimonials} giftCertificates={giftCertificates} vessels={vessels}
+            subscriptions={subscriptions}
             onAddTodo={onAddTodo} onToggleTodo={onToggleTodo} onDeleteTodo={onDeleteTodo}
             onGo={setTab}
           />
@@ -486,9 +501,11 @@ export default function AdminView({
           <GalleryTab gallery={gallery} onUpdateCaption={onUpdateCaption} onAddGalleryItem={onAddGalleryItem} onUpdateGalleryItem={onUpdateGalleryItem} onDeleteGalleryItem={onDeleteGalleryItem} />
         )}
 
-        {tab === "mediaDrafts" && (
-          <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} onAttachMedia={onAttachMediaDraftMedia} />
-        )}
+        {/* The real workflow, which was hidden inside the Jarvis tab while this
+            tab rendered a thinner component. SocialPipelinePanel owns the whole
+            chain -- proposed, approved, scheduled, posted -- and fetches its
+            own data, which is why it takes no props. */}
+        {tab === "mediaDrafts" && <SocialPipelinePanel />}
 
         {tab === "testimonials" && (
           <TestimonialsTab
@@ -541,16 +558,6 @@ export default function AdminView({
           <SubscriptionsTab subscriptions={subscriptions} onAdd={onAddSubscription} onUpdate={onUpdateSubscription} onDelete={onDeleteSubscription} />
         )}
 
-        {tab === "jarvis" && (
-          <JarvisTab
-            audioEnabled={audioEnabled}
-            onEnableAudio={enableAudio}
-            lastSpoken={lastSpoken}
-            messages={messages}
-            audioNote={audioNote}
-            analyserRef={analyserRef}
-          />
-        )}
       </div>
     </div>
   );
@@ -3016,7 +3023,7 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
   const [copied, setCopied] = useState(false);
 
   // Asks for the one fact that is missing rather than offering a dead end —
-  // the same prompt the Jarvis pipeline uses, so the two behave alike.
+  // the same prompt the social pipeline uses, so the two behave alike.
   function reschedule() {
     const suggested = d.scheduledDate || localDateKey(new Date());
     const date = window.prompt("Date to post it (YYYY-MM-DD):", suggested);
@@ -3118,7 +3125,7 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 
               {(d.status === "approved" || d.status === "scheduled") && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {/* Same four actions the Jarvis pipeline offers, so the two
+                  {/* Same four actions the social pipeline offers, so the two
                       screens do not disagree about what can be done to a post. */}
                   <button type="button" onClick={() => setPreviewOpen((v) => !v)}
                     style={{ flex: "1 1 46%", background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
@@ -3194,10 +3201,10 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
 
 // The one screen that answers "what needs me today" without opening five tabs.
 //
-// Everything here previously lived only on the Jarvis dashboard, which had grown
+// Everything here previously lived only on the voice dashboard, which had grown
 // into a second place to look for the same information the console already held.
 // The console won: it does everything else, and its tabs are where the work
-// actually happens. Only the to-do list and the agent log were unique to Jarvis,
+// actually happens. Only the to-do list and the agent log were unique to it,
 // so they move here.
 // The one screen that answers "what needs me today".
 //
@@ -3696,7 +3703,7 @@ function PanelHead({ owners, children }) {
   );
 }
 
-function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, testimonials = [], giftCertificates = [], vessels = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
+function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, testimonials = [], giftCertificates = [], vessels = [], subscriptions = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
   const [text, setText] = useState("");
   const [showDone, setShowDone] = useState(false);
   // Which priority bands are expanded. High open, Medium and Low closed --
@@ -3839,6 +3846,16 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
 
   // `go` is the tab that can actually act on the item, so the line is a link
   // rather than an instruction to go and find it yourself.
+  // Renewals landing inside a fortnight. Nothing else in the console surfaces a
+  // subscription BEFORE it charges -- the Subscriptions tab lists them, but a
+  // list is not a warning. This was the one genuinely useful thing in the
+  // retired Jarvis tab.
+  const subsDueSoon = (subscriptions || []).filter((x) => {
+    if (!x || x.active === false || !x.nextDueDate) return false;
+    const d = String(x.nextDueDate).slice(0, 10);
+    return d >= today && d <= plus(14);
+  });
+
   const attention = [
     newInquiries.length && { k: "enquiry", t: `${newInquiries.length} new ${newInquiries.length === 1 ? "enquiry" : "enquiries"}`, w: "Bookings → Inquiries", go: "inquiries", urgent: true },
     overdue.length && { k: "boat", t: `${overdue.length} maintenance ${overdue.length === 1 ? "item" : "items"} overdue`, w: "Boat", go: "maintenance", urgent: true },
@@ -3853,6 +3870,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     soonPosts.length && { k: "media", t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts", go: "mediaDrafts" },
     neverAsked.length && { k: "reviews", t: `${neverAsked.length} guests never asked for a review`, w: "Marketing → Testimonials, from your phone", go: "testimonials" },
     looseIncome.length && { k: "money", t: `${looseIncome.length} income ${looseIncome.length === 1 ? "row is" : "rows are"} not tied to a charter`, w: "Money → Reconciliation", go: "reconcile" },
+    subsDueSoon.length && { k: "money", t: `${subsDueSoon.length} subscription${subsDueSoon.length === 1 ? "" : "s"} due in the next 14 days`, w: "Money → Subscriptions · " + subsDueSoon.map((x) => x.name).slice(0, 3).join(", "), go: "subscriptions" },
     noPhone.length && { k: "guests", t: `${noPhone.length} past guests have no phone number`, w: "they cannot be asked for anything", go: "bookings" },
   ].filter(Boolean);
 
@@ -4719,86 +4737,6 @@ function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem, onUpdateGaller
   );
 }
 
-function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }) {
-  // Past drafts start hidden. They are a record, not a to-do list.
-  const [showPast, setShowPast] = useState(false);
-  const todayKey = localDateKey(new Date());
-
-  const upcoming = mediaDrafts
-    .filter((d) => !draftIsPast(d, todayKey))
-    .sort((a, b) => draftSortKey(a).localeCompare(draftSortKey(b)));
-  // Most recent first, so the thing that just went out is at the top.
-  const past = mediaDrafts
-    .filter((d) => draftIsPast(d, todayKey))
-    .sort((a, b) => draftSortKey(b).localeCompare(draftSortKey(a)));
-
-  const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
-  const cardProps = { onUpdateStatus, onDelete, onAttachMedia };
-
-  // Bucket the upcoming posts by the day they go out. `upcoming` is already in
-  // date order, so walking it preserves that without sorting again — and a draft
-  // with no date lands in its own bucket rather than being silently grouped with
-  // whatever happened to be first.
-  const upcomingByDay = [];
-  for (const d of upcoming) {
-    const day = d.scheduledDate || "unscheduled";
-    const last = upcomingByDay[upcomingByDay.length - 1];
-    if (last && last.day === day) last.items.push(d);
-    else upcomingByDay.push({ day, items: [d] });
-  }
-
-  return (
-    <div>
-      <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>
-        Media drafts — {upcoming.length} coming up
-        {past.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {past.length} done</span>}
-      </div>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 12 }}>
-        Soonest first. <strong style={{ color: "#E8934A" }}>Anything marked SCHEDULED goes out on its own</strong> —
-        the publisher runs each morning and posts whatever is due. Use <em>Don&rsquo;t post</em> to stop one.
-        Nothing in any other status is ever posted.
-      </p>
-
-      {/* The toggle sits above the grid, not below it. Underneath, it was past
-          the end of a long scroll of cards and easy to miss entirely. */}
-      {past.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <button type="button" onClick={() => setShowPast((v) => !v)}
-            style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600 }}>
-            {showPast ? "▾" : "▸"} Already posted, denied or past ({past.length})
-          </button>
-          {showPast && (
-            <div style={{ ...GRID, marginTop: 12, marginBottom: 6 }}>
-              {past.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
-            </div>
-          )}
-        </div>
-      )}
-
-      {upcoming.length === 0 && (
-        <div style={{ color: "var(--muted)", fontSize: 13.5 }}>
-          Nothing scheduled ahead{past.length > 0 ? " — everything is in the list above." : "."}
-        </div>
-      )}
-
-      {/* Boxed by day. Three posts going out on the same date are one piece of
-          work in the owner's head -- the same idea told three ways -- and a flat
-          grid made them look like three unrelated jobs sitting next to each
-          other. Each day collapses, but opens by default: this is the list of
-          what is still to come, so hiding it would defeat the point. */}
-      {/* Two days abreast, fixed. auto-fill fitted a third column on a wide
-          monitor, which squeezed each day's cards too narrow to read the
-          caption they are being approved on. */}
-      <div className="draft-days">
-        {upcomingByDay.map(({ day, items }) => (
-          <DraftDayGroup key={day} day={day} items={items} cardProps={cardProps} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// One day's posts, boxed together and collapsible. Open by default.
 function DraftDayGroup({ day, items, cardProps }) {
   // Sized so three fit across a day box; they wrap on a narrow screen.
   const DAY_GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))", gap: 10 };
@@ -5796,635 +5734,6 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---- Jarvis tab --------------------------------------------------
-//
-// Folds the standalone Jarvis-Voice-UI HUD into the owner console so it
-// works from anywhere over the site's own HTTPS + passcode auth, with no
-// separate always-on server or tunnel. Vercel functions can't hold a
-// websocket open, so this polls Postgres instead:
-//  - GET /api/admin/dashboard every ~30s for bookings/attention/media queue
-//  - GET /api/admin/speak?since=... every ~2s for new SpeechEvent rows
-//    while this tab is mounted, decoding + playing any new audio.
-// Browsers block audio autoplay until a real user gesture, so playback is
-// gated behind a one-time "Enable Jarvis Audio" click, same as the
-// standalone HUD's ACTIVATE button.
-
-function jarvisFmtDate(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-// "14:30" -> "2:30 PM". Returns null (not shown) for a missing time rather
-// than a placeholder — most site-originated bookings don't have one yet.
-function jarvisFmtTime(timeStr) {
-  if (!timeStr) return null;
-  const [h, m] = timeStr.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 || 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
-
-// Relative time like "3m ago" / "2h ago" / "5d ago" for AgentActivity rows.
-function jarvisRelativeTime(dateVal) {
-  const then = new Date(dateVal).getTime();
-  if (isNaN(then)) return "";
-  const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
-  if (diffSec < 60) return "just now";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
-}
-
-const JARVIS_STATUS_STYLE = {
-  running: { color: "#00d9ff", label: "RUNNING", pulse: true },
-  completed: { color: "#ffb454", label: "COMPLETED", pulse: false },
-  failed: { color: "#ff4d5e", label: "FAILED", pulse: false },
-};
-
-// Renders an AgentActivity row's `detail` text. Going forward, Claude Code
-// writes `detail` as separate newline-separated lines instead of one
-// comma-heavy sentence — those render as a real bullet list. A single short
-// line (or an older row written before this change) has no "\n" and just
-// renders as plain text, same as before.
-function JarvisActivityDetail({ detail }) {
-  const lines = detail.split("\n").map((l) => l.trim()).filter(Boolean);
-  if (lines.length <= 1) {
-    return <div style={{ fontSize: 11.5, color: "#b7d9de", marginTop: 4, marginLeft: 16 }}>{detail}</div>;
-  }
-  return (
-    <ul style={{ fontSize: 11.5, color: "#b7d9de", marginTop: 4, marginBottom: 0, marginLeft: 16, paddingLeft: 16 }}>
-      {lines.map((line, idx) => (
-        <li key={idx} style={{ marginBottom: idx < lines.length - 1 ? 2 : 0 }}>{line}</li>
-      ))}
-    </ul>
-  );
-}
-
-// Badge styling for MediaDraft.status in the Jarvis Media Queue panel.
-// "discussing" reads as "PENDING ACTION" — the owner's wording for "still
-// thinking about it / needs a conversation before we approve it."
-// Angular, beveled panel corner — the established Jarvis HUD look (see the
-// standalone Jarvis-Voice-UI's .panel for the non-admin-console version of
-// this same aesthetic). Cuts the top-right and bottom-left corners at 45°.
-const jarvisPanelClip = "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))";
-
-function JarvisPanel({ title, children, wide }) {
-  return (
-    <div
-      // A panel holding a list of things to act on needs more width than a
-      // panel holding one number, so it can span two grid columns.
-      className={wide ? "jarvis-panel-wide" : undefined}
-      style={{
-        background: "rgba(0,217,255,0.04)", border: "1px solid #0ea5e9", borderRadius: 4,
-        // Extra bottom padding because clipPath cuts a 14px triangle out of the
-        // bottom-left corner — without the clearance it slices through the last
-        // line of whatever the panel is showing.
-        padding: "16px 18px 22px", clipPath: jarvisPanelClip,
-        boxShadow: "0 0 16px rgba(0,217,255,0.08) inset",
-        position: "relative",
-        // Grid stretches every panel in a row to match the tallest, so the panel
-        // is a flex column and its body takes the leftover height. Scroll areas
-        // inside can then fill the panel instead of being pinned to an
-        // arbitrary pixel height that leaves dead space below them.
-        display: "flex", flexDirection: "column", height: "100%", minHeight: 0,
-      }}
-    >
-      <div className="jarvis-font" style={{
-        fontWeight: 700, fontSize: 12.5, letterSpacing: "0.15em", textTransform: "uppercase", color: "#00d9ff",
-        marginBottom: 12, textShadow: "0 0 8px rgba(0,217,255,0.5)", flexShrink: 0,
-      }}>
-        {title}
-      </div>
-      {/* minHeight:0 is what actually lets a nested overflow:auto child shrink
-          and scroll — without it a flex child refuses to go below its content
-          height and the scrollbar never engages. */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// "Talk to Jarvis" — get the owner from this console to a text box where they
-// can actually type at Claude.
-//
-// Two different situations, because a web page cannot reach a desktop app on a
-// *different* machine:
-//   - On the home PC, Windows has a `claude://` protocol handler registered for
-//     the Claude desktop app, so we can hand off to it directly.
-//   - From a phone or the laptop, that handler doesn't exist and nothing
-//     happens, so we fall back to the web session list. The session has to have
-//     Remote Control switched on for it to be reachable there.
-// We can't feature-detect a protocol handler, so we try it and fall back if the
-// page is still in the foreground shortly after — a successful hand-off blurs
-// or hides this tab.
-const JARVIS_WEB_SESSIONS_URL = "https://claude.ai/code";
-
-function openJarvisSession() {
-  let handedOff = false;
-  const markHandedOff = () => { handedOff = true; };
-  window.addEventListener("blur", markHandedOff, { once: true });
-  document.addEventListener("visibilitychange", markHandedOff, { once: true });
-
-  try {
-    window.location.href = "claude://";
-  } catch {
-    // No handler on this device — the fallback below covers it.
-  }
-
-  window.setTimeout(() => {
-    window.removeEventListener("blur", markHandedOff);
-    document.removeEventListener("visibilitychange", markHandedOff);
-    if (!handedOff && !document.hidden) {
-      window.open(JARVIS_WEB_SESSIONS_URL, "_blank", "noopener,noreferrer");
-    }
-  }, 1200);
-}
-
-function JarvisTab({ audioEnabled, onEnableAudio, lastSpoken, messages, audioNote, analyserRef }) {
-  const [dashboard, setDashboard] = useState(null);
-  const [dashboardError, setDashboardError] = useState(false);
-  const [agentActivity, setAgentActivity] = useState(null);
-  const [agentActivityError, setAgentActivityError] = useState(false);
-  // Runs only — the morning standup files eight status rows a day, which would
-  // bury the actual work this panel exists to show.
-  const jarvisRuns = (agentActivity || []).filter((a) => !isStatusRow(a));
-  const [todos, setTodos] = useState([]);
-  const [todoText, setTodoText] = useState("");
-  const [todoError, setTodoError] = useState("");
-
-  // To-do list — fetched once on mount (not polled; nothing else writes to
-  // this table, so there's no need to re-poll every 30s like the shared
-  // dashboard data).
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/jarvis-todos")
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("bad status"))))
-      .then((data) => { if (!cancelled) setTodos(data); })
-      .catch(() => { if (!cancelled) setTodoError("Unable to load to-dos."); });
-    return () => { cancelled = true; };
-  }, []);
-
-  async function addTodo(e) {
-    e.preventDefault();
-    const text = todoText.trim();
-    if (!text) return;
-    setTodoError("");
-    try {
-      const res = await fetch("/api/jarvis-todos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error("bad status");
-      const created = await res.json();
-      setTodos((prev) => [...prev, created]);
-      setTodoText("");
-    } catch {
-      setTodoError("Could not add that — try again.");
-    }
-  }
-
-  async function toggleTodo(id, done) {
-    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done } : t)));
-    try {
-      const res = await fetch(`/api/jarvis-todos/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ done }),
-      });
-      if (!res.ok) throw new Error("bad status");
-    } catch {
-      setTodoError("Could not update that — try again.");
-      setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done: !done } : t)));
-    }
-  }
-
-  async function deleteTodo(id) {
-    const prevTodos = todos;
-    setTodos((prev) => prev.filter((t) => t.id !== id));
-    try {
-      const res = await fetch(`/api/jarvis-todos/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("bad status");
-    } catch {
-      setTodoError("Could not delete that — try again.");
-      setTodos(prevTodos);
-    }
-  }
-
-  // Dashboard poll — every 30s while this tab is mounted.
-  useEffect(() => {
-    let cancelled = false;
-    async function loadDashboard() {
-      try {
-        const res = await fetch("/api/admin/dashboard");
-        if (!res.ok) throw new Error("bad status");
-        const data = await res.json();
-        if (!cancelled) {
-          setDashboard(data);
-          setDashboardError(false);
-        }
-      } catch {
-        if (!cancelled) setDashboardError(true);
-      }
-    }
-    loadDashboard();
-    const interval = setInterval(loadDashboard, 30000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
-
-  // Agent activity poll — every 30s, same cadence as the dashboard panels.
-  useEffect(() => {
-    let cancelled = false;
-    async function loadAgentActivity() {
-      try {
-        const res = await fetch("/api/admin/agent-activity");
-        if (!res.ok) throw new Error("bad status");
-        const data = await res.json();
-        if (!cancelled) {
-          setAgentActivity(data);
-          setAgentActivityError(false);
-        }
-      } catch {
-        if (!cancelled) setAgentActivityError(true);
-      }
-    }
-    loadAgentActivity();
-    const interval = setInterval(loadAgentActivity, 30000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
-
-  // Mirror the dashboard's media queue into local state so approve/deny/
-  // discuss clicks below can update the panel immediately, instead of
-  // waiting up to 30s for the next dashboard poll to reflect the change.
-  // Live voice waveform — draws whatever's actually coming out of the
-  // Jarvis <audio> element (post gain/compressor) onto a canvas every
-  // frame. Runs continuously once audio is enabled: a flat idle line
-  // between utterances, a reactive pulse while speech is playing. The
-  // AnalyserNode itself is created once in enableAudio() (see above) and
-  // handed down via analyserRef, so this effect only needs to draw.
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    if (!audioEnabled) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const width = canvas.width;
-    const height = canvas.height;
-    let raf;
-
-    function draw() {
-      raf = requestAnimationFrame(draw);
-      const analyser = analyserRef.current;
-      ctx.clearRect(0, 0, width, height);
-
-      if (!analyser) {
-        ctx.strokeStyle = "rgba(0,217,255,0.4)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, height / 2);
-        ctx.lineTo(width, height / 2);
-        ctx.stroke();
-        return;
-      }
-
-      const data = new Uint8Array(analyser.fftSize);
-      analyser.getByteTimeDomainData(data);
-
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = "#00d9ff";
-      ctx.shadowColor = "#00d9ff";
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      const sliceWidth = width / data.length;
-      let x = 0;
-      for (let i = 0; i < data.length; i++) {
-        const v = data[i] / 128.0; // ~1.0 at silence, swings 0-2 with signal
-        const y = (v * height) / 2;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-        x += sliceWidth;
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    draw();
-    return () => cancelAnimationFrame(raf);
-  }, [audioEnabled, analyserRef]);
-
-  // Media-draft actions now live in SocialPipelinePanel, which owns the whole
-  // proposed -> approved -> scheduled -> posted flow rather than just approve
-  // and deny.
-
-  const bookings = dashboard?.bookings || [];
-  const attention = dashboard?.needsAttention || null;
-
-  return (
-    <div
-      className="jarvis-hud"
-      style={{
-        position: "relative", margin: "-24px", padding: 24, minHeight: "calc(100vh - 145px)",
-        background:
-          "radial-gradient(ellipse at top, rgba(0,217,255,0.07) 0%, rgba(4,7,10,1) 62%)," +
-          "repeating-linear-gradient(0deg, rgba(0,217,255,0.025) 0px, rgba(0,217,255,0.025) 1px, transparent 1px, transparent 3px)",
-        overflow: "hidden",
-      }}
-    >
-      <style>{`
-        @keyframes jarvisPulseDot {
-          0%, 100% { box-shadow: 0 0 4px 1px rgba(0,217,255,0.6), 0 0 0 rgba(0,217,255,0.4); opacity: 1; }
-          50% { box-shadow: 0 0 10px 4px rgba(0,217,255,0.9), 0 0 16px rgba(0,217,255,0.5); opacity: 0.65; }
-        }
-        @keyframes jarvisScan {
-          from { background-position: 0 0; }
-          to { background-position: 0 300px; }
-        }
-        .jarvis-hud .jarvis-font {
-          font-family: "Orbitron", "Share Tech Mono", monospace;
-        }
-        .jarvis-hud, .jarvis-hud input, .jarvis-hud select, .jarvis-hud button {
-          font-family: "Share Tech Mono", monospace;
-        }
-        .jarvis-hud .jarvis-dot-running {
-          animation: jarvisPulseDot 1.6s ease-in-out infinite;
-        }
-        .jarvis-scanline-overlay {
-          position: absolute; inset: 0; pointer-events: none; z-index: 1;
-          background: linear-gradient(rgba(0,217,255,0) 0%, rgba(0,217,255,0.05) 50%, rgba(0,217,255,0) 100%);
-          background-size: 100% 6px;
-          animation: jarvisScan 6s linear infinite;
-          mix-blend-mode: screen;
-        }
-      `}</style>
-      <div className="jarvis-scanline-overlay" />
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <div className="jarvis-font" style={{
-          fontSize: 20, fontWeight: 900, letterSpacing: "0.3em", color: "#00d9ff",
-          textShadow: "0 0 12px rgba(0,217,255,0.6)", marginBottom: 4,
-        }}>
-          J.A.R.V.I.S.
-        </div>
-        <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#1c7a86", marginBottom: 18 }}>
-          NAUTI YACHTI // ASSISTANT LINK — CONSOLE MODE
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-          {!audioEnabled ? (
-            <button type="button" onClick={onEnableAudio}
-              className="jarvis-font"
-              style={{
-                background: "rgba(0,217,255,0.08)", color: "#00d9ff", border: "1px solid #00d9ff", borderRadius: 4,
-                padding: "10px 18px", fontWeight: 700, fontSize: 12.5, letterSpacing: "0.1em",
-                boxShadow: "0 0 12px rgba(0,217,255,0.25)",
-              }}>
-              ▲ ENABLE JARVIS AUDIO
-            </button>
-          ) : (
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.1em",
-              color: "#04070a", background: "#00d9ff", boxShadow: "0 0 10px rgba(0,217,255,0.5)",
-            }}>
-              <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#04070a", marginRight: 6, verticalAlign: "middle" }} />
-              AUDIO ENABLED
-            </span>
-          )}
-          <button type="button" onClick={openJarvisSession}
-            className="jarvis-font"
-            title="Opens the Claude session on the home PC, or the web session list from any other device"
-            style={{
-              background: "rgba(255,180,84,0.08)", color: "#ffb454", border: "1px solid #ffb454", borderRadius: 4,
-              padding: "10px 18px", fontWeight: 700, fontSize: 12.5, letterSpacing: "0.1em",
-              boxShadow: "0 0 12px rgba(255,180,84,0.2)", cursor: "pointer",
-            }}>
-            ✎ TALK TO JARVIS
-          </button>
-          <div style={{ fontSize: 17, lineHeight: 1.45, color: "#4ff3ff", opacity: 0.95 }}>
-            {lastSpoken ? <>Latest: <span style={{ color: "#fff", fontSize: 18.5, fontWeight: 600 }}>&ldquo;{lastSpoken}&rdquo;</span></> : "Nothing from Jarvis yet."}
-          </div>
-        </div>
-        {audioNote && <div style={{ color: "#ffb454", fontSize: 12.5, marginBottom: 16 }}>{audioNote}</div>}
-
-        {/* The running transcript. Newest first, matching the owner's stated
-            preference elsewhere in the console. A message with no audio was
-            stored text-only because synthesis was unavailable — worth marking,
-            so a silent message is obviously "not spoken" rather than "missed". */}
-        {messages && messages.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <div className="jarvis-font" style={{ fontSize: 11, letterSpacing: "0.14em", color: "#1c7a86", marginBottom: 8 }}>
-              TRANSCRIPT
-            </div>
-            <div style={{
-              maxHeight: 260, overflowY: "auto", display: "grid", gap: 10,
-              border: "1px solid rgba(0,217,255,0.18)", borderRadius: 6, padding: "12px 14px",
-              background: "rgba(0,0,0,0.25)",
-            }}>
-              {[...messages].reverse().map((m) => (
-                <div key={m.id} style={{ borderBottom: "1px solid rgba(0,217,255,0.1)", paddingBottom: 8 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginBottom: 3 }}>
-                    <span className="mono" style={{ fontSize: 10.5, color: "#1c7a86", whiteSpace: "nowrap" }}>
-                      {new Date(m.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                    </span>
-                    {!m.audioB64 && (
-                      <span style={{ fontSize: 9.5, letterSpacing: "0.05em", color: "#ffb454", border: "1px solid #ffb454", borderRadius: 3, padding: "0 5px" }}>
-                        TEXT ONLY
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 14.5, color: "#dffcff", lineHeight: 1.5 }}>{m.text}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div style={{
-          position: "relative", border: "1px solid rgba(0,217,255,0.25)", borderRadius: 6,
-          background: "radial-gradient(ellipse at center, rgba(0,217,255,0.06) 0%, rgba(0,0,0,0.3) 80%)",
-          padding: "10px 14px", marginBottom: 20,
-        }}>
-          <canvas ref={canvasRef} width={900} height={70} style={{ width: "100%", height: 70, display: "block" }} />
-          {!audioEnabled && (
-            <div className="jarvis-font" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, letterSpacing: "0.15em", color: "#1c7a86" }}>
-              ENABLE AUDIO TO ACTIVATE VOICE WAVEFORM
-            </div>
-          )}
-        </div>
-
-        {dashboardError && !dashboard && (
-          <div style={{ color: "#ff4d5e", fontSize: 13, marginBottom: 16 }}>Unable to load dashboard data.</div>
-        )}
-
-        {/* Four columns on a wide screen, so the eight panels sit 4x2 and each
-            has room to be read. See .jarvis-dashboard-grid in globals.css --
-            the breakpoints are explicit so a wider monitor makes the panels
-            bigger rather than squeezing in a fifth column. */}
-        <div className="jarvis-dashboard-grid">
-          <JarvisPanel title="Upcoming Bookings">
-            {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
-            {dashboard && bookings.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No bookings on record yet.</div>}
-            {/* Always three rows: upcoming charters first, padded with the most
-                recently completed ones when fewer than three are on the books.
-                Past rows are dimmed and tagged so they can't be mistaken for
-                something still to come. Scrolls once the list grows. */}
-            <div style={{ flex: 1, minHeight: 120, overflowY: "auto" }}>
-            {bookings.map((b, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: idx < bookings.length - 1 ? "1px solid rgba(0,217,255,0.12)" : "none", fontSize: 12.5, color: "#dffcff", opacity: b.isPast ? 0.62 : 1 }}>
-                <span style={{ color: b.isPast ? "#4ff3ff" : "#ffb454", fontWeight: 700, whiteSpace: "nowrap" }}>
-                  {jarvisFmtDate(b.date)}{jarvisFmtTime(b.startTime) ? ` · ${jarvisFmtTime(b.startTime)}` : ""}{b.hours ? ` · ${b.hours}h` : ""}
-                </span>
-                <span style={{ flex: 1 }}>
-                  {b.isPast && (
-                    <span style={{ display: "inline-block", marginRight: 6, padding: "0 5px", borderRadius: 3, border: "1px solid #4ff3ff", color: "#4ff3ff", fontSize: 9.5, letterSpacing: "0.04em", verticalAlign: "middle" }}>PAST</span>
-                  )}
-                  {b.name}{b.vessel ? ` · ${b.vessel}` : ""} — {b.label}{b.partySize ? ` · party of ${b.partySize}` : ""}{b.note ? ` (${b.note})` : ""}
-                  {b.weatherRisk && b.weatherRisk.risk && (
-                    <span title={b.weatherRisk.reason} style={{
-                      display: "inline-block", marginLeft: 8, padding: "1px 7px", borderRadius: 3,
-                      border: "1px solid #ffb454", color: "#ffb454", fontSize: 10.5, letterSpacing: "0.02em", whiteSpace: "nowrap", verticalAlign: "middle",
-                    }}>
-                      ⚠ {b.weatherRisk.reason.toUpperCase()}
-                    </span>
-                  )}
-                </span>
-              </div>
-            ))}
-            </div>
-          </JarvisPanel>
-
-          <JarvisPanel title="Needs Attention">
-            {!attention && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
-            {attention && [
-              ["New inquiries", attention.newInquiries],
-              ["Booked, unpaid", attention.unpaidConfirmed],
-              ["Maintenance overdue", attention.overdueMaintenance],
-            ].map(([label, val]) => (
-              <div key={label} style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 13, color: "#dffcff" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>{label}</span>
-                  <span style={{ fontWeight: 700, color: val > 0 ? "#ffb454" : "#dffcff" }}>{val}</span>
-                </div>
-                {label === "Maintenance overdue" && val > 0 && attention.overdueMaintenanceItems?.length > 0 && (
-                  <div style={{ fontSize: 11, color: "#ffb454", opacity: 0.85, marginTop: 3 }}>
-                    {attention.overdueMaintenanceItems.join(", ")}
-                  </div>
-                )}
-              </div>
-            ))}
-          </JarvisPanel>
-
-          <JarvisPanel title="Revenue — last 30 days">
-            {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
-            {dashboard && [
-              ["Income", dashboard.revenue30d.income, "#7FE0B8"],
-              ["Expenses", dashboard.revenue30d.expense, "#ff8fa8"],
-              ["Net", dashboard.revenue30d.net, dashboard.revenue30d.net >= 0 ? "#7FE0B8" : "#ff8fa8"],
-            ].map(([label, val, color]) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 13, color: "#dffcff" }}>
-                <span>{label}</span>
-                <span className="mono" style={{ fontWeight: 700, color }}>{currency(val)}</span>
-              </div>
-            ))}
-          </JarvisPanel>
-
-          <JarvisPanel title="Subscriptions Due Soon">
-            {!dashboard && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
-            {dashboard && dashboard.subscriptionsDueSoon.length === 0 && (
-              <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>Nothing with a due date set.</div>
-            )}
-            {dashboard && dashboard.subscriptionsDueSoon.map((s) => (
-              <div key={s.name} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 12.5, color: "#dffcff", gap: 8 }}>
-                <span>{s.name}</span>
-                <span style={{ textAlign: "right", flexShrink: 0 }}>
-                  <span className="mono" style={{ fontWeight: 700 }}>{currency(s.amount)}</span>{" "}
-                  <span style={{ color: s.daysUntilDue <= 3 ? "#ffb454" : "#1c7a86", fontSize: 11 }}>
-                    ({s.daysUntilDue <= 0 ? "due" : `${s.daysUntilDue}d`})
-                  </span>
-                </span>
-              </div>
-            ))}
-          </JarvisPanel>
-
-          <JarvisPanel title="To-Do">
-            <form onSubmit={addTodo} style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-              <input
-                type="text" value={todoText} onChange={(e) => setTodoText(e.target.value)} placeholder="Add a task…"
-                style={{ flex: 1, minWidth: 0, padding: "7px 9px", borderRadius: 4, border: "1px solid rgba(0,217,255,0.3)", background: "rgba(0,217,255,0.05)", color: "#dffcff", fontSize: 12.5 }}
-              />
-              <button type="submit" style={{ background: "rgba(0,217,255,0.15)", color: "#00d9ff", border: "1px solid #00d9ff", borderRadius: 4, padding: "0 12px", fontSize: 12.5, fontWeight: 700 }}>+</button>
-            </form>
-            {todoError && <div style={{ color: "#ff4d5e", fontSize: 11.5, marginBottom: 8 }}>{todoError}</div>}
-            {todos.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>Nothing on the list.</div>}
-            <div style={{ display: "grid", gap: 2, flex: 1, minHeight: 120, overflowY: "auto", alignContent: "start" }}>
-              {todos.map((t) => (
-                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid rgba(0,217,255,0.08)" }}>
-                  <input type="checkbox" checked={t.done} onChange={(e) => toggleTodo(t.id, e.target.checked)} style={{ accentColor: "#00d9ff", flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 12.5, color: t.done ? "#1c7a86" : "#dffcff", textDecoration: t.done ? "line-through" : "none" }}>{t.text}</span>
-                  <button type="button" onClick={() => deleteTodo(t.id)} style={{ background: "transparent", color: "#4ff3ff", border: "none", fontSize: 13, opacity: 0.6, flexShrink: 0 }}>✕</button>
-                </div>
-              ))}
-            </div>
-          </JarvisPanel>
-
-          {/* One pipeline replacing the old Media Queue and Campaign Queue.
-              They were two halves of the same job, and the seam between them
-              was where work got stuck: approving a draft set a flag and
-              stopped, with nothing to carry it to a date. */}
-          <JarvisPanel title="Social Pipeline" wide>
-            <SocialPipelinePanel />
-          </JarvisPanel>
-
-
-          {/* This is a feed of work, so the eight standup lines filed every
-              morning are filtered out — they would otherwise be most of it. */}
-          <JarvisPanel title="Agent Activity">
-            {agentActivityError && !agentActivity && <div style={{ color: "#ff4d5e", fontSize: 12.5 }}>Unable to load agent activity.</div>}
-            {!agentActivity && !agentActivityError && <div style={{ color: "#1c7a86", fontSize: 12.5 }}>Loading…</div>}
-            {agentActivity && jarvisRuns.length === 0 && <div style={{ color: "#1c7a86", fontSize: 12.5, fontStyle: "italic" }}>No active tasks.</div>}
-            {agentActivity && jarvisRuns.length > 0 && (
-              <div style={{ display: "grid", gap: 10, flex: 1, minHeight: 140, overflowY: "auto", alignContent: "start" }}>
-                {jarvisRuns.map((a) => {
-                  const s = JARVIS_STATUS_STYLE[a.status] || JARVIS_STATUS_STYLE.running;
-                  return (
-                    <div key={a.id} style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,217,255,0.12)", fontSize: 12.5, color: "#dffcff" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span
-                          className={s.pulse ? "jarvis-dot-running" : ""}
-                          style={{
-                            display: "inline-block", width: 8, height: 8, borderRadius: "50%",
-                            background: s.color, flexShrink: 0,
-                            boxShadow: s.pulse ? undefined : `0 0 6px ${s.color}`,
-                          }}
-                        />
-                        <span style={{ fontWeight: 700, color: "#fff", flex: 1, minWidth: 0 }}>{a.taskTitle}</span>
-                        <span style={{ fontSize: 10, letterSpacing: "0.06em", color: s.color, whiteSpace: "nowrap" }}>{s.label}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "#4ff3ff", opacity: 0.7, marginTop: 3, marginLeft: 16 }}>
-                        {a.agentName} · {jarvisRelativeTime(a.status === "completed" || a.status === "failed" ? (a.completedAt || a.startedAt) : a.startedAt)}
-                      </div>
-                      {a.detail && <JarvisActivityDetail detail={a.detail} />}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </JarvisPanel>
         </div>
       </div>
     </div>

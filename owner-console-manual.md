@@ -130,21 +130,33 @@ ever lapses, those images disappear, which is why new ones go in our own folder.
 
 ## Media Drafts
 
-Social posts queued for review. **Nothing is ever posted automatically.**
+Every social post, from the moment Coral proposes it to the moment it goes out.
+**Nothing is ever posted automatically.**
 
-Ordered by **when a post goes out**, soonest first. Anything whose moment has
-passed — posted, denied, or dated in the past — sits in a collapsed group at the
-top of the tab, newest first.
+A post moves through stages, and the stage it is in decides which buttons it
+offers:
 
-Buttons on a scheduled post:
+| Stage | Means | What you can do |
+|---|---|---|
+| **Proposed** | Coral wrote it, waiting on your call | Approve · Needs work · Deny |
+| **Needs work** | Good idea, wrong draft | Edit notes · Approve · Deny |
+| **Approved** | Yes, but it has no date yet | Schedule… · Deny |
+| **Scheduled** | Has a date, will go out | Mark posted · Reschedule · Don't post |
+| **Posted** | Out in the world | — |
+| **Rejected** | Not going out | — |
+| **Delisted** | Went out, then came down | — |
 
-- **Preview** — the caption as it will appear, with a copy button. Warns when
-  there is no media, because Instagram and TikTok refuse a still.
-- **Mark posted** · **Reschedule** · **Don't post**
+**Needs work** is the one worth knowing about. Most drafts are not a clean yes
+or no — they are "nearly, change this bit", and without a way to say that the
+only choices were approving something you did not like or binning an idea that
+was fine.
 
-A posted draft offers **Recall post** — remove it from the social account first;
-this only records that it came down. A rejected one offers **Back to review** or
-**Delete**.
+**Preview** shows the caption as it will appear, with a copy button. It warns
+when there is no media attached, because Instagram and TikTok refuse a post
+without a photo or clip.
+
+The toggle at the top switches between the active posts and everything ever
+drafted.
 
 ## Testimonials
 
@@ -178,7 +190,7 @@ and usage limits.
 
 | Button | What it is |
 |---|---|
-| **⚡ Jarvis** | Sits beside the title. A mode you switch into, not an action. |
+| **🔈 Enable Pearl** | Lets Pearl speak out loud in this browser. Turns into **🔊 Pearl** once she can; hover it to see the last thing she said. A browser will not play audio until you click something, which is the only reason this button exists — it is not a mode, and there is nothing behind it. |
 | **📱 On the dock** | The phone page: ask for reviews, log engine hours. Everything on it needs a phone — a text link has nothing to open on a desktop, and an hour reading is taken at the boat. Worth adding to your home screen. |
 | **📖 Manual** | This document. |
 | **← Back to site** | The public website. |
@@ -228,6 +240,28 @@ summarises:
 | Mon 10:29 | **Nauti Nova** · Market Research | The outside world. Reports nothing most weeks, by design. |
 | Daily 10:51 | Crew Standup | Files a one-screen status for all eight. |
 | Daily 11:18 | **Nauti Pearl** · Chief of Staff | Reads everything, decides what reaches you. |
+
+## Why some things still say "Jarvis"
+
+The Jarvis tab was retired on 3 September 2026. Six of its seven panels had
+become worse copies of what the Overview already showed; the seventh was the
+media pipeline, which moved to **Marketing -> Media Drafts** where it belonged.
+Speaking aloud moved to the **Enable Pearl** button in the top bar. Pearl is the
+one you talk to now.
+
+Nothing you can see says Jarvis any more. Four things under the floor still do,
+and they were left alone deliberately:
+
+| Still called | What it is | Why it stays |
+|---|---|---|
+| `JarvisTodo` | the database table behind The Board | renaming it means a migration against the live database to change a word |
+| `JARVIS_SERVICE_KEY` / `x-jarvis-key` | how the crew scripts prove who they are | it is set in Vercel and in the secrets store; renaming means changing both in exact step or every agent stops being able to write |
+| `/api/jarvis-todos` | the address The Board reads from | an address only has to be stable, not pretty |
+| `Jarvis-Voice-UI` | the folder holding the crew scripts | hard-coded in fifteen scripts and nine agent briefs |
+
+Same rule as the task folders below: **rename what people read, leave what
+machines depend on.** If you see one of these in an error message, it is not a
+leftover anyone forgot.
 
 Two task folders are still named for their old cadence — `weekly-booking-audit`
 runs daily and `monthly-spend-audit` runs weekly. The names are historical and
