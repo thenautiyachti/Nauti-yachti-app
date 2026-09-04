@@ -55,6 +55,9 @@ export default function AdminView({
   // was the media pipeline, which moved to Marketing → Media Drafts where it
   // belonged.
   const [audioEnabled, setAudioEnabled] = useState(false);
+  // The last thing said. Kept because speakCrew records it and it costs
+  // nothing; nothing renders it since the Jarvis tab was retired, and each
+  // agent's card already shows what she filed.
   const [lastSpoken, setLastSpoken] = useState("");
   const [audioNote, setAudioNote] = useState("");
   const audioElRef = useRef(null);
@@ -65,6 +68,14 @@ export default function AdminView({
   // Which agent is mid-sentence, so her avatar can show it and a second click
   // cannot start her talking over herself.
   const [speakingName, setSpeakingName] = useState("");
+  // The same fact as a ref, because a click handler decides what to do based on
+  // who is speaking RIGHT NOW, and React state inside a closure can be one
+  // render behind. The state exists only so the badge can animate.
+  const speakingNameRef = useRef("");
+  // Incremented on every stop and every new click. Anything in flight compares
+  // against it and gives up if it has moved -- which is what stops audio bought
+  // a second ago from starting after you have already clicked her off.
+  const speakTokenRef = useRef(0);
   // Every synthesized character is billed. A standup does not change between
   // two clicks a second apart, so the audio is kept against the exact words it
   // was made from and replayed from memory rather than bought twice. Cleared
@@ -74,118 +85,74 @@ export default function AdminView({
   // 2s poll will see those same rows a moment later; without this it would say
   // everything a second time.
   const playedIdsRef = useRef(new Set());
-  // A running log of what Pearl has said, kept so a transcript
-  // rather than only the single most recent line.
-  const [messages, setMessages] = useState([]);
-
-  // Speech poll — every 2s, only once audio has been unlocked by a click.
-  useEffect(() => {
-    // Polling deliberately does NOT depend on audioEnabled. Pearl's messages are
-    // worth reading whether or not you want them read aloud, and polling costs
-    // nothing — it only reads rows that already exist. ElevenLabs is billed at
-    // send time, so nothing here consumes credits.
-    let cancelled = false;
-    let inFlight = false;
-
-    async function pollSpeech() {
-      if (inFlight) return;
-      inFlight = true;
-      // First call of the session has no cursor: ask for recent history so the
-      // panel opens with what Pearl has already said. Anything said while the
-      // tab was closed used to be invisible, which made the whole channel look
-      // broken whenever the voice was down.
-      const first = !sinceRef.current;
-      try {
-        const url = first
-          ? "/api/admin/speak"
-          : `/api/admin/speak?since=${encodeURIComponent(sinceRef.current)}`;
-        const res = await fetch(url);
-        if (!res.ok || cancelled) return;
-        const events = await res.json();
-        if (!events.length) {
-          // Nothing stored at all — still mark the cursor so the next poll asks
-          // only for new arrivals rather than re-fetching history forever.
-          if (first) sinceRef.current = new Date().toISOString();
-          return;
-        }
-        sinceRef.current = events[events.length - 1].createdAt;
-        setMessages((prev) => {
-          const seen = new Set(prev.map((m) => m.id));
-          const merged = [...prev, ...events.filter((e) => !seen.has(e.id))];
-          // Keep the panel bounded; it is a running log, not an archive.
-          return merged.slice(-30);
-        });
-        // Only speak what arrives live. Replaying history aloud on every page
-        // load would be maddening.
-        if (!first) {
-          for (const ev of events) {
-            if (playedIdsRef.current.has(ev.id)) continue; // already heard, via a click
-            playSpeech(ev);
-          }
-        } else if (events.length) {
-          setLastSpoken(events[events.length - 1].text);
-        }
-      } catch {
-        // transient — just try again on the next tick
-      } finally {
-        inFlight = false;
-      }
-    }
-
-    const interval = setInterval(pollSpeech, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioEnabled]);
-
+  // There was a 2-second poll here that fetched every new SpeechEvent, kept a
+  // running transcript of them, and played each one aloud.
+  //
+  // All three of those jobs are gone. Nothing speaks unless an avatar is
+  // clicked, so there is nothing to play; the transcript it maintained was
+  // never rendered anywhere after the Jarvis tab was retired, so it was state
+  // nobody could see; and each agent's own card already shows exactly what she
+  // filed. What was left was a request every two seconds, for the lifetime of
+  // an open console, feeding nothing. The rows are still written and the GET
+  // endpoint still serves them -- this only stops asking for them.
   function playSpeech(ev) {
-    // Text first, always — it should appear even when there is no audio to
-    // play, either because the owner has not enabled sound or because
-    // synthesis failed and the event was stored as text only.
     setLastSpoken(ev.text);
-    if (!ev.audioB64 || !audioEnabled) return;
-    const el = audioElRef.current;
-    if (!el) return;
-    el.src = `data:audio/mpeg;base64,${ev.audioB64}`;
-    el.play()
-      .then(() => setAudioNote(""))
-      .catch((err) => {
-        console.error("Pearl audio playback blocked:", err);
-        setAudioNote("Playback blocked — click anywhere on the page to retry.");
-        const retry = () => {
-          audioCtxRef.current && audioCtxRef.current.resume();
-          el.play().then(() => {
-            setAudioNote("");
-            document.removeEventListener("click", retry);
-          }).catch(() => {});
-        };
-        document.addEventListener("click", retry);
-      });
   }
 
-  // Read one agent's own standup aloud, in her own voice. Returns nothing and
-  // throws nothing: a failure here should cost a tooltip, never the console.
+  // Read one agent's own standup aloud, in her own voice.
+  //
+  // The rules, which the first version got wrong by letting two of them talk at
+  // once: only ever the agent who was clicked; clicking her again stops her;
+  // clicking her after that starts her from the beginning; clicking anyone else
+  // stops whoever is talking first. There is one <audio> element, so overlap
+  // was never really two voices -- it was requests landing out of order and
+  // stamping on each other mid-sentence, which sounds the same and is worse.
+  const stopSpeaking = useCallback(() => {
+    // Bumping the token invalidates any request still in flight, so audio that
+    // was already bought cannot start playing after a stop.
+    speakTokenRef.current += 1;
+    speakingNameRef.current = "";
+    const el = audioElRef.current;
+    if (el) { try { el.pause(); el.currentTime = 0; } catch {} }
+    setSpeakingName("");
+  }, []);
+
   const speakCrew = useCallback(async (r, text) => {
-    if (!text || speakingName) return;
-    // A click on an avatar IS the user gesture a browser wants before it will
-    // play anything, so there is no reason to make the owner find the header
-    // button first. Gating on audioEnabled would have meant the first click on
-    // every fresh page load silently did nothing, which reads as broken.
+    if (!text) return;
+
+    // Clicking whoever is already talking stops her. State is read from the ref
+    // rather than the closure: a click handler can hold a render's worth of
+    // stale state, and this decision has to be right at the moment of the click.
+    if (speakingNameRef.current === r.name) { stopSpeaking(); return; }
+
+    // Clicking anyone else stops the current speaker before starting the new
+    // one. This is what makes "only the one I clicked" true.
+    stopSpeaking();
+
+    // A click IS the user gesture a browser wants before it will play anything,
+    // so there is no separate button to find first.
     if (!audioEnabled) enableAudio();
+
     const el = audioElRef.current;
     const key = r.name + "|" + text;
+    const token = speakTokenRef.current;
+    const current = () => speakTokenRef.current === token;
 
     const play = (b64) => new Promise((resolve) => {
-      if (!b64 || !el) return resolve();
+      if (!b64 || !el || !current()) return resolve();
       el.src = "data:audio/mpeg;base64," + b64;
-      const done = () => { el.removeEventListener("ended", done); el.removeEventListener("error", done); resolve(); };
+      el.currentTime = 0; // always from the beginning, never resumed
+      const done = () => {
+        el.removeEventListener("ended", done);
+        el.removeEventListener("error", done);
+        resolve();
+      };
       el.addEventListener("ended", done);
       el.addEventListener("error", done);
       el.play().catch(() => done());
     });
 
+    speakingNameRef.current = r.name;
     setSpeakingName(r.name);
     setLastSpoken(text);
     try {
@@ -200,21 +167,16 @@ export default function AdminView({
         body: JSON.stringify({ text, agent: r.name, immediate: true }),
       });
       const data = await res.json().catch(() => ({}));
-      // Claim the id either way. Even a text-only event (quota gone) is one the
-      // poll would otherwise announce a second time.
-      if (data.id) playedIdsRef.current.add(data.id);
-      if (data.audioB64) {
-        spokenCacheRef.current.set(key, data.audioB64);
-        await play(data.audioB64);
-      } else if (data.reason) {
-        setAudioNote(r.name.replace("Nauti ", "") + " could not speak: " + data.reason);
-      }
+      if (data.audioB64) spokenCacheRef.current.set(key, data.audioB64);
+      if (!current()) return; // stopped, or someone else was clicked, while we waited
+      if (data.audioB64) await play(data.audioB64);
+      else if (data.reason) setAudioNote(r.name.replace("Nauti ", "") + " could not speak: " + data.reason);
     } catch {
-      setAudioNote("Could not reach the speech service.");
+      if (current()) setAudioNote("Could not reach the speech service.");
     } finally {
-      setSpeakingName("");
+      if (current()) { speakingNameRef.current = ""; setSpeakingName(""); }
     }
-  }, [speakingName, audioEnabled]);
+  }, [audioEnabled, stopSpeaking]);
 
   function enableAudio() {
     // Create the ONE AudioContext right here, inside a real user gesture, so
@@ -337,34 +299,31 @@ export default function AdminView({
       {/* Persists across tab switches — see Pearl's audio state above. */}
       <audio ref={audioElRef} style={{ display: "none" }} />
       <div className="console-header" style={{ background: "var(--ink-soft)", color: "var(--text)", padding: "14px 24px", borderBottom: "1px solid rgba(203,108,230,0.2)" }}>
-        {/* Pearl's voice. This was the Jarvis button and a whole tab behind it;
-            in substance it was only ever a browser audio permission plus
-            whatever she last said, so it is a control rather than a mode.
-            Browsers refuse to play audio until a real click, which is the only
-            reason this button has to exist at all. */}
+        {/* Pearl's voice used to need a button here to unlock browser audio.
+            It is gone: nothing speaks unless an avatar is clicked, and that
+            click is itself the gesture the browser was waiting for.
+
+            What sits here now is the failure. setAudioNote has been called on
+            every speech failure since this console was built and was never
+            rendered anywhere, so an exhausted ElevenLabs quota looked exactly
+            like a click that did nothing. Now it says so. It clears on the next
+            successful click. */}
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div className="display" style={{ fontSize: 20, fontWeight: 700, whiteSpace: "nowrap" }}>OWNER CONSOLE</div>
-          {/* Gone the moment sound is unlocked, because from then on it did
-              nothing but sit there saying so. It cannot be removed outright:
-              Pearl speaks unprompted from her scheduled runs, and a browser
-              plays no audio at all until some deliberate click has happened. If
-              the owner never clicked an avatar, she would queue up in silence.
-              Clicking any crew avatar unlocks sound too, and makes this vanish. */}
-          {!audioEnabled && (
-            <button
-              className="console-btn"
-              onClick={enableAudio}
-              title="Let Pearl speak in this browser. Clicking any crew avatar does the same."
+          {audioNote && (
+            <span
+              onClick={() => setAudioNote("")}
+              title="Dismiss"
               style={{
-                background: "rgba(203,108,230,0.10)",
-                color: "var(--purple)",
-                borderColor: "var(--purple)",
-                fontWeight: 700, letterSpacing: "0.03em", cursor: "pointer",
+                fontSize: 11.5, color: "#E8934A", cursor: "pointer",
+                border: "1px solid rgba(232,147,74,0.45)", borderRadius: 6,
+                padding: "3px 9px", lineHeight: 1.3,
               }}
             >
-              🔈 Enable Pearl
-            </button>
+              🔇 {audioNote}
+            </span>
           )}
+
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {/* The dock page. Everything on it needs a phone -- an sms: link, and
