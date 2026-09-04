@@ -3469,6 +3469,11 @@ function CrewChart({ rows }) {
   // why her role was sliced off.
   const yOwner = 34, yPearl = 130, yRow = 250, yCoral = 370;
   const CHART_H = 440;
+  // Bottom right. The bottom LEFT is where Coral hangs -- she is the only node
+  // below the row, and she sits under Siren, who is first -- so a rose there
+  // ends up underneath her portrait. Declared once and read by both the rose
+  // and its rhumb lines.
+  const ROSE_X = W - 150, ROSE_Y = CHART_H - 68, ROSE_R = 40;
   const x = (i) => colW * i + colW / 2;
   const sirenI = direct.findIndex((r) => r.name === "Nauti Siren");
 
@@ -3595,31 +3600,34 @@ function CrewChart({ rows }) {
               <path d="M-20 96 C 160 74, 300 118, 460 92 S 760 52, 1000 88" />
             </g>
 
-            {/* Compass rose, bottom left — the corner the tree leaves empty,
-                since Coral hangs below Siren on the left of the row above. */}
-            <g transform={`translate(74, ${CHART_H - 74})`} opacity="0.22">
-              <circle r="40" fill="none" stroke="var(--purple)" strokeWidth="0.7" />
-              <circle r="27" fill="none" stroke="var(--purple)" strokeWidth="0.5" />
+            {/* Compass rose, bottom right — the corner the tree actually leaves
+                empty. See ROSE_X above for why it is not on the left. */}
+            <g transform={`translate(${ROSE_X}, ${ROSE_Y})`} opacity="0.22">
+              <circle r={ROSE_R} fill="none" stroke="var(--purple)" strokeWidth="0.7" />
+              <circle r={ROSE_R * 0.68} fill="none" stroke="var(--purple)" strokeWidth="0.5" />
               <circle r="4" fill="none" stroke="var(--purple)" strokeWidth="0.6" />
               {/* Eight points: the four cardinals long, the intercardinals short. */}
               {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
                 <line
-                  key={deg} x1="0" y1="0" x2="0" y2={deg % 90 === 0 ? -40 : -27}
+                  key={deg} x1="0" y1="0" x2="0" y2={deg % 90 === 0 ? -ROSE_R : -ROSE_R * 0.68}
                   stroke="var(--purple)" strokeWidth={deg % 90 === 0 ? 0.9 : 0.5}
                   transform={`rotate(${deg})`}
                 />
               ))}
               {/* The north needle, filled, as every rose has. */}
-              <path d="M0 -40 L5 -8 L0 0 L-5 -8 Z" fill="var(--purple)" opacity="0.5" />
-              <text x="0" y="-46" textAnchor="middle" fontSize="9" fill="var(--purple)" opacity="0.7">N</text>
+              <path d={`M0 ${-ROSE_R} L5 -8 L0 0 L-5 -8 Z`} fill="var(--purple)" opacity="0.5" />
+              <text x="0" y={-ROSE_R - 6} textAnchor="middle" fontSize="9" fill="var(--purple)" opacity="0.7">N</text>
             </g>
 
             {/* Rhumb lines radiating from the rose, the way a portolan chart
-                rules them across the water. */}
-            <g stroke="var(--purple)" strokeWidth="0.4" opacity="0.06">
-              {[15, 35, 55, 75].map((deg) => (
+                rules them across the water. They run leftward now because the
+                rose does — the open water is whichever side the rose is not on. */}
+            <g stroke="var(--purple)" strokeWidth="0.4" opacity="0.07">
+              {[10, 26, 42, 58, 74].map((deg) => (
                 <line
-                  key={deg} x1="74" y1={CHART_H - 74} x2={W} y2={CHART_H - 74 - (W - 74) * Math.tan((deg * Math.PI) / 180) / 3}
+                  key={deg}
+                  x1={ROSE_X} y1={ROSE_Y}
+                  x2="0" y2={ROSE_Y - (ROSE_X * Math.tan((deg * Math.PI) / 180)) / 3}
                 />
               ))}
             </g>
