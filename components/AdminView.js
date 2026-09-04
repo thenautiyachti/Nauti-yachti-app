@@ -2692,7 +2692,6 @@ function AddOnsTab({ addons, onUpdate, onAdd }) {
   const emptyForm = { name: "", price: "", unit: "", blurb: "" };
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
 
   const live = addons.filter((a) => !a.archived);
   const archived = addons.filter((a) => a.archived);
@@ -5165,7 +5164,10 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   const rows =
     filter === "todo" ? live.filter((r) => !wasAsked(r))
     : filter === "asked" ? live.filter((r) => wasAsked(r))
-    : live;
+    : filter === "archived" ? archived
+    // "Every charter" means every charter. It used to quietly drop the archived
+    // ones, which makes it the one filter that lies about what it shows.
+    : completed;
 
   function setArchived(row, on) {
     if (row.kind === "external" && onUpdateExternalBooking) onUpdateExternalBooking(row.id, { marketingOptOut: on });
@@ -5188,11 +5190,16 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
     }
   }
 
+  // The plate sits over the head of the panel and stops where the table starts.
+  // That is the Bookings pattern: the Add booking form is on a plate, the
+  // bookings table below it is not. A plate behind a form is texture; behind
+  // forty rows of dense table it fights the scanning the table exists for.
+  const HEAD = { background: "var(--paper-9)", border: "1px solid rgba(203,108,230,0.16)", borderRadius: 10, padding: 16, color: "var(--text)" };
+  const BODY = { background: "var(--ink-soft)", border: "1px solid rgba(203,108,230,0.16)", borderRadius: 10, padding: 16, marginTop: 12, color: "var(--text)" };
+
   return (
-    // No atlas plate here, deliberately. The Bookings tab settles this: a plate
-    // behind a form is texture, a plate behind forty rows of dense table fights
-    // the scanning the table exists for.
-    <div style={{ background: "var(--ink-soft)", border: "1px solid rgba(203,108,230,0.16)", borderRadius: 10, padding: 16, marginBottom: 20, color: "var(--text)" }}>
+    <div style={{ marginBottom: 20 }}>
+    <div style={HEAD}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700 }}>
           Ask past guests for a Google review
@@ -5239,7 +5246,12 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
             </div>
             <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--text)", opacity: 0.9 }}>{DOCK_SCRIPT}</div>
           </div>
+        </>
+      )}
+      </div>
 
+      {open && (
+        <div style={BODY}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
             <label style={{ fontSize: 12, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
               Wording
@@ -5250,7 +5262,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
               </select>
             </label>
             <div style={{ display: "flex", gap: 4 }}>
-              {[["todo", "Still to ask"], ["asked", "Already asked"], ["all", "Every charter"]].map(([id, label]) => (
+              {[["todo", "Still to ask"], ["asked", "Already asked"], ["archived", `Not asking${archived.length ? " (" + archived.length + ")" : ""}`], ["all", "Every charter"]].map(([id, label]) => (
                 <button key={id} type="button" onClick={() => setFilter(id)}
                   style={{
                     padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600,
@@ -5374,16 +5386,20 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                                     markAsked(r.key, true, r);
                                   }}
                                   style={{
-                                    color: canSendSms ? "#0A0612" : "var(--muted)",
-                                    background: canSendSms ? "var(--pink)" : "transparent",
-                                    border: "1px solid " + (canSendSms ? "var(--pink)" : "rgba(203,108,230,0.3)"),
+                                    // Green: the one action that actually does
+                                    // the job. Pink is the page's default accent
+                                    // and made this read as just another button.
+                                    color: canSendSms ? "#04140D" : "var(--muted)",
+                                    background: canSendSms ? "#4FBF8B" : "transparent",
+                                    border: "1px solid " + (canSendSms ? "#4FBF8B" : "rgba(203,108,230,0.3)"),
                                     borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
                                   }}>
                                   {canSendSms ? "Text it" : "Text it (phone only)"}
                                 </a>
                               )}
+                              {/* Blue: reading, not doing. */}
                               <button type="button" onClick={() => setPreviewKey(previewKey === r.key ? null : r.key)}
-                                style={{ background: "transparent", color: "var(--text)", border: "1px solid rgba(203,108,230,0.35)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
+                                style={{ background: "transparent", color: "#4FA8E8", border: "1px solid rgba(79,168,232,0.55)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
                                 {previewKey === r.key ? "Hide" : "Preview"}
                               </button>
                               {r.email && (
@@ -5398,9 +5414,12 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                                   only way to clear someone he was never going to
                                   ask was to mark them asked -- which puts a lie
                                   in the record and hides it behind a tick. */}
+                              {/* Amber, and outlined rather than filled: it
+                                  removes someone from the list, so it should be
+                                  findable without inviting a stray click. */}
                               <button type="button" onClick={() => setArchived(r, true)}
                                 title="Take them off this list for good. Nothing is deleted."
-                                style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.25)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, cursor: "pointer" }}>
+                                style={{ background: "transparent", color: "#E8934A", border: "1px solid rgba(232,147,74,0.5)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>
                                 Don&rsquo;t ask
                               </button>
                               {isAsked && (
@@ -5438,36 +5457,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
               </table>
             </div>
           )}
-
-          {/* Not asking. Collapsed, and below everything, because the whole
-              point is that these need no attention -- but kept visible rather
-              than deleted, so a decision made months ago can still be seen and
-              reversed. */}
-          {archived.length > 0 && (
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
-              <button type="button" onClick={() => setShowArchived((v) => !v)}
-                style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.25)", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>
-                {showArchived ? "▾" : "▸"} Not asking ({archived.length})
-              </button>
-              {showArchived && (
-                <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
-                  {archived.map((r) => (
-                    <div key={r.key} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12.5, background: "var(--ink)", border: "1px solid rgba(203,108,230,0.12)", borderRadius: 6, padding: "7px 10px" }}>
-                      <span style={{ fontWeight: 600, minWidth: 120 }}>{r.name || "Guest"}</span>
-                      <span className="mono" style={{ color: "var(--muted)", fontSize: 11 }}>{r.bookingId || (r.kind === "contact" ? "extra contact" : "—")}</span>
-                      <span style={{ color: "var(--muted)", fontSize: 11 }}>{r.date || "—"}</span>
-                      <span style={{ color: "var(--muted)", fontSize: 11 }}>{r.vesselName || ""}</span>
-                      <button type="button" onClick={() => setArchived(r, false)}
-                        style={{ marginLeft: "auto", background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "3px 10px", fontSize: 11.5, cursor: "pointer" }}>
-                        Put back
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );
