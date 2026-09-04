@@ -22,3 +22,8 @@ conf/
 *.log
 desktop.ini
 .DS_Store
+
+# Generated packages for other businesses. Rebuilt on demand by
+# scripts/make-distributable.js -- never committed, because a stale copy in the
+# repository is exactly the fork this design exists to avoid.
+/../distributable/
