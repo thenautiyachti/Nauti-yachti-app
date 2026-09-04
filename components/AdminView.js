@@ -5060,6 +5060,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   }, []);
   const [flash, setFlash] = useState(""); // key of the row that just got copied
   const [previewKey, setPreviewKey] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [open, setOpen] = useState(true);
 
   // Ask-marks live on the booking row itself (reviewRequestedAt), not in
@@ -5151,11 +5152,25 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   // Asked if the server row says so, or if this session just marked it and the
   // write has not round-tripped yet.
   const wasAsked = (r) => Boolean(r.askedAt || asked[r.key]);
-  const askedCount = completed.filter(wasAsked).length;
+
+  // People he has decided never to ask -- a guest who damaged something, or one
+  // he would rather not hear from. Without this they sat in the list forever,
+  // looking exactly like work not yet done, and the only way to clear one was to
+  // mark it asked, which is a lie the record then keeps.
+  const isArchived = (r) => Boolean(r.raw && r.raw.marketingOptOut);
+  const archived = completed.filter(isArchived);
+  const live = completed.filter((r) => !isArchived(r));
+
+  const askedCount = live.filter(wasAsked).length;
   const rows =
-    filter === "todo" ? completed.filter((r) => !wasAsked(r))
-    : filter === "asked" ? completed.filter((r) => wasAsked(r))
-    : completed;
+    filter === "todo" ? live.filter((r) => !wasAsked(r))
+    : filter === "asked" ? live.filter((r) => wasAsked(r))
+    : live;
+
+  function setArchived(row, on) {
+    if (row.kind === "external" && onUpdateExternalBooking) onUpdateExternalBooking(row.id, { marketingOptOut: on });
+    else if (onUpdateInquiry) onUpdateInquiry(row.id, { marketingOptOut: on });
+  }
 
   function draftFor(row) {
     const templateId = templateChoice === "auto" ? DEFAULT_TEMPLATE_FOR_DAYS(row.days) : templateChoice;
@@ -5174,12 +5189,15 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   }
 
   return (
-    <div style={{ background: "var(--paper-9)", borderRadius: 10, padding: 16, marginBottom: 20, color: "var(--text)" }}>
+    // No atlas plate here, deliberately. The Bookings tab settles this: a plate
+    // behind a form is texture, a plate behind forty rows of dense table fights
+    // the scanning the table exists for.
+    <div style={{ background: "var(--ink-soft)", border: "1px solid rgba(203,108,230,0.16)", borderRadius: 10, padding: 16, marginBottom: 20, color: "var(--text)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700 }}>
           Ask past guests for a Google review
           <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 12.5 }}>
-            {" "}— {completed.length} to ask · {askedCount} marked asked · {completed.length - askedCount} to go
+            {" "}— {live.length} to ask · {askedCount} marked asked · {live.length - askedCount} to go
           </span>
         </div>
         <button type="button" onClick={() => setOpen((v) => !v)}
@@ -5212,7 +5230,10 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
             </a>
           </div>
 
-          <div style={{ background: "rgba(203,108,230,0.07)", border: "1px solid rgba(203,108,230,0.2)", borderRadius: 8, padding: "10px 12px", marginBottom: 14 }}>
+          {/* Black, not another pink wash. This is the single most effective
+              thing on the page -- asking at the dock beats every message -- and
+              on a panel already full of pink it was just more of the same. */}
+          <div style={{ background: "var(--ink)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 8, padding: "10px 12px", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: "var(--purple)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
               Say this at the dock — it beats every message
             </div>
@@ -5305,8 +5326,15 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                             )}
                           </td>
                           <td style={{ padding: "6px 8px" }}>{r.vesselName || "—"}</td>
+                          {/* Only meaningful without a phone number. Those
+                              guests cannot be texted at all, so the platform
+                              thread is the only way to reach them and the column
+                              is the instruction. Beside a Text it button it was
+                              noise on every row. */}
                           <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
-                            {channelFor(r.source)}
+                            {smsHref(r.phone, "x")
+                              ? <span style={{ color: "var(--muted)" }}>Text</span>
+                              : channelFor(r.source)}
                             {r.email && <div style={{ color: "var(--muted)", fontSize: 11 }}>{r.email}</div>}
                           </td>
                           <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
@@ -5366,6 +5394,15 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                                   Email draft
                                 </a>
                               )}
+                              {/* The honest way out of this list. Before it, the
+                                  only way to clear someone he was never going to
+                                  ask was to mark them asked -- which puts a lie
+                                  in the record and hides it behind a tick. */}
+                              <button type="button" onClick={() => setArchived(r, true)}
+                                title="Take them off this list for good. Nothing is deleted."
+                                style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.25)", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, cursor: "pointer" }}>
+                                Don&rsquo;t ask
+                              </button>
                               {isAsked && (
                                 <button type="button" onClick={() => markAsked(r.key, false, r)}
                                   style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.25)", borderRadius: 6, padding: "5px 10px", fontSize: 11.5, fontWeight: 600 }}>
@@ -5399,6 +5436,35 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Not asking. Collapsed, and below everything, because the whole
+              point is that these need no attention -- but kept visible rather
+              than deleted, so a decision made months ago can still be seen and
+              reversed. */}
+          {archived.length > 0 && (
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
+              <button type="button" onClick={() => setShowArchived((v) => !v)}
+                style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.25)", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>
+                {showArchived ? "▾" : "▸"} Not asking ({archived.length})
+              </button>
+              {showArchived && (
+                <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+                  {archived.map((r) => (
+                    <div key={r.key} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12.5, background: "var(--ink)", border: "1px solid rgba(203,108,230,0.12)", borderRadius: 6, padding: "7px 10px" }}>
+                      <span style={{ fontWeight: 600, minWidth: 120 }}>{r.name || "Guest"}</span>
+                      <span className="mono" style={{ color: "var(--muted)", fontSize: 11 }}>{r.bookingId || (r.kind === "contact" ? "extra contact" : "—")}</span>
+                      <span style={{ color: "var(--muted)", fontSize: 11 }}>{r.date || "—"}</span>
+                      <span style={{ color: "var(--muted)", fontSize: 11 }}>{r.vesselName || ""}</span>
+                      <button type="button" onClick={() => setArchived(r, false)}
+                        style={{ marginLeft: "auto", background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "3px 10px", fontSize: 11.5, cursor: "pointer" }}>
+                        Put back
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>

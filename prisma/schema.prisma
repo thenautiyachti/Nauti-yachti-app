@@ -117,6 +117,10 @@ model Inquiry {
 
   addOnIds String? // JSON string: string[] of AddOn ids selected at booking
   reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
+  // Never ask this person for a review. ExternalBooking has carried this for a
+  // while; contacts needed it too, because "do not ask" is a decision about a
+  // person, not about which table they happen to live in.
+  marketingOptOut Boolean @default(false)
 
   // When the guest ticked the terms box at checkout. A tick that is not
   // recorded proves nothing: if the release is ever tested, what matters is

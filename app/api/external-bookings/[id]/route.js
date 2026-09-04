@@ -39,6 +39,9 @@ async function PATCH(req, { params }) {
   // mouth) all sit under platform "Other", so `platform` alone cannot answer
   // "what is actually bringing in work".
   if ("referralSource" in body) data.referralSource = body.referralSource || null;
+  // "Never ask this one for a review." Already on the model and honoured by the
+  // weekly reminder script; the console could not set it until now.
+  if ("marketingOptOut" in body) data.marketingOptOut = Boolean(body.marketingOptOut);
   // null clears the mark ("undo ask"); a truthy value stamps it now.
   if ("reviewRequestedAt" in body) data.reviewRequestedAt = body.reviewRequestedAt ? new Date(body.reviewRequestedAt) : null;
   if ("platformRef" in body) data.platformRef = body.platformRef || null;

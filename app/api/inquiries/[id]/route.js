@@ -42,6 +42,11 @@ async function PATCH(req, { params }) {
   if ("reviewRequestedAt" in body) {
     data.reviewRequestedAt = body.reviewRequestedAt ? new Date(body.reviewRequestedAt) : null;
   }
+  if ("marketingOptOut" in body) {
+    // "Never ask this one." Kept as a field rather than a deletion so the guest
+    // stays on the record and the decision is visible, not just absent.
+    data.marketingOptOut = Boolean(body.marketingOptOut);
+  }
   if ("refundAmount" in body) {
     data.refundAmount = body.refundAmount === "" || body.refundAmount == null ? null : Number(body.refundAmount);
   }
