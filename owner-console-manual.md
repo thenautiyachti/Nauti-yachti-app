@@ -325,21 +325,37 @@ Same rule as the task folders below: **rename what people read, leave what
 machines depend on.** If you see one of these in an error message, it is not a
 leftover anyone forgot.
 
-## Why the routines are named oddly
+## Why the routines are named as they are
 
-In the Claude sidebar each routine now reads as its crew member -- "Nauti Pearl
-· Chief of Staff", "Nauti Coral · Content Producer" -- because that is the line
-you actually read. The underlying task IDs still say things like
-`daily-exec-review`, and they are staying that way.
+Six of the nine routines now carry their crew member's name in the sidebar —
+`nauti-pearl`, `nauti-joy`, `nauti-reef`, `nauti-shelly`, `nauti-nova` and
+`crew-standup`.
 
-A task ID cannot be renamed. Changing one means deleting the task and creating a
-new one, and a new task starts with no saved tool approvals -- so every routine
-would go back to stopping mid-run to ask permission for things it has already
-been allowed to do. That is the exact fault that was stalling the crew before,
-and it is not worth paying again for a tidier identifier nobody sees.
+Three deliberately do not, and this is the part worth knowing:
+
+| Still called | Whose it is | Why it was left |
+|---|---|---|
+| `daily-media-agent` | Coral | uses Blotato |
+| `daily-social-publisher` | Siren | uses Blotato |
+| `weekly-booking-audit` | Penny | reads Gmail |
+
+A task ID cannot be renamed — it can only be deleted and recreated — and tool
+approvals for connectors are stored **on the task**. Recreating these three would
+throw away their Blotato and Gmail approvals, so the next run of each would stop
+and wait for a permission nobody is sitting there to give. Siren is the one that
+publishes; a Siren that has quietly stopped is how an event goes unannounced.
+
+The six that were renamed only ever run `node` scripts, and permission for that
+is granted globally in `settings.json` rather than per task, so nothing was lost.
+Four of them — Nova, Joy, Reef and Shelly — had never run at all and had no
+approvals to begin with.
+
+If you want the last three renamed too, it is safe on a day you are at the desk:
+rename, then press **Run now** on each and approve once. Not the week of an event.
+
 
 Two task folders are still named for their old cadence — `weekly-booking-audit`
-runs daily and `monthly-spend-audit` runs weekly. The names are historical and
+runs daily and `nauti-shelly` runs weekly. The names are historical and
 were left alone on purpose: renaming a scheduled task means deleting and
 recreating it, which loses its saved tool approvals. **The schedule above is
 what is true.**
