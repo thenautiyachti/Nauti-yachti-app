@@ -252,7 +252,7 @@ and usage limits.
 
 | Button | What it is |
 |---|---|
-| **🔈 Enable Pearl** | Lets Pearl speak out loud in this browser. Turns into **🔊 Pearl** once she can; hover it to see the last thing she said. A browser will not play audio until you click something, which is the only reason this button exists — it is not a mode, and there is nothing behind it. |
+| **🔊 what Pearl last said** | Appears only when she has said something. The words are shown; the speaker button reads them aloud in her voice, and pressing it again stops her. The **×** dismisses that message — the next one brings the strip back. There used to be an **Enable Pearl** button here whose only job was to satisfy the browser's rule that audio needs a click first. Any click now does that, so it is gone. |
 | **📱 On the dock** | The phone page: ask for reviews, log engine hours. Everything on it needs a phone — a text link has nothing to open on a desktop, and an hour reading is taken at the boat. Worth adding to your home screen. |
 | **📖 Manual** | This document. |
 | **← Back to site** | The public website. |
@@ -387,13 +387,54 @@ finished.
 ## Their status cards
 
 Each agent files a status every morning **even on days she does not run**, so a
-card is never blank. Each greets in her own voice — *"Morning, Captain"* from
-Pearl, *"Books are open"* from Penny — and a card that shows a date instead
-means she has not filed today.
+card is never blank. A card that shows a date instead means she has not filed
+today.
+
+**Click her face to hear her read it.** The small speaker mark on an avatar
+means she has something filed; clicking plays it in her own voice, clicking
+again stops her, and clicking again starts her from the beginning. Clicking a
+different agent stops whoever is talking first, so you never get two at once.
+Hovering enlarges the face, which is only there so you can see it properly.
+
+Nothing in the console ever speaks on its own. If you did not click it, it will
+not make a sound.
+
+**Each click costs a little money.** Speech is billed per character to
+ElevenLabs — roughly 350 characters a click, and $10 buys about ten thousand.
+Clicking the same unchanged status twice is free; it replays from memory rather
+than being bought again.
 
 A card reading **"Stopped mid-run"** means the run was killed partway, usually
 by a permission prompt nobody was there to answer. Open Routines and hit **Run
 now** to clear it.
+
+## The eight voices, and how each one writes
+
+Every agent has her own voice and her own register, so you can tell who is
+speaking without looking at the name.
+
+| | Voice | How she writes |
+|---|---|---|
+| **Pearl** | Alice | Dry and unhurried. She tells you the thing you would rather not hear |
+| **Coral** | Jessica | Keen, and hardest on her own work — she audits the queue she built |
+| **Siren** | Charlotte | Flat and literal on purpose. She is the gate |
+| **Joy** | Lily | Warm, and a little wounded on the guests' behalf |
+| **Penny** | Matilda | Charming and teasing, openly proprietary about the books |
+| **Reef** | Laura | The enthusiast. She is selling you an idea |
+| **Shelly** | Sarah | Dry and sceptical — she asks why you pay for things you do not use |
+| **Nova** | River | Sparse. She speaks rarely and it should feel like it cost her something |
+
+**There is one hard limit on all of it: tone lives in the framing, never in the
+finding.** Anything serious — money held for a charter that never ran, a booking
+at risk, anything with a legal, insurance or safety edge — is said straight,
+with no colour at all. That contrast is deliberate. A voice you enjoy, that goes
+flat the instant something is genuinely wrong, is a voice you look up for.
+
+Their statuses are also now written to be **heard**, not only skimmed: full
+month names rather than "Sept", "4 September" rather than "9/4", "7pm" rather
+than "19:00", and no raw database ids or file paths. A checker runs whenever any
+of them files and warns her if she slips; it never blocks, because a badly
+written status is still worth more than no status.
 
 ## What none of them may do
 

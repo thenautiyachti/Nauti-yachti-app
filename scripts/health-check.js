@@ -48,8 +48,60 @@ async function main() {
   // There is no way to prove sending without sending, so this only confirms the
   // key is present and the shape is right. The real proof is Joy's Monday run.
   const rk = env.RESEND_API_KEY;
-  R("Resend", rk && /^re_/.test(rk) ? "ok" : rk ? "CHECK" : "MISSING",
-    rk ? "key present (send-only keys cannot be read-tested; do not probe /domains)" : "review reminder cannot send");
+  R("Resend (local key)", rk && /^re_/.test(rk) ? "ok" : rk ? "CHECK" : "MISSING",
+    rk ? "present locally; send-only keys cannot be read-tested" : "review reminder cannot send");
+
+  // --- What the RUNNING DEPLOYMENT actually has -----------------------------
+  //
+  // The single most useful check here, and it did not exist while it mattered.
+  // Every line above reads the local secrets store on this PC. Production is a
+  // different machine with a different set of variables, and for a week it had
+  // no RESEND_API_KEY at all -- so lib/email.js returned { sent: false } before
+  // reaching the sender and every booking confirmation was silently not sent,
+  // while this script cheerfully reported Resend as fine.
+  //
+  // A check that runs somewhere other than the thing it checks is not a check.
+  // /api/admin/env-check answers from inside the deployment, and returns names
+  // only -- never a value, a prefix or a length.
+  const svc = env.JARVIS_SERVICE_KEY;
+  const site = env.SITE_URL || "https://www.thenautiyachti.com";
+  if (!svc) {
+    R("Production env", "CHECK", "no JARVIS_SERVICE_KEY locally, so production cannot be asked");
+  } else {
+    try {
+      const r = await fetch(site + "/api/admin/env-check", { headers: { "x-jarvis-key": svc } });
+      if (r.status === 404) {
+        R("Production env", "CHECK", "endpoint not deployed yet -- push and redeploy");
+      } else if (!r.ok) {
+        R("Production env", "FAIL", "env-check returned " + r.status);
+      } else {
+        const d = await r.json();
+        if (d.missing && d.missing.length) {
+          R(
+            "Production env",
+            "FAIL",
+            d.missing.length + " missing: " + d.missing.map((m) => m.name).join(", ")
+          );
+          // Say what each one actually breaks. A list of names is a puzzle;
+          // a list of consequences is a to-do list.
+          for (const m of d.missing) console.log("              " + m.name + " -> " + m.breaks);
+        } else {
+          R(
+            "Production env",
+            "ok",
+            d.presentCount + "/" + d.requiredCount + " required present in " + d.environment
+          );
+        }
+        for (const o of (d.optionalMissing || [])) {
+          if (o.name === "REPLY_TO_EMAIL") {
+            R("Reply-to address", "CHECK", o.note);
+          }
+        }
+      }
+    } catch (e) {
+      R("Production env", "FAIL", e.message.slice(0, 60));
+    }
+  }
 
   // --- ElevenLabs: hit TTS and read the body. 401 here usually means quota. --
   const ek = env.ELEVENLABS_API_KEY;
