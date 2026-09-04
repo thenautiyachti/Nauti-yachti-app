@@ -8,7 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
-import { CREW, AGENT_STATUS, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
+import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
@@ -3456,11 +3456,13 @@ const CrewSpeechContext = createContext(null);
 function crewSpeakableText(r) {
   const lines = statusLines(r.status);
   if (!lines.length) return "";
-  return lines
-    .map((l) => String(l).trim())
-    .filter(Boolean)
-    .map((l) => (/[.!?]$/.test(l) ? l : l + "."))
-    .join(" ");
+  return toSpokenForm(
+    lines
+      .map((l) => String(l).trim())
+      .filter(Boolean)
+      .map((l) => (/[.!?]$/.test(l) ? l : l + "."))
+      .join(" ")
+  );
 }
 
 function CrewCard({ r, compact = false }) {
@@ -3473,7 +3475,9 @@ function CrewCard({ r, compact = false }) {
   const st = AGENT_STATUS[r.state] || AGENT_STATUS.idle;
   const lines = statusLines(r.status);
   const fresh = isToday(r.status);
-  const AV = compact ? 54 : 72;
+  // Nudged up from 54/72. Never below 54: at 46 only bold colour survived and
+  // two of them were unrecognisable.
+  const AV = compact ? 62 : 82;
 
   return (
     <div style={{ ...CARD, opacity: r.pending ? 0.62 : 1, display: "flex", flexDirection: "column" }}>
