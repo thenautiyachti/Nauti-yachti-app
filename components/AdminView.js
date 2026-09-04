@@ -4155,6 +4155,10 @@ function PanelOwners({ names = [] }) {
 // this draws the pieces with the hierarchy they already had.
 function BoardItem({ t, color, onToggle, onDelete }) {
   const { lead, points, updates } = formatBody(t.body);
+  // Collapsed by default. The trail is worth keeping and worth reading, but it
+  // is not what you scan the board for.
+  const [showNotes, setShowNotes] = useState(false);
+  const newest = updates.length ? updates[updates.length - 1].stamp : null;
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.5 }}>
       {/* Its own control now, not the whole row. See the note in the script
@@ -4186,10 +4190,32 @@ function BoardItem({ t, color, onToggle, onDelete }) {
         )}
 
         {updates.length > 0 && (
-          /* Held off to one side under a rule, because this is history: what was
-             checked, when, and by whom. It is the most valuable part of a long
-             item and the part that was most completely lost in the prose. */
-          <div style={{ marginTop: 7, paddingTop: 6, borderTop: "1px solid rgba(203,108,230,0.14)", display: "grid", gap: 6 }}>
+          /* History: what was checked, when, and by whom. The most valuable part
+             of a long item, and the part most completely lost in the prose --
+             but not what you scan the board for, so it opens on request. */
+          <div style={{ marginTop: 7, paddingTop: 6, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
+            <button
+              type="button"
+              onClick={() => setShowNotes((v) => !v)}
+              aria-expanded={showNotes}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, width: "100%",
+                background: "transparent", border: "none", padding: 0,
+                cursor: "pointer", textAlign: "left", color: "var(--muted)", fontSize: 11.5,
+              }}
+            >
+              <span style={{ fontSize: 9, width: 8, flexShrink: 0 }}>{showNotes ? "▾" : "▸"}</span>
+              <span style={{ fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", fontSize: 10.5 }}>
+                {updates.length === 1 ? "1 note" : updates.length + " notes"}
+              </span>
+              {/* When it was last looked at survives the collapse. "Checked this
+                  morning" and "checked in June" are different items. */}
+              {!showNotes && newest && (
+                <span className="mono" style={{ fontSize: 10, opacity: 0.75 }}>latest {newest}</span>
+              )}
+            </button>
+          {showNotes && (
+          <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
             {updates.map((u, i) => (
               <div key={i} style={{ fontSize: 12, lineHeight: 1.45 }}>
                 {u.stamp && (
@@ -4207,6 +4233,8 @@ function BoardItem({ t, color, onToggle, onDelete }) {
                 <span style={{ color: "var(--muted)" }}>{u.text}</span>
               </div>
             ))}
+          </div>
+          )}
           </div>
         )}
       </div>
