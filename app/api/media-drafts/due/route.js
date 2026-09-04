@@ -19,7 +19,10 @@ async function GET(req) {
   const today = url.searchParams.get("today") || localDateKey(new Date());
 
   const drafts = await prisma.mediaDraft.findMany({ where: { status: "scheduled" } });
-  const due = dueDrafts(drafts, today);
+  // Minutes past local midnight, so a draft scheduled for the evening is not
+  // reported as due at nine in the morning.
+  const nowLocal = new Date();
+  const due = dueDrafts(drafts, today, nowLocal.getHours() * 60 + nowLocal.getMinutes());
 
   return NextResponse.json({
     today,
