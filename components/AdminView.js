@@ -3453,6 +3453,47 @@ function CrewCard({ r, compact = false }) {
 // Reading it: solid lines are reporting, the dashed line is Coral auditing what
 // Siren actually published. That loop is the only one that goes back upstream,
 // and it exists because Siren is the only agent who acts outside the business.
+// Coastlines for the chain-of-command chart. Invented, not Lake Conroe: at this
+// size a real outline would be unreadable, and a half-right one would be worse
+// than an honest abstraction. Positions are chosen against the node layout --
+// the two top corners sit either side of the You/Pearl column, and the islands
+// fill the band below the row of reports, clear of Coral on the left and the
+// compass rose on the right. Coordinates are in the 980x440 viewBox.
+const LAND = [
+  // The north-west coast. Points and bays rather than one curve -- a single
+  // smooth S is the shape of a wave, not a shore -- and shallow enough to read
+  // as the corner of the sheet instead of a band across it.
+  "M-20 -20 L360 -20 C 352 10, 330 16, 322 30 L 312 22 " +
+  "C 300 36, 306 54, 292 62 C 278 70, 262 60, 250 68 L 244 60 " +
+  "C 232 74, 210 78, 194 74 C 178 70, 168 82, 150 86 " +
+  "C 132 90, 116 80, 100 88 C 84 96, 72 108, 52 106 L 44 98 " +
+  "C 28 108, 4 104, -20 108 Z",
+  // The north-east coast: deeper bays, a longer reach, so the two corners are
+  // not a mirrored pair.
+  "M640 -20 C 648 8, 668 14, 678 30 L 688 24 " +
+  "C 696 40, 690 58, 704 68 C 718 78, 740 70, 754 80 L 758 90 " +
+  "C 774 88, 786 100, 806 98 C 826 96, 840 82, 858 86 L 864 94 " +
+  "C 882 92, 898 102, 918 98 C 938 94, 956 100, 976 94 L 984 86 " +
+  "C 992 90, 996 92, 1000 90 L1000 -20 Z",
+  // Four islands in the southern water, each with at least one inlet. Sizes and
+  // spacing deliberately uneven: a row of equal blobs reads as decoration, a
+  // scatter reads as an archipelago.
+  "M258 396 C 262 378, 276 366, 296 362 L 306 372 C 318 362, 336 366, 346 378 " +
+  "C 356 390, 352 402, 340 408 L 330 402 C 322 414, 300 422, 282 416 C 268 411, 256 406, 258 396 Z",
+  "M440 372 C 444 358, 458 350, 472 352 L 478 360 C 490 356, 502 364, 502 376 " +
+  "C 502 386, 490 392, 478 390 L 470 384 C 458 392, 442 384, 440 372 Z",
+  "M596 404 C 598 392, 610 384, 622 386 L 628 394 C 638 392, 646 400, 642 410 " +
+  "C 638 419, 622 420, 612 415 C 602 410, 594 410, 596 404 Z",
+  "M704 356 C 706 348, 716 343, 724 347 L 727 353 C 734 354, 736 362, 728 365 C 718 369, 702 364, 704 356 Z",
+];
+// [x, y, scale] -- all inland, none within a node's box.
+// [x, y, scale]. All well inland of the new coastlines, and none on the
+// islands -- at that size a molehill reads as a hat rather than as relief.
+const HILLS = [
+  [70, 70, 1], [112, 60, 1.2], [156, 56, 0.9], [206, 46, 1.05], [262, 32, 0.8],
+  [712, 44, 1], [762, 58, 0.85], [812, 72, 1.15], [872, 68, 0.95], [932, 70, 0.8],
+];
+
 function CrewChart({ rows }) {
   const by = Object.fromEntries(rows.map((r) => [r.name, r]));
   const pearl = by["Nauti Pearl"];
@@ -3544,6 +3585,11 @@ function CrewChart({ rows }) {
               <circle cx="4" cy="4" r="0.7" fill="var(--purple)" opacity="0.13" />
               <circle cx="17" cy="15" r="0.7" fill="var(--purple)" opacity="0.09" />
             </pattern>
+            {/* How land was filled before tints: fine diagonal hatching. The
+                45deg turn is what stops it reading as a second graticule. */}
+            <pattern id="cc-land" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="7" stroke="var(--purple)" strokeWidth="0.6" opacity="0.34" />
+            </pattern>
             {/* Light falling across the sheet from above. Faint enough that the
                 portraits still sit clearly on top of it. */}
             <radialGradient id="cc-wash" cx="50%" cy="-8%" r="120%">
@@ -3559,6 +3605,36 @@ function CrewChart({ rows }) {
             {/* A wash from the top edge, so the sheet reads as lit rather than
                 as a filled rectangle. */}
             <rect x="0" y="0" width={W} height={CHART_H} fill="url(#cc-wash)" />
+
+            {/* Land goes under the graticule, because on an engraved chart the
+                lat/long rules carry straight across a coast rather than stopping
+                at it. */}
+            <g>
+              {/* The offshore shading band first, so the coastline rules over it. */}
+              {LAND.map((d, i) => (
+                <path key={"lh" + i} d={d} fill="none" stroke="var(--purple)" strokeWidth="5" opacity="0.07" />
+              ))}
+              {/* Solid tone first. Hatching alone gives almost no separation
+                  from the sea at this opacity, which left the coastline reading
+                  as a river drawn across open water. */}
+              {LAND.map((d, i) => (
+                <path key={"lf" + i} d={d} fill="var(--purple)" opacity="0.055" />
+              ))}
+              {LAND.map((d, i) => (
+                <path key={"l" + i} d={d} fill="url(#cc-land)" stroke="var(--purple)" strokeWidth="0.9" opacity="0.3" />
+              ))}
+              {/* Relief, as molehills rather than contours -- the older
+                  convention, and the only one that stays legible this faint. */}
+              {HILLS.map(([hx, hy, hs], i) => (
+                <path
+                  key={"h" + i}
+                  d="M-8 5 C -5 -1, -2 -5, 0 -8 C 2 -5, 5 -1, 8 5 Z"
+                  transform={`translate(${hx}, ${hy}) scale(${hs})`}
+                  fill="none" stroke="var(--purple)" strokeWidth="0.9" opacity="0.26"
+                />
+              ))}
+            </g>
+
             <rect x="0" y="0" width={W} height={CHART_H} fill="url(#cc-grid)" />
             <rect x="0" y="0" width={W} height={CHART_H} fill="url(#cc-sound)" />
 
