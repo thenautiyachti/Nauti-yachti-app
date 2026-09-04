@@ -1,7 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { redeem: redeemGiftCertificate, generateUniqueCode: generateGiftCode } = require("../../../../lib/giftCertificates");
-const { sendGiftCertificateEmail } = require("../../../../lib/email");
+const { sendGiftCertificateEmail, sendBookingConfirmationEmail } = require("../../../../lib/email");
 
 // Stripe signature verification needs the exact raw request body — reading
 // req.text() (not req.json()) preserves that. Must run on the Node.js
@@ -151,6 +151,20 @@ async function POST(req) {
           console.error("[webhooks/stripe] Failed to create booking from paid inquiry:", bookErr);
         }
       }
+
+        // Tell the guest. The booking-success page promises a confirmation will
+        // land in their inbox shortly, and until now nothing sent one for a
+        // charter -- only for gift certificates. A live $165 test produced a
+        // confirmation screen, a database row, and silence at both the guest
+        // address and the owner mailbox.
+        //
+        // Deliberately not awaited and deliberately swallowed: Stripe retries any
+        // webhook that does not return 200, and a mail outage must never cause
+        // the same payment to be processed twice. The booking is already saved;
+        // the email is a courtesy on top of a completed transaction.
+        if (paidInquiry) {
+          sendBookingConfirmationEmail(paidInquiry).catch(() => {});
+        }
 
       // If a gift certificate part-paid this booking, draw it down now —
       // payment has actually succeeded. Doing it at checkout instead would let

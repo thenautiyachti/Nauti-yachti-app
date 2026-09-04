@@ -31,9 +31,9 @@ export default async function BookingSuccessPage({ searchParams }) {
             You're all set!
           </h1>
           <p style={{ fontSize: 16, color: "var(--text)", opacity: 0.85, lineHeight: 1.6, margin: "22px 0 8px" }}>
-            Thanks for booking with The Nauti Yachti — we've got your payment and your charter request. A
-            confirmation will land in your inbox shortly, and our team will reach out with any final details
-            before your day on the water.
+              Thanks for booking with The Nauti Yachti. We have your payment and your charter,
+              and it is on our calendar. Keep the reference below until you hear from us — we
+              will be in touch before your day on the water with the meeting point and timing.
           </p>
           {sessionId && (
             <p className="mono" style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 18, wordBreak: "break-all" }}>
