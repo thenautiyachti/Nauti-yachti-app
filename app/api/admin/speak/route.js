@@ -1,6 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
+const { CREW } = require("../../../../lib/crew");
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 // The default voice, used for Pearl and for anything that does not name an
@@ -18,11 +19,20 @@ const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wDsJlOXPqcvIUKdL
 function voiceFor(agent) {
   const key = String(agent || "")
     .trim()
-    .replace(/^nauti\s+/i, "")   // callers pass "Nauti Coral" or "Coral"
+    .replace(/^nautis+/i, "")   // callers pass "Nauti Coral" or "Coral"
     .toUpperCase()
     .replace(/[^A-Z]/g, "");
   if (!key) return ELEVENLABS_VOICE_ID;
-  return process.env["ELEVENLABS_VOICE_" + key] || ELEVENLABS_VOICE_ID;
+  // An env var still wins, so a voice can be tried without a deploy. Otherwise
+  // the roster decides. The IDs used to live only in environment variables,
+  // which meant production quietly gave all eight agents one shared fallback
+  // voice until every one had been copied into Vercel by hand -- a feature that
+  // works locally and is silently wrong in production. Now they ship with the
+  // code and the two cannot drift.
+  const override = process.env["ELEVENLABS_VOICE_" + key];
+  if (override) return override;
+  const member = CREW.find((c) => c.name.toUpperCase().replace(/[^A-Z]/g, "").endsWith(key));
+  return (member && member.voice) || ELEVENLABS_VOICE_ID;
 }
 const JARVIS_SERVICE_KEY = process.env.JARVIS_SERVICE_KEY;
 
