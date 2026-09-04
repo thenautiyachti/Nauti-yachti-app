@@ -136,11 +136,30 @@ async function main() {
   // --- every image the booking pages point at -------------------------------
   try {
     const { prisma } = require(path.join(APP, "lib/db.js"));
-    const imgs = [
-      ...(await prisma.vessel.findMany()).map((v) => v.image),
-      ...(await prisma.package.findMany()).map((p) => p.image),
-      ...(await prisma.galleryItem.findMany()).map((g) => g.url),
-    ].filter(Boolean);
+    // Each source is named and counted separately. This check once read
+    // galleryItem and mapped g.url -- the field is g.image -- so all 45 rows
+    // became undefined, .filter(Boolean) swallowed them, and it cheerfully
+    // reported "10 checked, 0 on third-party hosts" while 32 of them sat on an
+    // abandoned BrandCrowd account. A silent zero is the most dangerous result
+    // a checker can produce, so a source that has rows but yields no URLs is
+    // now an error rather than an absence.
+    const sources = [
+      ["vessel", await prisma.vessel.findMany(), (r) => r.image],
+      ["package", await prisma.package.findMany(), (r) => r.image],
+      ["galleryItem", await prisma.galleryItem.findMany(), (r) => r.image],
+    ];
+    const imgs = [];
+    const mismapped = [];
+    for (const [name, rows, pick] of sources) {
+      const got = rows.map(pick).filter(Boolean);
+      if (rows.length && !got.length) mismapped.push(name + " has " + rows.length + " rows but no image field matched");
+      imgs.push(...got);
+    }
+    if (mismapped.length) {
+      R("Site images", "FAIL", mismapped.join("; "));
+      await prisma.$disconnect();
+      throw new Error("skip");
+    }
     let bad = 0, offsite = 0;
     for (const u of imgs) {
       if (/^https?:/i.test(u) && !u.includes("thenautiyachti.com")) offsite++;
