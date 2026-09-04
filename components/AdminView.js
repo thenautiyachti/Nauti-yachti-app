@@ -10,6 +10,7 @@ import {
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
+import { formatBody } from "../lib/boardText";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
@@ -4144,6 +4145,83 @@ function PanelOwners({ names = [] }) {
 }
 
 // A panel heading with its owners pushed to the right.
+
+// One board item, read rather than skimmed.
+//
+// Items accrete: a claim, then whatever each agent found when it checked, each
+// appended with its own date. As one paragraph that is unreadable, and the
+// newest fact -- usually the one that changes what to do -- ends up buried
+// mid-sentence in the middle of the block. formatBody splits it back apart;
+// this draws the pieces with the hierarchy they already had.
+function BoardItem({ t, color, onToggle, onDelete }) {
+  const { lead, points, updates } = formatBody(t.body);
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.5 }}>
+      {/* Its own control now, not the whole row. See the note in the script
+          that wrote this: a paragraph-sized "mark done" target closed items
+          whenever he tried to select a phone number out of one. */}
+      <input
+        type="checkbox"
+        checked={false}
+        onChange={() => onToggle(t.id, true)}
+        title="Mark done"
+        style={{ accentColor: color, flexShrink: 0, marginTop: 3, cursor: "pointer" }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div>
+          {t.owner && (
+            <span style={{ color: crewAccent(t.owner), fontWeight: 700, fontSize: 11, marginRight: 5 }}>
+              {t.owner}
+            </span>
+          )}
+          <span style={{ fontWeight: points.length || updates.length ? 600 : 400 }}>{lead}</span>
+        </div>
+
+        {points.length > 0 && (
+          <ul style={{ margin: "5px 0 0", paddingLeft: 15, display: "grid", gap: 3 }}>
+            {points.map((pt, i) => (
+              <li key={i} style={{ color: "var(--text)", opacity: 0.88 }}>{pt}</li>
+            ))}
+          </ul>
+        )}
+
+        {updates.length > 0 && (
+          /* Held off to one side under a rule, because this is history: what was
+             checked, when, and by whom. It is the most valuable part of a long
+             item and the part that was most completely lost in the prose. */
+          <div style={{ marginTop: 7, paddingTop: 6, borderTop: "1px solid rgba(203,108,230,0.14)", display: "grid", gap: 6 }}>
+            {updates.map((u, i) => (
+              <div key={i} style={{ fontSize: 12, lineHeight: 1.45 }}>
+                {u.stamp && (
+                  <span
+                    className="mono"
+                    style={{
+                      display: "inline-block", fontSize: 10, letterSpacing: "0.03em",
+                      color: "var(--muted)", background: "rgba(203,108,230,0.10)",
+                      borderRadius: 4, padding: "1px 5px", marginRight: 6, whiteSpace: "nowrap",
+                    }}
+                  >
+                    {u.stamp}{u.who ? " \u00b7 " + u.who : ""}
+                  </span>
+                )}
+                <span style={{ color: "var(--muted)" }}>{u.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => onDelete(t.id)}
+        title="Delete"
+        style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.4, flexShrink: 0, cursor: "pointer" }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 function PanelHead({ owners, children }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
@@ -4771,22 +4849,11 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
                   the UA stylesheet, so an inline display:grid beats it and the
                   band stayed open however many times you clicked. */}
               {openBands[band] && (
-              <div style={{ display: "grid", gap: 5 }}>
+              // Wider gap than before: each item is now a block with its own
+              // internal spacing, and 5px between them ran two items together.
+              <div style={{ display: "grid", gap: 12 }}>
                 {items.map((t) => (
-                  <label key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.45, cursor: "pointer" }}>
-                    <input type="checkbox" checked={false} onChange={() => onToggleTodo(t.id, true)}
-                      style={{ accentColor: p.color, flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      {t.owner && (
-                        <span style={{ color: crewAccent(t.owner), fontWeight: 700, fontSize: 11, marginRight: 5 }}>
-                          {t.owner}
-                        </span>
-                      )}
-                      {t.body}
-                    </span>
-                    <button type="button" onClick={(e) => { e.preventDefault(); onDeleteTodo(t.id); }}
-                      style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.4, flexShrink: 0 }}>✕</button>
-                  </label>
+                  <BoardItem key={t.id} t={t} color={p.color} onToggle={onToggleTodo} onDelete={onDeleteTodo} />
                 ))}
               </div>
               )}
