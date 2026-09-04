@@ -3262,6 +3262,15 @@ function VesselIcon({ id, color, size = 20 }) {
     </svg>
   );
 }
+// YYYY-MM-DD in the LOCAL timezone. toISOString() is UTC and silently rolls
+// the date forward every evening in Central, which is exactly how "Open
+// Saturdays" came out as zero.
+function localDayKey(d) {
+  return d.getFullYear() + "-" +
+    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+    String(d.getDate()).padStart(2, "0");
+}
+
 function crewAccent(shortName) {
   const c = CREW.find((x) => x.name.toUpperCase().endsWith(" " + String(shortName).toUpperCase()));
   return c ? c.accent : "var(--muted)";
@@ -3758,7 +3767,9 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       if (Number(b.pricePaid) <= 0) return false;
       if (b.status === "completed") return false;
       const d = String(b.date || "");
-      const dated = /^d{4}-d{2}-d{2}$/.test(d);
+      // The escapes matter: without them this matches nothing, every booking
+      // counts as undated, and a future paid trip is reported as money held.
+      const dated = /^\d{4}-\d{2}-\d{2}$/.test(d);
       return !dated || d < today;
     })
     .reduce((a, b) => a + Number(b.pricePaid || 0), 0);
@@ -3909,7 +3920,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     d.setDate(d.getDate() + i);
     const dow = d.getDay();
     if (dow !== 0 && dow !== 6) continue;
-    const key = d.toISOString().slice(0, 10);
+    const key = localDayKey(d);
     if (!bookedDays.has(key)) openWeekendDates.push(key);
   }
   const openWeekends = openWeekendDates.length;
@@ -3936,7 +3947,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     for (; d <= end; d.setDate(d.getDate() + 1)) {
       if (d.getDay() !== 6) continue;
       satTotal++;
-      if (ranOn.has(d.toISOString().slice(0, 10))) satRan++;
+      if (ranOn.has(localDayKey(d))) satRan++;
     }
   }
   const satFillRate = satTotal ? satRan / satTotal : 0;
@@ -4088,7 +4099,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 6, fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "var(--muted)" }}>Costs, per month</span>
-              <span className="mono">{currency(avgMonthOut)}</span>
+              <span className="mono">{currency(Math.round(avgMonthOut))}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "var(--muted)" }}>Break-even</span>
@@ -4413,12 +4424,10 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
               <span style={{ color: "var(--muted)" }}>Season so far</span>
               <span className="mono">{seasonTrips} trips · {currency(seasonEarned)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--muted)" }}>Open weekends, next 8wks</span>
-              <span className="mono" style={{ color: openWeekends > 8 ? "#E8934A" : "var(--text)" }}>
-                {openWeekends} · {currency(openWeekends * avgCharter)}
-              </span>
-            </div>
+            {/* Open dates moved to Reef's panel, which counts Saturdays and
+                values them at the rate Saturdays actually fill. Two panels
+                quoting different figures for the same thing on one screen is
+                worse than either figure alone. */}
           </div>
 
           {/* The names still matter, just not as the headline -- the Bookings
