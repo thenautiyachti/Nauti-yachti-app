@@ -3188,7 +3188,11 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
   // whatever happened to be first.
   const upcomingByDay = [];
   for (const d of upcoming) {
-    const day = d.scheduledDate || "unscheduled";
+    // Two buckets, not one. A draft with no date is either waiting on HIM
+    // (proposed, not yet approved) or waiting on CORAL (approved, never dated).
+    // Only the second is a problem, and lumping them together made the first
+    // look like one.
+    const day = d.scheduledDate || (d.status === "approved" ? "needs-date" : "awaiting-you");
     const last = upcomingByDay[upcomingByDay.length - 1];
     if (last && last.day === day) last.items.push(d);
     else upcomingByDay.push({ day, items: [d] });
@@ -5159,7 +5163,15 @@ function DraftDayGroup({ day, items, cardProps }) {
   const DAY_GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))", gap: 10 };
   const [open, setOpen] = useState(true);
   const platforms = [...new Set(items.map((d) => d.platform).filter(Boolean))];
-  const label = day === "unscheduled" ? "No date set" : mediaDraftDate(day) || day;
+  const label =
+    day === "awaiting-you" ? "Waiting on you"
+    : day === "needs-date" ? "Approved, still needs a date"
+    : mediaDraftDate(day) || day;
+  // Said plainly under the heading, because the difference is the whole point.
+  const note =
+    day === "awaiting-you" ? "Approve, send back or deny. Nothing happens to these until you do."
+    : day === "needs-date" ? "You approved these. Coral gives them a date on her next run — if one sits here for days, say so."
+    : null;
   // Every post that day shares a time in practice; show it once rather than on
   // each card.
   const time = items.find((d) => d.scheduledTime)?.scheduledTime;
@@ -5173,9 +5185,16 @@ function DraftDayGroup({ day, items, cardProps }) {
           width: "100%", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap",
           background: "rgba(203,108,230,0.08)", border: "none", borderBottom: open ? "1px solid rgba(203,108,230,0.2)" : "none",
           padding: "9px 13px", textAlign: "left", color: "var(--text)",
+          flexDirection: note ? "column" : "row",
+          alignItems: note ? "flex-start" : "baseline",
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: 13.5 }}>{open ? "▾" : "▸"} {label}</span>
+        <span style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", width: "100%" }}>
+          <span style={{ fontWeight: 700, fontSize: 13.5 }}>{open ? "▾" : "▸"} {label}</span>
+        </span>
+        {note && (
+          <span style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.4, marginTop: 2 }}>{note}</span>
+        )}
         {time && <span className="mono" style={{ fontSize: 11.5, color: "#4ff3ff" }}>{time}</span>}
         <span style={{ fontSize: 11.5, color: "var(--muted)", marginLeft: "auto" }}>
           {platforms.length ? (
