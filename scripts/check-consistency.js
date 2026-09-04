@@ -112,7 +112,16 @@ try {
     const hourly = /every hour|hourly/i.test(shown);
     // A card claiming a single daily time, for a task whose brief says hourly,
     // is the specific drift worth catching.
-    if (!hourly && /runs? every hour|hourly/i.test(md)) {
+    // A brief may MENTION an old schedule while describing why it changed --
+    // "you were briefly hourly" is history, not a claim. The retired-id check
+    // above already draws this distinction; without it here, writing down why a
+    // schedule changed is punished as a contradiction, which teaches people to
+    // delete the explanation rather than keep it.
+    const hourlyClaim = [...md.matchAll(/runs? every hour|hourly/gi)].some((m) => {
+      const near = md.slice(Math.max(0, m.index - 120), m.index + 60);
+      return !/was|were|used to|briefly|until|no longer|previously|stopped/i.test(near);
+    });
+    if (!hourly && hourlyClaim) {
       fail("lib/crew.js", `${id} card shows "${shown}" but its brief says hourly`);
     }
   }
