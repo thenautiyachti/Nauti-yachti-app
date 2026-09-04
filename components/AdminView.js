@@ -2054,14 +2054,19 @@ const MATCH_LABEL = {
   linked: "Reconciled", id: "Linked by ID", exact: "Amount matches", payout: "Payout matches",
   named: "Amount disagrees", date: "Same date only", none: "Not in ledger",
   unpriced: "No price recorded",
+  // Not a problem and not counted. A charter that never sailed owes nothing.
+  nosail: "Never sailed — nothing owed",
 };
 const MATCH_COLOR = {
   linked: "#7FE0B8", id: "#7FE0B8", exact: "#7FE0B8", payout: "#7FE0B8",
   named: "#E8934A", date: "#E8934A", none: "#F0559C", unpriced: "#F0559C",
+  nosail: "#7A8598",
 };
 const MATCH_ACCOUNTED = {
   linked: true, id: true, exact: true, payout: true,
   named: false, date: false, none: false, unpriced: false,
+  // Counted as accounted for: there is nothing to account for.
+  nosail: true,
 };
 
 // The guest's first name, when it's long enough to be worth matching on.
@@ -2073,8 +2078,25 @@ function guestNameToken(booking) {
   return first.length >= 3 ? first.toLowerCase() : null;
 }
 
+// A charter that never sailed owes the ledger nothing.
+//
+// "cancelled" with no price is the NORMAL, CORRECT state of a platform enquiry
+// that did not convert -- and there are 33 of them. Treating those as unpriced
+// put a 33 at the top of the reconciliation and a HIGH item on the board asking
+// the owner to find amounts for charters that never happened.
+//
+// A cancelled booking that DOES carry a price is different and still worth
+// matching: money changed hands and then the trip was called off, which is a
+// refund question, and refunds are exactly the thing this business keeps
+// getting wrong.
+const NEVER_SAILED = /^(cancelled|canceled|declined|expired|no.?show|enquiry|inquiry)$/i;
+
 function matchBookingToLedger(booking, incomeRows) {
   const price = booking.pricePaid;
+
+  if (NEVER_SAILED.test(String(booking.status || "").trim()) && (price == null || price === 0)) {
+    return { tier: "nosail", row: null };
+  }
 
   if (booking.bookingId) {
     const byId = incomeRows.find((l) => l.bookingId && l.bookingId === booking.bookingId);
