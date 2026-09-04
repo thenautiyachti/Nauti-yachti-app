@@ -331,7 +331,7 @@ Six of the nine routines now carry their crew member's name in the sidebar —
 `nauti-pearl`, `nauti-joy`, `nauti-reef`, `nauti-shelly`, `nauti-nova` and
 `crew-standup`.
 
-One deliberately does not: `daily-social-publisher`, which is Siren.
+One deliberately does not: `nauti-siren`, which is Siren.
 
 A task ID cannot be renamed — only deleted and recreated — and connector
 approvals are stored **on the task**. Siren publishes through Blotato, so

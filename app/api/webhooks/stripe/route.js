@@ -66,6 +66,33 @@ async function POST(req) {
               note: "Purchased online",
             },
           });
+            // The money is in the account today, so it is income today. Cash
+            // basis: recognising it at redemption instead would leave real cash
+            // absent from the books until a trip that might be months away, and
+            // would disagree with the tax return. The liability -- a charter owed
+            // later -- stays visible through the certificate’s own balance, which
+            // is a better record than a journal entry nobody maintains.
+            //
+            // Wrapped: the certificate is minted and the buyer already has their
+            // code. A ledger failure must not fail the webhook, or Stripe retries
+            // and mints a second certificate for one payment.
+            try {
+              await prisma.ledgerEntry.create({
+                data: {
+                  type: "income",
+                  category: "Gift certificate",
+                  amount,
+                  note: "Gift certificate " + code + " sold"
+                    + (cert.purchaserName ? " to " + cert.purchaserName : "")
+                    + " — a charter is owed against this until it is redeemed",
+                  origin: "Website",
+                  date: new Date().toISOString().slice(0, 10),
+                },
+              });
+            } catch (ledgerErr) {
+              console.error("[webhooks/stripe] certificate sold but NOT booked to the ledger:", ledgerErr);
+            }
+
           // Best-effort: the buyer already sees the code on the success page,
           // so a failed send is not a failed purchase.
           sendGiftCertificateEmail(cert).catch(() => {});
