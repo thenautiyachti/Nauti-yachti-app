@@ -3224,6 +3224,38 @@ const ATTENTION_KIND = {
   enquiry:  { icon: "📨", color: "#CB6CE6", label: "Enquiries" },
 };
 
+// Side profiles, 24x16, stroke-only so they take the row's colour and stay
+// legible on the dark ground at 20px. Kept to the one feature that identifies
+// each hull: the tower on a wake boat, the stacked cabin on a yacht, the flat
+// deck and tubes on a pontoon.
+function VesselIcon({ id, color, size = 20 }) {
+  // Every hull shares the same sheer line and curved bottom, so each icon reads
+  // as a boat first and a type second. The first attempt drew them symmetrical
+  // and face-on: the wake boat came out as a mushroom and the yacht as a
+  // wedding cake. A boat only reads in side profile.
+  const HULL = "M2 9.5 h20 c-.6 2.6-2.4 4-5 4H7c-2.6 0-4.4-1.4-5-4z";
+  const D = {
+    // Low freeboard, short windshield, and the tower over the cockpit that a
+    // wake boat is recognised by.
+    explorer: [HULL, "M8 9.5V7h6l2 2.5", "M9 7 C9 4 12 3 14.5 4.5", "M14.5 4.5 L16 7"],
+    // Taller: a full cabin sloping to the bow with a flybridge stacked on top.
+    yachti: [HULL, "M5 9.5V6h9l2.5 3.5", "M7 6V3.2h6V6", "M8 3.2h4"],
+    // No hull at all -- a flat deck on a tube, with railing and bimini. The
+    // absence of a hull is what makes it unmistakably a pontoon.
+    islander: ["M3 11.5h18", "M4 11.5v1.6h16v-1.6", "M5 11.5V9M19 11.5V9M5 9h14", "M7.5 9V6M16.5 9V6M6.5 6h11"],
+  };
+  const paths = D[id] || D.explorer;
+  return (
+    <svg
+      width={size} height={size * (16 / 24)} viewBox="0 0 24 16"
+      fill="none" stroke={color} strokeWidth="1.35"
+      strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0 }} aria-hidden="true"
+    >
+      {paths.map((d, i) => <path key={i} d={d} />)}
+    </svg>
+  );
+}
 function crewAccent(shortName) {
   const c = CREW.find((x) => x.name.toUpperCase().endsWith(" " + String(shortName).toUpperCase()));
   return c ? c.accent : "var(--muted)";
@@ -3615,12 +3647,13 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // costs nothing and is not the point; and it left out the Nauti Islander
   // entirely, because a boat that has never run has no bookings to derive a
   // row from. The Islander is precisely the row worth seeing.
-  const fleetNames = (vessels || []).map((v) => v.name).filter(Boolean);
-  const fleet = fleetNames.map((name) => {
+  const fleetList = (vessels || []).filter((v) => v && v.name);
+  const fleet = fleetList.map(({ id, name }) => {
     const runs = seasonRuns.filter((b) => b.vesselName === name);
     const lastRan = runs.map((b) => b.date).sort().pop() || null;
     const paid = runs.map((b) => Number(b.pricePaid || 0)).filter((n) => n > 0);
     return {
+      id,
       name,
       trips: runs.length,
       lastRan,
@@ -4187,9 +4220,12 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
                   {/* The name takes whatever is left and truncates; the figures
                       never shrink. Both halves flexing is what pushed the money
                       column off the edge of the card. */}
-                  <span style={{ minWidth: 0, flex: "1 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    <strong style={{ color: cold ? "#E2685F" : "var(--text)" }}>{v.name}</strong>
-                    <span style={{ color: "var(--muted)" }}> {v.trips} {v.trips === 1 ? "trip" : "trips"}</span>
+                  <span style={{ minWidth: 0, flex: "1 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 7 }}>
+                    <VesselIcon id={v.id} color={cold ? "#E2685F" : "var(--muted)"} />
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <strong style={{ color: cold ? "#E2685F" : "var(--text)" }}>{v.name}</strong>
+                      <span style={{ color: "var(--muted)" }}> {v.trips} {v.trips === 1 ? "trip" : "trips"}</span>
+                    </span>
                   </span>
                   <span style={{ whiteSpace: "nowrap", fontSize: 11.5, flex: "0 0 auto" }}>
                     {cold ? (
