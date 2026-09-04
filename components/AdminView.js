@@ -5179,7 +5179,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
         <div style={{ fontWeight: 700 }}>
           Ask past guests for a Google review
           <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 12.5 }}>
-            {" "}— {completed.length} completed charter{completed.length === 1 ? "" : "s"} · {askedCount} marked asked · {completed.length - askedCount} to go
+            {" "}— {completed.length} to ask · {askedCount} marked asked · {completed.length - askedCount} to go
           </span>
         </div>
         <button type="button" onClick={() => setOpen((v) => !v)}
@@ -5273,7 +5273,12 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
                       <Fragment key={r.key}>
                         <tr style={{ background: "rgba(255,255,255,0.02)" }}>
                           <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
-                            <div className="mono" style={{ color: r.bookingId ? "#E8934A" : "var(--muted)", fontSize: 11 }}>{r.bookingId || "—"}</div>
+                            {/* An extra contact has no charter of its own -- they
+                                sailed on somebody else's booking. Saying so beats a
+                                bare dash, which reads as a missing reference. */}
+                            <div className="mono" style={{ color: r.bookingId ? "#E8934A" : "var(--muted)", fontSize: 11 }}>
+                              {r.bookingId || (r.kind === "contact" ? "extra contact" : "—")}
+                            </div>
                             <div style={{ color: "var(--muted)", fontSize: 11 }}>{r.date || "—"}</div>
                           </td>
                           <td style={{ padding: "6px 8px", fontWeight: 600 }}>{r.name || "Guest"}</td>
