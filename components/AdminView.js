@@ -10,6 +10,7 @@ import {
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
+import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 
 // Names only. The leading numbers came from a spreadsheet's sort order and had
@@ -3199,7 +3200,7 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
               {/* When it goes out, not when it was drafted — "scheduled" alone
                   never said which day the work was due. */}
               <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
-                {d.platform || "Platform TBD"}
+                <PlatformLabel platform={d.platform || "Platform TBD"} size={12} />
                 {d.status === "scheduled" && d.scheduledDate && (
                   <span style={{ color: "#4ff3ff" }}> · goes out {mediaDraftDate(d.scheduledDate)}{d.scheduledTime ? ` at ${d.scheduledTime}` : ""}</span>
                 )}
@@ -3267,7 +3268,7 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
               {previewOpen && (
                 <div style={{ marginTop: 8, padding: 10, borderRadius: 6, background: "rgba(203,108,230,0.08)", border: "1px solid rgba(203,108,230,0.35)" }}>
                   <div style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", fontWeight: 700, marginBottom: 6 }}>
-                    {d.platform || "Platform TBD"} — as it will go out
+                    <PlatformLabel platform={d.platform || "Platform TBD"} size={12} /> — as it will go out
                   </div>
                   <div style={{ fontSize: 12.5, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{d.caption}</div>
                   {d.mediaUrl
@@ -4806,7 +4807,9 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
                 <strong style={{ color: nextByDay[0].day === today ? "#E8934A" : "var(--text)" }}>
                   {mediaDraftDate(nextByDay[0].day) || nextByDay[0].day}
                 </strong>
-                <div style={{ color: "var(--muted)", fontSize: 11.5 }}>{nextByDay[0].platforms.join(" · ")}</div>
+                <div style={{ color: "var(--muted)", fontSize: 11.5, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {nextByDay[0].platforms.map((p, i) => <PlatformLabel key={p + i} platform={p} size={11} />)}
+                </div>
               </span>
             </div>
           )}
@@ -4837,7 +4840,10 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 5 }}>
             {platformRows.map(([name, n]) => (
               <div key={name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5 }}>
-                <span style={{ width: 66, flexShrink: 0, color: "var(--muted)" }}>{name}</span>
+                <span style={{ width: 78, flexShrink: 0, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <PlatformIcon platform={name} size={11} />
+                  {name}
+                </span>
                 <span style={{ flex: 1, height: 6, background: "rgba(203,108,230,0.12)", borderRadius: 3, overflow: "hidden" }}>
                   <span style={{ display: "block", height: "100%", width: Math.round((n / maxPlatform) * 100) + "%", background: "var(--purple)", opacity: 0.75 }} />
                 </span>
@@ -5063,7 +5069,11 @@ function DraftDayGroup({ day, items, cardProps }) {
         <span style={{ fontWeight: 700, fontSize: 13.5 }}>{open ? "▾" : "▸"} {label}</span>
         {time && <span className="mono" style={{ fontSize: 11.5, color: "#4ff3ff" }}>{time}</span>}
         <span style={{ fontSize: 11.5, color: "var(--muted)", marginLeft: "auto" }}>
-          {platforms.length ? platforms.join(" · ") : `${items.length} post${items.length === 1 ? "" : "s"}`}
+          {platforms.length ? (
+            <span style={{ display: "inline-flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              {platforms.map((p, i) => <PlatformLabel key={p + i} platform={p} size={11} />)}
+            </span>
+          ) : `${items.length} post${items.length === 1 ? "" : "s"}`}
         </span>
       </button>
       {open && (
