@@ -13,7 +13,14 @@ async function GET() {
 // Body: { theme, mediaUrl, mediaType?, caption, platform? }
 // This is what a future generation step will call to insert a new draft.
 async function POST(req) {
-  if (!(await isAdminAuthenticated())) {
+  // A browser session OR the machine key. Creating a draft only puts something
+  // in the review queue -- nothing reaches a real account without the owner
+  // approving it and Siren screening it, so this is the right place for a
+  // machine credential, and it is the same one the speak route already takes.
+  const serviceKey = req.headers.get("x-jarvis-key");
+  const authorized =
+    (await isAdminAuthenticated()) || (JARVIS_SERVICE_KEY && serviceKey === JARVIS_SERVICE_KEY);
+  if (!authorized) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const body = await req.json();
