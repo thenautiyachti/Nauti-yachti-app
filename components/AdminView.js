@@ -4862,18 +4862,20 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
 
           {/* Next out, and how long the wait is. A gap is as much the news as
               the booking. */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 12.5, color: "var(--muted)", flex: "0 0 auto" }}>Next out</span>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 3 }}>Next out</div>
             {nextOut ? (
-              <span style={{ fontSize: 12.5, textAlign: "right", minWidth: 0, flex: "1 1 auto" }}>
-                <strong>{nextOut.guestName || "(no name)"}</strong>
-                <span style={{ color: "var(--muted)" }}> · {nextOut.vesselName}</span>
+              <div style={{ fontSize: 12.5, minWidth: 0 }}>
+                <div>
+                  <strong>{nextOut.guestName || "(no name)"}</strong>
+                  <span style={{ color: "var(--muted)" }}> · {nextOut.vesselName}</span>
+                </div>
                 <div className="mono" style={{ fontSize: 11.5, color: daysToNext > 14 ? "#E8934A" : "#4FA8E8" }}>
                   {nextOut.date} · {daysToNext === 0 ? "today" : daysToNext === 1 ? "tomorrow" : "in " + daysToNext + " days"}
                 </div>
-              </span>
+              </div>
             ) : (
-              <span style={{ fontSize: 12.5, color: "#E8934A", fontWeight: 700 }}>nothing booked</span>
+              <div style={{ fontSize: 12.5, color: "#E8934A", fontWeight: 700 }}>nothing booked</div>
             )}
           </div>
 
@@ -4956,16 +4958,18 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           {nextByDay.length === 0 ? (
             <div style={EMPTY}>Nothing scheduled.</div>
           ) : (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5, marginBottom: 10 }}>
-              <span style={{ flex: "0 0 auto", color: "var(--muted)" }}>Next up</span>
-              <span style={{ textAlign: "right", minWidth: 0, flex: "1 1 auto" }}>
+            <div style={{ fontSize: 12.5, marginBottom: 10 }}>
+              <div style={{ color: "var(--muted)", marginBottom: 3 }}>Next up</div>
+              {/* Date and platforms on one line: "Friday, TikTok and Instagram"
+                  is a single fact and splitting it made it read as two. */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
                 <strong style={{ color: nextByDay[0].day === today ? "#E8934A" : "var(--text)" }}>
                   {mediaDraftDate(nextByDay[0].day) || nextByDay[0].day}
                 </strong>
-                <div style={{ color: "var(--muted)", fontSize: 11.5, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ color: "var(--muted)", fontSize: 11.5, display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {nextByDay[0].platforms.map((p, i) => <PlatformLabel key={p + i} platform={p} size={11} />)}
-                </div>
-              </span>
+                </span>
+              </div>
             </div>
           )}
 
