@@ -7,7 +7,15 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 // The default voice, used for Pearl and for anything that does not name an
 // agent. Still the old Jarvis preset until a Pearl voice is chosen -- that is a
 // change to this variable in Vercel and in the secrets store, not to this file.
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wDsJlOXPqcvIUKdLXjDs";
+// The fallback for a call that names no agent. It used to be a bare voice id
+// with nothing saying whose it was -- the old Jarvis voice, left behind by the
+// rename. Pearl is the default speaker, so the default voice is read off her
+// roster entry and cannot drift away from it.
+//
+// ELEVENLABS_VOICE_ID still wins if it is set, which is the trap this whole
+// change is about: the Vercel copy is the old Jarvis voice. Unset it there.
+const PEARL = CREW.find((c) => c.name === "Nauti Pearl");
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || (PEARL && PEARL.voice) || "Xb7hH8MSUJpSbSDYk0k2";
 
 // A voice per agent, so an avatar can read its own status in its own voice.
 // Variables are named after the agents: ELEVENLABS_VOICE_CORAL, _SIREN, _PENNY,
