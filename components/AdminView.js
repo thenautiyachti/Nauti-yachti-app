@@ -5089,7 +5089,15 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
     const value = on ? new Date().toISOString() : null;
     if (target.kind === "external" && onUpdateExternalBooking) {
       onUpdateExternalBooking(target.id, { reviewRequestedAt: value });
-    } else if (target.kind === "site" && onUpdateInquiry) {
+    } else if ((target.kind === "inquiry" || target.kind === "contact") && onUpdateInquiry) {
+      // Both live in the Inquiry table, so both save the same way.
+      //
+      // This branch used to test for kind "site", which no row has ever had --
+      // toUnifiedRows has always produced "inquiry". So ticking off a charter
+      // booked through the site wrote nothing to the database; the tick came
+      // back only from the local mark this panel keeps, and would have vanished
+      // on another device. Silent, because the optimistic update makes the tick
+      // appear either way.
       onUpdateInquiry(target.id, { reviewRequestedAt: value });
     }
   }
@@ -5105,10 +5113,33 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
     onUpdateExternalBooking(row.id, { phone: value });
   }
 
+  // Extra guest contacts: people who sailed on somebody else's reservation and
+  // whose number was kept, explicitly, for a second review ask from that trip.
+  //
+  // toUnifiedRows drops these on purpose -- a contact is not a booking, and
+  // letting one through would put it under Bookings and inflate the inquiry
+  // count. That is right everywhere except here. They were listed in the Guests
+  // panel as "never asked for a review" and then offered in no list that could
+  // ask them, which is the console setting a job and withholding the button.
+  // The weekly reminder email has always included them.
+  const contactRows = inquiries.filter(isGuestContactRow).map((i) => ({
+    kind: "contact",
+    id: i.id,
+    bookingId: i.bookingId,
+    date: i.date,
+    name: i.name,
+    email: i.email,
+    phone: i.phone,
+    vesselName: i.vesselName,
+    source: "Other",
+    statusBucket: "completed", // they sailed; that is the only bucket that matters here
+    raw: i,
+  }));
+
   // Only charters that actually happened can be asked about. Both a site
   // Inquiry marked "completed" and an ExternalBooking marked "completed" land
   // in the same unified "completed" bucket.
-  const completed = toUnifiedRows(inquiries, externalBookings)
+  const completed = [...toUnifiedRows(inquiries, externalBookings), ...contactRows]
     .filter((r) => r.statusBucket === "completed")
     .map((r) => {
       const days = daysSince(r.date);
