@@ -88,6 +88,58 @@
     radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
     var(--card);
 
+  /* The public booking cards -- vessels and packages -- carry plates too, but
+     quieter: 26% ink against the console's 42%. A guest is deciding whether to
+     spend money on these, and a price competing with a coastline is a worse
+     trade than a plainer card. Both card types put a photo on top and the text
+     beneath, so the plate only ever shows in that lower band, which is the part
+     that has to stay readable. */
+  --paper-site-1:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-1.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-site-2:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-2.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-site-3:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-3.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-site-4:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-4.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-site-5:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-5.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-site-6:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-6.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-site-7:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-7.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-site-8:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-8.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+  --paper-site-9:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    url(/map/site-9.svg) center/cover no-repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.06), rgba(203,108,230,0) 60%),
+    var(--card);
+
   /* The plain variant, no plate. Kept for anything that wants the ruled paper
      without a region -- the chain-of-command chart's panel, for instance, rules
      its own graticule at a different pitch and must not carry a second one. */

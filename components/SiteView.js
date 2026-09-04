@@ -233,8 +233,11 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 4 }}>Pick your vessel</h2>
           <p style={{ color: "var(--muted)", marginTop: 0, marginBottom: 22, fontSize: 14 }}>Each slip shows what that boat is built for.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 16 }}>
-            {vessels.map((v) => {
+            {vessels.map((v, i) => {
               const active = v.id === selectedVessel;
+              // Plates 1-3 here, 4-9 on the packages below, so a vessel card
+              // and the package card under it are never the same coastline.
+              const plate = (i % 3) + 1;
               return (
                 <button
                   key={v.id}
@@ -242,7 +245,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                   onClick={() => setSelectedVessel(v.id)}
                   style={{
                     textAlign: "left", border: active ? "2px solid var(--purple)" : "2px solid rgba(203,108,230,0.15)",
-                    background: "var(--card)", color: "var(--text)", borderRadius: 10, padding: 0, overflow: "hidden",
+                    background: `var(--paper-site-${plate})`, color: "var(--text)", borderRadius: 10, padding: 0, overflow: "hidden",
                   }}
                 >
                   {v.image && (
@@ -274,9 +277,10 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
             <Link href="/faq" style={{ color: "var(--purple)" }}>Read the FAQ</Link>
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px,1fr))", gap: 16 }}>
-            {packages.map((p) => (
+            {packages.map((p, i) => (
               <PackageCard
                 key={p.id}
+                plate={(i % 6) + 4}
                 pkg={p}
                 vessels={vessels}
                 defaultVesselId={selectedVessel}
@@ -621,7 +625,7 @@ function GalleryTile({ g, height }) {
   );
 }
 
-function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
+function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
   const [hour, setHour] = useState(3);
   const [vesselId, setVesselId] = useState(defaultVesselId);
   const [dayType, setDayType] = useState("weekday");
@@ -640,7 +644,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook }) {
   if (pkg.pricingType === "tiered-by-guests") price = tierPrice(pkg.tiers, guests);
 
   return (
-    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div style={{ background: `var(--paper-site-${plate})`, border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       {pkg.image && (
         <img src={pkg.image} alt={pkg.name} style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", objectPosition: imageFocus(pkg.image), display: "block" }} />
       )}

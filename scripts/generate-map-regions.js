@@ -36,6 +36,12 @@ const S = 200; // region box, square so any crop stays sensible
 // It sits behind live figures. At full strength the maps are handsome and the
 // money is unreadable, which is the wrong trade every time.
 const INK = 0.42;
+
+// The public site runs quieter than this. The console is a working tool the
+// owner reads for minutes at a time and already knows by heart; the booking
+// pages are where a guest decides to spend money, and a price or a capacity
+// competing with a coastline costs more than the coastline is worth. Callers
+// pass their own value -- see PLATE_INK in generate-site-plates.
 const r2 = (n) => Math.round(n * 10) / 10;
 
 // A coast running across the box from one edge, as a closed path. The walk is
@@ -149,7 +155,7 @@ function meridians(rand) {
 
 const EDGES = ["top", "bottom", "left", "right"];
 
-function region(seed) {
+function region(seed, ink = INK) {
   const rand = rng(seed);
   const parts = [];
   const lands = [];
@@ -250,7 +256,7 @@ function region(seed) {
     `<path d='M-7 4 L7 4 L5 7.5 L-5 7.5 Z'/><path d='M0 4 L0 -8'/>` +
     `<path d='M0.6 -7 Q6 -3 0.6 -0.5 Z'/><path d='M-0.6 -4 Q-5 -1 -0.6 1.5 Z'/>` +
     `<path d='M-10 9.5 Q-5 11 0 9.5 Q5 8 10 9.5' stroke-opacity='.18'/></g></defs>` +
-    `<g opacity='${INK}'>` + arcs + under + dots + parts.join("") + hills + furniture + `</g>` +
+    `<g opacity='${ink}'>` + arcs + under + dots + parts.join("") + hills + furniture + `</g>` +
     `</svg>`;
 
   // Two consumers. As a standalone .svg file none of this needs encoding at all,
@@ -279,17 +285,25 @@ module.exports = { region };
 // run it after changing anything above, and commit the result.
 //
 //   node scripts/generate-map-regions.js
+// Rewrites every plate under public/map/. Seeded, so this reproduces exactly
+// the files the site already references rather than reshuffling them -- run it
+// after changing anything above, and commit the result.
+//
+//   node scripts/generate-map-regions.js
+//
+// Two sets, and they are NOT interchangeable:
+//   region-1..12  the owner console, at full ink
+//   site-1..9     the public vessel and package cards, quieter
+// Regenerating one without the other leaves half the site pointing at stale
+// plates, so this always writes both.
 if (require.main === module) {
   const nodeFs = require("fs");
   const nodePath = require("path");
-  const N = Number(process.argv[2] || 12);
   const dir = nodePath.join(__dirname, "..", "public", "map");
   nodeFs.mkdirSync(dir, { recursive: true });
+  const write = (name, svg) => { nodeFs.writeFileSync(nodePath.join(dir, name), svg); return svg.length; };
   let bytes = 0;
-  for (let i = 0; i < N; i++) {
-    const svg = region(1000 + i * 7919).raw;
-    nodeFs.writeFileSync(nodePath.join(dir, "region-" + (i + 1) + ".svg"), svg);
-    bytes += svg.length;
-  }
-  console.log(N + " regions written to public/map (" + Math.round(bytes / 1024) + "KB)");
+  for (let i = 0; i < 12; i++) bytes += write("region-" + (i + 1) + ".svg", region(1000 + i * 7919).raw);
+  for (let i = 0; i < 9; i++) bytes += write("site-" + (i + 1) + ".svg", region(4000 + i * 6151, 0.26).raw);
+  console.log("21 plates written to public/map (" + Math.round(bytes / 1024) + "KB)");
 }
