@@ -4026,6 +4026,10 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // asked for a review. Anything that is genuinely a job goes here.
   const soonPosts = mediaDrafts.filter((d) => d.status === "scheduled" && d.scheduledDate && d.scheduledDate <= plus(3) && d.scheduledDate >= today);
   const draftsWaiting = mediaDrafts.filter((d) => ["pending", "proposed", "discussing"].includes(d.status));
+  // Approved, but never given a date. These are the drafts that rot: Coral
+  // drafts, Siren publishes what is scheduled, and until now nothing owned the
+  // step between -- so a post you said yes to just sat, and no panel said so.
+  const approvedNoDate = mediaDrafts.filter((d) => d.status === "approved" && !d.scheduledDate);
   const newInquiries = inquiries.filter((i) => isRealInquiry(i) && i.status === "new");
   // Judged against the highest engine-hour reading in the fleet, which is what
   // the Maintenance tab does — the worst case, so nothing slips through.
@@ -4065,6 +4069,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       t: `No maintenance can be judged — ${maintenanceItems.length} items, nothing logged`,
       w: "Boat: add engine hours or a last-serviced date", go: "maintenance", urgent: true,
     },
+    approvedNoDate.length && { k: "media", t: `${approvedNoDate.length} approved ${approvedNoDate.length === 1 ? "post has" : "posts have"} no date`, w: "Marketing → Media Drafts · approved but not scheduled, so nothing will publish " + (approvedNoDate.length === 1 ? "it" : "them"), go: "mediaDrafts", urgent: true },
     draftsWaiting.length && { k: "media", t: `${draftsWaiting.length} social ${draftsWaiting.length === 1 ? "draft" : "drafts"} to approve`, w: "Marketing → Media Drafts", go: "mediaDrafts", urgent: true },
     noPrice.length && { k: "money", t: `${noPrice.length} completed ${noPrice.length === 1 ? "charter has" : "charters have"} no price`, w: "no income row is written without one", go: "bookings", urgent: true },
     soonPosts.length && { k: "media", t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts", go: "mediaDrafts" },

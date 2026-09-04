@@ -445,7 +445,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               {testimonials.length === 0 && (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>No reviews yet — be the first to share your experience!</div>
               )}
-              {testimonials.map((t) => <TestimonialCard key={t.id} t={t} />)}
+              {testimonials.map((t, i) => <TestimonialCard key={t.id} t={t} plate={(i % 9) + 1} />)}
             </div>
             <TestimonialForm onSubmit={submitTestimonial} />
           </div>
@@ -1086,9 +1086,9 @@ function charterMonth(d) {
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-function TestimonialCard({ t }) {
+function TestimonialCard({ t, plate = 1 }) {
   return (
-    <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 18, breakInside: "avoid", marginBottom: 16, display: "block" }}>
+    <div style={{ background: `var(--paper-site-${plate})`, border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 18, breakInside: "avoid", marginBottom: 16, display: "block" }}>
       <div style={{ color: "#E8934A", fontSize: 16, letterSpacing: 2, marginBottom: 8 }}>
         {"★".repeat(t.rating)}{"☆".repeat(5 - t.rating)}
       </div>

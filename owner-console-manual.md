@@ -130,33 +130,48 @@ ever lapses, those images disappear, which is why new ones go in our own folder.
 
 ## Media Drafts
 
-Every social post, from the moment Coral proposes it to the moment it goes out.
-**Nothing is ever posted automatically.**
+Every post Coral has drafted, laid out as cards and boxed by the day it goes
+out. Two days side by side, soonest first.
 
-A post moves through stages, and the stage it is in decides which buttons it
-offers:
+### What goes out on its own, and what does not
 
-| Stage | Means | What you can do |
-|---|---|---|
-| **Proposed** | Coral wrote it, waiting on your call | Approve · Needs work · Deny |
-| **Needs work** | Good idea, wrong draft | Edit notes · Approve · Deny |
-| **Approved** | Yes, but it has no date yet | Schedule… · Deny |
-| **Scheduled** | Has a date, will go out | Mark posted · Reschedule · Don't post |
-| **Posted** | Out in the world | — |
-| **Rejected** | Not going out | — |
-| **Delisted** | Went out, then came down | — |
+**A post marked SCHEDULED will publish by itself.** Siren runs each morning and
+puts out whatever is due that day. Giving a draft a date *is* the permission to
+post it, so she does not ask again — there is no second confirmation, and no
+message the morning it happens.
 
-**Needs work** is the one worth knowing about. Most drafts are not a clean yes
-or no — they are "nearly, change this bit", and without a way to say that the
-only choices were approving something you did not like or binning an idea that
-was fine.
+That permission stops at SCHEDULED. Nothing in any other state is ever
+published: not a draft Coral has proposed, not one you have approved without
+giving it a date, and not one you have rejected.
 
-**Preview** shows the caption as it will appear, with a copy button. It warns
-when there is no media attached, because Instagram and TikTok refuse a post
-without a photo or clip.
+So the queue is safe to leave alone **until a post's date arrives**. Up to that
+morning you have as long as you like to read it. Once the date is today, the
+next thing to touch it is Siren.
 
-The toggle at the top switches between the active posts and everything ever
-drafted.
+To stop one, press **Don't post**. That is the only thing that takes it out of
+her way.
+
+### Approved with no date
+
+An approved post with no date **will never go out**. Siren only publishes what is
+already scheduled, and nothing else in the system assigns a date — so until you
+set one, it sits.
+
+Coral now proposes a date for each of these in her daily status, and raises one
+as a board item if it has been waiting more than three days. The Overview also
+flags them under **Needs attention**. Set the date with **Reschedule**.
+
+### On a card
+
+- The photo or clip it goes out with, or **No media attached** with a link to
+  add one. Instagram and TikTok refuse a post without one, so a scheduled card
+  showing that warning will fail on the day.
+- The caption in full, so you are approving the words against the picture.
+- The platform and when it goes out.
+- **Mark posted** · **Don't post**
+
+Posted, denied and past drafts sit in a collapsed group above the days —
+a record, not a to-do list.
 
 ## Testimonials
 
