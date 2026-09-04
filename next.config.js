@@ -1,3 +1,17 @@
+// The console links to a PDF of the manual, and every edit is made to the
+// markdown. Nothing connected the two, so it drifted -- at commissioning the
+// served PDF was fourteen hours stale and still contained a line that was
+// false. This surfaces that at build time. It only warns: the PDF is built by
+// headless Edge, which does not exist on a build server, so failing here would
+// break deploys for a documentation problem.
+try {
+  const { check } = require("./scripts/check-manual-fresh.js");
+  const r = check();
+  if (!r.ok) console.warn("[manual] PDF may be out of date -- " + r.reason + " (node scripts/check-manual-fresh.js)");
+} catch (e) {
+  // Never let a documentation check stop a build.
+}
+
 // --- local secrets -----------------------------------------------------------
 //
 // The real secrets live OUTSIDE this folder, in C:/Users/immex/.secrets/, and

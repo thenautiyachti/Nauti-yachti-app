@@ -107,6 +107,25 @@ would halve the apparent value of a trip.
 If income has no vessel recorded, an amber note says how much. That is a prompt to
 fill it in, not a rounding error.
 
+## Gift certificates
+
+Certificates bought from the public site, and what has been redeemed against
+them. The tab sits under **Money** because that is what one is: money taken now
+for a charter owed later.
+
+Each shows its code, who bought it, the face value, what is left on it, and its
+state. A certificate that has been paid for and not yet redeemed is a
+**liability** — the money is in the account but the trip has not been given. It
+is the same shape as a charter someone paid for and never took, and it should be
+read the same way.
+
+To redeem one, apply its code at checkout or against a booking. Partial
+redemptions leave the remainder on the certificate.
+
+**They do not expire on their own.** Nothing in this system voids one for age,
+so an old certificate is still owed unless you decide otherwise — and that is a
+decision to make deliberately, not to discover when someone turns up with it.
+
 ## Subscriptions
 
 Recurring costs, normalised to a monthly figure so weekly, monthly and yearly
@@ -160,6 +179,34 @@ set one, it sits.
 Coral now proposes a date for each of these in her daily status, and raises one
 as a board item if it has been waiting more than three days. The Overview also
 flags them under **Needs attention**. Set the date with **Reschedule**.
+
+## Asking for Google reviews
+
+The panel at the top of **Testimonials** lists everyone who could be asked, with
+the freshest charter first.
+
+Four filters: **Still to ask**, **Already asked**, **Not asking**, and **Every
+charter** — which means every charter, archived ones included.
+
+| Button | What it does |
+|---|---|
+| **Text it** (green) | Opens your messaging app with the message already written, and ticks them off. Phone only — a desktop has nothing to hand an `sms:` link to. |
+| **Preview** (blue) | Shows the wording first, and can copy it for pasting into a platform message thread. |
+| **Don't ask** (amber) | Takes them off the list for good. |
+
+**Don't ask** is for the guest you will never ask — one who damaged something,
+or who you would rather not hear from. They move to **Not asking**, come out of
+the counts, and can be restored with **Put back**. Nothing is deleted. Before
+this existed the only way to clear such a guest was to mark them asked, which
+puts something untrue in the record and then hides it behind a tick.
+
+**Ask via** only appears for guests with no phone number. Those cannot be texted
+at all, so the platform thread is the only way to reach them, and the column is
+the instruction. A guest with a number just says *Text*.
+
+Two rows say **extra contact** instead of a charter reference. Those are people
+who sailed on somebody else's booking and whose number you kept — see *Extra
+guest contacts* under Bookings. They can be asked like anyone else.
 
 ### On a card
 
