@@ -2,8 +2,15 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 
-async function GET() {
-  if (!(await isAdminAuthenticated())) {
+// Reading the queue is how an agent knows what is already drafted, dated or
+// missing media. Same machine key as the write paths -- there is nothing here
+// a scheduled run should have to log in as a human to see.
+async function GET(req) {
+  const serviceKey = req.headers.get("x-jarvis-key");
+  const authorized =
+    (await isAdminAuthenticated()) ||
+    (process.env.JARVIS_SERVICE_KEY && serviceKey === process.env.JARVIS_SERVICE_KEY);
+  if (!authorized) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const drafts = await prisma.mediaDraft.findMany({ orderBy: { createdAt: "desc" } });
