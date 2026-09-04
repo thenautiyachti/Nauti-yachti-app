@@ -91,7 +91,10 @@ async function GET() {
       prisma.inquiry.findMany({
         where: {
           date: { gte: today },
-          status: { notIn: ["cancelled", "completed"] },
+          // Upcoming means booked and not yet sailed. Spelled as what it IS rather
+          // than as everything-except, so a new status cannot silently join it --
+          // which is exactly how enquiries would have arrived here.
+          status: "booked",
           OR: [{ status: "booked" }, { paymentStatus: "paid" }],
         },
         select: { name: true, packageName: true, vesselName: true, date: true, hours: true, partySize: true, priceQuoted: true, paymentStatus: true },

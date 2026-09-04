@@ -1,5 +1,6 @@
 "use client";
 
+import { holdsTheDay } from "../../lib/bookingStatus";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import AdminView from "../../components/AdminView";
 
@@ -213,7 +214,8 @@ export default function AdminPage() {
   async function addExternalBooking(booking) {
     const created = await api("/api/external-bookings", { method: "POST", body: JSON.stringify(booking) });
     setExternalBookings((prev) => [...prev, created]);
-    if (created.status !== "cancelled") await refreshPartialDates();
+    // Only a booking that occupies the boat changes the calendar shading.
+    if (holdsTheDay(created.status)) await refreshPartialDates();
   }
   async function setExternalBookingStatus(id, status) {
     const updated = await api(`/api/external-bookings/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });

@@ -11,7 +11,7 @@ async function GET() {
   return NextResponse.json(bookings);
 }
 
-const EXTERNAL_BOOKING_STATUSES = ["booked", "completed", "cancelled"];
+const { STATUSES: EXTERNAL_BOOKING_STATUSES } = require("../../../lib/bookingStatus");
 
 // Body: { vesselId, vesselName, date, startTime, hours, guestName, email, partySize, platform, status, note }
 async function POST(req) {

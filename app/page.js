@@ -1,4 +1,5 @@
 import { prisma } from "../lib/db";
+import { HOLDS_THE_DAY } from "../lib/bookingStatus";
 import { parsePackage, groupBlockedDates, groupExternalBookingState } from "../lib/serialize";
 import { getLakeConroeForecast } from "../lib/weather";
 import SiteView from "../components/SiteView";
@@ -35,7 +36,11 @@ export default async function HomePage() {
     prisma.vessel.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.galleryItem.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.blockedDate.findMany(),
-    prisma.externalBooking.findMany({ where: { status: { not: "cancelled" } } }),
+    // Only what actually occupies the boat. "not cancelled" used to stand in for
+    // this, which was fine while every non-booking happened to be labelled
+    // cancelled -- and would have put 33 enquiries onto the public calendar as
+    // booked days the moment they were labelled honestly.
+    prisma.externalBooking.findMany({ where: { status: { in: HOLDS_THE_DAY } } }),
     getLakeConroeForecast(),
     prisma.testimonial.findMany({
       where: { status: "approved" },

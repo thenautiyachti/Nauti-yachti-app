@@ -10,6 +10,12 @@ import {
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
+import {
+  LABELS as BOOKING_LABELS,
+  COLORS as BOOKING_COLORS,
+  DESCRIPTIONS as BOOKING_HELP_TEXT,
+  INQUIRY_STATUS_BUCKET as INQUIRY_BUCKET_MAP,
+} from "../lib/bookingStatus";
 import { formatBody } from "../lib/boardText";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -729,11 +735,17 @@ const BOOKING_REFERRAL_SOURCES = [
 // their status values and editable fields differ, so the row renderer
 // branches on it rather than trying to force both into one schema.
 // Inquiry.status ("new"|"lapsed"|"pending"|"booked"|"completed"|"cancelled")
-// and ExternalBooking.status ("booked"|"completed"|"cancelled") are
-// different enums for different underlying flows — this maps both onto the
+// and ExternalBooking.status ("inquiry"|"lapsed"|"booked"|"completed"|"cancelled")
+// are different enums for different underlying flows — this maps both onto the
 // same shared bucket concept so the unified table can filter/display them
 // consistently without changing either model's own real values.
-const INQUIRY_STATUS_BUCKET = { new: "pending", pending: "pending", booked: "booked", completed: "completed", lapsed: "cancelled", cancelled: "cancelled" };
+//
+// This map used to say `lapsed: "cancelled"`, which is the same mistake the
+// ExternalBooking side was making: a website enquiry that went quiet was
+// displayed as a cancelled booking. A cancellation means money moved. Going
+// quiet means nothing went wrong at all, it just did not convert.
+// "new" and "pending" both mean an enquiry nobody has closed out yet.
+const INQUIRY_STATUS_BUCKET = INQUIRY_BUCKET_MAP;
 
 function toUnifiedRows(inquiries, externalBookings) {
   // Crew-list signups live in the Inquiry table (see lib/crewList.js) but are
@@ -1123,16 +1135,27 @@ function PriceHistoryPanel({ priceHistory }) {
   );
 }
 
-// The 3 real ExternalBooking statuses — used for the add-booking form's
+// The four real ExternalBooking statuses — used for the add-booking form's
 // toggle and the per-row status <select> (an external booking can never be
 // bare "pending", that state only exists on the Inquiry side).
-const BOOKING_STATUS_BUCKETS = ["booked", "completed", "cancelled"];
+//
+// "inquiry" was added on 4 Sep 2026 because "cancelled" was doing two jobs at
+// once. Of 34 rows marked cancelled, 33 had never had a cent move: they were
+// platform enquiries that never became bookings. One was a real cancellation.
+// Mixing them made every conversion count wrong and, worse, meant the only way
+// to say "this never happened" was to say "this was called off".
+const BOOKING_STATUS_BUCKETS = ["inquiry", "lapsed", "booked", "completed", "cancelled"];
 // Unified filter/sort buckets for the combined Inquiry+ExternalBooking
 // table — includes "pending" since a site Inquiry can sit in that bucket
 // even though no ExternalBooking row ever will.
-const UNIFIED_STATUS_BUCKETS = ["pending", "booked", "completed", "cancelled"];
-const BOOKING_STATUS_COLOR = { pending: "#E8934A", booked: "#4FA8E8", completed: "#7FE0B8", cancelled: "#F0559C" };
-const BOOKING_STATUS_LABEL = { pending: "Pending", booked: "Booked", completed: "Completed", cancelled: "Cancelled" };
+// No separate "pending": on the website side that IS an enquiry, and showing
+// them as two things invited exactly the confusion this pass is fixing.
+const UNIFIED_STATUS_BUCKETS = ["inquiry", "lapsed", "booked", "completed", "cancelled"];
+const BOOKING_STATUS_COLOR = BOOKING_COLORS;
+const BOOKING_STATUS_LABEL = BOOKING_LABELS;
+// Shown on hover, because "Lapsed" and "Cancelled" look interchangeable until
+// somebody explains that only one of them involved money.
+const BOOKING_STATUS_HELP = BOOKING_HELP_TEXT;
 
 // ---- Guest contact capture -------------------------------------------
 //
@@ -1392,7 +1415,12 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
   const allRows = toUnifiedRows(inquiries, externalBookings);
   const rows = (
     filterStatus === "all" ? allRows
-    : filterStatus === "active" ? allRows.filter((r) => r.statusBucket !== "cancelled")
+    // "Active" means live work: still to run, or being worked. An enquiry that
+    // never converted is history, and it used to sit in here purely because it
+    // was not labelled cancelled.
+    // "Active" is live work: an open enquiry, or a booking not yet sailed.
+    // Lapsed and cancelled are both finished, in their different ways.
+    : filterStatus === "active" ? allRows.filter((r) => r.statusBucket === "inquiry" || r.statusBucket === "booked")
     : allRows.filter((r) => r.statusBucket === filterStatus)
   )
     .sort((a, b) => {
@@ -1806,7 +1834,9 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
   // Completed charters first and most recent first: an entry being logged by
   // hand is nearly always about a trip that just happened.
   const bookingOptions = [...externalBookings]
-    .filter((b) => b.status !== "cancelled")
+    // Only something that ran or is going to. You cannot attach money to an
+    // enquiry, and offering one in this list invites exactly that mistake.
+    .filter((b) => b.status === "booked" || b.status === "completed")
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
     .slice(0, 60);
 
@@ -2081,16 +2111,20 @@ function guestNameToken(booking) {
 
 // A charter that never sailed owes the ledger nothing.
 //
-// "cancelled" with no price is the NORMAL, CORRECT state of a platform enquiry
-// that did not convert -- and there are 33 of them. Treating those as unpriced
-// put a 33 at the top of the reconciliation and a HIGH item on the board asking
-// the owner to find amounts for charters that never happened.
+// This guard used to be the only thing standing between the reconciliation and
+// 33 phantom "unpriced bookings", because an enquiry and a cancellation shared
+// a status. Since 4 Sep 2026 they do not: an enquiry says so, and the guard is
+// now stating something obvious rather than papering over a modelling mistake.
+//
+// It still matches the old spellings, because rows written before that day may
+// not have been migrated, and a guard that only works on clean data is not a
+// guard.
 //
 // A cancelled booking that DOES carry a price is different and still worth
 // matching: money changed hands and then the trip was called off, which is a
 // refund question, and refunds are exactly the thing this business keeps
 // getting wrong.
-const NEVER_SAILED = /^(cancelled|canceled|declined|expired|no.?show|enquiry|inquiry)$/i;
+const NEVER_SAILED = /^(inquiry|enquiry|cancelled|canceled|declined|expired|no.?show)$/i;
 
 function matchBookingToLedger(booking, incomeRows) {
   const price = booking.pricePaid;

@@ -1,5 +1,6 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
+const { STATUSES } = require("../../../../lib/bookingStatus");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
 // Body: { status?, pricePaid?, startTime?, hours?, guestName?, email?, partySize?, note? } —
@@ -21,7 +22,7 @@ async function PATCH(req, { params }) {
 
   const data = {};
   if ("status" in body) {
-    if (!["booked", "completed", "cancelled"].includes(body.status)) {
+    if (!STATUSES.includes(body.status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
     data.status = body.status;
