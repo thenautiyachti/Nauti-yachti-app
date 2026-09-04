@@ -6,7 +6,14 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 // Setting status updates it; reviewedAt is stamped whenever status moves
 // away from "pending". reviewNote is optional owner commentary either way.
 async function PATCH(req, { params }) {
-  if (!(await isAdminAuthenticated())) {
+  // A browser session OR the machine key, same as the create route. Dating an
+  // already-APPROVED draft is a scheduling decision on content the owner has
+  // already blessed, and he keeps Reschedule and Do-not-post in the console.
+  const serviceKey = req.headers.get("x-jarvis-key");
+  const authorized =
+    (await isAdminAuthenticated()) ||
+    (process.env.JARVIS_SERVICE_KEY && serviceKey === process.env.JARVIS_SERVICE_KEY);
+  if (!authorized) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const { id } = await params;
