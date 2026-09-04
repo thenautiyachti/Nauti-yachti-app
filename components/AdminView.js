@@ -1191,7 +1191,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
           </div>
 
           {repeatCandidates.length > 0 && (
-            <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+            <div style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
               <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text)" }}>Repeat-guest candidates</div>
               <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
                 Matched on guest name only, because no booking has an email yet. Most platform rows carry a first name alone, so treat these as &ldquo;check whether this is the same person&rdquo; — not as confirmed repeat customers.
@@ -1266,7 +1266,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
           beside it. The bookings table is wide — booking id through actions —
           and surrendering a 340px column to this form pushed it off the screen,
           so the tab could only be read zoomed out. */}
-      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+      <form onSubmit={submit} style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
         <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 12 }}>
           Log a booking from GetMyBoat, Boatsetter, or elsewhere. Marking it completed reserves that day (its own hours, or the whole day at 8+ combined hours) on the public availability calendar.
         </p>
@@ -1688,7 +1688,7 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
           <StatCard label="Expenses" value={currency(totals.expense)} color="var(--pink)" />
           <StatCard label="Net" value={currency(totals.net)} color="#E8934A" />
         </div>
-        <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+        <form onSubmit={submit} style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <button type="button" onClick={() => setType("income")}
               style={{ flex: 1, padding: "8px", borderRadius: 6, border: "1px solid var(--purple)", background: form.type === "income" ? "var(--purple)" : "transparent", color: form.type === "income" ? "#0A0612" : "var(--text)", fontWeight: 600, fontSize: 13 }}>
@@ -1826,7 +1826,7 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
 // own component instead of overloading BreakdownPanel's row shape.
 function BookingProfitPanel({ rows }) {
   return (
-    <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+    <div style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
       <div style={{ fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>Profit by booking</div>
       {rows.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No bookingId-linked entries yet.</div>}
       <div style={{ display: "grid", gap: 6, maxHeight: 300, overflowY: "auto" }}>
@@ -1851,7 +1851,7 @@ function BookingProfitPanel({ rows }) {
 
 function BreakdownPanel({ title, rows, color }) {
   return (
-    <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+    <div style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
       <div style={{ fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>{title}</div>
       {rows.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
       <div style={{ display: "grid", gap: 6 }}>
@@ -2215,7 +2215,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
         <StatCard label="Suspected double-counted" value={currency(doubleCountTotal)} color="#E8934A" />
       </div>
 
-      <div style={{ background: "var(--card)", borderRadius: 10, padding: 14, color: "var(--text)", fontSize: 13, lineHeight: 1.55 }}>
+      <div style={{ background: "var(--paper)", borderRadius: 10, padding: 14, color: "var(--text)", fontSize: 13, lineHeight: 1.55 }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>What the corrected income figure looks like</div>
         <div className="mono" style={{ display: "grid", gap: 3, fontSize: 12.5 }}>
           <div>Ledger income as entered{"  "}<span style={{ color: "#7FE0B8" }}>{currency(totalIncome)}</span></div>
@@ -2317,7 +2317,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+        <div style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
           <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text)" }}>Suspected double-counted income</div>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
             A lump-sum row that exactly equals two nearby rows from the same source. Verify against the payout statement, then delete whichever entry is the duplicate.
@@ -2338,7 +2338,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
           </div>
         </div>
 
-        <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+        <div style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
           <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text)" }}>
             Income with no matching booking ({orphanIncome.length} · {currency(orphanTotal)})
           </div>
@@ -2360,7 +2360,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
       </div>
 
       {(categoryVariants.length > 0 || uncategorized.count > 0) && (
-        <div style={{ background: "var(--card)", borderRadius: 10, padding: 14 }}>
+        <div style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
           <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text)" }}>Expense codes used for more than one category</div>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
             Each of these numbers carries two different labels. Where the labels mean the same thing, one real total is split across two lines on the Tax Report — re-save the smaller set under the spelling you want to keep. Where they mean genuinely different things, the number has been reused and one of them needs renumbering.
@@ -2585,7 +2585,7 @@ function EngineHoursLogPanel({ vessels, engineHours, onAdd }) {
   return (
     <div>
       <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Engine hours log</div>
-      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+      <form onSubmit={submit} style={{ background: "var(--paper)", borderRadius: 10, padding: 14, marginBottom: 12 }}>
         <label style={{ display: "block", marginBottom: 8 }}>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Vessel</div>
           <select value={form.vesselId} onChange={(e) => setForm({ ...form, vesselId: e.target.value })}
@@ -2639,7 +2639,7 @@ function FuelLogPanel({ vessels, fuelLogs, onAdd }) {
   return (
     <div>
       <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Fuel log</div>
-      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+      <form onSubmit={submit} style={{ background: "var(--paper)", borderRadius: 10, padding: 14, marginBottom: 12 }}>
         <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 0, marginBottom: 8 }}>
           Entering a cost also adds a matching expense to the Ledger tab (category "fuel").
         </p>
@@ -2706,7 +2706,7 @@ function AddOnsTab({ addons, onUpdate, onAdd }) {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
-      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
+      <form onSubmit={submit} style={{ background: "var(--paper)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
         <div style={{ fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>Add a new add-on</div>
         <input type="text" placeholder="Name (e.g. Champagne bottle)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
           style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} required />
@@ -2823,7 +2823,7 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onUpdate }) {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
-      <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
+      <form onSubmit={submit} style={{ background: "var(--paper)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
         <label style={{ display: "block", marginBottom: 8 }}>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Code</div>
           <input type="text" placeholder="e.g. FAMILY20" value={form.code}
@@ -3327,7 +3327,7 @@ function crewAgo(d) {
 // One agent's card. Sits next to the panel she owns, so `compact` trims the
 // parts that would repeat what the panel already says.
 function CrewCard({ r, compact = false }) {
-  const CARD = { background: "var(--card)", borderRadius: 12, padding: 14, border: "1px solid rgba(203,108,230,0.16)" };
+  const CARD = { background: "var(--paper)", borderRadius: 12, padding: 14, border: "1px solid rgba(203,108,230,0.16)" };
   const st = AGENT_STATUS[r.state] || AGENT_STATUS.idle;
   const lines = statusLines(r.status);
   const fresh = isToday(r.status);
@@ -3516,6 +3516,9 @@ function CrewChart({ rows }) {
     />
   );
 
+  // The panel is flat, deliberately. Every other panel carries the --paper
+  // graticule; this one rules its own at a different pitch, and two grids
+  // showing through each other is moire rather than cartography.
   return (
     <div style={{ background: "var(--card)", borderRadius: 12, padding: "14px 16px 6px", border: "1px solid rgba(203,108,230,0.16)" }}>
       <div style={{ fontWeight: 700, color: "var(--text)", fontSize: 13.5, marginBottom: 2 }}>Chain of command</div>
@@ -3536,14 +3539,49 @@ function CrewChart({ rows }) {
               <circle cx="4" cy="4" r="0.7" fill="var(--purple)" opacity="0.13" />
               <circle cx="17" cy="15" r="0.7" fill="var(--purple)" opacity="0.09" />
             </pattern>
+            {/* Light falling across the sheet from above. Faint enough that the
+                portraits still sit clearly on top of it. */}
+            <radialGradient id="cc-wash" cx="50%" cy="-8%" r="120%">
+              <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.09" />
+              <stop offset="62%" stopColor="var(--purple)" stopOpacity="0" />
+            </radialGradient>
           </defs>
 
           {/* Everything in this group is background. It is deliberately faint:
               eight portraits and sixteen labels sit on top of it, and a chart
               you can actually read would compete with them. */}
           <g aria-hidden="true">
+            {/* A wash from the top edge, so the sheet reads as lit rather than
+                as a filled rectangle. */}
+            <rect x="0" y="0" width={W} height={CHART_H} fill="url(#cc-wash)" />
             <rect x="0" y="0" width={W} height={CHART_H} fill="url(#cc-grid)" />
             <rect x="0" y="0" width={W} height={CHART_H} fill="url(#cc-sound)" />
+
+            {/* The neatline: two rules with a channel between them, ticked at
+                the same 70px pitch as the graticule inside, so the ticks line
+                up with the grid lines they belong to. Charts have been bordered
+                this way since engraving, and it is what stops the drawing from
+                reading as a floating diagram. */}
+            <g fill="none" stroke="var(--purple)" opacity="0.26">
+              <rect x="3.5" y="3.5" width={W - 7} height={CHART_H - 7} strokeWidth="1" />
+              <rect x="11.5" y="11.5" width={W - 23} height={CHART_H - 23} strokeWidth="0.5" />
+            </g>
+            <g stroke="var(--purple)" strokeWidth="0.7" opacity="0.24">
+              {/* Verticals crossing the top and bottom channels. */}
+              {Array.from({ length: Math.floor(W / 70) }, (_, i) => (i + 1) * 70).map((tx) => (
+                <g key={"tx" + tx}>
+                  <line x1={tx} y1="3.5" x2={tx} y2="11.5" />
+                  <line x1={tx} y1={CHART_H - 11.5} x2={tx} y2={CHART_H - 3.5} />
+                </g>
+              ))}
+              {/* Horizontals crossing the left and right channels. */}
+              {Array.from({ length: Math.floor(CHART_H / 70) }, (_, i) => (i + 1) * 70).map((ty) => (
+                <g key={"ty" + ty}>
+                  <line x1="3.5" y1={ty} x2="11.5" y2={ty} />
+                  <line x1={W - 11.5} y1={ty} x2={W - 3.5} y2={ty} />
+                </g>
+              ))}
+            </g>
 
             {/* Depth contours. Hand-drawn curves rather than concentric circles
                 — a real chart's isobaths follow a coastline, and regular rings
@@ -3616,7 +3654,7 @@ function CrewChart({ rows }) {
 }
 
 function CrewAlerts({ rows }) {
-  const CARD = { background: "var(--card)", borderRadius: 12, padding: 14, border: "1px solid rgba(203,108,230,0.16)" };
+  const CARD = { background: "var(--paper)", borderRadius: 12, padding: 14, border: "1px solid rgba(203,108,230,0.16)" };
   const waiting = rows.filter((r) => r.state === "needs-input");
   const broken = rows.filter((r) => r.state === "failed" || r.state === "stalled");
   const quiet = rows.filter((r) => r.stale && !["needs-input", "failed", "stalled"].includes(r.state));
@@ -4030,7 +4068,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     return days <= 0 ? "today" : days === 1 ? "yesterday" : days + " days ago";
   }
 
-  const CARD = { background: "var(--card)", borderRadius: 10, padding: 14, minWidth: 0 };
+  const CARD = { background: "var(--paper)", borderRadius: 10, padding: 14, minWidth: 0 };
   const H = { fontWeight: 700, marginBottom: 10, color: "var(--text)", fontSize: 13.5 };
   const EMPTY = { color: "var(--muted)", fontSize: 12.5, fontStyle: "italic" };
 
@@ -4938,7 +4976,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   }
 
   return (
-    <div style={{ background: "var(--card)", borderRadius: 10, padding: 16, marginBottom: 20, color: "var(--text)" }}>
+    <div style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 20, color: "var(--text)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700 }}>
           Ask past guests for a Google review
@@ -5218,7 +5256,7 @@ function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateSt
         {visible.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No testimonials found.</div>}
         {visible.map((t) => (
           <div key={t.id} style={{
-            background: "var(--card)", borderRadius: 10, padding: 14, color: "var(--text)",
+            background: "var(--paper)", borderRadius: 10, padding: 14, color: "var(--text)",
             border: t.status === "pending" ? "1px solid #E8934A" : "1px solid transparent",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
@@ -5494,7 +5532,7 @@ function GiftCertificatesTab({ certificates = [], liability = 0, onIssue, onRede
     onRedeem(c.id, amount);
   }
 
-  const CARD = { background: "var(--card)", borderRadius: 10, padding: 14 };
+  const CARD = { background: "var(--paper)", borderRadius: 10, padding: 14 };
 
   function Row({ c }) {
     const used = (c.initialAmount || 0) - (c.balance || 0);
@@ -5636,7 +5674,7 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
-        <form onSubmit={submit} style={{ background: "var(--card)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
+        <form onSubmit={submit} style={{ background: "var(--paper)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
           <input type="text" placeholder="Name (e.g. Boat storage)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} required />
           <label style={{ display: "block", marginBottom: 8 }}>

@@ -8,6 +8,19 @@
   --pink: #F0559C;
   --text: #F3EAFB;
   --muted: #B7A4C9;
+
+  /* Console panels only. --card stays a flat colour because the public site
+     uses it too, and a textured tile behind a booking form would be noise.
+
+     Three layers: the graticule and soundings of a chart, a soft wash from the
+     top edge so the surface reads as lit rather than filled, then the base
+     colour. Everything is far fainter than it looks in isolation -- these
+     panels carry dense figures, and anything legible as texture competes with
+     the numbers, which is the one thing a console cannot afford. */
+  --paper:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Cpath%20d='M48%200V48M0%2048H48'%20fill='none'%20stroke='%23CB6CE6'%20stroke-opacity='.19'%20stroke-width='.5'/%3E%3Ccircle%20cx='12'%20cy='16'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.16'/%3E%3Ccircle%20cx='33'%20cy='35'%20r='.6'%20fill='%23CB6CE6'%20fill-opacity='.12'/%3E%3C/svg%3E") repeat,
+    radial-gradient(140% 110% at 50% -10%, rgba(203,108,230,0.075), rgba(203,108,230,0) 60%),
+    var(--card);
 }
 
 * {
