@@ -11,7 +11,6 @@ import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW
 import { CREW, AGENT_STATUS, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
-import SocialPipelinePanel from "./SocialPipelinePanel";
 
 // Names only. The leading numbers came from a spreadsheet's sort order and had
 // started to do real damage: 05 was three different repair categories, 06 was
@@ -501,11 +500,17 @@ export default function AdminView({
           <GalleryTab gallery={gallery} onUpdateCaption={onUpdateCaption} onAddGalleryItem={onAddGalleryItem} onUpdateGalleryItem={onUpdateGalleryItem} onDeleteGalleryItem={onDeleteGalleryItem} />
         )}
 
-        {/* The real workflow, which was hidden inside the Jarvis tab while this
-            tab rendered a thinner component. SocialPipelinePanel owns the whole
-            chain -- proposed, approved, scheduled, posted -- and fetches its
-            own data, which is why it takes no props. */}
-        {tab === "mediaDrafts" && <SocialPipelinePanel />}
+        {/* The day-grouped card grid, which is what this tab has always been.
+            It briefly rendered SocialPipelinePanel instead, on the reasoning
+            that the panel carries more stages -- proposed, needs work, approved,
+            delisted -- and those are real. But it draws one dense line per
+            draft, and the job here is approving a caption against the picture it
+            goes out with, which needs both visible at once. The extra stages are
+            worth folding into these cards; swapping the layout to get them was
+            not. components/SocialPipelinePanel.js is kept for that work. */}
+        {tab === "mediaDrafts" && (
+          <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} onAttachMedia={onAttachMediaDraftMedia} />
+        )}
 
         {tab === "testimonials" && (
           <TestimonialsTab
@@ -3017,6 +3022,92 @@ function draftSortKey(d) {
   if (!d.scheduledDate) return "0000-00-00#0000";
   return d.scheduledDate + "#" + String(draftMinutes(d.scheduledTime)).padStart(4, "0");
 }
+
+// The day-grouped card grid. Restored 3 Sep 2026 after the Jarvis retirement
+// swapped this tab to SocialPipelinePanel -- that panel carries extra stages,
+// but it renders one dense line per draft, and a caption you are approving has
+// to be readable at a glance beside the picture it goes out with. Every piece
+// this needs (MediaDraftCard, DraftDayGroup, draftIsPast, draftSortKey, the
+// .draft-days grid) survived the removal; only this function had gone.
+function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }) {
+  // Past drafts start hidden. They are a record, not a to-do list.
+  const [showPast, setShowPast] = useState(false);
+  const todayKey = localDayKey(new Date());
+
+  const upcoming = mediaDrafts
+    .filter((d) => !draftIsPast(d, todayKey))
+    .sort((a, b) => draftSortKey(a).localeCompare(draftSortKey(b)));
+  // Most recent first, so the thing that just went out is at the top.
+  const past = mediaDrafts
+    .filter((d) => draftIsPast(d, todayKey))
+    .sort((a, b) => draftSortKey(b).localeCompare(draftSortKey(a)));
+
+  const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
+  const cardProps = { onUpdateStatus, onDelete, onAttachMedia };
+
+  // Bucket the upcoming posts by the day they go out. `upcoming` is already in
+  // date order, so walking it preserves that without sorting again — and a draft
+  // with no date lands in its own bucket rather than being silently grouped with
+  // whatever happened to be first.
+  const upcomingByDay = [];
+  for (const d of upcoming) {
+    const day = d.scheduledDate || "unscheduled";
+    const last = upcomingByDay[upcomingByDay.length - 1];
+    if (last && last.day === day) last.items.push(d);
+    else upcomingByDay.push({ day, items: [d] });
+  }
+
+  return (
+    <div>
+      <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>
+        Media drafts — {upcoming.length} coming up
+        {past.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {past.length} done</span>}
+      </div>
+      <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 12 }}>
+        Soonest first. <strong style={{ color: "#E8934A" }}>Anything marked SCHEDULED goes out on its own</strong> —
+        the publisher runs each morning and posts whatever is due. Use <em>Don&rsquo;t post</em> to stop one.
+        Nothing in any other status is ever posted.
+      </p>
+
+      {/* The toggle sits above the grid, not below it. Underneath, it was past
+          the end of a long scroll of cards and easy to miss entirely. */}
+      {past.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <button type="button" onClick={() => setShowPast((v) => !v)}
+            style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600 }}>
+            {showPast ? "▾" : "▸"} Already posted, denied or past ({past.length})
+          </button>
+          {showPast && (
+            <div style={{ ...GRID, marginTop: 12, marginBottom: 6 }}>
+              {past.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {upcoming.length === 0 && (
+        <div style={{ color: "var(--muted)", fontSize: 13.5 }}>
+          Nothing scheduled ahead{past.length > 0 ? " — everything is in the list above." : "."}
+        </div>
+      )}
+
+      {/* Boxed by day. Three posts going out on the same date are one piece of
+          work in the owner's head -- the same idea told three ways -- and a flat
+          grid made them look like three unrelated jobs sitting next to each
+          other. Each day collapses, but opens by default: this is the list of
+          what is still to come, so hiding it would defeat the point. */}
+      {/* Two days abreast, fixed. auto-fill fitted a third column on a wide
+          monitor, which squeezed each day's cards too narrow to read the
+          caption they are being approved on. */}
+      <div className="draft-days">
+        {upcomingByDay.map(({ day, items }) => (
+          <DraftDayGroup key={day} day={day} items={items} cardProps={cardProps} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
   const [previewOpen, setPreviewOpen] = useState(false);
