@@ -4366,40 +4366,9 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           <CrewCard r={byName["Nauti Joy"]} compact />
         </div>
       </div>
-      <div className="orbit-group ">
-        <div style={CARD}>
-          <PanelHead owners={["Nauti Nova"]}>
-            <div style={{ ...H, marginBottom: 0 }}>Research</div>
-          </PanelHead>
-          {novaItems.length === 0 ? (
-            <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
-              Nothing has cleared the bar.
-              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
-                She reports only what you would be annoyed to learn six months late — a grant that
-                closed, a rule that changed, money you were owed. Most weeks that is nothing, and an
-                empty panel here is her working.
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 7 }}>
-              {novaItems.slice(0, 3).map((t) => (
-                <div key={t.id} style={{ fontSize: 12.5, lineHeight: 1.45 }}>
-                  {t.text.replace(/^\[?NOVA[^\]]*\]?\s*:?\s*/i, "")}
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)" }}>
-            {novaRun ? "Last looked " + agoWords(novaRun.startedAt) + "." : "First run is Monday."}
-          </div>
-        </div>
-        <div className="orbit-crew">
-          <CrewCard r={byName["Nauti Nova"]} compact />
-        </div>
-      </div>
       </div>
 
-      <div className="orbit-center">
+      <div className="orbit-center" style={{ display: "grid", gap: 14 }}>
         <div className="orbit-lead-pearl"><CrewCard r={byName["Nauti Pearl"]} /></div>
         <div style={{ ...CARD, borderColor: "rgba(203,108,230,0.4)" }}>
           <PanelHead owners={["Nauti Pearl"]}>
@@ -4505,6 +4474,37 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           and anything marked High stays in her morning brief until it is closed.
         </div>
         </div>
+      <div className="orbit-group ">
+        <div style={CARD}>
+          <PanelHead owners={["Nauti Nova"]}>
+            <div style={{ ...H, marginBottom: 0 }}>Research</div>
+          </PanelHead>
+          {novaItems.length === 0 ? (
+            <div style={{ fontSize: 13, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
+              Nothing has cleared the bar.
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
+                She reports only what you would be annoyed to learn six months late — a grant that
+                closed, a rule that changed, money you were owed. Most weeks that is nothing, and an
+                empty panel here is her working.
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 7 }}>
+              {novaItems.slice(0, 3).map((t) => (
+                <div key={t.id} style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                  {t.text.replace(/^\[?NOVA[^\]]*\]?\s*:?\s*/i, "")}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)", fontSize: 11.5, color: "var(--muted)" }}>
+            {novaRun ? "Last looked " + agoWords(novaRun.startedAt) + "." : "First run is Monday."}
+          </div>
+        </div>
+        <div className="orbit-crew">
+          <CrewCard r={byName["Nauti Nova"]} compact />
+        </div>
+      </div>
       </div>
 
       <div className="orbit-right" style={{ display: "grid", gap: 14 }}>
