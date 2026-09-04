@@ -3288,6 +3288,26 @@ function crewRows(agentActivity = []) {
   });
 }
 
+// When an agent that has never run is next due, read off its own schedule
+// string. Deliberately derived from the roster rather than a second source:
+// the schedule text is what the card already shows, so the two cannot disagree.
+function crewNextDue(schedule) {
+  const s = String(schedule || "");
+  const day = (s.match(/(Sun|Mon|Tues|Wednes|Thurs|Fri|Satur)day/i) || [])[0];
+  if (/every day/i.test(s)) return { when: "today", daily: true };
+  if (day) {
+    const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const target = names.findIndex((n) => n.toLowerCase() === day.toLowerCase());
+    if (target >= 0) {
+      const ahead = (target - new Date().getDay() + 7) % 7;
+      return { when: ahead === 0 ? "today" : ahead === 1 ? "tomorrow" : names[target], daily: false };
+    }
+    return { when: day, daily: false };
+  }
+  if (/month/i.test(s)) return { when: "its monthly slot", daily: false };
+  return { when: null, daily: false };
+}
+
 function crewAgo(d) {
   if (!d) return "never";
   const day = Math.round((Date.now() - new Date(d)) / 86400000);
@@ -3393,10 +3413,23 @@ function CrewCard({ r, compact = false }) {
 
       <div style={{ marginTop: "auto", paddingTop: 9 }}>
         <div style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-          {r.run ? "Last run · " + crewAgo(r.run.startedAt) : "Last run · none recorded"}
+          {r.run
+            ? "Last run · " + crewAgo(r.run.startedAt)
+            : (crewNextDue(r.schedule).daily ? "Has not run today" : "No runs yet")}
         </div>
-        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>
-          {r.run ? (r.run.detail || r.run.taskTitle || "no detail recorded") : "Has not reported a run since logging was added."}
+        <div style={{
+          fontSize: 11.5, marginTop: 2, lineHeight: 1.4,
+          // A daily agent that has never run has missed something; a weekly one
+          // three days out has not. Only the first is worth an alarm colour.
+          color: !r.run && crewNextDue(r.schedule).daily ? "#E8934A" : "var(--muted)",
+        }}>
+          {r.run
+            ? (r.run.detail || r.run.taskTitle || "no detail recorded")
+            : crewNextDue(r.schedule).daily
+              ? "She runs every day and has not reported one. Open Routines and hit Run now."
+              : crewNextDue(r.schedule).when
+                ? "First run is " + crewNextDue(r.schedule).when + "."
+                : "Not due yet."}
         </div>
       </div>
     </div>
