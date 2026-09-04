@@ -207,6 +207,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 input, select, textarea {
   background: var(--ink);
   color: var(--text);
+  /* The control itself was already dark. The dropdown POPUP is drawn by the
+     browser, not by this stylesheet, and it defaults to light -- so the pale
+     purple option text was landing on white and could not be read. This tells
+     the browser the control is dark and to paint its popup to match. */
+  color-scheme: dark;
+}
+
+/* Belt and braces. Chrome on Windows paints the popup from each option's own
+   colours, and color-scheme on the select alone is not always enough. */
+select option {
+  background-color: var(--ink-soft);
+  color: var(--text);
+}
+select option:checked {
+  background-color: var(--purple);
+  color: #0A0612;
 }
 input::placeholder, textarea::placeholder {
   color: var(--muted);
