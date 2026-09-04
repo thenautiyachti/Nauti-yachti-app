@@ -74,11 +74,25 @@ const nextConfig = {
 // Vercel already sends HSTS. These four cover the gaps, and none of them
   // change how the site renders.
   //
-  // There is deliberately no Content-Security-Policy here. A useful one has to
-  // enumerate every script and frame origin the site loads -- Stripe checkout,
-  // Google Fonts, the embedded map -- and getting it slightly wrong silently
-  // breaks payment rather than showing an error. That is worth doing carefully
-  // and testing, not bolting on blind.
+  // There is deliberately no Content-Security-Policy here yet, but NOT for the
+  // reason this comment used to give. It claimed a wrong CSP would silently
+  // break payment. It would not: the Checkout Session is created server-side in
+  // app/api/checkout/route.js and the browser is navigated to session.url on
+  // checkout.stripe.com, so the card form runs on Stripe's origin under Stripe's
+  // own policy. Stripe.js is never loaded on our pages, and CSP does not govern
+  // top-level navigation.
+  //
+  // What a wrong CSP would actually break is this app. Next injects inline
+  // bootstrap scripts, so a script-src without 'unsafe-inline' or a per-request
+  // nonce leaves every page rendering and returning 200 while nothing
+  // interactive works -- the booking form, the date picker, the console login.
+  // No exception, no log line, nothing in Vercel. That is the failure worth
+  // being careful about, and it argues for Content-Security-Policy-Report-Only
+  // first: the browser reports what it WOULD have blocked and enforces nothing.
+  //
+  // Origins a real policy has to admit: embed.windy.com (frame-src, the radar
+  // map on the site page), fonts.googleapis.com (style-src) and
+  // fonts.gstatic.com (font-src).
   async headers() {
     return [
       {

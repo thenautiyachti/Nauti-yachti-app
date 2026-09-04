@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Fragment } from "react";
+import { useState, useEffect, useRef, useCallback, createContext, useContext, Fragment } from "react";
 import { currency, localDateKey, imageFocus } from "../lib/pricing";
 import {
   GOOGLE_REVIEW_URL, GOOGLE_LISTING_URL, TEMPLATES, ASK_WINDOWS, DOCK_SCRIPT,
@@ -62,6 +62,18 @@ export default function AdminView({
   const gainNodeRef = useRef(null);
   const analyserRef = useRef(null);
   const sinceRef = useRef(null);
+  // Which agent is mid-sentence, so her avatar can show it and a second click
+  // cannot start her talking over herself.
+  const [speakingName, setSpeakingName] = useState("");
+  // Every synthesized character is billed. A standup does not change between
+  // two clicks a second apart, so the audio is kept against the exact words it
+  // was made from and replayed from memory rather than bought twice. Cleared
+  // on reload, which is the right lifetime -- it is a convenience, not a store.
+  const spokenCacheRef = useRef(new Map());
+  // Ids this component has already played directly from a POST response. The
+  // 2s poll will see those same rows a moment later; without this it would say
+  // everything a second time.
+  const playedIdsRef = useRef(new Set());
   // A running log of what Pearl has said, kept so a transcript
   // rather than only the single most recent line.
   const [messages, setMessages] = useState([]);
@@ -106,7 +118,10 @@ export default function AdminView({
         // Only speak what arrives live. Replaying history aloud on every page
         // load would be maddening.
         if (!first) {
-          for (const ev of events) playSpeech(ev);
+          for (const ev of events) {
+            if (playedIdsRef.current.has(ev.id)) continue; // already heard, via a click
+            playSpeech(ev);
+          }
         } else if (events.length) {
           setLastSpoken(events[events.length - 1].text);
         }
@@ -149,6 +164,57 @@ export default function AdminView({
         document.addEventListener("click", retry);
       });
   }
+
+  // Read one agent's own standup aloud, in her own voice. Returns nothing and
+  // throws nothing: a failure here should cost a tooltip, never the console.
+  const speakCrew = useCallback(async (r, text) => {
+    if (!text || speakingName) return;
+    // A click on an avatar IS the user gesture a browser wants before it will
+    // play anything, so there is no reason to make the owner find the header
+    // button first. Gating on audioEnabled would have meant the first click on
+    // every fresh page load silently did nothing, which reads as broken.
+    if (!audioEnabled) enableAudio();
+    const el = audioElRef.current;
+    const key = r.name + "|" + text;
+
+    const play = (b64) => new Promise((resolve) => {
+      if (!b64 || !el) return resolve();
+      el.src = "data:audio/mpeg;base64," + b64;
+      const done = () => { el.removeEventListener("ended", done); el.removeEventListener("error", done); resolve(); };
+      el.addEventListener("ended", done);
+      el.addEventListener("error", done);
+      el.play().catch(() => done());
+    });
+
+    setSpeakingName(r.name);
+    setLastSpoken(text);
+    try {
+      const cached = spokenCacheRef.current.get(key);
+      if (cached) { await play(cached); return; }
+
+      const res = await fetch("/api/admin/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // agent picks the voice; immediate brings the audio back on this
+        // response instead of making a click wait for the next poll tick.
+        body: JSON.stringify({ text, agent: r.name, immediate: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      // Claim the id either way. Even a text-only event (quota gone) is one the
+      // poll would otherwise announce a second time.
+      if (data.id) playedIdsRef.current.add(data.id);
+      if (data.audioB64) {
+        spokenCacheRef.current.set(key, data.audioB64);
+        await play(data.audioB64);
+      } else if (data.reason) {
+        setAudioNote(r.name.replace("Nauti ", "") + " could not speak: " + data.reason);
+      }
+    } catch {
+      setAudioNote("Could not reach the speech service.");
+    } finally {
+      setSpeakingName("");
+    }
+  }, [speakingName, audioEnabled]);
 
   function enableAudio() {
     // Create the ONE AudioContext right here, inside a real user gesture, so
@@ -266,6 +332,7 @@ export default function AdminView({
   const activeGroup = groupForTab(tab) || TAB_GROUPS[0];
 
   return (
+    <CrewSpeechContext.Provider value={{ speak: speakCrew, speakingName }}>
     <div style={{ minHeight: "100vh", background: "var(--ink)" }}>
       {/* Persists across tab switches — see Pearl's audio state above. */}
       <audio ref={audioElRef} style={{ display: "none" }} />
@@ -277,26 +344,27 @@ export default function AdminView({
             reason this button has to exist at all. */}
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div className="display" style={{ fontSize: 20, fontWeight: 700, whiteSpace: "nowrap" }}>OWNER CONSOLE</div>
-          <button
-            className="console-btn"
-            onClick={audioEnabled ? undefined : enableAudio}
-            title={
-              lastSpoken
-                ? "Pearl last said: " + lastSpoken
-                : audioEnabled
-                  ? "Pearl can speak. Nothing said yet."
-                  : "Click to let Pearl speak in this browser"
-            }
-            style={{
-              background: audioEnabled ? "rgba(79,191,139,0.14)" : "rgba(203,108,230,0.10)",
-              color: audioEnabled ? "#7FE0B8" : "var(--purple)",
-              borderColor: audioEnabled ? "#4FBF8B" : "var(--purple)",
-              fontWeight: 700, letterSpacing: "0.03em",
-              cursor: audioEnabled ? "default" : "pointer",
-            }}
-          >
-            {audioEnabled ? "🔊 Pearl" : "🔈 Enable Pearl"}
-          </button>
+          {/* Gone the moment sound is unlocked, because from then on it did
+              nothing but sit there saying so. It cannot be removed outright:
+              Pearl speaks unprompted from her scheduled runs, and a browser
+              plays no audio at all until some deliberate click has happened. If
+              the owner never clicked an avatar, she would queue up in silence.
+              Clicking any crew avatar unlocks sound too, and makes this vanish. */}
+          {!audioEnabled && (
+            <button
+              className="console-btn"
+              onClick={enableAudio}
+              title="Let Pearl speak in this browser. Clicking any crew avatar does the same."
+              style={{
+                background: "rgba(203,108,230,0.10)",
+                color: "var(--purple)",
+                borderColor: "var(--purple)",
+                fontWeight: 700, letterSpacing: "0.03em", cursor: "pointer",
+              }}
+            >
+              🔈 Enable Pearl
+            </button>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {/* The dock page. Everything on it needs a phone -- an sms: link, and
@@ -565,6 +633,7 @@ export default function AdminView({
 
       </div>
     </div>
+    </CrewSpeechContext.Provider>
   );
 }
 
@@ -3416,7 +3485,31 @@ function crewAgo(d) {
 
 // One agent's card. Sits next to the panel she owns, so `compact` trims the
 // parts that would repeat what the panel already says.
+// Clicking an avatar reads that agent's own standup aloud, in her own voice.
+// Provided from AdminView, which is where the audio element and the unlocked
+// AudioContext live; null until the owner has enabled sound.
+const CrewSpeechContext = createContext(null);
+
+// Exactly what her card shows, turned into something speakable. Read aloud,
+// the bullets need to run together as sentences or she sounds like a list.
+// Returns "" when there is nothing filed, which is what makes the avatar
+// unclickable rather than clickable-and-silent.
+function crewSpeakableText(r) {
+  const lines = statusLines(r.status);
+  if (!lines.length) return "";
+  return lines
+    .map((l) => String(l).trim())
+    .filter(Boolean)
+    .map((l) => (/[.!?]$/.test(l) ? l : l + "."))
+    .join(" ");
+}
+
 function CrewCard({ r, compact = false }) {
+  const speech = useContext(CrewSpeechContext);
+  const speakable = crewSpeakableText(r);
+  const canSpeak = !!(speech && speakable);
+  const busy = !!(speech && speech.speakingName === r.name);
+
   const CARD = { background: "var(--paper-6)", borderRadius: 12, padding: 14, border: "1px solid rgba(203,108,230,0.16)" };
   const st = AGENT_STATUS[r.state] || AGENT_STATUS.idle;
   const lines = statusLines(r.status);
@@ -3429,21 +3522,60 @@ function CrewCard({ r, compact = false }) {
         {/* Never below 54px: at 46 only bold colour survived and two of them
             were unrecognisable. Initials remain the fallback. */}
         <div
+          className={canSpeak ? "crew-avatar crew-avatar-live" : "crew-avatar"}
+          role={canSpeak ? "button" : undefined}
+          tabIndex={canSpeak ? 0 : undefined}
+          aria-label={canSpeak ? "Hear " + r.name + " read her standup" : undefined}
+          title={
+            canSpeak
+              ? (busy ? r.name + " is speaking…" : "Click to hear " + r.name.replace("Nauti ", "") + " read this aloud")
+              : r.name + " has nothing filed to read"
+          }
+          onClick={canSpeak ? () => speech.speak(r, speakable) : undefined}
+          onKeyDown={canSpeak ? (e) => {
+            // A div with role="button" is not a button: it gets neither key
+            // handling nor the click that a real button fires on Space.
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); speech.speak(r, speakable); }
+          } : undefined}
           style={{
-            width: AV, height: AV, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
-            background: "linear-gradient(135deg, " + r.accent + ", rgba(10,6,18,0.85))",
-            color: "#0A0612", fontWeight: 800, fontSize: 18,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            border: "2px solid " + r.accent,
-            filter: r.pending ? "grayscale(0.7)" : "none",
+            width: AV, height: AV, flexShrink: 0, position: "relative",
+            cursor: canSpeak ? "pointer" : "default",
+            // Her own accent, so every cue that appears also says who it is.
+            "--crew-accent": r.accent,
           }}
         >
-          {r.avatar ? (
-            <img src={r.avatar} alt="" loading="lazy"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          ) : (
-            crewInitials(r.name)
+          <div
+            style={{
+              width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden",
+              background: "linear-gradient(135deg, " + r.accent + ", rgba(10,6,18,0.85))",
+              color: "#0A0612", fontWeight: 800, fontSize: 18,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "2px solid " + r.accent,
+              filter: r.pending ? "grayscale(0.7)" : "none",
+              boxShadow: busy ? "0 0 0 3px " + r.accent + ", 0 0 18px " + r.accent : "none",
+              transition: "box-shadow 160ms ease",
+            }}
+          >
+            {r.avatar ? (
+              <img src={r.avatar} alt="" loading="lazy"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : (
+              crewInitials(r.name)
+            )}
+          </div>
+
+          {/* Always present, not hover-only. A cue you can only discover by
+              hovering is not a cue, and on a phone there is no hover at all --
+              it would be invisible on the one screen it is used from most.
+              Quiet at rest, bright on hover, animated while she is talking. */}
+          {canSpeak && (
+            <span className={"crew-speak-badge" + (busy ? " is-speaking" : "")} aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
+                <path d="M4 9v6h4l5 5V4L8 9H4z" />
+                <path className="crew-speak-wave" d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </span>
           )}
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>

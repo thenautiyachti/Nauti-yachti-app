@@ -455,3 +455,92 @@ input::placeholder, textarea::placeholder {
 /* Keep numbers and short mono values intact -- breaking a currency figure or a
    date mid-token is worse than a little overflow. */
 .console-orbit .mono { overflow-wrap: normal; }
+
+/* ---------------------------------------------------------------------------
+   Crew avatars — hover to enlarge, click to hear her read her own standup.
+
+   The growth is a transform, never width/height: transform is composited and
+   does not reflow. Growing the box itself would shove the name and status
+   sideways every time the pointer crossed a face, on eleven cards.
+   --------------------------------------------------------------------------- */
+.crew-avatar {
+  /* Slightly slower than a hover highlight: this is a look-closer
+     gesture, and snapping to 1.62 reads as a glitch rather than a zoom. */
+  transition: transform 210ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
+  position: relative;
+}
+
+/* Only avatars with something to say react to the pointer. One that grows and
+   then does nothing when clicked is a worse affordance than one that never
+   moved at all. */
+.crew-avatar-live:hover,
+.crew-avatar-live:focus-visible {
+  transform: scale(1.62);
+  z-index: 20; /* above every neighbouring card, or the grown face is clipped */
+  outline: none;
+}
+
+.crew-avatar-live:active { transform: scale(1.18); }
+
+/* The speaker badge. Pinned to the lower-right of the circle, sitting on the
+   wrapper rather than inside the clipped face. */
+.crew-speak-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0A0612;
+  color: var(--crew-accent, var(--purple));
+  border: 1.5px solid var(--crew-accent, var(--purple));
+  /* Present but quiet. It should read as an affordance on a face you are not
+     looking at, without competing with the face. */
+  opacity: 0.72;
+  transition: opacity 160ms ease, box-shadow 160ms ease;
+  pointer-events: none; /* the whole avatar is the target, not this */
+}
+
+.crew-avatar-live:hover .crew-speak-badge,
+.crew-avatar-live:focus-visible .crew-speak-badge {
+  opacity: 1;
+  box-shadow: 0 0 10px var(--crew-accent, var(--purple));
+}
+
+/* The arc beside the speaker cone only animates while she is actually talking,
+   so movement means something rather than being decoration. */
+.crew-speak-wave { opacity: 0.9; }
+
+.crew-speak-badge.is-speaking {
+  opacity: 1;
+  animation: crew-speak-pulse 900ms ease-in-out infinite;
+}
+
+@keyframes crew-speak-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--crew-accent, var(--purple)); }
+  50%      { box-shadow: 0 0 9px 2px var(--crew-accent, var(--purple)); }
+}
+
+/* Touch has no hover: the avatar would stick at 1.32 after a tap, because
+   :hover latches until you tap elsewhere. On a phone the tap should just play
+   her and nothing should move. The badge stays fully visible instead, since it
+   is the only cue a touch screen ever gets. */
+@media (hover: none) {
+  .crew-avatar-live:hover,
+  .crew-avatar-live:focus-visible,
+  .crew-avatar-live:active {
+    transform: none;
+  }
+  .crew-speak-badge { opacity: 0.95; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crew-avatar { transition: none; }
+  .crew-avatar-live:hover,
+  .crew-avatar-live:focus-visible { transform: none; }
+  .crew-speak-badge.is-speaking { animation: none; }
+}

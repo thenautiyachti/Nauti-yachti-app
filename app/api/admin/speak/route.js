@@ -72,6 +72,13 @@ async function POST(req) {
   // which is the behaviour this route has always had.
   const agent = (body && body.agent) || "";
   const voiceId = voiceFor(agent);
+  // Clicking a crew avatar should sound instant. Normally a message is stored
+  // and the console picks it up on its 2s poll, which is fine for something
+  // Pearl says on her own but feels broken when it answers a click. With this
+  // set, the audio comes back in the response so the caller can play it at
+  // once -- and the id comes with it, so the poll can recognise the same event
+  // arriving a moment later and not play it twice.
+  const immediate = !!(body && body.immediate);
   if (!text) {
     return NextResponse.json({ error: "Missing 'text'" }, { status: 400 });
   }
@@ -81,8 +88,8 @@ async function POST(req) {
   // this returned early and the words were lost along with the audio, which
   // meant a credit problem silently turned into a communication blackout.
   async function saveTextOnly(reason) {
-    await prisma.speechEvent.create({ data: { text, audioB64: null } });
-    return NextResponse.json({ ok: true, spoken: false, reason });
+    const row = await prisma.speechEvent.create({ data: { text, audioB64: null } });
+    return NextResponse.json({ ok: true, spoken: false, reason, id: row.id });
   }
 
   if (!ELEVENLABS_API_KEY) {
@@ -123,7 +130,7 @@ async function POST(req) {
     const arrayBuffer = await elevenRes.arrayBuffer();
     const audioB64 = Buffer.from(arrayBuffer).toString("base64");
 
-    await prisma.speechEvent.create({ data: { text, audioB64 } });
+    const row = await prisma.speechEvent.create({ data: { text, audioB64 } });
 
     // Age the audio out as we go. Each of these rows carries the whole MP3 as
     // base64, and in one week that reached 128.8MB across 172 rows -- about a
@@ -147,7 +154,10 @@ async function POST(req) {
       console.error("[speak] audio prune skipped:", e.message);
     }
 
-    return NextResponse.json({ ok: true });
+    // The audio only rides back on the response when it was asked for. It is
+    // the largest thing this route produces, and every other caller gets it
+    // from the poll a moment later anyway.
+    return NextResponse.json(immediate ? { ok: true, id: row.id, audioB64 } : { ok: true, id: row.id });
   } catch (err) {
     console.error("[speak] threw:", err);
     return NextResponse.json({ error: "Internal error", detail: String(err) }, { status: 500 });
