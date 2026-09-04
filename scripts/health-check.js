@@ -19,6 +19,23 @@ const fs = require("fs");
 const path = require("path");
 const APP = path.join(__dirname, "..");
 
+// Every outside call gets a deadline. Without one, a host that is DOWN -- as
+// opposed to refusing -- never answers, and the whole check stops dead.
+//
+// Added defensively, not after an incident. On 4 Sep 2026 this looked like it
+// had hung for fifteen minutes; it had not, the output was simply buffered and
+// it exited clean. But the risk was real and specific: the image check walks
+// every gallery URL one at a time, and it exists precisely BECAUSE those URLs
+// once pointed at an abandoned host. Had that still been true, a check written
+// to warn about a dead host would itself have stopped dead on it, reported
+// nothing, and left whoever ran it concluding the tool was broken.
+//
+// The parallel image check below is the other half: 45 sequential timeouts is
+// six minutes even with a deadline on each.
+const DEADLINE = 8000;
+const withDeadline = (url, opts) =>
+  fetch(url, { ...(opts || {}), signal: AbortSignal.timeout(DEADLINE) });
+
 const env = {};
 for (const l of fs.readFileSync("C:/Users/immex/.secrets/nauti-yachti.env", "utf8").split(/\r?\n/)) {
   const m = l.match(/^([A-Z0-9_]+)=(.*)$/);
@@ -38,7 +55,7 @@ async function main() {
   else {
     const mode = sk.startsWith("sk_live") ? "LIVE" : sk.startsWith("sk_test") ? "TEST" : "?";
     try {
-      const r = await fetch("https://api.stripe.com/v1/balance", { headers: { Authorization: "Bearer " + sk } });
+      const r = await withDeadline("https://api.stripe.com/v1/balance", { headers: { Authorization: "Bearer " + sk } });
       R("Stripe (local key)", r.ok ? "ok" : "FAIL", r.ok ? mode + " mode" : "rejected " + r.status);
     } catch (e) { R("Stripe (local key)", "FAIL", e.message.slice(0, 50)); }
   }
@@ -69,7 +86,7 @@ async function main() {
     R("Production env", "CHECK", "no JARVIS_SERVICE_KEY locally, so production cannot be asked");
   } else {
     try {
-      const r = await fetch(site + "/api/admin/env-check", { headers: { "x-jarvis-key": svc } });
+      const r = await withDeadline(site + "/api/admin/env-check", { headers: { "x-jarvis-key": svc } });
       if (r.status === 404) {
         R("Production env", "CHECK", "endpoint not deployed yet -- push and redeploy");
       } else if (!r.ok) {
@@ -109,7 +126,7 @@ async function main() {
   else {
     try {
       const voice = env.ELEVENLABS_VOICE_ID || "wDsJlOXPqcvIUKdLXjDs";
-      const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voice, {
+      const r = await withDeadline("https://api.elevenlabs.io/v1/text-to-speech/" + voice, {
         method: "POST",
         headers: { "xi-api-key": ek, "Content-Type": "application/json", Accept: "audio/mpeg" },
         // A realistic length on purpose. A one-character probe costs one credit
@@ -129,7 +146,7 @@ async function main() {
 
   // --- the site and the console --------------------------------------------
   for (const [n, u] of [["Website", "https://www.thenautiyachti.com"], ["Owner console", "https://www.thenautiyachti.com/admin"]]) {
-    try { const r = await fetch(u); R(n, r.ok ? "ok" : "FAIL", "HTTP " + r.status); }
+    try { const r = await withDeadline(u); R(n, r.ok ? "ok" : "FAIL", "HTTP " + r.status); }
     catch (e) { R(n, "FAIL", e.message.slice(0, 40)); }
   }
 
@@ -160,14 +177,27 @@ async function main() {
       await prisma.$disconnect();
       throw new Error("skip");
     }
-    let bad = 0, offsite = 0;
-    for (const u of imgs) {
+    let offsite = 0;
+    // In parallel, with a deadline each. Sequentially, 45 dead hosts at eight
+    // seconds apiece is six minutes of nothing happening.
+    const results = await Promise.all(imgs.map(async (u) => {
       if (/^https?:/i.test(u) && !u.includes("thenautiyachti.com")) offsite++;
       const target = u.startsWith("http") ? u : "https://www.thenautiyachti.com" + u;
-      try { const r = await fetch(target, { method: "GET", headers: { Range: "bytes=0-32" } }); if (!r.ok) bad++; }
-      catch { bad++; }
-    }
-    R("Site images", bad ? "FAIL" : "ok", `${imgs.length} checked, ${bad} broken, ${offsite} on third-party hosts`);
+      try {
+        const r = await withDeadline(target, { method: "GET", headers: { Range: "bytes=0-32" } });
+        return r.ok ? null : "HTTP " + r.status;
+      } catch (e) {
+        // A timeout and a refusal are different problems: one host is gone, the
+        // other is saying no. Worth telling apart in the output.
+        return e.name === "TimeoutError" ? "no answer" : "unreachable";
+      }
+    }));
+    const broken = results.filter(Boolean);
+    const timedOut = broken.filter((b) => b === "no answer").length;
+    R("Site images", broken.length ? "FAIL" : "ok",
+      `${imgs.length} checked, ${broken.length} broken` +
+      (timedOut ? ` (${timedOut} never answered)` : "") +
+      `, ${offsite} on third-party hosts`);
     await prisma.$disconnect();
   } catch (e) { R("Site images", "CHECK", e.message.slice(0, 50)); }
 
