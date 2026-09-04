@@ -5303,7 +5303,10 @@ function fmtAskedAt(v) {
 function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBooking, onUpdateInquiry }) {
   const [asked, setAsked] = useState({});
   const [templateChoice, setTemplateChoice] = useState("auto"); // "auto" | a TEMPLATES id
-  const [filter, setFilter] = useState("todo"); // "todo" | "asked" | "all"
+  // "todo" is the reachable ones -- the only bucket that is actually work.
+  // "unreachable" is the ones nobody took a number for, which is a different
+  // problem and belongs in front of him rather than hidden inside a zero.
+  const [filter, setFilter] = useState("todo"); // todo | unreachable | asked | archived | all
 
   // Whether this device can hand an sms: link to anything. Checked once after
   // mount rather than during render, because navigator does not exist on the
@@ -5418,9 +5421,19 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   const archived = completed.filter(isArchived);
   const live = completed.filter((r) => !isArchived(r));
 
+  // Reachable means there is something to send a message TO. A charter with
+  // neither a phone nor an email cannot be asked at all, however recent.
+  const canReach = (r) =>
+    Boolean((r.raw && String(r.raw.phone || "").trim()) || (r.raw && String(r.raw.email || "").trim()));
+
+  const toAsk = live.filter((r) => !wasAsked(r));
+  const reachable = toAsk.filter(canReach);
+  const unreachable = toAsk.filter((r) => !canReach(r));
+
   const askedCount = live.filter(wasAsked).length;
   const rows =
-    filter === "todo" ? live.filter((r) => !wasAsked(r))
+    filter === "todo" ? reachable
+    : filter === "unreachable" ? unreachable
     : filter === "asked" ? live.filter((r) => wasAsked(r))
     : filter === "archived" ? archived
     // "Every charter" means every charter. It used to quietly drop the archived
@@ -5520,7 +5533,13 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
               </select>
             </label>
             <div style={{ display: "flex", gap: 4 }}>
-              {[["todo", "Still to ask"], ["asked", "Already asked"], ["archived", `Not asking${archived.length ? " (" + archived.length + ")" : ""}`], ["all", "Every charter"]].map(([id, label]) => (
+              {[
+                ["todo", `Still to ask${reachable.length ? " (" + reachable.length + ")" : ""}`],
+                ["unreachable", `No contact info${unreachable.length ? " (" + unreachable.length + ")" : ""}`],
+                ["asked", "Already asked"],
+                ["archived", `Not asking${archived.length ? " (" + archived.length + ")" : ""}`],
+                ["all", "Every charter"],
+              ].map(([id, label]) => (
                 <button key={id} type="button" onClick={() => setFilter(id)}
                   style={{
                     padding: "4px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600,
@@ -5538,7 +5557,20 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
             <div style={{ color: "var(--muted)", fontSize: 13 }}>
               {completed.length === 0
                 ? "No completed charters yet — mark a booking Completed on the Bookings tab and it'll appear here."
-                : "Every completed charter is marked asked. Nice work."}
+                : filter === "todo" && unreachable.length > 0
+                  // The distinction the old message erased. Nobody LEFT to ask
+                  // and nobody you CAN ask are different facts, and only the
+                  // second one tells him to start taking numbers at the dock.
+                  ? `Nobody reachable left to ask — but ${unreachable.length} completed charter${unreachable.length === 1 ? " has" : "s have"} never been asked and ${unreachable.length === 1 ? "has" : "have"} no phone and no email on file. See "No contact info". The only fix is upstream: take a number at the dock.`
+                : filter === "todo"
+                  ? "Everyone reachable has been asked."
+                : filter === "unreachable"
+                  ? "Every unasked guest has a phone or an email — nothing is stuck."
+                : filter === "asked"
+                  ? "Nobody has been asked yet."
+                : filter === "archived"
+                  ? "Nobody is marked do-not-ask."
+                  : "No charters match this filter."}
             </div>
           )}
 
