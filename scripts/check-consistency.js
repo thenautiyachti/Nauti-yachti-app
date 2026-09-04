@@ -134,6 +134,114 @@ try {
   if (!r.ok) fail("manual PDF", r.reason);
 } catch { /* checked elsewhere */ }
 
+// --- 8. the NDA guard must be identical everywhere it appears ---------------
+//
+// Three scripts decide whether media may be published: harvest-stills.js,
+// harvest-sweep.js and media-index.js. They carry the same regex on purpose. If
+// one of them drifts, restricted footage becomes reachable through whichever is
+// laxest, and nobody finds out until it has been posted.
+//
+// The word boundaries in particular are load-bearing: without them the pattern
+// matched the guest name "KuykeNDAll" and fenced off a charter with no
+// restriction on it at all.
+{
+  const guards = {};
+  for (const f of ["harvest-stills.js", "harvest-sweep.js", "media-index.js"]) {
+    const src = read(path.join(SCRIPTS, f));
+    if (!src) { fail("media guard", f + " is missing"); continue; }
+    const m = src.match(/const FORBIDDEN = (\/.*\/[a-z]*);/);
+    if (!m) { fail("media guard", f + " no longer defines FORBIDDEN"); continue; }
+    guards[f] = m[1];
+  }
+  const distinct = [...new Set(Object.values(guards))];
+  if (distinct.length > 1) {
+    fail("media guard", "the three scripts disagree about what may not be published:\n        " +
+      Object.entries(guards).map(([f, g]) => f + "  " + g).join("\n        "));
+  }
+  for (const [f, g] of Object.entries(guards)) {
+    if (!/\\bNDA\\b/.test(g)) fail("media guard", f + " lost the word boundaries around NDA");
+  }
+}
+
+// --- 9. the two board parsers must agree ------------------------------------
+//
+// The app ranks the board and the crew script writes to it. If their owner-
+// prefix regexes differ, an agent files at one priority and the console shows
+// another -- which already happened once, when "[SHELLY . T2]" parsed in
+// neither and her name printed as literal text mid-sentence.
+//
+// Compared as literal text, not by a regex-matching-a-regex. The first attempt
+// here did the latter and reported "other" for BOTH files, so it would have
+// passed however far apart they drifted -- a check that cannot fail is worse
+// than no check, because it is also a claim that somebody looked.
+{
+  // The separator between the owner name and the tier, exactly as written in
+  // both files. Extracted rather than assumed, so this fails if either stops
+  // having one at all.
+  const sepOf = (src) => {
+    const m = (src || "").match(/\(\?:(\[[^\]]+\])\+T\(\[0-9\]\)\)\?/);
+    return m ? m[1] : null;
+  };
+  const appSep = sepOf(read(path.join(APP, "lib/board.js")));
+  const crewSep = sepOf(read(path.join(SCRIPTS, "board.js")));
+
+  if (!appSep) fail("board parser", "lib/board.js: could not find the owner/tier separator class");
+  else if (!crewSep) fail("board parser", "Jarvis-Voice-UI/board.js: could not find the owner/tier separator class");
+  else if (appSep !== crewSep) {
+    fail("board parser",
+      "the two parsers disagree, so an agent will file at one priority and the console show another:\n" +
+      "        app  " + appSep + "\n        crew " + crewSep);
+  }
+}
+
+// --- 10. the priority rules must still reproduce the owner's own calls -------
+//
+// lib/boardPriority.js is derived entirely from fourteen decisions he made by
+// hand on 4 Sep 2026. A rule set that quietly stops agreeing with them is worse
+// than none, because it still looks principled. These four are the ones that
+// each cost a separate bug to get right.
+try {
+  const { classify } = require(path.join(APP, "lib/boardPriority.js"));
+  const cases = [
+    ["BAREBOAT: list the Nauti Islander without a captain on Boatsetter and GetMyBoat.",
+      "Boatsetter requires the renter to hold a boating license and carry insurance.", "medium",
+      "an aside about insurance must not make a listing item High"],
+    ["REVENUE IDEA: Seven Saturdays are open before the end of October.",
+      "At the $532 average charter that is $3,726 of unsold capacity.", "low",
+      "upside is not exposure -- an amount only ranks when something is wrong with it"],
+    ["Mechanical failure is the single biggest cause of lost 2026 demand.",
+      "6 Jun: the Nauti Lexi would not start.", "medium",
+      "a past failure is not a boat down today"],
+    ["TPWD Party Boat rule took effect 2026-05-01: liability insurance minimum raised to $500k.",
+      "", "high", "a live insurance exposure is the one thing that IS High"],
+  ];
+  for (const [lead, rest, want, why] of cases) {
+    const got = classify([lead, rest].join(" "), null, { lead });
+    if (got.priority !== want) {
+      fail("board priority", why + "\n        wanted " + want + ", got " + got.priority + " (" + got.why + ")");
+    }
+  }
+} catch (e) {
+  fail("board priority", "could not evaluate lib/boardPriority.js: " + e.message);
+}
+
+// --- 11. the status vocabulary must cover what the API accepts --------------
+{
+  const vocab = read(path.join(APP, "lib/bookingStatus.js")) || "";
+  for (const st of ["inquiry", "lapsed", "booked", "completed", "cancelled"]) {
+    if (!vocab.includes('"' + st + '"')) fail("booking status", "lib/bookingStatus.js no longer defines " + st);
+  }
+  // Nothing may compare the status field to a literal outside that file: that is
+  // how four call sites came to use "not cancelled" to mean "a real booking",
+  // one of them being the public availability calendar.
+  for (const f of ["app/page.js", "app/api/partial-dates/route.js", "lib/serialize.js"]) {
+    const src = read(path.join(APP, f)) || "";
+    if (/status:\s*\{\s*not:\s*"cancelled"\s*\}|status !== "cancelled"/.test(src)) {
+      fail("booking status", f + " is back to using 'not cancelled' as a proxy for a real booking");
+    }
+  }
+}
+
 // --- report -----------------------------------------------------------------
 if (!problems.length) {
   console.log(`  consistent — ${liveTasks.length} tasks, manual, protocol and roster all agree.`);
