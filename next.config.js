@@ -1,3 +1,52 @@
+// --- local secrets -----------------------------------------------------------
+//
+// The real secrets live OUTSIDE this folder, in C:/Users/immex/.secrets/, and
+// are loaded here before anything else runs.
+//
+// WHY: this project sits under C:/Users/immex/Documents, which syncs to Google
+// Drive. A .env in here put the live Stripe secret key, the database password,
+// the session secret and the admin passcode into that Google account. It was
+// never in git -- .gitignore has always covered it -- so this was a Drive
+// exposure rather than a public one, but anyone with the Google login had the
+// business. Google Drive has no per-file exclusion, so the only fix is for the
+// file not to be in the folder at all.
+//
+// Same trick already used for .git, which is a pointer file aimed at
+// C:/Users/immex/dev/ for exactly this reason.
+//
+// PRODUCTION IS UNAFFECTED. Vercel reads its own environment variables and
+// never sees this file; it matters only for local dev, local builds and the
+// crew scripts.
+//
+// Parsed inline rather than with dotenv: this package does not depend on
+// dotenv, and requiring one here means the build dies if it is ever missing.
+// Twelve KEY=VALUE lines do not need a library.
+const SECRETS = "C:/Users/immex/.secrets/nauti-yachti.env";
+try {
+  const nodeFs = require("fs");
+  if (nodeFs.existsSync(SECRETS)) {
+    const lines = nodeFs.readFileSync(SECRETS, "utf8").split("\n");
+    for (const raw of lines) {
+      const line = raw.replace("\r", "");
+      if (!line || line.trim().startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq < 1) continue;
+      const key = line.slice(0, eq).trim();
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+      // An existing environment variable wins, so a shell export or Vercel's
+      // own configuration still overrides this file.
+      if (process.env[key] === undefined) {
+        process.env[key] = line.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+      }
+    }
+  } else if (!process.env.VERCEL) {
+    // Loud on purpose: a silent miss here presents as a database outage.
+    console.warn("[env] " + SECRETS + " not found - local secrets are not loaded.");
+  }
+} catch (e) {
+  console.warn("[env] could not read " + SECRETS + ": " + e.message);
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
