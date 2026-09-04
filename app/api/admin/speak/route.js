@@ -3,7 +3,27 @@ const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wDsJlOXPqcvIUKdLXjDs"; // "Jarvis" preset
+// The default voice, used for Pearl and for anything that does not name an
+// agent. Still the old Jarvis preset until a Pearl voice is chosen -- that is a
+// change to this variable in Vercel and in the secrets store, not to this file.
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wDsJlOXPqcvIUKdLXjDs";
+
+// A voice per agent, so an avatar can read its own status in its own voice.
+// Variables are named after the agents: ELEVENLABS_VOICE_CORAL, _SIREN, _PENNY,
+// _SHELLY, _JOY, _REEF, _NOVA, _PEARL.
+//
+// Unset ones fall through to the default, so setting none changes nothing and
+// setting one changes only that agent. Adding a voice later is an environment
+// change, not a deploy.
+function voiceFor(agent) {
+  const key = String(agent || "")
+    .trim()
+    .replace(/^nauti\s+/i, "")   // callers pass "Nauti Coral" or "Coral"
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+  if (!key) return ELEVENLABS_VOICE_ID;
+  return process.env["ELEVENLABS_VOICE_" + key] || ELEVENLABS_VOICE_ID;
+}
 const JARVIS_SERVICE_KEY = process.env.JARVIS_SERVICE_KEY;
 
 // Flash bills half a credit per character where multilingual_v2 bills a full
@@ -48,6 +68,10 @@ async function POST(req) {
 
   const body = await req.json().catch(() => ({}));
   const text = ((body && body.text) || "").trim();
+  // Who is speaking. Optional: without it everything uses the default voice,
+  // which is the behaviour this route has always had.
+  const agent = (body && body.agent) || "";
+  const voiceId = voiceFor(agent);
   if (!text) {
     return NextResponse.json({ error: "Missing 'text'" }, { status: 400 });
   }
@@ -67,7 +91,7 @@ async function POST(req) {
 
   try {
     const elevenRes = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
         method: "POST",
         headers: {
@@ -77,7 +101,12 @@ async function POST(req) {
         },
         body: JSON.stringify({
           text,
-          model_id: "eleven_multilingual_v2",
+          // Read the constant rather than repeating a literal here. It was
+          // hardcoded to multilingual while ELEVENLABS_MODEL_ID sat above
+          // defaulting to flash and being ignored -- so every line was billed at
+          // twice the intended rate, which is not a small thing when the credits
+          // are what ran out.
+          model_id: ELEVENLABS_MODEL_ID,
           voice_settings: { stability: 0.45, similarity_boost: 0.8, speed: 1.1 },
         }),
       }
