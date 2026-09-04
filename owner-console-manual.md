@@ -331,30 +331,25 @@ Six of the nine routines now carry their crew member's name in the sidebar —
 `nauti-pearl`, `nauti-joy`, `nauti-reef`, `nauti-shelly`, `nauti-nova` and
 `crew-standup`.
 
-Three deliberately do not, and this is the part worth knowing:
+One deliberately does not: `daily-social-publisher`, which is Siren.
 
-| Still called | Whose it is | Why it was left |
-|---|---|---|
-| `daily-media-agent` | Coral | uses Blotato |
-| `daily-social-publisher` | Siren | uses Blotato |
-| `weekly-booking-audit` | Penny | reads Gmail |
+A task ID cannot be renamed — only deleted and recreated — and connector
+approvals are stored **on the task**. Siren publishes through Blotato, so
+recreating her throws that approval away and her next run stops, waiting for a
+permission nobody is there to give. She is the one agent whose silence is
+invisible until an event has already gone unannounced.
 
-A task ID cannot be renamed — it can only be deleted and recreated — and tool
-approvals for connectors are stored **on the task**. Recreating these three would
-throw away their Blotato and Gmail approvals, so the next run of each would stop
-and wait for a permission nobody is sitting there to give. Siren is the one that
-publishes; a Siren that has quietly stopped is how an event goes unannounced.
+So she is renamed only just after a publish run, when nothing is due and a
+**Run now** to bank the approval is a harmless no-op. Renaming her before one
+either loses that morning's posts to a prompt, or fires them at whatever hour
+you pressed the button.
 
-The six that were renamed only ever run `node` scripts, and permission for that
-is granted globally in `settings.json` rather than per task, so nothing was lost.
-Four of them — Nova, Joy, Reef and Shelly — had never run at all and had no
-approvals to begin with.
-
-If you want the last three renamed too, it is safe on a day you are at the desk:
-rename, then press **Run now** on each and approve once. Not the week of an event.
+Coral and Penny were renamed this way on 4 Sep 2026 — rename, **Run now**,
+approve once. Their approvals are Blotato and Gmail respectively. **If a routine
+ever starts skipping, a missing approval is the first thing to check.**
 
 
-Two task folders are still named for their old cadence — `weekly-booking-audit`
+Two task folders are still named for their old cadence — `nauti-penny`
 runs daily and `nauti-shelly` runs weekly. The names are historical and
 were left alone on purpose: renaming a scheduled task means deleting and
 recreating it, which loses its saved tool approvals. **The schedule above is
