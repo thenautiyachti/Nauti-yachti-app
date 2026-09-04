@@ -59,7 +59,10 @@ export default function AdminView({
   // The last thing said. Kept because speakCrew records it and it costs
   // nothing; nothing renders it since the Jarvis tab was retired, and each
   // agent's card already shows what she filed.
-  const [lastSpoken, setLastSpoken] = useState("");
+  // The most recent thing Pearl said, as a row rather than a string: the text
+  // to show, and the audio to play if it is clicked.
+  const [lastSpoken, setLastSpoken] = useState(null);
+  const [pearlDismissed, setPearlDismissed] = useState(false);
   const [audioNote, setAudioNote] = useState("");
   const audioElRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -96,8 +99,64 @@ export default function AdminView({
   // filed. What was left was a request every two seconds, for the lifetime of
   // an open console, feeding nothing. The rows are still written and the GET
   // endpoint still serves them -- this only stops asking for them.
-  function playSpeech(ev) {
-    setLastSpoken(ev.text);
+  // A light poll. It fetches the newest message so it can be SHOWN, and never
+  // plays anything -- that is the difference from the loop this replaced,
+  // which played every event that arrived and talked over whoever was already
+  // speaking. Ten seconds, not two: this is a message from a person working
+  // alongside him, not a live feed.
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
+    async function poll() {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const res = await fetch('/api/admin/speak');
+        if (!res.ok || cancelled) return;
+        const events = await res.json();
+        if (!Array.isArray(events) || !events.length) return;
+        const newest = events[events.length - 1];
+        setLastSpoken((prev) => {
+          if (prev && prev.id === newest.id) return prev;
+          // A genuinely new message un-dismisses the strip. Dismissing one
+          // should hide that message, not silence the channel.
+          setPearlDismissed(false);
+          return newest;
+        });
+      } catch {
+        // transient; try again on the next tick
+      } finally {
+        inFlight = false;
+      }
+    }
+    poll();
+    const t = setInterval(poll, 10000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
+
+  // Play a stored message. It borrows the crew machinery deliberately, so
+  // Pearl cannot talk over an agent and an agent cannot talk over her -- there
+  // is one <audio> element and one speaker at a time, whoever it is.
+  function playStored(ev) {
+    if (!ev || !ev.audioB64) return;
+    if (speakingNameRef.current === 'Nauti Pearl') { stopSpeaking(); return; }
+    stopSpeaking();
+    if (!audioEnabled) enableAudio();
+    const el = audioElRef.current;
+    if (!el) return;
+    speakingNameRef.current = 'Nauti Pearl';
+    setSpeakingName('Nauti Pearl');
+    const done = () => {
+      el.removeEventListener('ended', done);
+      el.removeEventListener('error', done);
+      speakingNameRef.current = '';
+      setSpeakingName('');
+    };
+    el.addEventListener('ended', done);
+    el.addEventListener('error', done);
+    el.src = 'data:audio/mpeg;base64,' + ev.audioB64;
+    el.currentTime = 0;
+    el.play().catch(() => done());
   }
 
   // Read one agent's own standup aloud, in her own voice.
@@ -155,7 +214,6 @@ export default function AdminView({
 
     speakingNameRef.current = r.name;
     setSpeakingName(r.name);
-    setLastSpoken(text);
     try {
       const cached = spokenCacheRef.current.get(key);
       if (cached) { await play(cached); return; }
@@ -311,6 +369,57 @@ export default function AdminView({
             successful click. */}
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div className="display" style={{ fontSize: 20, fontWeight: 700, whiteSpace: "nowrap" }}>OWNER CONSOLE</div>
+          {/* What Pearl last said, and a button to hear it.
+
+              She talks from scheduled runs and from a Claude Code session via
+              speak-remote.js. For a while those messages had nowhere to go at
+              all: the old poll displayed them AND played them over whoever was
+              already speaking, so removing the autoplay removed the display
+              with it and the channel went silent without failing.
+
+              Nothing here makes a sound on its own. It shows the words and
+              offers the speaker. */}
+          {lastSpoken && !pearlDismissed && (
+            <span
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0,
+                fontSize: 12, color: "var(--text)",
+                border: "1px solid rgba(79,191,139,0.4)", borderRadius: 8,
+                padding: "4px 8px", maxWidth: 520,
+              }}
+            >
+              <button
+                onClick={() => playStored(lastSpoken)}
+                disabled={!lastSpoken.audioB64}
+                title={
+                  lastSpoken.audioB64
+                    ? (speakingName === "Nauti Pearl" ? "Stop" : "Hear it in Pearl's voice")
+                    : "Stored as text only — there was no voice available when she said it"
+                }
+                style={{
+                  border: "none", background: "transparent", padding: 0, lineHeight: 1,
+                  cursor: lastSpoken.audioB64 ? "pointer" : "default",
+                  color: lastSpoken.audioB64 ? "#7FE0B8" : "var(--muted)",
+                  fontSize: 14, flexShrink: 0,
+                }}
+              >
+                {speakingName === "Nauti Pearl" ? "⏸" : "🔊"}
+              </button>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {lastSpoken.text}
+              </span>
+              <button
+                onClick={() => setPearlDismissed(true)}
+                title="Dismiss. The next thing she says will appear here."
+                style={{
+                  border: "none", background: "transparent", padding: 0, lineHeight: 1,
+                  cursor: "pointer", color: "var(--muted)", fontSize: 13, flexShrink: 0,
+                }}
+              >
+                ×
+              </button>
+            </span>
+          )}
           {audioNote && (
             <span
               onClick={() => setAudioNote("")}
