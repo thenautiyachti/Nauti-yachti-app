@@ -3580,7 +3580,32 @@ function crewRows(agentActivity = []) {
       run && previous && run.detail && previous.detail &&
       run.detail.trim() === previous.detail.trim()
     );
-    return { ...c, run, status, stalled, state, repeatedDetail, stale: isStale(run, c.schedule) };
+
+    // Does the last-run line just repeat the standup printed above it?
+    //
+    // A DIFFERENT problem from repeatedDetail, which compares one run against
+    // the previous one. This compares the run against the STATUS ON THE SAME
+    // CARD: when an agent files her standup as the detail of the run that
+    // produced it, both are the same words, and the card prints the whole
+    // paragraph twice — once as the standup, again under "Last run".
+    //
+    // Coral does exactly that; the others word their run detail differently,
+    // which is why only her card looked wrong.
+    //
+    // Compared on a normalised prefix rather than exact equality: one is often
+    // the other truncated, and a trailing ellipsis should not count as new
+    // information.
+    const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
+    const runDetail = norm(run && run.detail);
+    const statusDetail = norm(status && (status.detail || status.taskTitle));
+    const head = (s) => s.slice(0, 120);
+    const detailEchoesStatus = Boolean(
+      runDetail && statusDetail &&
+      (runDetail === statusDetail || head(runDetail) === head(statusDetail))
+    );
+
+    return { ...c, run, status, stalled, state, repeatedDetail, detailEchoesStatus,
+      stale: isStale(run, c.schedule) };
   });
 }
 
@@ -3799,12 +3824,17 @@ function CrewCard({ r, compact = false }) {
           color: !r.run && crewNextDue(r.schedule).daily ? "#E8934A" : "var(--muted)",
         }}>
           {r.run
-            ? (r.repeatedDetail
-                // Same words as her previous run. Printing them again reads as
-                // fresh news; saying so reads as what it is. The timestamp above
-                // still moves, which is the part that actually tells you she ran.
-                ? "Same as her last run — " + (r.run.detail || r.run.taskTitle || "").slice(0, 70)
-                : (r.run.detail || r.run.taskTitle || "no detail recorded"))
+            ? (r.detailEchoesStatus
+                // The standup above IS this run's detail. Printing it again puts
+                // the same paragraph on the card twice; the timestamp is the only
+                // part that adds anything, and it is on the line above.
+                ? "Reported in the standup above."
+                : r.repeatedDetail
+                  // Same words as her previous run. Printing them again reads as
+                  // fresh news; saying so reads as what it is. The timestamp above
+                  // still moves, which is the part that actually tells you she ran.
+                  ? "Same as her last run — " + (r.run.detail || r.run.taskTitle || "").slice(0, 70)
+                  : (r.run.detail || r.run.taskTitle || "no detail recorded"))
             : crewNextDue(r.schedule).daily
               ? "She runs every day and has not reported one. Open Routines and hit Run now."
               : crewNextDue(r.schedule).when
