@@ -252,6 +252,7 @@ and usage limits.
 
 | Button | What it is |
 |---|---|
+| **The version badge** | The version of the whole system, top left beside OWNER CONSOLE. The same number appears under the **Owner console** button on the public site. Both read it from `package.json`, so they cannot disagree with each other. See **Versions and going back** below. |
 | **🔊 what Pearl last said** | Appears only when she has said something. The words are shown; the speaker button reads them aloud in her voice, and pressing it again stops her. The **×** dismisses that message — the next one brings the strip back. There used to be an **Enable Pearl** button here whose only job was to satisfy the browser's rule that audio needs a click first. Any click now does that, so it is gone. |
 | **📱 On the dock** | The phone page: ask for reviews, log engine hours. Everything on it needs a phone — a text link has nothing to open on a desktop, and an hour reading is taken at the boat. Worth adding to your home screen. |
 | **📖 Manual** | This document. |
@@ -261,6 +262,51 @@ and usage limits.
 The waiver draft link is gone. The Release and Waiver is published in the
 **Terms & Conditions** tab on the public site, and booking now records that a
 guest accepted it.
+
+---
+
+# Versions and going back
+
+The number beside OWNER CONSOLE says which release you are looking at. It exists
+for one moment: something is wrong and you need to know what to go back to.
+
+## What earns a new number
+
+**The crew doing their job is not a revision.** Coral drafting posts, Siren
+publishing, Pearl filing a brief, a booking landing, a photograph being tagged —
+none of that moves the version. That is the system running, not changing.
+
+| Size | Moves | What it means |
+|---|---|---|
+| **Small** | 1.5.0 → **1.5.1** | Formatting, wording, a colour, a label. Nothing behaves differently. |
+| **Moderate** | 1.5.1 → **1.6.0** | The logic of an agent, or a workflow. A status meaning something new. |
+| **Large** | 1.6.0 → **2.0.0** | A whole layout changed, or a completely new large-scale idea. |
+
+Three numbers, always — `1.5.1`, never `1.5`. Unsure between two sizes? **Take
+the smaller one.** A small change that turns out to have been moderate costs
+nothing; a moderate one recorded as large makes the history lie about how much
+moved, and the history is the entire point.
+
+## Nobody cuts a release without asking you
+
+A revision draws a line under a batch of work, and only you know where the batch
+ends. The rule is to finish the work, say what changed, say what size it looks
+like, and **ask** — because it was broken twice on the day it was written.
+
+## What you actually get
+
+One `.zip` in `AI & Website/releases/`, and only ever the newest one: the crew
+briefs, the protocol, the schedules, the permission rules and the shared
+scripts — everything git does not version. Older *release folders* are deleted;
+**every git tag is kept forever**, so the code for each version is still on
+GitHub.
+
+`CHANGELOG.md` carries one entry per version, written to be read on a bad day.
+If an entry cannot tell you whether to restore that version, it was not written
+properly.
+
+The full reasoning, including why this is deliberately **not** SemVer, is in
+`AI & Website/VERSIONING.md`.
 
 ---
 

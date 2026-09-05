@@ -242,6 +242,51 @@ try {
   }
 }
 
+// --- 11b. no document may carry the same heading twice ----------------------
+//
+// A bad paste on or before 5 Sep 2026 left _crew-protocol.md with sections 3f,
+// 4, 5, 5b, 5c, 6 and 7 all present TWICE. Six copies were byte-identical, so
+// nothing read differently and nothing failed. The seventh was not: section 7,
+// "Honesty rules that override everything above", existed as one complete copy
+// and one truncated one -- and the truncation had swallowed the tail of section
+// 3e-iii, the --detail-file rule, which then existed nowhere else in the file.
+//
+// So the shared rulebook every agent reads first was internally contradictory,
+// was missing a rule, and gave no sign of either. A repeated heading is the
+// cheapest possible signal that a document has been pasted into twice, and it
+// would have caught this the day it happened.
+{
+  const docs = [
+    ["crew protocol", path.join(TASKS, "_crew-protocol.md")],
+    ["owner manual", path.join(APP, "owner-console-manual.md")],
+    ["versioning", path.join(APP, "..", "VERSIONING.md")],
+    ["recovery", path.join(APP, "..", "DISASTER RECOVERY.md")],
+    ["changelog", path.join(APP, "..", "CHANGELOG.md")],
+  ];
+  // Every crew brief too — they are edited far more often than the protocol.
+  try {
+    for (const d of fs.readdirSync(TASKS, { withFileTypes: true })) {
+      if (!d.isDirectory() || d.name.startsWith("_")) continue;
+      const brief = path.join(TASKS, d.name, "SKILL.md");
+      if (fs.existsSync(brief)) docs.push([d.name + " brief", brief]);
+    }
+  } catch { /* no tasks directory */ }
+
+  for (const [label, file] of docs) {
+    const body = read(file);
+    if (!body) continue;
+    const heads = body.split(/\r?\n/).filter((l) => /^#{2,3} /.test(l.trim())).map((l) => l.trim());
+    const counts = {};
+    for (const h of heads) counts[h] = (counts[h] || 0) + 1;
+    const repeated = Object.keys(counts).filter((h) => counts[h] > 1);
+    if (repeated.length) {
+      fail(label, "carries " + repeated.length + " repeated heading(s), which usually means a\n" +
+        "        section was pasted in twice and one copy has since drifted:\n" +
+        repeated.slice(0, 5).map((h) => "          " + h.slice(0, 62) + "  (×" + counts[h] + ")").join("\n"));
+    }
+  }
+}
+
 // --- 12. the recovery document must name the newest release -----------------
 //
 // DISASTER RECOVERY.md tells somebody which release folder to restore from. It

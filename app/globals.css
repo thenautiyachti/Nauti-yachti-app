@@ -162,12 +162,38 @@ html, body {
   /* A backstop, not a fix. If something too wide slips in, the page still
      cannot be dragged sideways on a phone — which is the symptom a visitor
      actually notices. Anything genuinely wide (a table, a code block) should
-     scroll inside its own container rather than rely on this. */
+     scroll inside its own container rather than rely on this.
+
+     CLIP, NOT HIDDEN, and the difference is not cosmetic. `overflow-x: hidden`
+     computes overflow-y to `auto`, which turns html/body into a scroll
+     CONTAINER — and `position: sticky` inside a scroll container sticks to that
+     container rather than to the viewport. The navigation bar was declared
+     sticky and had silently stopped sticking on phones because of this line:
+     scrolling carried it straight off the top of the screen.
+
+     `overflow-x: clip` prevents the same sideways drag without creating a
+     scroll container, so sticky keeps working. The @supports guard leaves
+     pre-16 Safari on the old behaviour rather than no clipping at all. */
   overflow-x: hidden;
+}
+@supports (overflow-x: clip) {
+  html, body { overflow-x: clip; }
 }
 
 /* Media should shrink to its container rather than set the page width. */
 img, video, canvas, svg, iframe { max-width: 100%; }
+
+/* The site header is sticky, so its height is a permanent tax on every screen.
+   On a phone the eleven links wrapped onto three rows and the bar stood 151px
+   tall. Tightening the gaps and the type keeps every link reachable — nothing
+   is hidden behind a menu — while giving the page back most of that space. */
+@media (max-width: 600px) {
+  .nav-links {
+    gap: 10px !important;
+    font-size: 12.5px !important;
+    row-gap: 6px !important;
+  }
+}
 
 .display {
   font-family: 'Big Shoulders Display', sans-serif;

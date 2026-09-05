@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { version as APP_VERSION } from "../package.json";
 
 const LINK_STYLE = { color: "var(--text)", textDecoration: "none" };
 
@@ -18,14 +19,28 @@ export default function NavBar() {
           <img src="/small-logo.jpg" alt="" style={{ width: 32, height: 32, borderRadius: 6 }} />
           <div className="display" style={{ fontSize: 22, fontWeight: 800, color: "var(--text)" }}>THE NAUTI YACHTI</div>
         </Link>
-        <Link
-          href="/admin"
-          style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 12px", fontSize: 13, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}
-        >
-          Owner console
-        </Link>
+        {/* The version sits under the console button, matching the badge in the
+            console itself so both places name the same release. Read from
+            package.json, which VERSIONING.md makes the single source of truth
+            and check-consistency.js asserts against the git tag and the release
+            archive — so this can never drift on its own. */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+          <Link
+            href="/admin"
+            style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 12px", fontSize: 13, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}
+          >
+            Owner console
+          </Link>
+          <span className="mono" style={{ fontSize: 10.5, color: "var(--muted)", letterSpacing: "0.04em" }}>
+            v{APP_VERSION}
+          </span>
+        </div>
       </div>
-      <div style={{ display: "flex", gap: 16, fontSize: 14, alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
+      {/* nav-links: on a phone this row wrapped to three lines and made the bar
+          151px tall — 19% of the screen, which is far too much to hold there
+          permanently now that it actually sticks. Tighter gaps and type below
+          600px bring it down without hiding any link. */}
+      <div className="nav-links" style={{ display: "flex", gap: 16, fontSize: 14, alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
         {/* Points at the real /packages page rather than the /#packages anchor:
             an anchor is not a separate indexable URL, so the per-package pages
             need a genuine internal link from every page to be crawled. */}
@@ -41,8 +56,11 @@ export default function NavBar() {
             from every page in one tap. */}
         <Link href="/glow" style={{ ...LINK_STYLE, color: "var(--pink)", fontWeight: 700 }}>Boatz &amp; Glowz</Link>
         <Link href="/#inquire" style={LINK_STYLE}>Book</Link>
-        <Link href="/privacy-policy" style={LINK_STYLE}>Privacy Policy</Link>
-        <Link href="/terms" style={LINK_STYLE}>Terms & Cancellation Policy</Link>
+        {/* Privacy Policy and Terms moved to PageFooter. They are the two
+            longest labels on the site and cost a whole wrapped row on a phone,
+            which is not a price worth paying in a bar that is now always on
+            screen. The footer is where visitors look for them anyway, and it
+            renders on every page, so they remain reachable site-wide. */}
       </div>
     </div>
   );
