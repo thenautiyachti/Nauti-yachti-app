@@ -25,8 +25,15 @@ async function POST(req) {
   // approving it and Siren screening it, so this is the right place for a
   // machine credential, and it is the same one the speak route already takes.
   const serviceKey = req.headers.get("x-jarvis-key");
+  // process.env, NOT a bare identifier. This read `JARVIS_SERVICE_KEY` with no
+  // `process.env.` in front of it, which is a ReferenceError in module scope —
+  // so EVERY attempt to create a draft threw a 500 before it reached any of the
+  // validation below. Coral could not file a single draft, and the failure
+  // looked like a server problem rather than a typo. The GET above always had
+  // it right, which is exactly why nobody spotted the difference.
   const authorized =
-    (await isAdminAuthenticated()) || (JARVIS_SERVICE_KEY && serviceKey === JARVIS_SERVICE_KEY);
+    (await isAdminAuthenticated()) ||
+    (process.env.JARVIS_SERVICE_KEY && serviceKey === process.env.JARVIS_SERVICE_KEY);
   if (!authorized) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
