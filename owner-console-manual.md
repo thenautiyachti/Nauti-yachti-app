@@ -246,6 +246,32 @@ and weekend. Every change is logged to price history.
 Extras that can be attached at checkout, and discount codes with optional expiry
 and usage limits.
 
+**What comes free with what, and what is charged:**
+
+| Add-on | Price | Free with |
+|---|---|---|
+| Balloon Package | $40 | Birthday Party |
+| Champagne on Ice | $25 | Bachelor / Bachelorette |
+| Full Decoration Package | $60 | — *(contains the balloons and the champagne)* |
+| Grill Service | $25 | Night Cruise |
+
+The **Full Decoration Package is the other two plus table setup and themed
+decor**. Bought separately the balloons and champagne come to $65, so the bundle
+saves $5 — and a guest who ticks all three is charged $60, not $125. That is
+enforced in code, not by remembering.
+
+**Grill Service is the cooking only — the guest brings the food.** It is a small
+electric grill, about two steaks at a time or four burgers at a time, and the
+boat has to be at anchor, so allow twenty to thirty minutes. It can be added to
+any charter; anchoring off mid-trip is normal.
+
+**A charter with no stated occasion is a Tubing / Wakeboarding charter.** That is
+the default, not a guess.
+
+These rules live in `lib/addOns.js` and are the single source for the booking
+form, the price quoted and the FAQ. Change them there, not in the copy, and run
+`node scripts/test-addons.js` afterwards — 51 assertions cover the pricing.
+
 ---
 
 # The top bar
@@ -262,6 +288,47 @@ and usage limits.
 The waiver draft link is gone. The Release and Waiver is published in the
 **Terms & Conditions** tab on the public site, and booking now records that a
 guest accepted it.
+
+---
+
+# A booking that came in by text
+
+Most bookings do not arrive through the website. They arrive on WhatsApp, by
+text, or on the phone — and that channel is the biggest and the worst tracked.
+The 8 Aug 2025 charter was never written down at all and had to be reconstructed
+from photographs a year later.
+
+This is the route that stops it happening again.
+
+1. **Send the message to Claude** — a screenshot is enough.
+2. **It gets logged straight away** as an inquiry with a real reference
+   (`NY-YYYYMMDD-NN`), before anything is promised. Availability, boat capacity
+   and the price are checked against the live data, not from memory.
+3. **You get a reply to send**, written for what that guest actually asked.
+4. **If they say yes**, you get a link: `thenautiyachti.com/pay/<id>`. It shows
+   them the charter on our own site and hands off to Stripe from there. Never
+   paste a raw `checkout.stripe.com` link into a text — it looks exactly like a
+   scam, and the more careful the customer the less likely they are to tap it.
+5. **When they pay, the rest happens on its own:** the inquiry is marked paid,
+   a booking is created, the calendar closes that day for that boat, and a
+   confirmation goes to the guest with you copied in.
+
+**The one gap to know about.** Between "yes" and "paid", nothing holds the date.
+The calendar only closes on a real booking, so a second party could still take
+that boat. If the charter is soon or the date is in demand, block it by hand in
+**Bookings → Availability** and unblock it if they never pay.
+
+## Capacity counts the captain
+
+The vessel capacities INCLUDE the captain. The Nauti Yachti's 12 seats **11
+guests**. A party of 12 needs the Explorer. This is the easiest thing on the
+whole site to get wrong when quoting quickly.
+
+## If a payment and the console ever disagree
+
+A guest says they paid and the booking still reads unpaid — ask Claude to resync
+it. That re-reads Stripe's own record and repairs whatever is missing. It only
+ever copies from Stripe, so it cannot invent a payment that did not happen.
 
 ---
 
