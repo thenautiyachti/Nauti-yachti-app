@@ -51,6 +51,7 @@ export default function AdminView({
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
   onUpdateMediaDraftStatus, onDeleteMediaDraft, onAttachMediaDraftMedia,
   onUpdateTestimonialStatus, onDeleteTestimonial,
+  photoRequests, onMarkPhotoRequestSent, onDeletePhotoRequest,
 }) {
   const [tab, setTab] = useState("overview");
 
@@ -265,6 +266,9 @@ export default function AdminView({
     return run && run.status === "needs-input";
   }).length;
 
+  // Guests promised their photographs who have not had them yet.
+  const photoRequestsOwed = (photoRequests || []).filter((r) => !r.sentAt).length;
+
   const TAB_GROUPS = [
     {
       id: "overview", label: "Overview", tabs: [
@@ -292,6 +296,9 @@ export default function AdminView({
         { id: "media", label: "Media" },
         { id: "mediaDrafts", label: tabLabel("Media Drafts", needsReviewCount(mediaDrafts)), count: needsReviewCount(mediaDrafts) },
         { id: "testimonials", label: tabLabel("Testimonials", needsReviewCount(testimonials)), count: needsReviewCount(testimonials) },
+        // Badged on the OUTSTANDING count, not the total: this is a queue of
+        // promises still owed, and once it is empty it should say nothing.
+        { id: "photoRequests", label: tabLabel("Photo Requests", photoRequestsOwed), count: photoRequestsOwed },
       ],
     },
     {
@@ -569,6 +576,14 @@ export default function AdminView({
             not. components/SocialPipelinePanel.js is kept for that work. */}
         {tab === "mediaDrafts" && (
           <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} onAttachMedia={onAttachMediaDraftMedia} />
+        )}
+
+        {tab === "photoRequests" && (
+          <PhotoRequestsTab
+            photoRequests={photoRequests}
+            onMarkSent={onMarkPhotoRequestSent}
+            onDelete={onDeletePhotoRequest}
+          />
         )}
 
         {tab === "testimonials" && (
@@ -5978,6 +5993,172 @@ function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateSt
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---- Photo requests tab ---------------------------------------------
+
+// Guests who scanned the QR code on the boat and asked for their photographs.
+//
+// This panel exists to keep a promise. /thanks tells a guest their photos are
+// coming and takes their number on the strength of it; if that then sits in a
+// table nobody opens, the page has done something worse than not existing --
+// it has traded a lie for a phone number.
+//
+// So the design rule here is that WAITING IS THE HEADLINE. Rows are ordered by
+// how long somebody has been waiting, not by when they arrived, and the wait is
+// coloured so a week-old request cannot be scrolled past.
+const PHOTO_WAIT = [
+  { max: 2, label: "Just came in", color: "#7FE0B8" },
+  { max: 5, label: "Send today", color: "#4FA8E8" },
+  { max: 10, label: "Getting late", color: "#E8934A" },
+  { max: Infinity, label: "Overdue", color: "#F0559C" },
+];
+function photoWait(days) {
+  return PHOTO_WAIT.find((w) => days <= w.max) || PHOTO_WAIT[PHOTO_WAIT.length - 1];
+}
+
+function PhotoRequestsTab({ photoRequests, onMarkSent, onDelete }) {
+  const [showSent, setShowSent] = useState(false);
+
+  const rows = photoRequests || [];
+  const pending = rows.filter((r) => !r.sentAt);
+  const sent = rows.filter((r) => r.sentAt);
+
+  const daysWaiting = (r) => {
+    const d = new Date(r.createdAt);
+    if (Number.isNaN(d.getTime())) return 0;
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const asked = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    return Math.max(0, Math.round((midnight - asked) / 86400000));
+  };
+
+  // Longest wait first. Deliberately NOT newest-first: the guest most likely to
+  // have given up on us is the one at the top.
+  const queue = [...pending].sort((a, b) => daysWaiting(b) - daysWaiting(a));
+
+  // A starter message, not a finished one. The photo link cannot be filled in
+  // from here -- the files are on the owner's machine, not in this database --
+  // so this opens the thread with the greeting written and leaves him to paste
+  // the album link. That is the whole job reduced to one tap and one paste.
+  const draftFor = (r) => {
+    const first = (r.name || "").trim().split(/\s+/)[0] || "there";
+    const when = r.charterDate
+      ? new Date(`${r.charterDate}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })
+      : "your trip";
+    return `Hi ${first}! Austin from The Nauti Yachti — here are your photos from ${when}:\n\n`;
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+          Photo requests ({pending.length} outstanding)
+        </div>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, maxWidth: 620 }}>
+          From the QR code on the boat. Every one of these is somebody who was told
+          their photos were coming. Nothing marks itself sent — tick it once you have
+          actually sent them.
+        </div>
+      </div>
+
+      {queue.length === 0 && (
+        <div style={{ color: "var(--muted)", fontSize: 13.5, marginBottom: 16 }}>
+          Nothing outstanding. {sent.length > 0 && `${sent.length} sent.`}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
+        {queue.map((r) => {
+          const days = daysWaiting(r);
+          const w = photoWait(days);
+          const phone = normalizePhone(r.phone);
+          return (
+            <div key={r.id} style={{
+              background: "var(--paper-4)", borderRadius: 10, padding: 14, color: "var(--text)",
+              border: `1px solid ${w.color}`,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{r.name}</div>
+                <span className="mono" style={{
+                  fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 20, whiteSpace: "nowrap",
+                  textTransform: "uppercase", letterSpacing: "0.04em",
+                  color: "#0A0612", background: w.color,
+                }}>
+                  {days === 0 ? "today" : `${days}d`} · {w.label}
+                </span>
+              </div>
+
+              <div style={{ fontSize: 12.5, lineHeight: 1.7, marginBottom: 10 }}>
+                {r.charterDate && (
+                  <div style={{ color: "var(--purple)" }}>
+                    Charter {new Date(`${r.charterDate}T00:00:00`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  </div>
+                )}
+                {r.phone && <div className="mono">{r.phone}</div>}
+                {r.email && <div className="mono" style={{ wordBreak: "break-all" }}>{r.email}</div>}
+                {r.note && <div style={{ color: "var(--muted)", fontStyle: "italic" }}>&ldquo;{r.note}&rdquo;</div>}
+              </div>
+
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {phone && (
+                  <a href={smsHref(r.phone, draftFor(r))}
+                    style={{ flex: "1 1 auto", textAlign: "center", background: "var(--purple)", color: "#0A0612", borderRadius: 6, padding: "7px 10px", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+                    Text them
+                  </a>
+                )}
+                {r.email && (
+                  <a href={`mailto:${r.email}?subject=${encodeURIComponent("Your photos from The Nauti Yachti")}&body=${encodeURIComponent(draftFor(r))}`}
+                    style={{ flex: "1 1 auto", textAlign: "center", border: "1px solid var(--purple)", color: "var(--purple)", borderRadius: 6, padding: "7px 10px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                    Email them
+                  </a>
+                )}
+              </div>
+
+              <button type="button" onClick={() => onMarkSent(r.id, true)}
+                style={{ width: "100%", marginTop: 6, background: "transparent", color: w.color, border: `1px solid ${w.color}`, borderRadius: 6, padding: "7px 10px", fontSize: 12, fontWeight: 700 }}>
+                Mark photos sent
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {sent.length > 0 && (
+        <div style={{ marginTop: 22 }}>
+          <button type="button" onClick={() => setShowSent(!showSent)}
+            style={{ background: "transparent", color: "var(--text)", border: "1px solid rgba(203,108,230,0.35)", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>
+            {showSent ? "▾" : "▸"} Already sent ({sent.length})
+          </button>
+          {showSent && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, marginTop: 12 }}>
+              {sent.map((r) => (
+                <div key={r.id} style={{ background: "var(--card)", borderRadius: 8, padding: 12, color: "var(--text)", opacity: 0.85 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{r.name}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8 }}>
+                    Sent {new Date(r.sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {/* Reversible: marking the wrong row sent would otherwise
+                        bury a guest who is still waiting, with no way back. */}
+                    <button type="button" onClick={() => onMarkSent(r.id, false)}
+                      style={{ flex: 1, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, fontWeight: 600 }}>
+                      Not sent after all
+                    </button>
+                    <button type="button"
+                      onClick={() => { if (window.confirm(`Delete ${r.name}'s photo request permanently?`)) onDelete(r.id); }}
+                      style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, fontWeight: 600 }}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

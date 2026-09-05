@@ -36,6 +36,8 @@ export default function AdminPage() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [mediaDrafts, setMediaDrafts] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
+  // Guests who scanned the QR code on the boat and asked for their photos.
+  const [photoRequests, setPhotoRequests] = useState([]);
   const [priceHistory, setPriceHistory] = useState([]);
   // Lived only on the voice dashboard until now. The console has grown into the
   // real interface, so these move here and that dashboard stops being a second place to
@@ -56,7 +58,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph, td, aa, gc] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph, td, aa, gc, pr] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -77,10 +79,12 @@ export default function AdminPage() {
       api("/api/jarvis-todos"),
       api("/api/admin/agent-activity"),
       api("/api/gift-certificates"),
+      api("/api/photo-requests"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
     setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts); setPriceHistory(ph); setTodos(td); setAgentActivity(aa);
     setGiftCertificates(gc.certificates || []); setGiftLiability(gc.liability || 0); setGiftsLoading(false);
+    setPhotoRequests(Array.isArray(pr) ? pr : []);
     setLoading(false);
   }, []);
 
@@ -312,6 +316,17 @@ export default function AdminPage() {
     await api(`/api/testimonials/${id}`, { method: "DELETE" });
     setTestimonials((prev) => prev.filter((t) => t.id !== id));
   }
+  // `sent` is a boolean, not a status string: this only ever records whether a
+  // person has actually sent that guest their photographs, and it has to be
+  // reversible so a mis-tick doesn't bury somebody still waiting.
+  async function markPhotoRequestSent(id, sent) {
+    const updated = await api(`/api/photo-requests/${id}`, { method: "PATCH", body: JSON.stringify({ sent }) });
+    setPhotoRequests((prev) => prev.map((r) => (r.id === id ? updated : r)));
+  }
+  async function deletePhotoRequest(id) {
+    await api(`/api/photo-requests/${id}`, { method: "DELETE" });
+    setPhotoRequests((prev) => prev.filter((r) => r.id !== id));
+  }
 
   const totals = useMemo(() => {
     const income = ledger.filter((l) => l.type === "income").reduce((s, l) => s + Number(l.amount || 0), 0);
@@ -412,6 +427,9 @@ export default function AdminPage() {
       onDeleteMediaDraft={deleteMediaDraft}
       onUpdateTestimonialStatus={updateTestimonialStatus}
       onDeleteTestimonial={deleteTestimonial}
+      photoRequests={photoRequests}
+      onMarkPhotoRequestSent={markPhotoRequestSent}
+      onDeletePhotoRequest={deletePhotoRequest}
       onLogout={handleLogout}
     />
   );

@@ -27,6 +27,16 @@ const HERO_PARAGRAPHS = [
   "Book a boat rental and prepare for a day of sun, smiles, and perhaps a touch of something special, let our captains show you the ropes for any of your special occasions such as Tubing/Wakeboarding adventures, Birthday parties, Bachelor/Bachelorette parties, Night cruises, an Epic Party Cove experience, or the unique once a year Boatz & Glowz party.",
 ];
 
+// Gallery sections whose category is not a package id.
+//
+// "fleet" holds the photographs whose subject is a boat rather than an
+// occasion -- the cabin, the dock shots. They had been filed under Corporate
+// Outing and Birthday to pad those sections out, which is why three boats at a
+// dock were sitting under a heading about team outings.
+const GALLERY_CATEGORY_LABELS = {
+  fleet: "The Boats",
+};
+
 function WakeLine({ flip }) {
   return (
     <svg
@@ -269,7 +279,10 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       {/* PACKAGES */}
       <div id="packages" style={{ background: "var(--ink)", padding: "50px 24px" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Packages & pricing</h2>
+          {/* "Pick your package" rather than "Packages & pricing", to sit in
+              sequence with "Pick your vessel" above it. The two sections are a
+              two-step choice and now read as one. */}
+          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Pick your package</h2>
           <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 22 }}>
             Quote a charter right here, or open a package for the full price table and what's included.{" "}
             <Link href="/packages" style={{ color: "var(--purple)" }}>Browse all packages</Link>
@@ -298,9 +311,43 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
           <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>
             Availability — {vessels.find((v) => v.id === selectedVessel)?.name}
           </h2>
-          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 10 }}>
+          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 14 }}>
             This updates live from the owner console.
           </p>
+
+          {/* Switch vessels without scrolling back up.
+              Until now this calendar could only be changed from "Pick your
+              vessel" near the top of the page, so anybody comparing dates
+              across boats -- which is the whole reason to look at a calendar --
+              had to scroll up, click, and scroll back down for each one.
+
+              It writes to the same selectedVessel state, so the cards above and
+              the quote form below stay in step with what is on screen here. */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 18 }}>
+            {vessels.map((v) => {
+              const active = v.id === selectedVessel;
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => setSelectedVessel(v.id)}
+                  aria-pressed={active}
+                  style={{
+                    background: active ? "rgba(203,108,230,0.22)" : "transparent",
+                    color: "var(--text)",
+                    opacity: active ? 1 : 0.72,
+                    border: active ? "1px solid var(--purple)" : "1px solid rgba(203,108,230,0.3)",
+                    borderRadius: 999,
+                    padding: "8px 16px",
+                    fontSize: 13.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  {v.name}
+                </button>
+              );
+            })}
+          </div>
+
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
             <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "var(--purple)", verticalAlign: "middle", marginRight: 5 }} />Open</span>
             <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "repeating-linear-gradient(45deg, #E8934A, #E8934A 3px, #C97633 3px, #C97633 6px)", verticalAlign: "middle", marginRight: 5 }} />Partially booked</span>
@@ -396,7 +443,14 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
             ];
             return orderedCategories.map((category) => {
               const items = byCategory[category];
-              const pkgName = packages.find((p) => p.id === category)?.name || category;
+              // Most categories are package ids and borrow the package's name.
+              // A category that is not a package would otherwise print its raw
+              // slug next to headings like "Bachelor / Bachelorette", so the
+              // few that exist get a written-out name here.
+              const pkgName =
+                packages.find((p) => p.id === category)?.name ||
+                GALLERY_CATEGORY_LABELS[category] ||
+                category;
               return (
                 <div key={category} style={{ marginBottom: 26 }}>
                   <div className="mono" style={{ color: "var(--purple)", fontSize: 12.5, letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase" }}>

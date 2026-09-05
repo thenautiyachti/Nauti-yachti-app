@@ -115,12 +115,12 @@ model Inquiry {
   // lib/bookingId.js for the generator.
   bookingId String? @unique
 
-  addOnIds String? // JSON string: string[] of AddOn ids selected at booking
+  addOnIds          String? // JSON string: string[] of AddOn ids selected at booking
   reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
   // Never ask this person for a review. ExternalBooking has carried this for a
   // while; contacts needed it too, because "do not ask" is a decision about a
   // person, not about which table they happen to live in.
-  marketingOptOut Boolean @default(false)
+  marketingOptOut   Boolean   @default(false)
 
   // When the guest ticked the terms box at checkout. A tick that is not
   // recorded proves nothing: if the release is ever tested, what matters is
@@ -130,18 +130,18 @@ model Inquiry {
 }
 
 model Coupon {
-  id                    String   @id @default(cuid())
-  code                  String   @unique // stored uppercase, e.g. "FAMILY20"
-  discountType          String // "percent" | "fixed"
-  discountValue         Float // 20 means 20% for percent, or $20 for fixed
-  active                Boolean  @default(true)
-  maxUses               Int?
-  usedCount             Int      @default(0)
-  expiresAt             String? // "YYYY-MM-DD"
-  note                  String?
-  requiresReturningGuest Boolean @default(false) // if true, checkCoupon() only accepts this code for an email with a prior paid Inquiry
-  archived              Boolean  @default(false) // soft-delete — removed from the main admin list into an Archived section, restorable
-  createdAt             DateTime @default(now())
+  id                     String   @id @default(cuid())
+  code                   String   @unique // stored uppercase, e.g. "FAMILY20"
+  discountType           String // "percent" | "fixed"
+  discountValue          Float // 20 means 20% for percent, or $20 for fixed
+  active                 Boolean  @default(true)
+  maxUses                Int?
+  usedCount              Int      @default(0)
+  expiresAt              String? // "YYYY-MM-DD"
+  note                   String?
+  requiresReturningGuest Boolean  @default(false) // if true, checkCoupon() only accepts this code for an email with a prior paid Inquiry
+  archived               Boolean  @default(false) // soft-delete — removed from the main admin list into an Archived section, restorable
+  createdAt              DateTime @default(now())
 }
 
 model Subscription {
@@ -174,12 +174,12 @@ model ExternalBooking {
 
   pricePaid Float? // what the guest actually paid, if the owner has logged it
 
-  phone           String?  // guest phone, when known
-  platformRef     String?  // the platform's own reservation number (Boatsetter/GetMyBoat) - shared key with LedgerEntry
-  referralSource  String?  // how the booking was won: "repeat guest", "word of mouth", "website", "walk-up" - distinct from `platform`, which is who processed it
+  phone             String? // guest phone, when known
+  platformRef       String? // the platform's own reservation number (Boatsetter/GetMyBoat) - shared key with LedgerEntry
+  referralSource    String? // how the booking was won: "repeat guest", "word of mouth", "website", "walk-up" - distinct from `platform`, which is who processed it
   reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
-  marketingOptOut Boolean  @default(false)
-  ledgerEntries   LedgerEntry[]
+  marketingOptOut   Boolean       @default(false)
+  ledgerEntries     LedgerEntry[]
 
   // Format "NY-YYYYMMDD-NN" — assigned at creation time going forward, and
   // backfilled once (2026-08-29) for historical rows so every booking has one.
@@ -198,19 +198,19 @@ model AddOn {
 }
 
 model LedgerEntry {
-  id          String   @id @default(cuid())
-  type        String // "income" | "expense"
-  category    String? // e.g. "01. Gas" (expense) or "Reservation" (income)
-  subcategory String? // vessel/package name for income rows, e.g. "The Nauti Explorer" — null for expenses
-  amount      Float
-  grossAmount Float? // income rows only: the platform's gross/list price before its commission — amount is what was actually paid out. Nullable/optional; not used for expenses.
-  note        String?
-  origin      String? // reservation origin (Boatsetter, GetmyBoat, ...) or statement source (Cash, Wells Fargo Statement, ...)
-  bookingId   String? // links an expense back to the reservation it was for
+  id                String           @id @default(cuid())
+  type              String // "income" | "expense"
+  category          String? // e.g. "01. Gas" (expense) or "Reservation" (income)
+  subcategory       String? // vessel/package name for income rows, e.g. "The Nauti Explorer" — null for expenses
+  amount            Float
+  grossAmount       Float? // income rows only: the platform's gross/list price before its commission — amount is what was actually paid out. Nullable/optional; not used for expenses.
+  note              String?
+  origin            String? // reservation origin (Boatsetter, GetmyBoat, ...) or statement source (Cash, Wells Fargo Statement, ...)
+  bookingId         String? // links an expense back to the reservation it was for
   externalBookingId String? // real FK to ExternalBooking.id - the reliable join the bookingId string never provided
   externalBooking   ExternalBooking? @relation(fields: [externalBookingId], references: [id], onDelete: SetNull)
-  date        String
-  createdAt   DateTime @default(now())
+  date              String
+  createdAt         DateTime         @default(now())
 }
 
 model MaintenanceItem {
@@ -344,13 +344,13 @@ model GiftCertificate {
 // merely asserted — the difference between "it says $50" and "here is where
 // the other $450 went".
 model GiftCertificateRedemption {
-  id            String   @id @default(cuid())
+  id            String          @id @default(cuid())
   certificateId String
   certificate   GiftCertificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
   amount        Float
   bookingId     String? // the booking it was applied to, when known
   note          String?
-  redeemedAt    DateTime @default(now())
+  redeemedAt    DateTime        @default(now())
 }
 
 // A scheduled social post, one row per post AND platform.
@@ -376,4 +376,36 @@ model CampaignPost {
   createdAt     DateTime  @default(now())
 
   @@index([campaign, scheduledDate])
+}
+
+// A guest asking for their photographs, from the QR code on the boat.
+//
+// WHY THIS EXISTS. 17 of 39 completed charters have no phone and no email on
+// file, so they can never be asked for a review, invited back, or sent anything.
+// Every attempt to fix that downstream failed for the same reason: you cannot
+// contact somebody to ask for their contact details.
+//
+// So the ask moves to the boat. A guest who has just spent four hours being
+// filmed has a real reason to scan a code, and the contact detail arrives as a
+// by-product rather than as a request.
+//
+// The review link sits on the same page and is NEVER conditional on this. Google
+// and Facebook both prohibit incentivised reviews, and Google's 2026 policy
+// carries civil penalties per violation. Photographs are delivered to everyone
+// who asks, whatever they do or do not write.
+model PhotoRequest {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  // The day they sailed. Prefilled from the QR link where possible, because a
+  // guest should not have to remember a date they are standing in.
+  charterDate String? // "YYYY-MM-DD"
+  note        String? // anything they typed
+  createdAt   DateTime @default(now())
+
+  // Set when the photographs have actually been sent. Deliberately nullable and
+  // deliberately not defaulted: an unfulfilled promise should be visible.
+  sentAt   DateTime?
+  sentNote String? // how, and what was sent
 }
