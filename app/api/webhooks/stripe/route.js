@@ -211,8 +211,30 @@ async function POST(req) {
         // webhook that does not return 200, and a mail outage must never cause
         // the same payment to be processed twice. The booking is already saved;
         // the email is a courtesy on top of a completed transaction.
+        // Not awaited — a mail outage must never make Stripe retry a payment
+        // webhook — but the RESULT is no longer thrown away. `.catch(() => {})`
+        // does not even catch a returned { sent: false }: the function reported
+        // exactly why it could not send and nobody read it, which is how the
+        // first real payment produced a paid booking and silence at both the
+        // guest's address and the owner's.
+        //
+        // Stamping confirmationSentAt only on a real send turns "did the guest
+        // hear from us" into a fact that can be queried, which is what
+        // scripts/check-output.js asks every morning.
         if (paidInquiry) {
-          sendBookingConfirmationEmail(paidInquiry).catch(() => {});
+          sendBookingConfirmationEmail(paidInquiry)
+            .then(async (r) => {
+              if (r && r.sent) {
+                await prisma.inquiry.update({
+                  where: { id: paidInquiry.id },
+                  data: { confirmationSentAt: new Date() },
+                }).catch(() => {});
+              } else {
+                console.error("[webhooks/stripe] confirmation NOT sent for " +
+                  (paidInquiry.bookingId || paidInquiry.id) + ": " + (r && r.reason));
+              }
+            })
+            .catch((e) => console.error("[webhooks/stripe] confirmation threw:", e.message));
         }
 
       // If a gift certificate part-paid this booking, draw it down now —

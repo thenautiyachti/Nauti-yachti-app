@@ -117,6 +117,21 @@ model Inquiry {
 
   addOnIds          String? // JSON string: string[] of AddOn ids selected at booking
   reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
+
+  // When the guest's booking confirmation actually went out. Null means it did
+  // NOT, which is a different thing from "we think it probably did".
+  //
+  // This column exists because of a specific failure. sendBookingConfirmationEmail
+  // returns { sent: false, reason } when it cannot send — and every caller threw
+  // that away with `.catch(() => {})`, which does not even catch a returned
+  // value. So on 5 Sep 2026 the first real card payment produced a paid booking,
+  // a created charter, and silence: no mail to the guest, none to the owner who
+  // is CC'd on the same send. The code knew exactly why and told nobody.
+  //
+  // A returned failure is only as good as its reader. Written down, the
+  // invariant becomes checkable in one query — paid, and no confirmation — which
+  // is what scripts/check-output.js asks every morning.
+  confirmationSentAt DateTime?
   // Never ask this person for a review. ExternalBooking has carried this for a
   // while; contacts needed it too, because "do not ask" is a decision about a
   // person, not about which table they happen to live in.

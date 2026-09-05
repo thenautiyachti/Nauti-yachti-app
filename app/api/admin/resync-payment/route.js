@@ -90,6 +90,13 @@ async function POST(req) {
   let emailResult = { sent: false, reason: "not-requested" };
   if (body.sendEmail && updated.paymentStatus === "paid") {
     emailResult = await sendBookingConfirmationEmail(updated);
+    // Same rule as the webhook: a send is only real once it is written down.
+    if (emailResult && emailResult.sent) {
+      updated = await prisma.inquiry.update({
+        where: { id: updated.id },
+        data: { confirmationSentAt: new Date() },
+      });
+    }
   }
 
   return NextResponse.json({
