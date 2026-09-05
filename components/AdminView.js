@@ -9,6 +9,7 @@ import {
 } from "../lib/reviews";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
+import { version as APP_VERSION } from "../package.json";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
 import {
   LABELS as BOOKING_LABELS,
@@ -68,8 +69,6 @@ export default function AdminView({
   // agent's card already shows what she filed.
   // The most recent thing Pearl said, as a row rather than a string: the text
   // to show, and the audio to play if it is clicked.
-  const [lastSpoken, setLastSpoken] = useState(null);
-  const [pearlDismissed, setPearlDismissed] = useState(false);
   const [audioNote, setAudioNote] = useState("");
   const audioElRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -106,65 +105,18 @@ export default function AdminView({
   // filed. What was left was a request every two seconds, for the lifetime of
   // an open console, feeding nothing. The rows are still written and the GET
   // endpoint still serves them -- this only stops asking for them.
-  // A light poll. It fetches the newest message so it can be SHOWN, and never
-  // plays anything -- that is the difference from the loop this replaced,
-  // which played every event that arrived and talked over whoever was already
-  // speaking. Ten seconds, not two: this is a message from a person working
-  // alongside him, not a live feed.
-  useEffect(() => {
-    let cancelled = false;
-    let inFlight = false;
-    async function poll() {
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        const res = await fetch('/api/admin/speak');
-        if (!res.ok || cancelled) return;
-        const events = await res.json();
-        if (!Array.isArray(events) || !events.length) return;
-        const newest = events[events.length - 1];
-        setLastSpoken((prev) => {
-          if (prev && prev.id === newest.id) return prev;
-          // A genuinely new message un-dismisses the strip. Dismissing one
-          // should hide that message, not silence the channel.
-          setPearlDismissed(false);
-          return newest;
-        });
-      } catch {
-        // transient; try again on the next tick
-      } finally {
-        inFlight = false;
-      }
-    }
-    poll();
-    const t = setInterval(poll, 10000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, []);
+  // THE TEN-SECOND POLL THAT USED TO LIVE HERE IS GONE, and deliberately not
+  // replaced. It fetched /api/admin/speak every ten seconds for as long as a
+  // console tab was open -- 8,640 serverless invocations a day, per tab, each
+  // querying the database to ask whether anything new had been said.
+  //
+  // It fed a strip in the header showing Pearl's last message. That strip is
+  // also gone: clicking an agent's avatar plays what she said, in her voice, on
+  // demand, which is what the strip was standing in for.
+  //
+  // The speak endpoint and the stored events are untouched. Nothing writes less;
+  // the console simply stopped asking every ten seconds forever.
 
-  // Play a stored message. It borrows the crew machinery deliberately, so
-  // Pearl cannot talk over an agent and an agent cannot talk over her -- there
-  // is one <audio> element and one speaker at a time, whoever it is.
-  function playStored(ev) {
-    if (!ev || !ev.audioB64) return;
-    if (speakingNameRef.current === 'Nauti Pearl') { stopSpeaking(); return; }
-    stopSpeaking();
-    if (!audioEnabled) enableAudio();
-    const el = audioElRef.current;
-    if (!el) return;
-    speakingNameRef.current = 'Nauti Pearl';
-    setSpeakingName('Nauti Pearl');
-    const done = () => {
-      el.removeEventListener('ended', done);
-      el.removeEventListener('error', done);
-      speakingNameRef.current = '';
-      setSpeakingName('');
-    };
-    el.addEventListener('ended', done);
-    el.addEventListener('error', done);
-    el.src = 'data:audio/mpeg;base64,' + ev.audioB64;
-    el.currentTime = 0;
-    el.play().catch(() => done());
-  }
 
   // Read one agent's own standup aloud, in her own voice.
   //
@@ -376,57 +328,20 @@ export default function AdminView({
             successful click. */}
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div className="display" style={{ fontSize: 20, fontWeight: 700, whiteSpace: "nowrap" }}>OWNER CONSOLE</div>
-          {/* What Pearl last said, and a button to hear it.
-
-              She talks from scheduled runs and from a Claude Code session via
-              speak-remote.js. For a while those messages had nowhere to go at
-              all: the old poll displayed them AND played them over whoever was
-              already speaking, so removing the autoplay removed the display
-              with it and the channel went silent without failing.
-
-              Nothing here makes a sound on its own. It shows the words and
-              offers the speaker. */}
-          {lastSpoken && !pearlDismissed && (
-            <span
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0,
-                fontSize: 12, color: "var(--text)",
-                border: "1px solid rgba(79,191,139,0.4)", borderRadius: 8,
-                padding: "4px 8px", maxWidth: 520,
-              }}
-            >
-              <button
-                onClick={() => playStored(lastSpoken)}
-                disabled={!lastSpoken.audioB64}
-                title={
-                  lastSpoken.audioB64
-                    ? (speakingName === "Nauti Pearl" ? "Stop" : "Hear it in Pearl's voice")
-                    : "Stored as text only — there was no voice available when she said it"
-                }
-                style={{
-                  border: "none", background: "transparent", padding: 0, lineHeight: 1,
-                  cursor: lastSpoken.audioB64 ? "pointer" : "default",
-                  color: lastSpoken.audioB64 ? "#7FE0B8" : "var(--muted)",
-                  fontSize: 14, flexShrink: 0,
-                }}
-              >
-                {speakingName === "Nauti Pearl" ? "⏸" : "🔊"}
-              </button>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {lastSpoken.text}
-              </span>
-              <button
-                onClick={() => setPearlDismissed(true)}
-                title="Dismiss. The next thing she says will appear here."
-                style={{
-                  border: "none", background: "transparent", padding: 0, lineHeight: 1,
-                  cursor: "pointer", color: "var(--muted)", fontSize: 13, flexShrink: 0,
-                }}
-              >
-                ×
-              </button>
-            </span>
-          )}
+          {/* Which version is actually serving. Read from package.json, which is
+              the one place the number lives -- check-consistency.js asserts it
+              matches the newest git tag and release folder, because the version
+              had already drifted into three different answers once. */}
+          <span
+            className="mono"
+            title={"Running v" + APP_VERSION + ". Releases are in AI & Website/releases; see VERSIONING.md."}
+            style={{
+              fontSize: 10.5, color: "var(--muted)", border: "1px solid rgba(203,108,230,0.28)",
+              borderRadius: 5, padding: "1px 6px", flexShrink: 0, letterSpacing: "0.02em",
+            }}
+          >
+            v{APP_VERSION}
+          </span>
           {audioNote && (
             <span
               onClick={() => setAudioNote("")}
@@ -3245,6 +3160,8 @@ function draftSortKey(d) {
 // .draft-days grid) survived the removal; only this function had gone.
 function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }) {
   // Past drafts start hidden. They are a record, not a to-do list.
+  // Both collapsed by default. Neither is something you come to this tab for.
+  const [showPosted, setShowPosted] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const todayKey = localDayKey(new Date());
 
@@ -3252,9 +3169,16 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
     .filter((d) => !draftIsPast(d, todayKey))
     .sort((a, b) => draftSortKey(a).localeCompare(draftSortKey(b)));
   // Most recent first, so the thing that just went out is at the top.
+  //
+  // Split in two, because they answer different questions. "Already posted" is
+  // a record of work that went out and is worth glancing at; "denied or past" is
+  // a bin. Together they were one long list where a successful post and a
+  // rejected one looked the same.
   const past = mediaDrafts
     .filter((d) => draftIsPast(d, todayKey))
     .sort((a, b) => draftSortKey(b).localeCompare(draftSortKey(a)));
+  const postedDrafts = past.filter((d) => d.status === "posted");
+  const deniedOrPast = past.filter((d) => d.status !== "posted");
 
   const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
   const cardProps = { onUpdateStatus, onDelete, onAttachMedia };
@@ -3289,15 +3213,29 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
 
       {/* The toggle sits above the grid, not below it. Underneath, it was past
           the end of a long scroll of cards and easy to miss entirely. */}
-      {past.length > 0 && (
+      {postedDrafts.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <button type="button" onClick={() => setShowPosted((v) => !v)}
+            style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(127,224,184,0.35)", borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600 }}>
+            {showPosted ? "▾" : "▸"} Already posted ({postedDrafts.length})
+          </button>
+          {showPosted && (
+            <div style={{ ...GRID, marginTop: 12, marginBottom: 6 }}>
+              {postedDrafts.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {deniedOrPast.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <button type="button" onClick={() => setShowPast((v) => !v)}
             style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600 }}>
-            {showPast ? "▾" : "▸"} Already posted, denied or past ({past.length})
+            {showPast ? "▾" : "▸"} Denied or past ({deniedOrPast.length})
           </button>
           {showPast && (
             <div style={{ ...GRID, marginTop: 12, marginBottom: 6 }}>
-              {past.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
+              {deniedOrPast.map((d) => <MediaDraftCard key={d.id} d={d} {...cardProps} />)}
             </div>
           )}
         </div>
@@ -3600,7 +3538,22 @@ function crewRows(agentActivity = []) {
     // "Working" is how Pearl looked healthy for three days while doing nothing.
     const stalled = isStalled(run);
     const state = c.pending ? "unbuilt" : stalled ? "stalled" : run ? run.status : "idle";
-    return { ...c, run, status, stalled, state, stale: isStale(run, c.schedule) };
+    // Does this run say the same thing as the one before it?
+    //
+    // An agent that runs several times a day repeats its task detail, so the
+    // card would show identical words at 8am and again at 11am with nothing to
+    // distinguish them. That is not a reason to hide the message -- it is a
+    // reason to stop a repeat reading as news. Compared against the PREVIOUS
+    // completed run, not against the status she filed, because those are
+    // different things and a status legitimately repeats less often.
+    const previous = (agentActivity || [])
+      .filter((a) => a.agentName === c.name && a.status === "completed" && a.detail)
+      .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt))[1];
+    const repeatedDetail = Boolean(
+      run && previous && run.detail && previous.detail &&
+      run.detail.trim() === previous.detail.trim()
+    );
+    return { ...c, run, status, stalled, state, repeatedDetail, stale: isStale(run, c.schedule) };
   });
 }
 
@@ -3624,13 +3577,25 @@ function crewNextDue(schedule) {
   return { when: null, daily: false };
 }
 
+// When she last ran, precisely.
+//
+// This used to say "today" or "yesterday", which is useless for an agent that
+// runs more than once a day: Pearl's card said "today" from her 8am run and
+// still said "today" after her 11am one, so there was no way to tell whether
+// you were looking at something fresh or something four hours stale.
+//
+// The relative phrase is kept alongside the clock time, because "yesterday" is
+// still the faster thing to read when the answer is not today.
 function crewAgo(d) {
   if (!d) return "never";
-  const day = Math.round((Date.now() - new Date(d)) / 86400000);
-  if (day <= 0) return "today";
-  if (day === 1) return "yesterday";
-  if (day < 14) return day + " days ago";
-  return String(d).slice(0, 10);
+  const when = new Date(d);
+  const day = Math.round((Date.now() - when) / 86400000);
+  const clock = when.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const date = when.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+  if (day <= 0) return "today " + clock;
+  if (day === 1) return "yesterday " + clock;
+  if (day < 7) return date + ", " + clock;
+  return date;
 }
 
 // One agent's card. Sits next to the panel she owns, so `compact` trims the
@@ -3807,7 +3772,12 @@ function CrewCard({ r, compact = false }) {
           color: !r.run && crewNextDue(r.schedule).daily ? "#E8934A" : "var(--muted)",
         }}>
           {r.run
-            ? (r.run.detail || r.run.taskTitle || "no detail recorded")
+            ? (r.repeatedDetail
+                // Same words as her previous run. Printing them again reads as
+                // fresh news; saying so reads as what it is. The timestamp above
+                // still moves, which is the part that actually tells you she ran.
+                ? "Same as her last run — " + (r.run.detail || r.run.taskTitle || "").slice(0, 70)
+                : (r.run.detail || r.run.taskTitle || "no detail recorded"))
             : crewNextDue(r.schedule).daily
               ? "She runs every day and has not reported one. Open Routines and hit Run now."
               : crewNextDue(r.schedule).when
