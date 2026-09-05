@@ -39,11 +39,21 @@ export default function AskPage() {
   // Engine hours. Thirteen maintenance items are configured against hour
   // intervals and not one has ever been judged, because no reading has ever
   // been taken -- which is how a breakdown reached the 4th of July unannounced.
-  const [screen, setScreen] = useState("ask"); // "ask" | "hours"
+  const [screen, setScreen] = useState("ask"); // "ask" | "hours" | "arriving"
   const [vessels, setVessels] = useState([]);
   const [logs, setLogs] = useState([]);
   const [hoursForm, setHoursForm] = useState({ vesselId: "", hours: "", note: "" });
   const [hoursSaved, setHoursSaved] = useState("");
+
+  // Guests arriving today, and the gate code to send them.
+  //
+  // The code is deliberately NOT in the booking confirmation: an email is
+  // forwarded and kept forever, so mailing it would leave every past guest with
+  // working access to a private residence. It is texted on the morning instead
+  // — and the risk with a manual step is forgetting it, which strands a party
+  // of twelve at a gate. So it lives here, one tap from the booking.
+  const [arriving, setArriving] = useState([]);
+  const [dock, setDock] = useState(null);
 
   useEffect(() => {
     api("/api/admin/session").then((r) => setAuthed(r.authenticated)).catch(() => {}).finally(() => setChecking(false));
@@ -77,6 +87,30 @@ export default function AskPage() {
     }
   }, []);
 
+  // Who is coming today or tomorrow, and still needs the gate code.
+  const loadArriving = useCallback(async () => {
+    try {
+      const [bookings, info] = await Promise.all([
+        api("/api/external-bookings"),
+        api("/api/admin/dock-info"),
+      ]);
+      setDock(info);
+      const today = todayKey();
+      const t = new Date();
+      const tomorrow = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1);
+      const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+      // Only charters that are actually happening — a lapsed enquiry must never
+      // be handed a gate code.
+      const list = (bookings || [])
+        .filter((b) => (b.date === today || b.date === tomorrowKey) && b.status === "booked" && b.phone)
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)) ||
+          String(a.startTime || "").localeCompare(String(b.startTime || "")));
+      setArriving(list.map((b) => ({ ...b, when: b.date === today ? "today" : "tomorrow" })));
+    } catch {
+      setArriving([]);
+    }
+  }, []);
+
   const loadHours = useCallback(async () => {
     try {
       const [v, l] = await Promise.all([api("/api/vessels"), api("/api/engine-hours")]);
@@ -86,7 +120,7 @@ export default function AskPage() {
     } catch { /* the ask list still works without this */ }
   }, []);
 
-  useEffect(() => { if (authed) { load(); loadHours(); } }, [authed, load, loadHours]);
+  useEffect(() => { if (authed) { load(); loadHours(); loadArriving(); } }, [authed, load, loadHours, loadArriving]);
 
   // The last reading for a boat, so a new one can be sanity-checked against it.
   function lastFor(vesselId) {
@@ -192,11 +226,12 @@ export default function AskPage() {
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        {[["ask", "Reviews"], ["hours", "Engine hours"]].map(([id, label]) => (
+        {[["arriving", arriving.length ? `Arriving (${arriving.length})` : "Arriving"],
+          ["ask", "Reviews"], ["hours", "Engine hours"]].map(([id, label]) => (
           <button
             key={id} type="button" onClick={() => setScreen(id)}
             style={{
-              flex: 1, padding: "12px 8px", borderRadius: 10, fontSize: 15.5, fontWeight: 700,
+              flex: 1, padding: "12px 6px", borderRadius: 10, fontSize: 14.5, fontWeight: 700,
               border: "1px solid var(--purple, #CB6CE6)",
               background: screen === id ? "var(--purple, #CB6CE6)" : "transparent",
               color: screen === id ? "#0A0612" : "var(--text, #ECE7F5)",
@@ -206,6 +241,78 @@ export default function AskPage() {
           </button>
         ))}
       </div>
+
+      {screen === "arriving" && (
+        <div>
+          <p style={{ color: "var(--muted, #9A8FB4)", fontSize: 13.5, margin: "0 0 14px" }}>
+            Guests coming today or tomorrow. The gate code is deliberately not in their
+            confirmation email — an email gets forwarded and kept, and the code opens a
+            private gate. Send it here on the morning instead.
+          </p>
+
+          {!dock?.gateCode && (
+            <div style={{
+              border: "1px solid #E8934A", borderRadius: 10, padding: "12px 14px",
+              marginBottom: 14, fontSize: 13.5, color: "var(--text, #ECE7F5)", lineHeight: 1.55,
+            }}>
+              <strong style={{ color: "#E8934A" }}>No gate code is configured.</strong> Set
+              <span className="mono"> DOCK_GATE_CODE</span> and
+              <span className="mono"> DOCK_ADDRESS</span> in the Vercel environment and this
+              writes the whole message for you.
+            </div>
+          )}
+
+          {arriving.length === 0 && (
+            <p style={{ color: "var(--muted, #9A8FB4)", fontSize: 14 }}>
+              Nobody booked for today or tomorrow.
+            </p>
+          )}
+
+          {arriving.map((b) => {
+            const first = String(b.guestName || "").trim().split(/\s+/)[0] || "there";
+            const start = b.startTime ? ` at ${b.startTime}` : "";
+            const msg = [
+              `Hi ${first}! Austin from The Nauti Yachti — looking forward to seeing you ${b.when}${start}.`,
+              "",
+              dock?.address ? `We're at ${dock.address}.` : null,
+              dock?.gateCode ? `Gate code is ${dock.gateCode}.` : null,
+              `Parking is on site right by the dock, so you can unload straight onto the boat.`,
+              "",
+              `Try to arrive about ${dock?.arriveMinutesEarly || 15} minutes early so boarding doesn't eat into your hours.`,
+              "",
+              `Any trouble finding us, just call or text.`,
+            ].filter((l) => l !== null).join("\n");
+            const href = smsHref(b.phone, msg);
+            return (
+              <div key={b.id} style={{
+                border: "1px solid rgba(203,108,230,0.3)", borderRadius: 10,
+                padding: "14px 16px", marginBottom: 12,
+              }}>
+                <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text, #ECE7F5)" }}>
+                  {b.guestName || "Guest"}
+                </div>
+                <div style={{ fontSize: 13.5, color: "var(--muted, #9A8FB4)", marginBottom: 10 }}>
+                  {b.when} · {b.vesselName}{b.startTime ? ` · ${b.startTime}` : ""}
+                  {b.hours ? ` · ${b.hours}h` : ""}{b.partySize ? ` · ${b.partySize} guests` : ""}
+                </div>
+                {href ? (
+                  <a href={href} style={{
+                    display: "block", textAlign: "center", background: "var(--purple, #CB6CE6)",
+                    color: "#0A0612", borderRadius: 8, padding: "13px", fontSize: 15.5,
+                    fontWeight: 700, textDecoration: "none",
+                  }}>
+                    Text {first} the gate code
+                  </a>
+                ) : (
+                  <div style={{ fontSize: 13, color: "var(--muted, #9A8FB4)" }}>
+                    No usable phone number on this booking.
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {screen === "hours" && (
         <div>
