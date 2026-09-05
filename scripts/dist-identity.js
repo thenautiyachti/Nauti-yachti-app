@@ -76,6 +76,40 @@ const RELATIVE_MAP = [
   ["Jarvis-Voice-UI", "scripts"],
 ];
 
+// The named things: places on the water, and boats.
+//
+// The wizard was ASKING for these and doing nothing with them, which is worse
+// than not asking -- somebody fills in their own coves, runs setup, and the
+// package still talks about Party Cove and The Island in eighteen files. Mapped
+// positionally: the first place the original business named becomes the first
+// place you named.
+//
+// "Nauti Yachti" is deliberately absent from the vessel list even though it was
+// a boat. It is also the business name, and the business-name rule has already
+// claimed it -- a boat and a brand cannot both win the same string.
+const LIST_SOURCES = {
+  locations: ["Party Cove", "The Island", "The Dam"],
+  vessels: ["Nauti Explorer", "Nauti Islander"],
+};
+
+function rewriteLists(text, config) {
+  let out = String(text);
+  let changes = 0;
+  for (const [key, originals] of Object.entries(LIST_SOURCES)) {
+    const replacements = config[key];
+    if (!Array.isArray(replacements) || !replacements.length) continue;
+    originals.forEach((original, i) => {
+      // Fewer answers than the original had? Everything past the end folds onto
+      // the last one supplied, rather than being left as somebody else's cove.
+      const to = replacements[i] || replacements[replacements.length - 1];
+      const before = out;
+      out = out.replace(new RegExp(esc(original), "g"), to);
+      if (out !== before) changes++;
+    });
+  }
+  return { text: out, changes };
+}
+
 // Escape a string for use inside a regular expression.
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -110,10 +144,15 @@ function rewritePaths(text, installRoot) {
   return { text: out, changes };
 }
 
-// Named things that are lists rather than single values. These are not
-// find-and-replaced -- a new fleet has different boats with different names, and
-// pretending otherwise produces a site advertising vessels nobody owns. The
-// wizard collects them and writes seed data instead.
+// Named things that are lists rather than single values.
+//
+// The names ARE find-and-replaced, positionally, by rewriteLists above -- your
+// first cove for their first cove. That is enough to clear the previous
+// business out of the prose and the media vocabulary.
+//
+// It is NOT enough to build your fleet. The real boats, with their capacities
+// and prices, are yours to write in prisma/seed.js, and the wizard says so
+// rather than pretending a rename is a business.
 const LISTS = [
   { key: "vessels", q: "Your boats, one per line", example: ["Nauti Explorer", "Nauti Islander"] },
   { key: "locations", q: "Spots you actually go, one per line", example: ["Party Cove", "The Island", "The Dam"] },
@@ -172,6 +211,14 @@ function applyIdentity(text, config) {
     }
   }
 
+  // Places and boats after the named fields, before the crew placeholders are
+  // restored, so a boat name can never be half-eaten by the business name.
+  {
+    const l = rewriteLists(out, config);
+    out = l.text;
+    changes += l.changes;
+  }
+
   for (const [token, value] of Object.entries(holds)) out = out.split(token).join(value);
 
   return { text: out, changes };
@@ -200,4 +247,4 @@ function missingFrom(config) {
   return missing;
 }
 
-module.exports = { FIELDS, LISTS, CREW_NAMES, PATH_MAP, applyIdentity, rewritePaths, templateConfig, missingFrom };
+module.exports = { FIELDS, LISTS, CREW_NAMES, PATH_MAP, LIST_SOURCES, rewriteLists, applyIdentity, rewritePaths, templateConfig, missingFrom };

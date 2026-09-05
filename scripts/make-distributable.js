@@ -50,6 +50,9 @@ const OUT = outFlag !== -1 ? process.argv[outFlag + 1] : path.join(ROOT, "distri
 const EXCLUDE_DIRS = new Set([
   "node_modules", ".next", ".git", "out",
   "db-backups",        // 967 rows of real guests, bookings and money
+  "_retired",          // agents this business stopped running. Their briefs are
+                       // history, not instructions, and shipping them hands a
+                       // friend a crew roster with dead members in it.
   "releases",          // snapshots of this business
   "public/gallery",    // this fleet's photographs
 ]);
@@ -73,6 +76,12 @@ const EXCLUDE_FILES = new Set([
 // The lesson is the extension, not the three files: anything that is data, a
 // backup, or a rendered copy of excluded content does not travel.
 const EXCLUDE_EXT = /\.(db|db-journal|sqlite3?|bak|orig|log|zip|pdf)$/i;
+
+// Working files the crew leaves behind between runs. One of these --
+// ".standup-tmp-coral.txt", a status somebody was halfway through writing --
+// made it into a finished package and was only noticed by grepping the output
+// for a place name. Dot-prefixed scratch is not source.
+const EXCLUDE_TEMP = /^\.|^~|\.tmp$/i;
 
 // Content files that SHOULD exist in the package but must ship as templates
 // rather than as this fleet's actual words.
@@ -134,8 +143,16 @@ function copyTree(from, to, rel) {
       copyTree(path.join(from, e.name), path.join(to, e.name), r);
       continue;
     }
-    if (EXCLUDE_FILES.has(e.name) || EXCLUDE_EXT.test(e.name)) continue;
-    const src = path.join(from, e.name);
+    if (EXCLUDE_FILES.has(e.name) || EXCLUDE_EXT.test(e.name) || EXCLUDE_TEMP.test(e.name)) continue;
+    // Content files ship as TEMPLATES: the structure, one worked example, and
+    // blanks. Copying the real ones would hand a friend this fleet's package
+    // descriptions and FAQ answers to overwrite, which is worse than a blank --
+    // it looks finished, so it gets left.
+    const tpl = TEMPLATE_INSTEAD.has(r) ? path.join(__dirname, "dist-template", e.name) : null;
+    const src = tpl && fs.existsSync(tpl) ? tpl : path.join(from, e.name);
+    if (tpl && !fs.existsSync(tpl)) {
+      console.log("  WARNING: no template for " + r + " -- shipping the real file");
+    }
     const bad = offending(src);
     if (bad) { refused.push(r + "  (" + bad + ")"); continue; }
     fs.mkdirSync(to, { recursive: true });
