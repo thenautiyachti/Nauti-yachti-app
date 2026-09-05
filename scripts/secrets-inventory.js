@@ -31,7 +31,7 @@ const WHERE = {
   OWNER_EMAIL: ["Not a secret", "Where the console sends the owner's own mail."],
   SITE_URL: ["Not a secret", "https://www.thenautiyachti.com"],
   DOCK_ADDRESS: ["Ask the owner", "The dock's street address, sent in the booking confirmation. Kept out of the repo because the dock is a private residence."],
-  DOCK_GATE_CODE: ["Ask the owner", "SENSITIVE, and DELIBERATELY LEFT UNSET. Setting it puts the gate code in every confirmation email, where it is forwarded and kept forever — every past guest would keep working access to a private residence. The code is texted on the morning instead. Never commit it either way: git history keeps it permanently and rotating the code would not remove it."],
+  DOCK_GATE_CODE: ["Ask the owner", "SENSITIVE. Read ONLY by the admin-only Arriving tab, which writes the day-of text. lib/email.js cannot see it, so setting this never mails the code to a guest. Never commit it: git history keeps it permanently and rotating the code would not remove it."],
   CONTACT_PHONE: ["Not a secret", "(832) 948-2912 — shown in guest emails."],
   ARRIVE_MINUTES_EARLY: ["Not a secret", "Optional. How early guests are asked to arrive; defaults to 15."],
   ELEVENLABS_API_KEY: ["elevenlabs.io -> Profile -> API key", "TTS only. A 401 from it means QUOTA, not a bad key."],
