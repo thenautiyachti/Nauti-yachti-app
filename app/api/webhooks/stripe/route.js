@@ -119,6 +119,28 @@ async function POST(req) {
       const stripePhone = session.customer_details?.phone;
       if (stripePhone) data.phone = stripePhone;
 
+      // KEEP THE EMAIL TOO. This was missing, and it cost the first real
+      // booking its confirmation: Oscar paid on 5 Sep 2026 through a link for a
+      // booking taken over WhatsApp, which had no email on file. Stripe
+      // collected one at checkout, we discarded it, and
+      // sendBookingConfirmationEmail then returned "no-guest-email" — so
+      // neither the guest nor the owner (who is CC'd on that same send) heard
+      // anything. The payment was fine; the paperwork was silent.
+      //
+      // Every booking agreed off the website arrives with no address, so this
+      // is the normal case for the direct channel rather than an edge one.
+      const stripeEmail = session.customer_details?.email;
+      if (stripeEmail) data.email = stripeEmail;
+
+      // Record that the terms were accepted, and when. The checkout demands
+      // consent (`consent_collection.terms_of_service`), so Stripe knows — but
+      // if the Release and Waiver is ever tested, what matters is being able to
+      // show WHO accepted and WHEN from our own records, which is exactly what
+      // the termsAcceptedAt column exists for. It was never being written.
+      if (session.consent?.terms_of_service === "accepted") {
+        data.termsAcceptedAt = new Date();
+      }
+
       let paidInquiry = null;
       if (inquiryId) {
         paidInquiry = await prisma.inquiry.update({ where: { id: inquiryId }, data });
