@@ -242,6 +242,35 @@ try {
   }
 }
 
+// --- 12. the recovery document must name the newest release -----------------
+//
+// DISASTER RECOVERY.md tells somebody which release folder to restore from. It
+// was written naming v1.1 and was still naming v1.1 two releases later, which is
+// the single worst place in this system for a stale fact: it is read exactly
+// once, by someone having a bad day, who will follow it literally.
+{
+  const relDir = path.join(APP, "..", "releases");
+  const doc = read(path.join(APP, "..", "DISASTER RECOVERY.md"));
+  if (doc) {
+    let versions = [];
+    try {
+      versions = fs.readdirSync(relDir)
+        .filter((d) => /^v\d+\.\d+$/.test(d))
+        .sort((a, b) => {
+          const [aM, aN] = a.slice(1).split(".").map(Number);
+          const [bM, bN] = b.slice(1).split(".").map(Number);
+          return aM - bM || aN - bN;
+        });
+    } catch { /* no releases yet */ }
+    const latest = versions[versions.length - 1];
+    if (latest && !doc.includes(latest)) {
+      fail("DISASTER RECOVERY.md",
+        "names no release folder that exists any more. The newest is " + latest +
+        ",\n        and somebody restoring from this document would go looking for the wrong one.");
+    }
+  }
+}
+
 // --- report -----------------------------------------------------------------
 if (!problems.length) {
   console.log(`  consistent — ${liveTasks.length} tasks, manual, protocol and roster all agree.`);
