@@ -5,6 +5,7 @@ import Link from "next/link";
 import { currency, tierPrice, dayTypeForDate, imageFocus } from "../lib/pricing";
 import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
+import { addOnTotal, includedIds, isIncluded } from "../lib/addOns";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -931,6 +932,17 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     if (pkg?.pricingType === "per-guest") priceQuoted = Number(form.partySize || 0) * pkg.pricePerGuest;
     if (pkg?.pricingType === "tiered-by-guests") priceQuoted = tierPrice(pkg.tiers, Number(form.partySize || 1));
 
+    // Add-ons were being collected and never charged. The ids were stored on
+    // the booking, the dropdown offered them with prices beside them, and
+    // nothing anywhere added them to the total — client or server. Every
+    // decoration package sold since this form went up was free.
+    //
+    // Anything included with the chosen package is excluded here rather than
+    // added at zero; see lib/addOns.js.
+    if (priceQuoted != null) {
+      priceQuoted = Math.round((priceQuoted + addOnTotal(addOns, form.packageId, form.addOnIds)) * 100) / 100;
+    }
+
     setSubmitting(true);
     const ok = await handler({ ...form, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted, termsAccepted: form.agreeTerms });
     // On a successful checkout redirect the browser navigates away entirely,
@@ -1033,6 +1045,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
             addOns={addOns}
             selectedIds={form.addOnIds}
             onChange={(ids) => setForm({ ...form, addOnIds: ids })}
+            packageId={form.packageId}
           />
         )}
 
@@ -1073,7 +1086,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
 // A collapsed dropdown (like the Duration select) that expands into a
 // checkbox list so more than one add-on can be picked, then closes back
 // down — not a native <select multiple>, which stays open as a scroll box.
-function AddOnsDropdown({ addOns, selectedIds, onChange }) {
+function AddOnsDropdown({ addOns, selectedIds, onChange, packageId }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -1089,12 +1102,23 @@ function AddOnsDropdown({ addOns, selectedIds, onChange }) {
     onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
   }
 
+  // Anything included with this package is shown as selected and ticked, and
+  // cannot be unticked — it comes with the charter whether or not the guest
+  // opts in, so an empty checkbox beside it would be a lie.
+  const included = includedIds(packageId);
+  const extras = selectedIds.filter((id) => !included.includes(id));
+
   const summary =
-    selectedIds.length === 0
+    included.length === 0 && extras.length === 0
       ? "None selected"
-      : selectedIds.length === 1
-      ? addOns.find((a) => a.id === selectedIds[0])?.name || "1 selected"
-      : `${selectedIds.length} selected`;
+      : [
+          included.length ? `${included.length} included` : null,
+          extras.length === 1
+            ? addOns.find((a) => a.id === extras[0])?.name
+            : extras.length
+            ? `${extras.length} added`
+            : null,
+        ].filter(Boolean).join(" · ");
 
   return (
     <div ref={rootRef} style={{ position: "relative" }}>
@@ -1119,12 +1143,33 @@ function AddOnsDropdown({ addOns, selectedIds, onChange }) {
             boxShadow: "0 8px 24px rgba(0,0,0,0.45)", padding: 6,
           }}
         >
-          {addOns.map((a) => (
-            <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 5, cursor: "pointer", fontSize: 13.5, color: "var(--text)" }}>
-              <input type="checkbox" checked={selectedIds.includes(a.id)} onChange={() => toggle(a.id)} />
-              <span>{a.name} — {currency(a.price)}{a.unit ? ` ${a.unit}` : ""}</span>
-            </label>
-          ))}
+          {addOns.map((a) => {
+            const free = isIncluded(packageId, a.id);
+            return (
+              <label
+                key={a.id}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 5,
+                  cursor: free ? "default" : "pointer", fontSize: 13.5, color: "var(--text)",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={free || selectedIds.includes(a.id)}
+                  disabled={free}
+                  onChange={() => { if (!free) toggle(a.id); }}
+                />
+                <span>
+                  {a.name} —{" "}
+                  {free ? (
+                    <strong style={{ color: "var(--purple)" }}>included</strong>
+                  ) : (
+                    <>{currency(a.price)}{a.unit ? ` ${a.unit}` : ""}</>
+                  )}
+                </span>
+              </label>
+            );
+          })}
         </div>
       )}
     </div>
