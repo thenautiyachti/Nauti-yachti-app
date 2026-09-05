@@ -5,7 +5,7 @@ import Link from "next/link";
 import { currency, tierPrice, dayTypeForDate, imageFocus } from "../lib/pricing";
 import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
-import { addOnTotal, includedIds, isIncluded } from "../lib/addOns";
+import { addOnTotal, includedIds, isIncluded, isCovered, chargeableIds } from "../lib/addOns";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -1106,7 +1106,10 @@ function AddOnsDropdown({ addOns, selectedIds, onChange, packageId }) {
   // cannot be unticked — it comes with the charter whether or not the guest
   // opts in, so an empty checkbox beside it would be a lie.
   const included = includedIds(packageId);
-  const extras = selectedIds.filter((id) => !included.includes(id));
+  // Only what is actually billed counts as "added" — a balloon package absorbed
+  // by the decoration bundle must not inflate this count, or the summary
+  // implies a charge that is not there.
+  const extras = chargeableIds(packageId, selectedIds);
 
   const summary =
     included.length === 0 && extras.length === 0
@@ -1145,24 +1148,32 @@ function AddOnsDropdown({ addOns, selectedIds, onChange, packageId }) {
         >
           {addOns.map((a) => {
             const free = isIncluded(packageId, a.id);
+            // Already paid for by a bundle the guest has ticked — the Full
+            // Decoration Package is the balloons and the champagne. Shown as
+            // covered rather than hidden, so the value of the bundle is
+            // visible instead of two rows silently disappearing.
+            const bundled = !free && isCovered(selectedIds, a.id);
+            const locked = free || bundled;
             return (
               <label
                 key={a.id}
                 style={{
                   display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 5,
-                  cursor: free ? "default" : "pointer", fontSize: 13.5, color: "var(--text)",
+                  cursor: locked ? "default" : "pointer", fontSize: 13.5, color: "var(--text)",
                 }}
               >
                 <input
                   type="checkbox"
-                  checked={free || selectedIds.includes(a.id)}
-                  disabled={free}
-                  onChange={() => { if (!free) toggle(a.id); }}
+                  checked={locked || selectedIds.includes(a.id)}
+                  disabled={locked}
+                  onChange={() => { if (!locked) toggle(a.id); }}
                 />
                 <span>
                   {a.name} —{" "}
                   {free ? (
                     <strong style={{ color: "var(--purple)" }}>included</strong>
+                  ) : bundled ? (
+                    <strong style={{ color: "var(--purple)" }}>in the decoration package</strong>
                   ) : (
                     <>{currency(a.price)}{a.unit ? ` ${a.unit}` : ""}</>
                   )}
