@@ -276,7 +276,12 @@ export default function AdminView({
       ],
     },
     {
-      id: "bookings", label: "Bookings", tabs: [
+      id: "bookings", label: "Bookings",
+      // Opens on Bookings, not on the first tab in the row. The group is called
+      // Bookings and the confirmed diary is what the owner actually wants when
+      // he clicks it; enquiries are a queue he goes to deliberately.
+      defaultTab: "bookings",
+      tabs: [
         { id: "inquiries", label: `Inquiries (${bookingInquiries.length})`, count: bookingInquiries.length },
         { id: "bookings", label: `Bookings (${bookingInquiries.length + externalBookings.length})` },
         { id: "availability", label: "Availability" },
@@ -292,7 +297,11 @@ export default function AdminView({
       ],
     },
     {
-      id: "marketing", label: "Marketing", tabs: [
+      id: "marketing", label: "Marketing",
+      // Media Drafts is the tab with a queue waiting on a decision; Media is a
+      // library you browse. The one that can hold something up opens first.
+      defaultTab: "mediaDrafts",
+      tabs: [
         { id: "media", label: "Media" },
         { id: "mediaDrafts", label: tabLabel("Media Drafts", needsReviewCount(mediaDrafts)), count: needsReviewCount(mediaDrafts) },
         { id: "testimonials", label: tabLabel("Testimonials", needsReviewCount(testimonials)), count: needsReviewCount(testimonials) },
@@ -376,14 +385,17 @@ export default function AdminView({
         </div>
       </div>
 
-      {/* Group row. Selecting a group jumps to its first tab, so a group is
-          never selected without something being shown. */}
+      {/* Group row. Selecting a group always lands on a tab, so a group is
+          never selected without something being shown.
+          Which tab that is comes from the group's `defaultTab` when it names
+          one, otherwise the first in the row — the order the tabs READ in is a
+          different question from which one is most useful to land on. */}
       <div style={{ display: "flex", gap: 6, padding: "16px 24px 0", flexWrap: "wrap" }}>
         {TAB_GROUPS.map((g) => {
           const isActive = g.id === activeGroup.id;
           const pending = g.tabs.reduce((n, t) => n + (t.count || 0), 0);
           return (
-            <button key={g.id} onClick={() => setTab(g.tabs[0].id)} style={{
+          <button key={g.id} onClick={() => setTab(g.defaultTab || g.tabs[0].id)} style={{
               background: isActive ? "var(--purple)" : "transparent",
               color: isActive ? "#0A0612" : "var(--text)",
               border: "1px solid var(--purple)", borderRadius: 8, padding: "8px 16px",
