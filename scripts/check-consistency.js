@@ -278,6 +278,31 @@ try {
         "        permissions, shared scripts — exists on this disk only until one is cut.");
     }
 
+    // One version, spelled the same way everywhere.
+    //
+    // It was briefly spelled three ways at once: package.json said "1.4.0", the
+    // git tag said "v1.4", and the archive said "v1.4.zip". Nothing broke, which
+    // is the problem — three answers to "what version is this" and no way to
+    // tell which one anything else meant.
+    //
+    // The spec settles the format: X.Y.Z, always three numbers.
+    {
+      const pkgVersion = (function () {
+        try { return JSON.parse(read(path.join(APP, "package.json"))).version; } catch { return null; }
+      })();
+      if (pkgVersion && !/^\d+\.\d+\.\d+$/.test(pkgVersion)) {
+        fail("package.json", 'version "' + pkgVersion + '" is not X.Y.Z. See VERSIONING.md.');
+      }
+      const rel = versions[versions.length - 1];
+      if (rel && !/^v\d+\.\d+\.\d+$/.test(rel)) {
+        fail("releases", 'the release is named "' + rel + '", which is not vX.Y.Z.');
+      }
+      if (pkgVersion && rel && rel !== "v" + pkgVersion) {
+        fail("version", "package.json says " + pkgVersion + " but the release is " + rel +
+          ".\n        One version, one spelling.");
+      }
+    }
+
     const latest = versions[versions.length - 1];
     if (latest && !doc.includes(latest)) {
       fail("DISASTER RECOVERY.md",
