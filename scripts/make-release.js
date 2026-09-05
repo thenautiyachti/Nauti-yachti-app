@@ -190,3 +190,95 @@ if (findings.length) {
 }
 console.log("\n  " + OUT);
 console.log("  Now tag the code:  git tag -a v" + version + " -m \"...\"  &&  git push origin v" + version);
+
+// --- compress, prune, and record --------------------------------------------
+//
+// THE POLICY, from VERSIONING.md: exactly ONE release folder is kept, as a zip,
+// and it is the last version verified working. Everything older goes.
+//
+// Four releases accumulated in a single afternoon before this existed, at 2.4MB
+// and climbing, none of them meaningfully different from the next. The value of
+// a backup is not how many there are -- it is knowing which one was good.
+//
+// The GIT TAGS are untouched and always will be. They cost nothing, they live on
+// GitHub, and they are the real history of the code. This prunes only the
+// release folders, which hold the part git does not version: the crew.
+{
+  const { execFileSync } = require("child_process");
+  const RELEASES = path.dirname(OUT);
+
+  // Compress with PowerShell, which is present on every Windows box. Node has
+  // no zip built in and pulling a dependency in for one call would put this
+  // script at the mercy of an install that a restore might not have.
+  const zip = OUT + ".zip";
+  let compressed = false;
+  try {
+    execFileSync("powershell", [
+      "-NoProfile", "-Command",
+      "Compress-Archive -Path '" + OUT.replace(/'/g, "''") + "\*' -DestinationPath '" +
+        zip.replace(/'/g, "''") + "' -Force",
+    ], { stdio: "pipe" });
+    compressed = fs.existsSync(zip);
+  } catch (e) {
+    console.log("\n  could not compress: " + String(e.message).split("\n")[0]);
+    console.log("  the folder is still there and is still a valid release.");
+  }
+
+  if (compressed) {
+    const before = (function size(d) {
+      let t = 0;
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, e.name);
+        t += e.isDirectory() ? size(p) : fs.statSync(p).size;
+      }
+      return t;
+    })(OUT);
+    const after = fs.statSync(zip).size;
+    console.log("\n  compressed to " + path.basename(zip) +
+      "  (" + Math.round(before / 1024) + "KB -> " + Math.round(after / 1024) + "KB)");
+
+    // The uncompressed copy of THIS release goes too -- the zip is the backup.
+    fs.rmSync(OUT, { recursive: true, force: true });
+  }
+
+  // Everything older than this release.
+  const keep = new Set([path.basename(zip), path.basename(OUT)]);
+  const removed = [];
+  for (const e of fs.readdirSync(RELEASES, { withFileTypes: true })) {
+    if (keep.has(e.name) || e.name === "desktop.ini") continue;
+    if (!/^v\d+\.\d+/.test(e.name)) continue;
+    const p = path.join(RELEASES, e.name);
+    try {
+      fs.rmSync(p, { recursive: true, force: true });
+      removed.push(e.name);
+    } catch (err) {
+      console.log("  could not remove " + e.name + ": " + String(err.message).split("\n")[0]);
+    }
+  }
+  if (removed.length) {
+    console.log("  removed " + removed.length + " older release(s): " + removed.join(", "));
+    console.log("  their git tags are untouched -- the code for each is still on GitHub.");
+  }
+
+  // The changelog entry. A stub, not a fabrication: the notes flag carries what
+  // the owner actually said changed, and the rest is for a person to finish.
+  const CHANGELOG = path.join(RELEASES, "..", "CHANGELOG.md");
+  try {
+    const existing = fs.readFileSync(CHANGELOG, "utf8");
+    if (!existing.includes("## v" + version + " ")) {
+      const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+      const entry = "## v" + version + " — " + today + " — SIZE?\n\n" +
+        "**" + (notes || "TODO: one sentence you would say out loud.") + "**\n\n" +
+        "- TODO: what changed, and what it means if you restore this.\n\n---\n\n";
+      const marker = "\n---\n\n";
+      const at = existing.indexOf(marker);
+      fs.writeFileSync(CHANGELOG,
+        at === -1 ? existing + "\n" + entry
+                  : existing.slice(0, at + marker.length) + entry + existing.slice(at + marker.length));
+      console.log("  CHANGELOG.md: stub written for v" + version + " -- finish it before you move on.");
+      console.log("  Mark it SMALL, MODERATE or LARGE. See VERSIONING.md.");
+    }
+  } catch {
+    console.log("  no CHANGELOG.md found; skipped the entry.");
+  }
+}

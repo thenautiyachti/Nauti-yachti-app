@@ -252,20 +252,36 @@ try {
   const relDir = path.join(APP, "..", "releases");
   const doc = read(path.join(APP, "..", "DISASTER RECOVERY.md"));
   if (doc) {
+    // Releases are kept as ONE compressed archive now, not as folders, so this
+    // must match "v1.4.zip" as well as a bare directory. It briefly did not,
+    // and therefore passed by finding nothing to check -- which is worse than
+    // failing, because it also reports that somebody looked.
     let versions = [];
     try {
       versions = fs.readdirSync(relDir)
-        .filter((d) => /^v\d+\.\d+$/.test(d))
+        .map((d) => (d.match(/^(v\d+\.\d+(?:\.\d+)?)(?:\.zip)?$/) || [])[1])
+        .filter(Boolean)
         .sort((a, b) => {
-          const [aM, aN] = a.slice(1).split(".").map(Number);
-          const [bM, bN] = b.slice(1).split(".").map(Number);
-          return aM - bM || aN - bN;
+          const pa = a.slice(1).split(".").map(Number);
+          const pb = b.slice(1).split(".").map(Number);
+          return (pa[0] - pb[0]) || (pa[1] - pb[1]) || ((pa[2] || 0) - (pb[2] || 0));
         });
-    } catch { /* no releases yet */ }
+    } catch { /* no releases directory at all */ }
+
+    // Exactly one is the policy. More than one means a prune did not happen.
+    if (versions.length > 1) {
+      fail("releases", "there are " + versions.length + " releases (" + versions.join(", ") +
+        ").\n        VERSIONING.md says exactly one is kept. make-release.js prunes on the next cut.");
+    }
+    if (!versions.length) {
+      fail("releases", "there is no release at all. The crew — briefs, protocol, schedules,\n" +
+        "        permissions, shared scripts — exists on this disk only until one is cut.");
+    }
+
     const latest = versions[versions.length - 1];
     if (latest && !doc.includes(latest)) {
       fail("DISASTER RECOVERY.md",
-        "names no release folder that exists any more. The newest is " + latest +
+        "does not name the release that exists. It is " + latest +
         ",\n        and somebody restoring from this document would go looking for the wrong one.");
     }
   }
