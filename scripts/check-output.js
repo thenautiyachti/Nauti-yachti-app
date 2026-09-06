@@ -31,6 +31,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const crypto = require("crypto");
 const { execFileSync } = require("child_process");
 
 const APP = path.join(__dirname, "..");
@@ -109,7 +110,19 @@ async function silentVideos() {
   const tmp = path.join(os.tmpdir(), "nauti-output-check");
   fs.mkdirSync(tmp, { recursive: true });
   for (const d of queued) {
-    const file = path.join(tmp, d.id + ".mp4");
+    // CACHED BY URL, NOT BY DRAFT ID.
+    //
+    // It was keyed on the draft id, which meant the downloaded file never
+    // changed when the draft's media did. Five silent videos were replaced with
+    // fixed ones on 6 Sep 2026 and this check went on reporting all five as
+    // silent, because it kept re-testing the copies it had downloaded first.
+    //
+    // The same bug in the other direction is the dangerous one: swap good media
+    // for bad under an existing draft, and the check would keep insisting the
+    // old good file was what was going out. A check that answers from a stale
+    // cache is worse than no check, because it answers confidently.
+    const key = crypto.createHash("sha1").update(String(d.mediaUrl)).digest("hex").slice(0, 16);
+    const file = path.join(tmp, key + ".mp4");
     try {
       if (!fs.existsSync(file)) {
         const res = await fetch(d.mediaUrl);
@@ -132,6 +145,41 @@ async function silentVideos() {
     } catch (e) {
       fail(2, "media", "could not check a scheduled video", (d.theme || d.id) + ": " + e.message.slice(0, 60));
     }
+  }
+}
+
+// --- 3b. a scheduled post must have something to post -----------------------
+// The silent-video check only inspects drafts that HAVE media, so a draft with
+// none at all was invisible to the one thing watching this queue.
+//
+// It is not automatically a fault. The three 20 Sep "THE RECAP" posts carry
+// photoHint "Best clip or photo from the night" for an event on the 19th, so
+// they are meant to be filled after it happens. That is a plan, not an
+// oversight -- right up until the night passes and nobody fills them, which is
+// exactly the kind of quiet failure nothing here would otherwise catch. So it
+// stays silent until the date is close, then says so with rising urgency.
+async function postsWithNothingToPost() {
+  const drafts = await prisma.mediaDraft.findMany({
+    where: { status: { in: ["scheduled", "approved"] } },
+    select: { platform: true, theme: true, scheduledDate: true, mediaUrl: true, photoHint: true },
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  const empty = drafts.filter((d) => !d.mediaUrl && d.scheduledDate && d.scheduledDate >= today);
+
+  // Grouped by date: one event's worth of posts is one problem to solve, not
+  // three, and three identical lines is how a report gets skimmed.
+  const byDate = {};
+  for (const d of empty) (byDate[d.scheduledDate] = byDate[d.scheduledDate] || []).push(d);
+
+  for (const date of Object.keys(byDate).sort()) {
+    const group = byDate[date];
+    const days = Math.round((new Date(date) - new Date(today)) / 86400000);
+    if (days > 5) continue; // still plenty of time; saying so daily is noise
+    const what = group[0].theme || "a post";
+    const where = group.map((d) => d.platform).join(", ");
+    fail(days <= 1 ? 1 : 2, "media",
+      what + " goes out in " + (days === 0 ? "less than a day" : days + " day(s)") + " with no media attached",
+      date + " — " + where + (group[0].photoHint ? " — needs: " + group[0].photoHint : ""));
   }
 }
 
