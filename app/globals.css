@@ -481,23 +481,64 @@ input::placeholder, textarea::placeholder {
    what stopped the empty-box look: a card stretched to match a taller
    neighbour reads as missing information rather than as an absence of
    problems. */
+/* The grid lives here rather than in a style={{}} on each of the three
+   wrappers, and that is load-bearing rather than tidiness: an inline display
+   beats any stylesheet rule, so while it was inline the `display: contents`
+   below silently did nothing and the phone order could not be changed at all. */
 .orbit-left, .orbit-right, .orbit-center {
+  display: grid;
+  gap: 14px;
   align-content: start;
 }
 
 @media (max-width: 1199px) {
-  /* Stacked, and the order is the design: the centre column carries Pearl and
-     the board, which is what a phone should reach first. */
+  /* Stacked, and the order is the design. Ordering the three column wrappers
+     was as fine-grained as this could get, and it was not fine enough: it sent
+     Pearl's entire column down before the fleet appeared, and inside every
+     group it left the panel above the crew who own it.
+
+     `display: contents` drops the three wrappers and each group's crew row out
+     of the box tree, so every panel and every crew card becomes a direct child
+     of this one stack and can be placed individually. The wrappers are safe to
+     drop because they carry no border, background or padding of their own --
+     only grid placement, which is exactly what is being replaced. The
+     .orbit-group band is deliberately NOT dropped: every group stays
+     contiguous in the order below, so the band still reads as the pairing it
+     is meant to be. */
   .console-orbit { display: flex; flex-direction: column; }
-  .orbit-center  { order: 1; }
-  .orbit-left    { order: 2; }
-  .orbit-right   { order: 3; }
+  .orbit-left, .orbit-center, .orbit-right,
+  .orbit-group > .orbit-crew { display: contents; }
+
+  /* Pearl first, then the two things she is looking at, then the boat, then
+     each panel with the crew who own it. */
+  .orbit-lead-pearl { order: 1; }
+  .ob-board         { order: 2; }
+  .ob-attention     { order: 3; }
+  .ob-fleet         { order: 4; }
+  .ob-money         { order: 5; }
+  .ob-going-out     { order: 6; }
+  .ob-table         { order: 7; }
+  .ob-guests        { order: 8; }
+  .ob-research      { order: 9; }
+  /* The chain of command needs no order: it sits outside .console-orbit
+     entirely, so it is already the last thing on the page. */
+
+  /* Inside every group: one crew card, then the panel, then any second owner.
+     Whose desk this is reads before the numbers on it do, and a second owner
+     below the panel reads as a second owner rather than as a caption. */
+  .orbit-group > .orbit-crew > *                { order: 1; }
+  .orbit-group > div:first-child                { order: 2; }
+  .orbit-group > .orbit-crew > *:nth-child(n+2) { order: 3; }
 }
 
 
 /* Nothing inside the console may push the page sideways. Wide things
    (the chain-of-command chart, tables) scroll inside their own box instead. */
-.console-orbit, .orbit-group, .orbit-left, .orbit-right, .orbit-center { min-width: 0; }
+/* The four standalone panels are listed by name as well: below 1200px their
+   column wrapper is display:contents, so they become items of the stack
+   themselves and have to defend their own width. */
+.console-orbit, .orbit-group, .orbit-left, .orbit-right, .orbit-center,
+.ob-attention, .ob-board, .ob-fleet, .orbit-lead-pearl { min-width: 0; }
 
 /* The blanket max-width below must NOT reach the chain-of-command SVG. That
    chart is 980px wide by design and lives in an overflow-x:auto box so it can

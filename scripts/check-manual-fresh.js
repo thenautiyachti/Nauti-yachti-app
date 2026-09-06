@@ -13,9 +13,19 @@
 // markdown is written beside the PDF when it is built, and compared here, which
 // works the same locally and in CI.
 //
-// WHY NOT REBUILD AUTOMATICALLY. The PDF is produced by headless Edge, which
-// exists on the owner's PC and not on a build server. A hook that silently
+// WHY NOT REBUILD AUTOMATICALLY. The PDF is produced by a headless browser,
+// which exists on the owner's PC and not on a build server. A hook that silently
 // failed there would be worse than this warning.
+//
+// USE CHROME, NOT EDGE. On 5 Sep 2026 headless Edge stopped producing anything
+// on this machine -- exit code 0, no output on stdout or stderr, no file
+// written, with the previous PDF left in place. It was caught only because the
+// rebuilt file was byte-identical to the one in git. Chrome prints
+// "N bytes written to file ..." and actually writes it.
+//
+// SO: VERIFY BY CONTENT, NOT BY EXIT CODE. Check the PDF's hash changed before
+// you stamp. Stamping an unchanged PDF is worse than leaving it stale, because
+// it converts a warning that was working into a silent lie.
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -54,10 +64,14 @@ if (require.main === module) {
     if (!r.ok) {
       console.log("\n  Rebuild it:");
       console.log("    node scripts/build-manual-pdf.js owner-console-manual.md <out.html>");
-      console.log('    "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless=new \\');
-      console.log("      --disable-gpu --no-pdf-header-footer --print-to-pdf=public/owner-console-manual.pdf \\");
+      console.log('    "C:/Program Files/Google/Chrome/Application/chrome.exe" --headless=new \\');
+      console.log("      --disable-gpu --no-pdf-header-footer --user-data-dir=<a scratch dir> \\");
+      console.log("      --print-to-pdf=<ABSOLUTE PATH TO public/owner-console-manual.pdf> \\");
       console.log('      "file:///<ABSOLUTE WINDOWS PATH TO out.html>"');
       console.log("    node scripts/check-manual-fresh.js --stamp");
+      console.log("\n  Chrome, not Edge: headless Edge writes nothing here and still exits 0.");
+      console.log("  Chrome prints \"N bytes written to file ...\". If it does not, nothing was built.");
+      console.log("  Confirm the PDF's hash actually changed BEFORE you --stamp.");
       process.exitCode = 1;
     }
   }

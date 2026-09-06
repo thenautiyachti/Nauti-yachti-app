@@ -183,7 +183,7 @@ model ExternalBooking {
   email      String? // guest email, when known — Boatsetter/GetMyBoat rarely expose a real one
   partySize  Int?
   platform   String // "Boatsetter" | "GetmyBoat" | "Facebook" | "Instagram" | "Other"
-  status     String   @default("booked") // "booked" | "completed" | "cancelled"
+  status     String   @default("booked") // see lib/bookingStatus.js — that file, not this comment, is the vocabulary: "inquiry" | "lapsed" | "booked" | "owed" | "completed" | "cancelled"
   note       String?
   createdAt  DateTime @default(now())
 

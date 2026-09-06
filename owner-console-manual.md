@@ -32,7 +32,9 @@ a decision.
 ## Inquiries
 
 Enquiries submitted through the website form. Each shows the guest, package, date
-and party size, and can be marked new / pending / booked / completed / cancelled.
+and party size, and can be marked new / pending / booked / **owed** / completed /
+cancelled. See *A charter that was paid for and never happened* below for what
+"owed" means and when to use it.
 
 Two separate lists live on this tab and are deliberately **not** counted as
 enquiries:
@@ -63,6 +65,52 @@ by hand, and six charters' income went missing that way. Two rules govern it:
 A booking paid through the website checkout now appears here on its own, created
 from the Stripe webhook as **booked** (not completed — the trip has not happened
 yet).
+
+## A charter that was paid for and never happened
+
+Weather, a breakdown, a guest who cannot make it. They have paid, the day is gone,
+and no new date has been agreed. That booking is **owed** — a status added on
+5 September 2026 because there was no honest word for it.
+
+It is not *cancelled*. Cancelled means money went out or is going out and the
+relationship is finished. Owed means the opposite: their money is still here, they
+still want to go, and the business owes them a boat. Christian Gehring sat marked
+cancelled for two months for want of this distinction, and nothing ever put him on
+a list.
+
+What the status changes:
+
+- **It does not hold the day.** An owed charter has no date, so it blocks nothing
+  on the availability calendar. This is the one status where a real booking with
+  real money behind it occupies no day at all.
+- **It counts as active.** It shows under the Active filter on the bookings table,
+  in amber, because it is work outstanding rather than history.
+- **It is not a cancellation** in any count, so conversion figures stop being
+  wrong in the business's favour.
+- **Pearl reports it every morning** until it is settled. If there is no phone or
+  email on the row she raises it as urgent, because a charter that cannot be
+  rescheduled is money owed forever.
+- **Money can still be attached to it** in the ledger. The payment is real.
+
+When they pick a date, set it back to **booked**. Owed is a waiting room, not a
+destination. The standing rule when you contact them is to offer a weekend, not a
+refund — if they want the money back they will ask.
+
+## Booking numbers never change
+
+Every booking is `NY-YYYYMMDD-NN`. The date inside it is the date the charter was
+**first booked for**, not where it ended up, and the `NN` is just the order it was
+taken that day.
+
+So when a charter is rescheduled, **the booking number stays exactly as it is** and
+the date column moves instead. That is deliberate: the number is what a guest
+quotes on the phone, what the ledger points at, and what an old email says. A
+number that moves is a number that stops matching the paperwork.
+
+There was one exception, made once, on 5 September 2026: `NY-20260711-GEHRING` was
+written by hand and ended in a surname instead of a number. It became
+`NY-20260711-02`, with its ledger entries moved in the same transaction. That was a
+one-off correction to an id that never conformed — not a precedent.
 
 ## Availability
 

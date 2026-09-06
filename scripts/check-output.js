@@ -43,7 +43,8 @@ if (fs.existsSync(SECRETS)) {
 }
 
 const { PrismaClient } = require(path.join(APP, "node_modules", "@prisma", "client"));
-const { HOLDS_THE_DAY } = require(path.join(APP, "lib", "bookingStatus"));
+const { HOLDS_THE_DAY, OWED } = require(path.join(APP, "lib", "bookingStatus"));
+const { isOwedCharter } = require(path.join(APP, "lib", "owedCharters"));
 const { addOnTotal } = require(path.join(APP, "lib", "addOns"));
 const prisma = new PrismaClient();
 
@@ -189,12 +190,53 @@ async function photosOwed() {
   }
 }
 
+// --- 7. a charter owed must not go quiet ------------------------------------
+// This status exists because Christian Gehring's charter did: paid in June,
+// never sailed, and for two months there was no list anywhere in the business
+// that he appeared on. A liability nobody is reminded of is a liability that
+// gets forgotten.
+//
+// So this reports every owed charter every day, until it sails or the money
+// goes back. That would be intolerable noise for a common state and is cheap
+// for a rare one -- and if it ever stops being rare, a daily line saying so is
+// the correct amount of alarm.
+async function chartersOwed() {
+  const rows = await prisma.externalBooking.findMany({
+    where: { status: { in: OWED } },
+    select: {
+      bookingId: true, guestName: true, date: true, email: true, phone: true,
+      pricePaid: true, vesselName: true, status: true, marketingOptOut: true,
+    },
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  for (const b of rows) {
+    // Asked rather than assumed, so this check and whatever the console shows
+    // can never disagree about who is owed.
+    if (!isOwedCharter(b, today)) continue;
+    const held = Number(b.pricePaid) > 0
+      ? "$" + Number(b.pricePaid) + " of their money held"
+      : "amount never recorded";
+
+    // No way to reach them is the worse fault by a distance: the charter cannot
+    // be rescheduled at all, so the money can never stop being owed.
+    if (!b.email && !b.phone) {
+      fail(1, "owed", (b.guestName || "a guest") + " is owed a charter and there is no way to reach them",
+        (b.bookingId || "no booking id") + " — " + held + ", no phone and no email on file");
+      continue;
+    }
+    fail(2, "owed", (b.guestName || "a guest") + " is still owed a charter",
+      (b.bookingId || "no booking id") + " — " + held + ", no date set. " +
+      (b.phone || b.email) + " — offer a weekend, not a refund.");
+  }
+}
+
 (async () => {
   await paidButSilent();
   await datesNotHeld();
   await addOnPricing();
   await unreachableBookings();
   await photosOwed();
+  await chartersOwed();
   await silentVideos();
 
   if (JSON_OUT) {

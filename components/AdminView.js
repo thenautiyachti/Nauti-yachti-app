@@ -12,10 +12,13 @@ import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun,
 import { version as APP_VERSION } from "../package.json";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
 import {
+  STATUSES as BOOKING_STATUSES,
   LABELS as BOOKING_LABELS,
   COLORS as BOOKING_COLORS,
   DESCRIPTIONS as BOOKING_HELP_TEXT,
   INQUIRY_STATUS_BUCKET as INQUIRY_BUCKET_MAP,
+  holdsTheDay,
+  isOwed,
 } from "../lib/bookingStatus";
 import { formatBody } from "../lib/boardText";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
@@ -683,7 +686,7 @@ const BOOKING_REFERRAL_SOURCES = [
 // their status values and editable fields differ, so the row renderer
 // branches on it rather than trying to force both into one schema.
 // Inquiry.status ("new"|"lapsed"|"pending"|"booked"|"completed"|"cancelled")
-// and ExternalBooking.status ("inquiry"|"lapsed"|"booked"|"completed"|"cancelled")
+// and ExternalBooking.status ("inquiry"|"lapsed"|"booked"|"owed"|"completed"|"cancelled")
 // are different enums for different underlying flows — this maps both onto the
 // same shared bucket concept so the unified table can filter/display them
 // consistently without changing either model's own real values.
@@ -770,9 +773,20 @@ function toUnifiedRows(inquiries, externalBookings) {
 
 // ---- Inquiries tab -------------------------------------------------
 
-const INQUIRY_STATUSES = ["new", "lapsed", "pending", "booked", "completed", "cancelled"];
-const INQUIRY_STATUS_LABEL = { new: "New", lapsed: "Lapsed", pending: "Pending", booked: "Booked", completed: "Completed", cancelled: "Cancelled" };
-const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pending: "#E8934A", booked: "#4FA8E8", completed: "#7FE0B8", cancelled: "#F0559C" };
+// Derived from the bucket map so this dropdown and the PATCH route that has to
+// accept its value cannot disagree. They did: both kept a hand-typed copy, and
+// a status offered here but rejected there is a 400 behind a control that looks
+// like it works.
+//
+// "owed" appears on this side as well as the booking side deliberately. A
+// website booking that was paid for and never sailed is one guest; leaving the
+// Inquiry saying "booked" while the ExternalBooking says "owed" is the same
+// split that had Oscar showing up as two people.
+const INQUIRY_STATUSES = Object.keys(INQUIRY_BUCKET_MAP);
+const INQUIRY_STATUS_LABEL = { new: "New", lapsed: "Lapsed", pending: "Pending", booked: "Booked", owed: "Owed", completed: "Completed", cancelled: "Cancelled" };
+// "owed" borrows the same amber as "pending" on purpose: both mean the ball is
+// in our court. The difference is that this one has already been paid for.
+const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pending: "#E8934A", booked: "#4FA8E8", owed: "#E8934A", completed: "#7FE0B8", cancelled: "#F0559C" };
 const REFUND_TYPES = ["full", "partial", "none"];
 const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none: "No refund" };
 
@@ -1121,13 +1135,15 @@ function PriceHistoryPanel({ priceHistory }) {
 // platform enquiries that never became bookings. One was a real cancellation.
 // Mixing them made every conversion count wrong and, worse, meant the only way
 // to say "this never happened" was to say "this was called off".
-const BOOKING_STATUS_BUCKETS = ["inquiry", "lapsed", "booked", "completed", "cancelled"];
-// Unified filter/sort buckets for the combined Inquiry+ExternalBooking
-// table — includes "pending" since a site Inquiry can sit in that bucket
-// even though no ExternalBooking row ever will.
+// Both lists are now taken straight from lib/bookingStatus.js rather than
+// retyped. They were retyped, and adding "owed" on 5 Sep 2026 meant editing the
+// same five words in four files -- which is how a status ends up defined but
+// unfilterable. The order there is the lifecycle order, which is also the
+// order the "sort by status" control should use, so it does double duty.
+const BOOKING_STATUS_BUCKETS = BOOKING_STATUSES;
 // No separate "pending": on the website side that IS an enquiry, and showing
 // them as two things invited exactly the confusion this pass is fixing.
-const UNIFIED_STATUS_BUCKETS = ["inquiry", "lapsed", "booked", "completed", "cancelled"];
+const UNIFIED_STATUS_BUCKETS = BOOKING_STATUSES;
 const BOOKING_STATUS_COLOR = BOOKING_COLORS;
 const BOOKING_STATUS_LABEL = BOOKING_LABELS;
 // Shown on hover, because "Lapsed" and "Cancelled" look interchangeable until
@@ -1400,9 +1416,11 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
     // "Active" means live work: still to run, or being worked. An enquiry that
     // never converted is history, and it used to sit in here purely because it
     // was not labelled cancelled.
-    // "Active" is live work: an open enquiry, or a booking not yet sailed.
-    // Lapsed and cancelled are both finished, in their different ways.
-    : filterStatus === "active" ? allRows.filter((r) => r.statusBucket === "inquiry" || r.statusBucket === "booked")
+    // "Active" is live work: an open enquiry, a booking not yet sailed, or a
+    // charter still owed. Lapsed and cancelled are both finished, in their
+    // different ways. An owed charter is the most active thing in the table --
+    // the guest has paid and is waiting on us for a date.
+    : filterStatus === "active" ? allRows.filter((r) => r.statusBucket === "inquiry" || r.statusBucket === "booked" || r.statusBucket === "owed")
     : allRows.filter((r) => r.statusBucket === filterStatus)
   )
     .sort((a, b) => {
@@ -1835,9 +1853,11 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
   // Completed charters first and most recent first: an entry being logged by
   // hand is nearly always about a trip that just happened.
   const bookingOptions = [...externalBookings]
-    // Only something that ran or is going to. You cannot attach money to an
-    // enquiry, and offering one in this list invites exactly that mistake.
-    .filter((b) => b.status === "booked" || b.status === "completed")
+    // Only something that ran, is going to, or was paid for and never sailed.
+    // You cannot attach money to an enquiry, and offering one in this list
+    // invites exactly that mistake -- but an owed charter is the opposite case:
+    // real money is already sitting against it and has to be recordable.
+    .filter((b) => holdsTheDay(b.status) || isOwed(b.status))
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
     .slice(0, 60);
 
@@ -3742,6 +3762,16 @@ function CrewCard({ r, compact = false }) {
   const st = AGENT_STATUS[r.state] || AGENT_STATUS.idle;
   const lines = statusLines(r.status);
   const fresh = isToday(r.status);
+
+  // The last-run detail is collapsed by default. It is the longest thing on the
+  // card and it is history: nine of them stacked down a phone screen pushed the
+  // panels that describe the business off the bottom.
+  //
+  // One thing must survive the collapse, and that is the alarm. A daily agent
+  // that has not reported today is the whole reason this block exists, so that
+  // colour moves up onto the header line, which is always visible.
+  const [runOpen, setRunOpen] = useState(false);
+  const overdue = !r.run && crewNextDue(r.schedule).daily;
   // Nudged up from 54/72. Never below 54: at 46 only bold colour survived and
   // two of them were unrecognisable.
   const AV = compact ? 62 : 82;
@@ -3871,16 +3901,35 @@ function CrewCard({ r, compact = false }) {
       )}
 
       <div style={{ marginTop: "auto", paddingTop: 9 }}>
-        <div style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+        <button
+          type="button"
+          onClick={() => setRunOpen((v) => !v)}
+          aria-expanded={runOpen}
+          title={runOpen ? "Hide what she did" : "Show what she did"}
+          style={{
+            display: "flex", alignItems: "center", gap: 5, width: "100%",
+            background: "none", border: 0, padding: 0, cursor: "pointer",
+            font: "inherit", textAlign: "left",
+            // A daily agent that has never run has missed something; a weekly
+            // one three days out has not. Only the first is worth an alarm
+            // colour, and it has to be on this line because this is the line
+            // that shows when the card is shut.
+            fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.07em",
+            color: overdue ? "#E8934A" : "var(--muted)",
+          }}
+        >
+          <span aria-hidden="true" style={{
+            lineHeight: 1, fontSize: 13,
+            transform: runOpen ? "rotate(90deg)" : "none",
+            transition: "transform 120ms ease",
+          }}>&rsaquo;</span>
           {r.run
             ? "Last run · " + crewAgo(r.run.startedAt)
             : (crewNextDue(r.schedule).daily ? "Has not run today" : "No runs yet")}
-        </div>
-        <div style={{
-          fontSize: 11.5, marginTop: 2, lineHeight: 1.4,
-          // A daily agent that has never run has missed something; a weekly one
-          // three days out has not. Only the first is worth an alarm colour.
-          color: !r.run && crewNextDue(r.schedule).daily ? "#E8934A" : "var(--muted)",
+        </button>
+        <div hidden={!runOpen} style={{
+          fontSize: 11.5, marginTop: 3, lineHeight: 1.4,
+          color: overdue ? "#E8934A" : "var(--muted)",
         }}>
           {r.run
             ? (r.detailEchoesStatus
@@ -4752,8 +4801,8 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           input and decides what reaches him, so her card and the two panels
           she owns sit over the top of everything. */}
 
-      <div className="orbit-left" style={{ display: "grid", gap: 14 }}>
-        <div style={CARD}>
+      <div className="orbit-left">
+        <div className="ob-attention" style={CARD}>
           <PanelHead owners={["Nauti Pearl"]}>
             <div style={{ ...H, marginBottom: 0 }}>Needs attention {attention.length > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}>({attention.length})</span>}</div>
           </PanelHead>
@@ -4802,7 +4851,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
             })}
           </div>
         </div>
-      <div className="orbit-group ">
+      <div className="orbit-group ob-money">
         <div style={CARD}>
           <PanelHead owners={["Nauti Penny", "Nauti Shelly"]}><Go to="ledger">Money</Go></PanelHead>
 
@@ -4875,7 +4924,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           <CrewCard r={byName["Nauti Shelly"]} compact />
         </div>
       </div>
-      <div className="orbit-group ">
+      <div className="orbit-group ob-guests">
         <div style={CARD}>
           <PanelHead owners={["Nauti Joy"]}><Go to="testimonials">Guests</Go></PanelHead>
           <div style={{ display: "grid", gap: 7, fontSize: 13 }}>
@@ -4943,9 +4992,9 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       </div>
       </div>
 
-      <div className="orbit-center" style={{ display: "grid", gap: 14 }}>
+      <div className="orbit-center">
         <div className="orbit-lead-pearl"><CrewCard r={byName["Nauti Pearl"]} /></div>
-        <div style={{ ...CARD, borderColor: "rgba(203,108,230,0.4)" }}>
+        <div className="ob-board" style={{ ...CARD, borderColor: "rgba(203,108,230,0.4)" }}>
           <PanelHead owners={["Nauti Pearl"]}>
             <div style={{ ...H, marginBottom: 0, fontSize: 15 }}>
               The Board <span style={{ color: "var(--muted)", fontWeight: 400 }}>(To-do List)</span>
@@ -5038,7 +5087,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           and anything marked High stays in her morning brief until it is closed.
         </div>
         </div>
-      <div className="orbit-group ">
+      <div className="orbit-group ob-research">
         <div style={CARD}>
           <PanelHead owners={["Nauti Nova"]}>
             <div style={{ ...H, marginBottom: 0 }}>Research</div>
@@ -5071,8 +5120,8 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       </div>
       </div>
 
-      <div className="orbit-right" style={{ display: "grid", gap: 14 }}>
-        <div style={CARD}>
+      <div className="orbit-right">
+        <div className="ob-fleet" style={CARD}>
           <PanelHead owners={["Nauti Pearl", "Nauti Penny"]}><Go to="maintenance">The fleet</Go></PanelHead>
 
           {/* Next out, and how long the wait is. A gap is as much the news as
@@ -5165,7 +5214,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
             </div>
           )}
         </div>
-      <div className="orbit-group ">
+      <div className="orbit-group ob-going-out">
         <div style={CARD}>
           <PanelHead owners={["Nauti Siren", "Nauti Coral"]}><Go to="mediaDrafts">Going out next</Go></PanelHead>
 
@@ -5247,7 +5296,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
           <CrewCard r={byName["Nauti Coral"]} compact />
         </div>
       </div>
-      <div className="orbit-group ">
+      <div className="orbit-group ob-table">
         <div style={CARD}>
           <PanelHead owners={["Nauti Reef"]}><Go to="giftCertificates">Money on the table</Go></PanelHead>
           <div style={{ display: "grid", gap: 7, fontSize: 13 }}>

@@ -2,7 +2,12 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
-const INQUIRY_STATUSES = ["new", "lapsed", "pending", "booked", "completed", "cancelled"];
+const { INQUIRY_STATUS_BUCKET } = require("../../../../lib/bookingStatus");
+
+// Derived, not retyped. This list was a hand-kept copy, and a status the
+// console offered but this route rejected would have failed as a silent 400 on
+// a dropdown that looked like it worked.
+const INQUIRY_STATUSES = Object.keys(INQUIRY_STATUS_BUCKET);
 const REFUND_TYPES = ["full", "partial", "none"];
 
 // Body: { status?, refundType?, refundAmount? }. refundType/refundAmount are

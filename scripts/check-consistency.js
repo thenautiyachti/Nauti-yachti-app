@@ -228,8 +228,18 @@ try {
 // --- 11. the status vocabulary must cover what the API accepts --------------
 {
   const vocab = read(path.join(APP, "lib/bookingStatus.js")) || "";
-  for (const st of ["inquiry", "lapsed", "booked", "completed", "cancelled"]) {
+  for (const st of ["inquiry", "lapsed", "booked", "owed", "completed", "cancelled"]) {
     if (!vocab.includes('"' + st + '"')) fail("booking status", "lib/bookingStatus.js no longer defines " + st);
+  }
+  // The inquiry-side list was hand-kept in two places and drifted the instant a
+  // sixth status appeared: the console offered "owed" and the PATCH route that
+  // has to accept it did not, which is a 400 behind a dropdown that looks like
+  // it works. Both must derive from the bucket map.
+  for (const f of ["app/api/inquiries/[id]/route.js", "components/AdminView.js"]) {
+    const src = read(path.join(APP, f)) || "";
+    if (/const INQUIRY_STATUSES\s*=\s*\[/.test(src)) {
+      fail("booking status", f + " has gone back to a hand-typed inquiry status list");
+    }
   }
   // Nothing may compare the status field to a literal outside that file: that is
   // how four call sites came to use "not cancelled" to mean "a real booking",
