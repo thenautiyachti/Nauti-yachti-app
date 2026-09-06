@@ -71,16 +71,34 @@ function distance(a, b) {
   }
   console.log("\n  " + loaded.length + " published photos compared\n");
 
+  // FLEET IS EXEMPT ACROSS SECTIONS. Owner's rule, 6 Sep 2026: "fleet will be
+  // the exception section. No need to update this section or monitor for dupes
+  // against other sections."
+  //
+  // It follows from what that section is for. Every other section is about an
+  // OCCASION; The Boats is about the boats themselves, and the same photograph
+  // can honestly be both — a shot of the Explorer towing a tube belongs in the
+  // fleet line-up and in Tubing at the same time. The first run flagged exactly
+  // that as byte-identical, and it was working as intended.
+  //
+  // Fleet is still checked AGAINST ITSELF: three photos of one boat that turn
+  // out to be the same photo would be a real fault.
+  const crossOK = (a, b) => !(a.category === "fleet") !== !(b.category === "fleet");
+
   const exact = {};
   for (const g of loaded) (exact[g.sha] = exact[g.sha] || []).push(g);
-  const sameFile = Object.values(exact).filter((v) => v.length > 1);
-  console.log("  BYTE-IDENTICAL FILES: " + sameFile.length);
+  const sameFile = Object.values(exact)
+    .filter((v) => v.length > 1)
+    .filter((v) => !v.every((g, _, arr) => crossOK(arr[0], g) || arr[0] === g));
+  console.log("  BYTE-IDENTICAL FILES: " + sameFile.length +
+    (sameFile.length ? "" : "   (fleet/occasion overlaps excluded by design)"));
   sameFile.forEach((v) => v.forEach((g) => console.log("     [" + g.category + "] " + g.caption + "   " + g.image)));
 
   const pairs = [];
   for (let i = 0; i < loaded.length; i++) {
     for (let j = i + 1; j < loaded.length; j++) {
       if (loaded[i].sha === loaded[j].sha) continue;
+      if (crossOK(loaded[i], loaded[j])) continue; // fleet vs an occasion: allowed
       pairs.push({ a: loaded[i], b: loaded[j], d: distance(loaded[i].sig, loaded[j].sig) });
     }
   }
