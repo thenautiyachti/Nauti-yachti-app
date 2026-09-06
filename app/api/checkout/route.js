@@ -6,6 +6,7 @@ const { checkGiftCertificate, applicableAmount, redeem: redeemGiftCertificate } 
 const { generateBookingId } = require("../../../lib/bookingId");
 const { quoteTotal } = require("../../../lib/pricing");
 const { parsePackage } = require("../../../lib/serialize");
+const { isPartnerReferralRow } = require("../../../lib/partners");
 
 // Public: customer clicks "Book this" / submits the booking form and is sent
 // to Stripe's hosted Checkout for the exact quoted price. We still create the
@@ -45,6 +46,21 @@ async function POST(req) {
   if (!pkgRow) {
     return NextResponse.json({ error: "Unknown package" }, { status: 400 });
   }
+  // We do not take money for somebody else's charter.
+  //
+  // Wake Surfing Lessons is YOLO Lake Conroe's coaching session, carried here as
+  // a referral. It was selectable in our booking form at $720-$820 and would
+  // have gone through this endpoint to our own Stripe account, for a lesson we
+  // do not run. The form no longer lists it; this is the half that matters,
+  // because a form is not a control and anything can POST here.
+  if (isPartnerReferralRow(pkgRow)) {
+    return NextResponse.json({
+      error: "That experience is booked directly with the operator, not with us.",
+      partnerReferral: true,
+      bookWith: pkgRow.linkUrl || null,
+    }, { status: 400 });
+  }
+
   // The package has to actually run on the boat being booked.
   //
   // Nothing checked this. Tubing / Wakeboarding was restricted to the Nauti

@@ -6,6 +6,7 @@ import { currency, dayTypeForDate, quotePackage, quoteTotal, imageFocus } from "
 import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
 import { includedIds, isIncluded, isCovered, chargeableIds } from "../lib/addOns";
+import { isPartnerReferral, PARTNER_PRICE_NOTE } from "../lib/partners";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -710,9 +711,18 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
       <div style={{ padding: 18, display: "flex", flexDirection: "column", flex: 1 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
         <div className="display" style={{ fontSize: 20, color: "var(--text)", fontWeight: 700 }}>{pkg.name}</div>
-        <div className="mono" style={{ color: "var(--pink)", fontWeight: 700, fontSize: 18, whiteSpace: "nowrap" }}>{currency(price)}</div>
+        <div className="mono" style={{ color: "var(--pink)", fontWeight: 700, fontSize: 18, whiteSpace: "nowrap" }}>
+          {isPartnerReferral(pkg) ? "~" : ""}{currency(price)}
+        </div>
       </div>
       <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>{pkg.unit}</div>
+      {/* Their price, not ours. We do not set it and are not standing behind it,
+          so it is marked rather than presented as a quote. */}
+      {isPartnerReferral(pkg) && (
+        <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8, lineHeight: 1.5, fontStyle: "italic" }}>
+          {PARTNER_PRICE_NOTE}
+        </div>
+      )}
 
       {pkg.linkLabel && pkg.linkUrl && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -826,12 +836,27 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
       )}
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: "auto" }}>
-        <button
-          onClick={() => onBook({ vesselId, dayType, hour, guests })}
-          style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700 }}
-        >
-          Book this
-        </button>
+        {/* A partner's session is booked WITH THE PARTNER. "Book this" used to
+            drop this card into our own booking form, which meant a guest could
+            pay us $720 for a lesson we do not run. The button now goes where the
+            booking actually happens. */}
+        {isPartnerReferral(pkg) ? (
+          <a
+            href={pkg.linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ background: "var(--purple)", color: "#0A0612", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}
+          >
+            Book with {pkg.linkLabel ? pkg.linkLabel.replace(/\.$/, "") : "the operator"} ↗
+          </a>
+        ) : (
+          <button
+            onClick={() => onBook({ vesselId, dayType, hour, guests })}
+            style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700 }}
+          >
+            Book this
+          </button>
+        )}
         {/* Real internal link to the package's own indexable page. The card
             itself is a client-side widget on a single URL, so without this the
             per-package pages would only be reachable from the nav. */}
@@ -951,7 +976,23 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
 
   async function runSubmit(handler) {
     const pkg = packages.find((p) => p.id === form.packageId);
-    const vessel = vessels.find((v) => v.id === form.vesselId);
+
+    // A package that runs on NO boat of ours must not record one.
+    //
+    // Wake Surfing Lessons is a coaching session on a partner's boat — that is
+    // why its vessel list is empty and why the picker is hidden for it. But
+    // form.vesselId is seeded with vessels[0] and never cleared, so the hidden
+    // field still held "explorer" and the booking would have been filed against
+    // the Nauti Explorer.
+    //
+    // That is not just an untidy record. lib/occupancy.js treats a booked
+    // enquiry with a date and a vesselId as occupying that boat, so every wake
+    // surfing lesson would have taken the Explorer off sale for a day it was
+    // never needed — losing the best boat's Saturday to a session run on
+    // somebody else's.
+    const usesOurBoat = !!(pkg?.vessels && pkg.vessels.length);
+    const vesselId = usesOurBoat ? form.vesselId : null;
+    const vessel = vessels.find((v) => v.id === vesselId);
 
     // The same quoteTotal the checkout endpoint runs. This used to be four
     // lines of arithmetic here and nothing at all on the server, which is how
@@ -965,7 +1006,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     // up was free. Anything included with the chosen package is excluded rather
     // than added at zero; see lib/addOns.js.
     const priceQuoted = quoteTotal(pkg, addOns, {
-      vesselId: form.vesselId,
+      vesselId,
       date: form.date,
       hours: form.hours,
       partySize: form.partySize,
@@ -973,7 +1014,10 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     });
 
     setSubmitting(true);
-    const ok = await handler({ ...form, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted, termsAccepted: form.agreeTerms });
+    // vesselId AFTER the spread, deliberately: `...form` still carries the
+    // seeded default, and for a package that uses no boat of ours it has to be
+    // null on the record rather than whatever the hidden field happened to hold.
+    const ok = await handler({ ...form, vesselId, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted, termsAccepted: form.agreeTerms });
     // On a successful checkout redirect the browser navigates away entirely,
     // so `submitting` staying true until then is fine — there's no page left
     // to show a stuck button on.
@@ -1009,7 +1053,12 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Package</div>
           <select value={form.packageId} onChange={(e) => setForm({ ...form, packageId: e.target.value })}
             style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
-            {packages.map((p) => (
+            {/* Only what WE run. A partner's session cannot be ordered from our
+                form: it was listed here at $720-$820 and a guest choosing it
+                would have paid us through our own Stripe checkout for a lesson
+                YOLO Lake Conroe delivers. It is still on the page as a card
+                with a link straight to them. */}
+            {packages.filter((p) => !isPartnerReferral(p)).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
                 {p.pricingType === "flat" ? ` — ${currency(p.price)}` : p.pricingType === "per-guest" ? ` — ${currency(p.pricePerGuest)}/guest` : p.pricingType === "tiered-by-guests" ? ` — from ${currency(p.tiers[0].price)}` : ""}

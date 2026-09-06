@@ -76,6 +76,25 @@ const noId = { id: "i3", bookingId: null, status: "booked", date: "2026-09-12", 
 ok("an inquiry with no booking id is still counted",
   occupyingRows([], [noId]).length, 1);
 
+console.log("\n  A CHARTER ON SOMEBODY ELSE'S BOAT OCCUPIES NONE OF OURS\n");
+// Wake Surfing Lessons is a coaching session run on a partner's boat, which is
+// why its vessel list is empty. The booking form seeds vesselId with the first
+// vessel and hid the picker rather than clearing it, so the booking was filed
+// against the Nauti Explorer — and a booked enquiry with a date and a vesselId
+// occupies that boat. Every lesson would have taken the Explorer off sale for a
+// day it was never needed.
+const wakesurf = { id: "i9", bookingId: "NY-20261003-01", status: "booked", date: "2026-10-03", vesselId: null, hours: 3 };
+ok("a booked lesson with no vessel occupies nothing",
+  occupyingRows([], [wakesurf]), []);
+ok("and the calendar stays clear that day",
+  groupExternalBookingState(occupyingRows([], [wakesurf])), {});
+// The bug, preserved so the fix cannot be quietly undone: the SAME booking with
+// a vesselId does take the boat off sale, which is correct behaviour for a real
+// charter and exactly why the id must be null for one that is not.
+ok("but with a vesselId it WOULD block the Explorer — hence the null",
+  groupExternalBookingState(occupyingRows([], [{ ...wakesurf, vesselId: "explorer" }])),
+  { explorer: { "2026-10-03": "partial" } });
+
 console.log("\n  ENQUIRIES STILL OCCUPY NOTHING\n");
 const noise = [
   { id: "i4", status: "pending", date: "2026-09-21", vesselId: "explorer", hours: 4 },
