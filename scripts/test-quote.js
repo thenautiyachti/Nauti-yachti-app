@@ -95,5 +95,27 @@ ok("a stale page quoting LESS is charged the lower number it displayed",
   decide(650, real), "charge 600");
 ok("an unpriceable combination is refused outright", decide(600, null), "reject: cannot be priced");
 
+console.log("\n  THE VESSEL HAS TO BE ONE THE PACKAGE RUNS ON\n");
+// Mirrors the guard in app/api/checkout/route.js. Tubing / Wakeboarding was
+// restricted to the Nauti Explorer on 6 Sep 2026 — it is the only boat rigged to
+// tow — but the PRICE table still carries Islander and Yachti rates on purpose,
+// against the day another boat is set up. So the rates alone cannot enforce it:
+// tubing on the Yachti prices perfectly and must be refused on the vessel list.
+function vesselOK(allowed, vesselId) {
+  if (!allowed.length || !vesselId) return true; // nothing declared: no opinion
+  return allowed.includes(vesselId);
+}
+ok("tubing on the Explorer is allowed", vesselOK(["explorer"], "explorer"), true);
+ok("tubing on the Yachti is refused", vesselOK(["explorer"], "yachti"), false);
+ok("tubing on the Islander is refused", vesselOK(["explorer"], "islander"), false);
+ok("a package on all three still takes any of them",
+  vesselOK(["explorer", "islander", "yachti"], "islander"), true);
+ok("an empty list means no restriction, not 'refuse everything'",
+  vesselOK([], "yachti"), true);
+// The Yachti is still PRICEABLE for tubing — that is exactly why the vessel
+// list has to be checked separately rather than inferred from the rates.
+ok("and the Yachti still has a tubing price, which is why the list is needed",
+  quotePackage(hourly, { vesselId: "yachti", date: "2026-09-09", hours: 3 }), 500);
+
 console.log("\n  " + pass + " passed, " + fail + " failed\n");
 process.exit(fail ? 1 : 0);

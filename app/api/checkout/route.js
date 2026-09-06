@@ -45,6 +45,27 @@ async function POST(req) {
   if (!pkgRow) {
     return NextResponse.json({ error: "Unknown package" }, { status: 400 });
   }
+  // The package has to actually run on the boat being booked.
+  //
+  // Nothing checked this. Tubing / Wakeboarding was restricted to the Nauti
+  // Explorer on 6 Sep 2026 because it is the only boat set up to tow, but the
+  // restriction lived in `vessels` while the PRICE table still carried Islander
+  // and Yachti rates — so a booking for tubing on the Yachti priced perfectly
+  // and would have been taken. The form now offers only the right boats, and a
+  // form is not a control: anything can POST here.
+  //
+  // The rates are deliberately left in the price table, so this is the check
+  // that makes the restriction real.
+  const allowedVessels = (() => {
+    try { return JSON.parse(pkgRow.vesselsJson || "[]"); } catch { return []; }
+  })();
+  if (allowedVessels.length && body.vesselId && !allowedVessels.includes(String(body.vesselId))) {
+    return NextResponse.json({
+      error: "That package is not available on that boat.",
+      vesselNotAllowed: true,
+    }, { status: 400 });
+  }
+
   const addOnRows = await prisma.addOn.findMany();
   const priceQuoted = quoteTotal(parsePackage(pkgRow), addOnRows, {
     vesselId: body.vesselId,

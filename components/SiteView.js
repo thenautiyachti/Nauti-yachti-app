@@ -745,7 +745,11 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
             <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 4 }}>Vessel</label>
             <select value={vesselId} onChange={(e) => setVesselId(e.target.value)}
               style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 13 }}>
-              {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+              {/* The package's own boats. A price card offering Islander and
+                  Yachti rates for a package bookable only on the Explorer
+                  quotes a number nobody can act on. */}
+              {vessels.filter((v) => !pkg.vessels || pkg.vessels.includes(v.id))
+                .map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -776,7 +780,11 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
             <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 4 }}>Vessel</label>
             <select value={vesselId} onChange={(e) => setVesselId(e.target.value)}
               style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 13 }}>
-              {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+              {/* The package's own boats. A price card offering Islander and
+                  Yachti rates for a package bookable only on the Explorer
+                  quotes a number nobody can act on. */}
+              {vessels.filter((v) => !pkg.vessels || pkg.vessels.includes(v.id))
+                .map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
           </div>
           <div>
@@ -894,6 +902,20 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     }
   }, [form.packageId]); // eslint-disable-line
 
+  // A vessel the chosen package does not run on cannot stay selected.
+  //
+  // Now that the picker lists only the package's own boats, switching to a
+  // package with a shorter list would leave form.vesselId pointing at a boat no
+  // longer in the dropdown: the control would display the first option while the
+  // form still held the old one. The server would refuse it — "that combination
+  // cannot be priced" — but the guest would have no idea why, having watched the
+  // form show a boat it was not submitting.
+  useEffect(() => {
+    const allowed = selectedPkg?.vessels;
+    if (!allowed || !allowed.length) return;
+    setForm((f) => (allowed.includes(f.vesselId) ? f : { ...f, vesselId: allowed[0] }));
+  }, [form.packageId]); // eslint-disable-line
+
   useEffect(() => {
     if (prefill) {
       setForm((f) => ({
@@ -999,9 +1021,18 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
         {selectedPkg?.vessels?.length > 0 && (
           <label style={{ display: "block" }}>
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Vessel</div>
+            {/* The PACKAGE's vessel list, not every vessel we own.
+                This mapped over `vessels` — all of them — while the surrounding
+                condition checked selectedPkg.vessels.length. So the list decided
+                WHETHER to show the picker and then ignored it, and a package
+                restricted to one boat still offered all three. Tubing and
+                wakeboarding only run on the Explorer, so that restriction has to
+                actually hold or the form sells a charter that cannot happen. */}
             <select value={form.vesselId} onChange={(e) => setForm({ ...form, vesselId: e.target.value })}
               style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
-              {vessels.map((v) => <option key={v.id} value={v.id}>{v.name} (cap. {v.capacity})</option>)}
+              {vessels
+                .filter((v) => selectedPkg.vessels.includes(v.id))
+                .map((v) => <option key={v.id} value={v.id}>{v.name} (cap. {v.capacity})</option>)}
             </select>
           </label>
         )}

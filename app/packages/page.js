@@ -83,10 +83,15 @@ export default async function PackagesIndexPage() {
             Lake Conroe boat charter packages
           </h1>
           <p style={{ fontSize: 16.5, color: "var(--text)", opacity: 0.88, lineHeight: 1.7, marginTop: 20 }}>
+            {/* "Rates start at $120 an hour" was wrong: the cheapest hour anywhere
+                on the live price table is $150 on the Islander, and $120 matches
+                nothing. Advertising below what the checkout charges is the worst
+                direction for a number to be wrong in — the guest reads $120 and
+                is quoted more. $150 is a real, bookable rate. */}
             Every charter is private — you book the whole boat, not a seat, and the price covers the
             group rather than each person. Fuel and an ice chest loaded with ice and water are included
-            across the board, and most packages also include the tube and wakeboards. Rates start at
-            $120 an hour on the Nauti Islander and run up to a full eight-hour day on the fourteen-seat
+            across the board, and tubing and wakeboarding run on the Nauti Explorer. Rates start at
+            $150 an hour on the Nauti Islander and run up to a full eight-hour day on the fourteen-seat
             Nauti Explorer.
           </p>
           <p style={{ fontSize: 16.5, color: "var(--text)", opacity: 0.88, lineHeight: 1.7 }}>
@@ -180,7 +185,17 @@ export default async function PackagesIndexPage() {
                 </tbody>
               </table>
             </div>
+            {/* The tube-and-wakeboards caveat is load-bearing, not a detail.
+                Five packages carry "tube, wakeboards" in their unit text and so
+                tick that column above, but the equipment only runs behind the
+                Nauti Explorer. Without this line a birthday booked on the Yachti
+                reads as including watersports gear that cannot be delivered —
+                and the guest finds out on the dock. */}
             <p style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.7, lineHeight: 1.6, marginTop: 12, maxWidth: 760 }}>
+              Tubing and wakeboarding run on the <strong>Nauti Explorer</strong> — it is the boat set
+              up to tow. Book any package on the Explorer and the tube and wakeboards come with it.
+            </p>
+            <p style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.7, lineHeight: 1.6, marginTop: 6, maxWidth: 760 }}>
               Every charter also comes with a licensed captain unless you book the self-drive Nauti
               Islander, and the Nauti Explorer now carries a full sound system, TV connections, a
               3,000-watt inverter and an on-board electric grill.
