@@ -2,6 +2,7 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { STATUSES } = require("../../../../lib/bookingStatus");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
+const { normalizePhone } = require("../../../../lib/bookingPhones");
 
 // Body: { status?, pricePaid?, startTime?, hours?, guestName?, email?, partySize?, note? } —
 // only the fields present are updated. Setting status updates whether the
@@ -35,6 +36,28 @@ async function PATCH(req, { params }) {
   if ("partySize" in body) data.partySize = body.partySize === "" || body.partySize == null ? null : Number(body.partySize);
   if ("note" in body) data.note = body.note || null;
   if ("phone" in body) data.phone = body.phone || null;
+  // Everyone else on the booking. Validated through the one module that knows
+  // the shape, so a hand-rolled payload cannot put unparseable text in the
+  // column and break the dock page for every booking that follows.
+  if ("phonesJson" in body) {
+    if (body.phonesJson == null || body.phonesJson === "") {
+      data.phonesJson = null;
+    } else {
+      let parsed;
+      try {
+        parsed = typeof body.phonesJson === "string" ? JSON.parse(body.phonesJson) : body.phonesJson;
+      } catch {
+        return NextResponse.json({ error: "phonesJson is not valid JSON" }, { status: 400 });
+      }
+      if (!Array.isArray(parsed)) {
+        return NextResponse.json({ error: "phonesJson must be an array" }, { status: 400 });
+      }
+      const clean = parsed
+        .map((e) => ({ number: normalizePhone(e && e.number), label: String((e && e.label) || "").trim() }))
+        .filter((e) => e.number);
+      data.phonesJson = clean.length ? JSON.stringify(clean) : null;
+    }
+  }
   // How the booking was WON, as opposed to which platform processed it. The
   // three highest-value bookings on record (repeat guest, direct, word of
   // mouth) all sit under platform "Other", so `platform` alone cannot answer

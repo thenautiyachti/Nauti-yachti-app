@@ -657,3 +657,57 @@ input::placeholder, textarea::placeholder {
   .crew-avatar-live:focus-visible { transform: none; }
   .crew-speak-badge.is-speaking { animation: none; }
 }
+
+/* The maintenance schedule on a phone.
+ *
+ * It is a six-column table whose cells are almost entirely <input>s. The
+ * wrapper already had overflow-x: auto, so in principle it scrolled — but a
+ * thumb drag starting on an input does not scroll the container it sits in, and
+ * on a phone there is nothing BUT inputs in view. The owner's words: "I cannot
+ * go right in order to input information needed."
+ *
+ * So below the breakpoint it stops being a table and becomes one card per item,
+ * each row labelled by the header it lost. Same markup, same handlers; the
+ * labels come from data-label on each <td>, which must be kept in step if a
+ * column is ever added or reordered. */
+@media (max-width: 760px) {
+  .maint-table { min-width: 0 !important; }
+  .maint-table thead { display: none; }
+  .maint-table, .maint-table tbody, .maint-table tr, .maint-table td { display: block; width: 100%; }
+  .maint-table tr {
+    border: 1px solid rgba(203, 108, 230, 0.22);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .maint-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0 !important;
+    border-radius: 0 !important;
+  }
+  .maint-table td + td { border-top: 1px solid rgba(203, 108, 230, 0.1); }
+  .maint-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 11.5px;
+    flex: 0 0 auto;
+  }
+  /* The item name is the card's heading, so it keeps the full width and drops
+     the duplicate label. */
+  .maint-table td[data-label="Item"] { font-size: 14.5px; padding-bottom: 4px !important; }
+  .maint-table td[data-label="Item"]::before { display: none; }
+  /* Thumb-sized targets. The desktop widths are set inline, so they have to be
+     overridden rather than merely restated. */
+  .maint-table td input {
+    width: auto !important;
+    min-width: 0;
+    flex: 0 1 52%;
+    padding: 10px 10px !important;
+    font-size: 16px !important; /* 16px stops iOS zooming the page on focus */
+    text-align: right;
+  }
+  .maint-table td[data-label="Status"] { flex-wrap: wrap; }
+}

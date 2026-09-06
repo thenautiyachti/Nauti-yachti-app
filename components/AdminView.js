@@ -2772,7 +2772,7 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
       <div>
         <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Maintenance schedule</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 12.5, color: "var(--text)" }}>
+          <table className="maint-table" style={{ borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 12.5, color: "var(--text)" }}>
             <thead>
               <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                 <th style={{ padding: "4px 8px" }}>Item</th>
@@ -2786,28 +2786,28 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
             <tbody>
               {statuses.map(({ item, status, label, hoursSince, monthsSince }) => (
                 <tr key={item.id} style={{ background: "var(--card)" }}>
-                  <td style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>{item.label}</td>
-                  <td style={{ padding: "6px 8px" }}>
+                  <td data-label="Item" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>{item.label}</td>
+                  <td data-label="Interval (hrs)" style={{ padding: "6px 8px" }}>
                     <input type="number" defaultValue={item.intervalHours ?? ""} placeholder="—"
                       onBlur={(e) => onUpdateItem(item.id, { intervalHours: e.target.value === "" ? null : Number(e.target.value) })}
                       style={{ width: 60, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                   </td>
-                  <td style={{ padding: "6px 8px" }}>
+                  <td data-label="Interval (months)" style={{ padding: "6px 8px" }}>
                     <input type="number" defaultValue={item.intervalMonths ?? ""} placeholder="—"
                       onBlur={(e) => onUpdateItem(item.id, { intervalMonths: e.target.value === "" ? null : Number(e.target.value) })}
                       style={{ width: 60, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                   </td>
-                  <td style={{ padding: "6px 8px" }}>
+                  <td data-label="Last done" style={{ padding: "6px 8px" }}>
                     <input type="date" defaultValue={item.lastDoneDate || ""}
                       onBlur={(e) => onUpdateItem(item.id, { lastDoneDate: e.target.value || null })}
                       style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                   </td>
-                  <td style={{ padding: "6px 8px" }}>
+                  <td data-label="Hours when done" style={{ padding: "6px 8px" }}>
                     <input type="number" defaultValue={item.lastDoneHours ?? ""} placeholder="—"
                       onBlur={(e) => onUpdateItem(item.id, { lastDoneHours: e.target.value === "" ? null : Number(e.target.value) })}
                       style={{ width: 70, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                   </td>
-                  <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
+                  <td data-label="Status" style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
                     <span style={{ color: STATUS_COLORS[status], fontWeight: 700 }}>{label}</span>
                     {(hoursSince != null || monthsSince != null) && (
                       <div style={{ fontSize: 10.5, color: "var(--muted)" }}>

@@ -197,7 +197,16 @@ model ExternalBooking {
 
   pricePaid Float? // what the guest actually paid, if the owner has logged it
 
-  phone             String? // guest phone, when known
+  phone             String? // the PRIMARY number — what gets texted by default
+  // Everyone else on the booking, as JSON: [{ number, label }].
+  //
+  // Parties book for each other. Oscar's 6 Sep charter carried his name and his
+  // email but a party member's phone, because that is who filled the form, and
+  // the gate code went to a number the owner did not recognise. One column
+  // cannot hold "sometimes multiple numbers are collected in a booking", and
+  // overwriting `phone` to correct it destroys the original with no audit
+  // trail. See lib/bookingPhones.js — never parse this by hand.
+  phonesJson        String?
   platformRef       String? // the platform's own reservation number (Boatsetter/GetMyBoat) - shared key with LedgerEntry
   referralSource    String? // how the booking was won: "repeat guest", "word of mouth", "website", "walk-up" - distinct from `platform`, which is who processed it
   reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
