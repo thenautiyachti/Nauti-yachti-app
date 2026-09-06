@@ -96,6 +96,46 @@ When they pick a date, set it back to **booked**. Owed is a waiting room, not a
 destination. The standing rule when you contact them is to offer a weekend, not a
 refund — if they want the money back they will ask.
 
+### Where to see them: Overview → Guests → "Charters we owe"
+
+Each one shows the guest, what you are holding, how long it has been, and which
+boat. Three buttons:
+
+- **Text it** — opens your phone's messaging app with the message already
+  written. On a desktop it says *"phone only"* and refuses, because a desktop has
+  nothing to hand an `sms:` link to and a message you think you sent is worse
+  than one you know you didn't.
+- **Preview** — shows the exact wording, with **Copy** underneath for sending it
+  another way.
+- **Email** — only appears when there is an email on file.
+
+The wording is not editable, on purpose. None of the drafts mention a refund and
+none of them apologise at length, because opening with *"do you want your money
+back?"* invites the answer that ends the relationship when what the guest wanted
+was to go boating.
+
+The section is **not there at all** when nobody is owed. That is the normal state.
+
+## When a charter's money can't be found
+
+The Overview also says *"N income rows are not tied to a charter."* That is not
+the same as money going missing, and the difference matters more than the number:
+
+- **Unlinked** — the money is on the books, but nothing joins it to the charter,
+  so anything asked from the booking's side answers "no money". **Fix the link.
+  Do not add a row.**
+- **Missing** — nothing in the ledger matches it at all. Find out what happened,
+  then write one.
+
+Adding an income row for money that was already recorded **doubles it on your tax
+report**. Christian Gehring's $520 looked missing for exactly this reason: the
+Zelle row had been there since 9 June and simply wasn't tied to his booking.
+
+Pearl's morning check now reports this, and says which of the two it is rather
+than leaving you to guess. Some unlinked income is perfectly correct and always
+will be — the May 2026 Glow Party seats are real income with no booking to attach
+to.
+
 ## Booking numbers never change
 
 Every booking is `NY-YYYYMMDD-NN`. The date inside it is the date the charter was

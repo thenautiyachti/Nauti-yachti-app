@@ -1,8 +1,8 @@
 // One-off migration for the "owed" status, 5 Sep 2026.
 //
-// Two changes, both to a single booking, and both agreed with the owner first:
+// Three changes, all to a single booking, and all agreed with the owner first:
 //
-//   1. NY-20260711-GEHRING  ->  NY-20260711-02
+//   1. NY-20260711-GEHRING  ->  NY-20260711-03
 //      Every other booking id in the business is NY-YYYYMMDD-NN. This one was
 //      written by hand and ends in a surname. The owner's decision, in his own
 //      words: "renaming this ID is a one time thing, ur right they shouldn't
@@ -14,13 +14,34 @@
 //      charter is rescheduled, refunded or renamed -- the date inside it records
 //      when the booking was FIRST made for, and the `date` column is the one
 //      that moves. This is the single exception, made because the id never
-//      conformed in the first place, and it is checked below for anything
-//      pointing at it before it moves.
+//      conformed in the first place, and everything pointing at it is moved in
+//      the same transaction.
 //
-//   2. status "cancelled" -> "owed"
+//      He asked for -02. -02 is Haley's and -01 is abigail's, so it is -03.
+//      Renaming Haley's to free up -02 would have broken the very rule this
+//      establishes, on a booking that had done nothing wrong.
+//
+//   2. status "booked" -> "owed"
 //      He paid $520 in June, the charter never ran, and he asked to reschedule.
-//      Calling that cancelled says a refund is owed and the relationship is
-//      over; both are wrong, and it is why he sat unchased for two months.
+//      He had been sitting as "booked" with a date of literally "TBD": counted
+//      as a live charter while appearing on no list anyone reads.
+//
+//   3. His $520 income row LINKED to the booking.
+//      The money was never missing -- that claim was wrong. It has been in the
+//      ledger since 9 June as a Zelle income row whose note already said "NOT
+//      EARNED INCOME: this is a deposit against a trip that has not run." What
+//      it never had was a link back to the booking, so everything asking from
+//      the booking's side answered "no money".
+//
+//      LINKED, NOT RE-ADDED. Writing a fresh income row for money already
+//      recorded would have doubled $520 of revenue on a tax report. That is why
+//      this is an explicit, separate step and not part of any generic "add the
+//      missing income" routine.
+//
+// TWO INDEPENDENT STEPS, and they must stay independent. Step 1 ran before
+// step 3 was known to be needed, and the first attempt at adding it put the new
+// work behind step 1's early return -- so it silently did nothing. Each step
+// checks its own state and is safe to re-run.
 //
 // Dry run by default. Nothing is written without --apply.
 
@@ -43,11 +64,17 @@ const OLD_ID = "NY-20260711-GEHRING";
 const DAY = "NY-20260711-";
 const APPLY = process.argv.includes("--apply");
 
+const canWrite = () => {
+  if (!APPLY) { console.log("     Dry run — nothing written. Re-run with --apply."); return false; }
+  if (!process.env.ALLOW_PROD_WRITES) { console.log("     ALLOW_PROD_WRITES is not set. Refusing to write."); return false; }
+  return true;
+};
+
 // The owner asked for -02. It was taken, which is exactly why this is computed
 // rather than typed: the sequence number is "the order it was taken that day",
 // so the right answer is the first free slot, whatever number that turns out to
-// be. Printed loudly below so the id he ends up with is never a surprise.
-async function nextFreeId(prisma) {
+// be. Printed loudly so the id he ends up with is never a surprise.
+async function nextFreeId() {
   const ext = await prisma.externalBooking.findMany({
     where: { bookingId: { startsWith: DAY } }, select: { bookingId: true, guestName: true },
   });
@@ -68,86 +95,120 @@ async function nextFreeId(prisma) {
   return null;
 }
 
-(async () => {
+// --- step 1: the id and the status -------------------------------------------
+async function step1Rename() {
   const row = await prisma.externalBooking.findFirst({ where: { bookingId: OLD_ID } });
   if (!row) {
-    console.log("\n  " + OLD_ID + " not found. Already migrated, or never existed.\n");
-    return;
+    const done = await prisma.externalBooking.findFirst({
+      where: { guestName: { contains: "Gehring" } },
+    });
+    console.log("\n  STEP 1 (id and status): already done" +
+      (done ? " — he is " + done.bookingId + " [" + done.status + "]" : " — he is not here at all"));
+    return done;
   }
 
-  console.log("\n  BEFORE");
-  console.log("     id        " + row.bookingId);
-  console.log("     guest     " + (row.guestName || "-"));
-  console.log("     date      " + JSON.stringify(row.date));
-  console.log("     status    " + row.status);
-  console.log("     paid      $" + (row.pricePaid || 0));
-  console.log("     contact   " + (row.phone || row.email || "NONE ON FILE"));
+  console.log("\n  STEP 1 (id and status)");
+  console.log("     BEFORE   " + row.bookingId + "   [" + row.status + "]   date " +
+    JSON.stringify(row.date) + "   $" + (row.pricePaid || 0) +
+    "   " + (row.phone || row.email || "NO CONTACT ON FILE"));
 
-  // Colliding with a real booking would merge two charters into one identifier,
-  // which is far worse than an ugly id, so the slot is computed from what is
-  // actually in use rather than assumed to be free.
-  const NEW_ID = await nextFreeId(prisma);
-  if (!NEW_ID) {
-    console.log("\n  STOP: no free slot on 11 July 2026.\n");
-    process.exitCode = 1;
-    return;
-  }
+  const NEW_ID = await nextFreeId();
+  if (!NEW_ID) { console.log("     STOP: no free slot on 11 July 2026."); process.exitCode = 1; return null; }
 
   // Anything pointing at the old id has to move with it, or it is orphaned.
-  const ledger = await prisma.ledgerEntry.findMany({ where: { bookingId: OLD_ID } });
+  const pointing = await prisma.ledgerEntry.findMany({ where: { bookingId: OLD_ID } });
   const twin = await prisma.inquiry.findFirst({ where: { bookingId: OLD_ID } });
-  console.log("\n  POINTING AT THE OLD ID");
-  console.log("     ledger entries   " + ledger.length);
-  ledger.forEach((l) => console.log("        " + l.date + "  " + l.type + "  $" + l.amount));
-  console.log("     inquiry row      " + (twin ? twin.id : "none"));
+  console.log("     pointing at the old id: " + pointing.length + " ledger row(s), " +
+    (twin ? "1 inquiry" : "no inquiry"));
+  console.log("     AFTER    " + NEW_ID + "   [owed]");
 
-  console.log("\n  AFTER");
-  console.log("     id        " + NEW_ID);
-  console.log("     status    owed");
-
-  if (!APPLY) {
-    console.log("\n  Dry run. Nothing written. Re-run with --apply to commit.\n");
-    return;
-  }
-  if (!process.env.ALLOW_PROD_WRITES) {
-    console.log("\n  ALLOW_PROD_WRITES is not set. Refusing to write.\n");
-    process.exitCode = 1;
-    return;
-  }
+  if (!canWrite()) return null;
 
   // One transaction: an id that moved on the booking but not on its ledger
   // entries would be worse than either change alone.
   await prisma.$transaction([
-    prisma.externalBooking.update({
-      where: { id: row.id },
-      data: { bookingId: NEW_ID, status: "owed" },
-    }),
-    ...ledger.map((l) =>
-      prisma.ledgerEntry.update({ where: { id: l.id }, data: { bookingId: NEW_ID } })
-    ),
-    ...(twin
-      ? [prisma.inquiry.update({ where: { id: twin.id }, data: { bookingId: NEW_ID, status: "owed" } })]
-      : []),
+    prisma.externalBooking.update({ where: { id: row.id }, data: { bookingId: NEW_ID, status: "owed" } }),
+    ...pointing.map((l) => prisma.ledgerEntry.update({ where: { id: l.id }, data: { bookingId: NEW_ID } })),
+    ...(twin ? [prisma.inquiry.update({ where: { id: twin.id }, data: { bookingId: NEW_ID, status: "owed" } })] : []),
   ]);
-  console.log("\n  Written: booking, " + ledger.length + " ledger entr(ies)" +
-    (twin ? " and the matching inquiry" : "") + ".\n");
+  console.log("     written.");
+  return prisma.externalBooking.findUnique({ where: { id: row.id } });
+}
 
-  // Anyone else who looks owed but is not labelled it. Reported, never changed:
-  // a genuine cancellation with a refund issued must stay cancelled, and only
-  // the owner knows which is which.
-  const others = await prisma.externalBooking.findMany({
-    where: { status: "cancelled", NOT: { bookingId: NEW_ID } },
+// --- step 2: tie his money to him --------------------------------------------
+async function step2LinkTheMoney(booking) {
+  if (!booking) { console.log("\n  STEP 2 (link the money): skipped, no booking to link to."); return; }
+
+  const already = await prisma.ledgerEntry.findMany({
+    where: { OR: [{ externalBookingId: booking.id }, { bookingId: booking.bookingId }] },
   });
-  const withMoney = others.filter((b) => Number(b.pricePaid) > 0);
-  if (withMoney.length) {
-    console.log("  ALSO WORTH A LOOK -- cancelled, but money was taken:\n");
-    withMoney.forEach((b) => console.log("     " + (b.bookingId || "no id") + "  " +
-      (b.guestName || "") + "  $" + b.pricePaid + "  " + b.date));
-    console.log("\n  Left alone. If a refund went back they are cancelled; if it did not,\n" +
-      "  they are owed. That is a judgement call, not a migration.\n");
-  } else {
-    console.log("  No other cancelled booking has money against it.\n");
+  if (already.length) {
+    console.log("\n  STEP 2 (link the money): already done — " + already.length + " row(s) worth $" +
+      already.reduce((s, l) => s + Number(l.amount || 0), 0) + " point at " + booking.bookingId + ".");
+    return;
   }
+
+  const loose = await prisma.ledgerEntry.findMany({
+    where: { type: "income", externalBookingId: null, bookingId: null },
+  });
+  const his = loose.filter((l) =>
+    Number(l.amount) === Number(booking.pricePaid) && /gehring/i.test(String(l.note || "")));
+
+  console.log("\n  STEP 2 (link the money)");
+  if (!his.length) {
+    console.log("     No unlinked income row matches him. His money may genuinely never have");
+    console.log("     been recorded — find out what happened before writing anything.");
+    return;
+  }
+  if (his.length > 1) {
+    console.log("     " + his.length + " unlinked rows match him. NOT guessing — link by hand:");
+    his.forEach((l) => console.log("        " + l.id + "   " + l.date + "   $" + l.amount));
+    return;
+  }
+
+  const l = his[0];
+  console.log("     found    " + l.date + "   $" + l.amount + "   " + l.origin);
+  console.log("     note     " + String(l.note || "").slice(0, 96));
+  if (!canWrite()) return;
+
+  await prisma.ledgerEntry.update({
+    where: { id: l.id },
+    data: { externalBookingId: booking.id, bookingId: booking.bookingId },
+  });
+  console.log("     LINKED to " + booking.bookingId + ". No new row was written.");
+}
+
+// --- anyone else in the same shape, reported and never changed ---------------
+// A genuine cancellation with a refund issued must stay cancelled, and only the
+// owner knows which is which.
+async function reportOthers(booking) {
+  const cancelled = await prisma.externalBooking.findMany({ where: { status: "cancelled" } });
+  const withMoney = cancelled.filter((b) => Number(b.pricePaid) > 0 && (!booking || b.id !== booking.id));
+  console.log("\n  OTHER CANCELLED BOOKINGS THAT TOOK MONEY: " + withMoney.length);
+  withMoney.forEach((b) => console.log("     " + (b.bookingId || "no id") + "   " +
+    (b.guestName || "") + "   $" + b.pricePaid + "   " + b.date));
+  if (withMoney.length) {
+    console.log("     Left alone. If a refund went back they are cancelled; if it did not,");
+    console.log("     they are owed. That is a judgement call, not a migration.");
+  }
+
+  // Income that belongs to no charter at all. Also reported, never touched: the
+  // Glow Party seats are real income with nothing to attach to and never will
+  // have. A person decides; this only makes sure nobody has to go looking.
+  const { unlinkedIncome } = require(path.join(APP, "lib", "ledgerLinks"));
+  const ledger = await prisma.ledgerEntry.findMany();
+  const loose = unlinkedIncome(ledger);
+  console.log("\n  INCOME TIED TO NO CHARTER: " + loose.length +
+    "  ($" + loose.reduce((s, l) => s + Number(l.amount || 0), 0).toFixed(2) + ")");
+  loose.forEach((l) => console.log("     " + l.date + "   $" + l.amount + "   " +
+    (l.origin || "-") + "   " + String(l.note || "").slice(0, 70)));
+}
+
+(async () => {
+  const booking = await step1Rename();
+  await step2LinkTheMoney(booking);
+  await reportOthers(booking);
+  console.log("");
 })()
   .catch((e) => { console.error("\n  " + e.message + "\n"); process.exitCode = 1; })
   .finally(() => prisma.$disconnect());

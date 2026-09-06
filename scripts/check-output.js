@@ -45,6 +45,7 @@ if (fs.existsSync(SECRETS)) {
 const { PrismaClient } = require(path.join(APP, "node_modules", "@prisma", "client"));
 const { HOLDS_THE_DAY, OWED } = require(path.join(APP, "lib", "bookingStatus"));
 const { isOwedCharter } = require(path.join(APP, "lib", "owedCharters"));
+const { chartersMissingTheirMoney, diagnose } = require(path.join(APP, "lib", "ledgerLinks"));
 const { addOnTotal } = require(path.join(APP, "lib", "addOns"));
 const prisma = new PrismaClient();
 
@@ -230,6 +231,36 @@ async function chartersOwed() {
   }
 }
 
+// --- 8. money taken must be findable from the charter -----------------------
+// The claim was made on 5 Sep 2026 that Gehring's $520 had never been recorded.
+// It had. The row was there since 9 June, with a note explaining exactly what it
+// was; what it lacked was any link back to his booking, so every question asked
+// from the booking's side answered "no money". Nothing in the business would
+// ever have noticed, because the one process that writes an income row fires on
+// marking a charter COMPLETED -- and an owed charter never completes.
+//
+// The distinction matters more than the count. Unlinked money needs a join
+// fixed; missing money needs someone to find out what happened. Doing the wrong
+// one writes a second income row for money already banked and doubles it on a
+// tax return, so this says which it is rather than making the reader guess.
+async function moneyNotOnTheBooks() {
+  const bookings = await prisma.externalBooking.findMany();
+  const ledger = await prisma.ledgerEntry.findMany();
+  for (const b of chartersMissingTheirMoney(bookings, ledger)) {
+    const d = diagnose(b, ledger);
+    const who = (b.guestName || "a guest") + " (" + (b.bookingId || "no id") + ")";
+    if (d.kind === "unlinked") {
+      const c = d.candidates[0];
+      fail(2, "books", who + "'s $" + b.pricePaid + " is recorded but not tied to the charter",
+        "looks like the " + c.date + " " + (c.origin || "") + " row for $" + c.amount +
+        " — LINK it, do not add a second row");
+    } else {
+      fail(1, "books", who + " paid $" + b.pricePaid + " and nothing in the ledger matches it",
+        "status " + b.status + ", " + b.date + " — " + d.says);
+    }
+  }
+}
+
 (async () => {
   await paidButSilent();
   await datesNotHeld();
@@ -237,6 +268,7 @@ async function chartersOwed() {
   await unreachableBookings();
   await photosOwed();
   await chartersOwed();
+  await moneyNotOnTheBooks();
   await silentVideos();
 
   if (JSON_OUT) {

@@ -7,6 +7,8 @@ import {
   channelFor, daysSince, askWindow, reviewMessage, reviewSubject, DEFAULT_TEMPLATE_FOR_DAYS,
   smsHref, normalizePhone,
 } from "../lib/reviews";
+import { owedCharters, owedMessage, windowFor } from "../lib/owedCharters";
+import { isLinked } from "../lib/ledgerLinks";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { version as APP_VERSION } from "../package.json";
@@ -3752,6 +3754,169 @@ function crewSpeakableText(r) {
   );
 }
 
+// Guests who paid for a charter that never ran.
+//
+// WHY IT LOOKS LIKE THIS. lib/owedCharters.js was written on 3 Sep 2026 for
+// Christian Gehring -- the qualifying rule, the four message templates, the
+// tap-to-text link, all of it -- and then imported by nothing at all. The
+// module existed, the drafts existed, and there was still no screen on which
+// anyone could see him. So this is deliberately thin: it renders that module's
+// output and adds no rules of its own.
+//
+// The wording is not editable here on purpose. Those drafts encode a standing
+// instruction from the owner -- "I don't want to ask if they want a refund. I
+// would rather fit them in the schedule" -- so none of them mention a refund,
+// and none of them apologise at length. Preview shows exactly what will send.
+function OwedCharters({ bookings, today, onGo }) {
+  const canSendSms = useCanSendSms();
+  const [openKey, setOpenKey] = useState(null);
+  const [copied, setCopied] = useState("");
+
+  // The console's secondary-button style. Declared here rather than borrowed:
+  // the other BTN in this file is local to a component far below, so reaching
+  // for it from module scope is a ReferenceError at render time.
+  const BTN = {
+    background: "transparent", border: "1px solid rgba(203,108,230,0.35)",
+    color: "var(--muted)", borderRadius: 6, fontWeight: 600, cursor: "pointer",
+  };
+
+  const owed = owedCharters(bookings || [], today);
+  if (!owed.length) return null;
+
+  const held = owed.reduce((s, b) => s + (Number(b.pricePaid) || 0), 0);
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 11, borderTop: "1px solid rgba(232,147,74,0.3)" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#E8934A", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Charters we owe ({owed.length})
+        </div>
+        {held > 0 && (
+          <span className="mono" style={{ fontSize: 12, color: "#E8934A", fontWeight: 700 }}>
+            {currency(held)} held
+          </span>
+        )}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3, lineHeight: 1.45 }}>
+        They paid and never got on the water. Offer a weekend, not a refund.
+      </div>
+
+      <div style={{ display: "grid", gap: 8, marginTop: 9 }}>
+        {owed.map((b) => {
+          const key = b.id || b.bookingId;
+          const name = b.guestName || b.name || "a guest";
+          const body = owedMessage("sms", b, today);
+          const href = b.phone ? smsHref(b.phone, body) : null;
+          const isOpen = openKey === key;
+          return (
+            <div key={key} style={{ background: "var(--paper-6)", borderRadius: 10, padding: "9px 10px", border: "1px solid rgba(232,147,74,0.22)" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" }}>
+                <strong style={{ fontSize: 13 }}>{name}</strong>
+                {Number(b.pricePaid) > 0 && (
+                  <span className="mono" style={{ fontSize: 12, color: "#E8934A", fontWeight: 700 }}>{currency(b.pricePaid)}</span>
+                )}
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                  {/* An undated booking has no "days owed" to report, and
+                      inventing one would be worse than saying so. Gehring's date
+                      is the string "TBD" precisely BECAUSE it never ran. */}
+                  {b.daysOwed == null ? "no date ever set" : b.daysOwed + " days"}
+                  {b.vesselName ? " · " + b.vesselName : ""}
+                </span>
+              </div>
+              {b.bookingId && (
+                <div className="mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 2 }}>{b.bookingId}</div>
+              )}
+
+              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                {href ? (
+                  <a
+                    href={href}
+                    onClick={(e) => {
+                      if (!canSendSms) {
+                        e.preventDefault();
+                        window.alert(
+                          "This only works on a phone.\n\nA desktop has nothing to hand an sms: link to, so nothing would be sent.\n\nOpen the console on your phone, or use Preview to copy the wording and send it another way."
+                        );
+                      }
+                    }}
+                    style={{
+                      color: canSendSms ? "#04140D" : "var(--muted)",
+                      background: canSendSms ? "#4FBF8B" : "transparent",
+                      border: "1px solid " + (canSendSms ? "#4FBF8B" : "rgba(203,108,230,0.3)"),
+                      borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 700,
+                      textDecoration: "none", whiteSpace: "nowrap",
+                    }}>
+                    {canSendSms ? "Text it" : "Text it (phone only)"}
+                  </a>
+                ) : (
+                  // Not a disabled button: the reason is the useful part, and it
+                  // is a different job (find a number) from sending a message.
+                  <span style={{ fontSize: 11.5, color: "#E8934A", fontWeight: 600, alignSelf: "center" }}>
+                    No phone on file — they cannot be reached at all
+                  </span>
+                )}
+                <button type="button" onClick={() => setOpenKey(isOpen ? null : key)} style={{ ...BTN, fontSize: 11.5, padding: "5px 10px" }}>
+                  {isOpen ? "Hide" : "Preview"}
+                </button>
+                {b.email && (
+                  <a href={"mailto:" + b.email + "?subject=" + encodeURIComponent("Let's get you back on the water — The Nauti Yachti") + "&body=" + encodeURIComponent(owedMessage(windowFor(b.daysOwed), b, today))}
+                    style={{ ...BTN, fontSize: 11.5, padding: "5px 10px", textDecoration: "none", display: "inline-block" }}>
+                    Email
+                  </a>
+                )}
+              </div>
+
+              {isOpen && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ whiteSpace: "pre-wrap", fontSize: 11.5, lineHeight: 1.5, background: "var(--paper-8)", borderRadius: 8, padding: 9, color: "var(--text)" }}>
+                    {body}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(body);
+                        setCopied(key);
+                        setTimeout(() => setCopied(""), 1600);
+                      } catch { window.prompt("Copy this:", body); }
+                    }}
+                    style={{ ...BTN, fontSize: 11.5, padding: "5px 10px", marginTop: 7 }}>
+                    {copied === key ? "Copied" : "Copy the wording"}
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {onGo && (
+        <button type="button" onClick={() => onGo("bookings")} style={{ ...BTN, fontSize: 11.5, padding: "5px 10px", marginTop: 9 }}>
+          Open in Bookings
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Can this device hand an `sms:` link to anything?
+//
+// Checked after mount rather than during render: `navigator` does not exist on
+// the server and touching it there breaks the page. Shared by the review list
+// and the owed-charter panel, because both offer a tap-to-text and both have to
+// refuse it honestly on a desktop -- an ask recorded but never sent is worse
+// than no ask at all.
+function useCanSendSms() {
+  const [can, setCan] = useState(false);
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = navigator.userAgent || "";
+    const touch = (navigator.maxTouchPoints || 0) > 0;
+    setCan(/iPhone|iPad|iPod|Android|Mobile/i.test(ua) || touch);
+  }, []);
+  return can;
+}
+
 function CrewCard({ r, compact = false }) {
   const speech = useContext(CrewSpeechContext);
   const speakable = crewSpeakableText(r);
@@ -4571,7 +4736,10 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const neverAsked = externalBookings.filter((b) => b.status === "completed" && b.phone && !b.reviewRequestedAt && !b.marketingOptOut);
   const noPhone = externalBookings.filter((b) => b.status === "completed" && !b.phone);
   const noPrice = externalBookings.filter((b) => b.status === "completed" && b.pricePaid == null);
-  const looseIncome = ledger.filter((l) => l.type === "income" && !l.externalBookingId);
+  // A row can point at a booking by the real FK OR by the bookingId string.
+  // This checked only the FK, so a string-linked row counted as loose and the
+  // panel said four when three was the truth. isLinked() accepts either.
+  const looseIncome = ledger.filter((l) => l.type === "income" && !isLinked(l));
 
   // `go` is the tab that can actually act on the item, so the line is a link
   // rather than an instruction to go and find it yourself.
@@ -4985,6 +5153,14 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
               ? `Still leaking: ${recentCapture.n - recentCapture.reach} of the last ${recentCapture.n} guests left with no phone or email on file. The fix is at the dock, not in the asking.`
               : "Capture is holding. Every recent guest can be reached."}
           </div>
+
+          {/* Charters the business owes. Inside the Guests panel rather than as
+              a tenth block of its own, for two reasons: it is Joy's remit (a
+              guest relationship left unresolved, which she owns before it is an
+              accounting matter), and a panel that is empty in almost every week
+              reads as missing information rather than as good news. It renders
+              nothing at all when there is nobody owed. */}
+          <OwedCharters bookings={externalBookings} today={today} onGo={onGo} />
         </div>
         <div className="orbit-crew">
           <CrewCard r={byName["Nauti Joy"]} compact />
@@ -5599,13 +5775,7 @@ function ReviewRequestsPanel({ inquiries, externalBookings, onUpdateExternalBook
   // Whether this device can hand an sms: link to anything. Checked once after
   // mount rather than during render, because navigator does not exist on the
   // server and touching it there breaks the page.
-  const [canSendSms, setCanSendSms] = useState(false);
-  useEffect(() => {
-    if (typeof navigator === "undefined") return;
-    const ua = navigator.userAgent || "";
-    const touch = (navigator.maxTouchPoints || 0) > 0;
-    setCanSendSms(/iPhone|iPad|iPod|Android|Mobile/i.test(ua) || touch);
-  }, []);
+  const canSendSms = useCanSendSms();
   const [flash, setFlash] = useState(""); // key of the row that just got copied
   const [previewKey, setPreviewKey] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
