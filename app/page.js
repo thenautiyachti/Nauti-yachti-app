@@ -1,6 +1,7 @@
 import { prisma } from "../lib/db";
 import { HOLDS_THE_DAY } from "../lib/bookingStatus";
 import { parsePackage, groupBlockedDates, groupExternalBookingState } from "../lib/serialize";
+import { occupyingRows } from "../lib/occupancy";
 import { getLakeConroeForecast } from "../lib/weather";
 import SiteView from "../components/SiteView";
 import { pageMetadata } from "../lib/seo";
@@ -31,7 +32,7 @@ export const metadata = {
 // Server component: loads everything the public page needs in one shot
 // (no client-side loading spinner needed for first paint).
 export default async function HomePage() {
-  const [packageRows, vessels, gallery, blockedRows, externalBookingRows, forecast, testimonials, addOns] = await Promise.all([
+  const [packageRows, vessels, gallery, blockedRows, externalBookingRows, confirmedInquiries, forecast, testimonials, addOns] = await Promise.all([
     prisma.package.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.vessel.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.galleryItem.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -41,6 +42,14 @@ export default async function HomePage() {
     // cancelled -- and would have put 33 enquiries onto the public calendar as
     // booked days the moment they were labelled honestly.
     prisma.externalBooking.findMany({ where: { status: { in: HOLDS_THE_DAY } } }),
+    // A booking confirmed by text lives only as an Inquiry -- nothing writes a
+    // diary row for it, so its date stayed on sale and could be sold twice.
+    // Only the fields occupancy needs: this reaches a PUBLIC page, where the
+    // payload is readable with "view source".
+    prisma.inquiry.findMany({
+      where: { status: "booked" },
+      select: { id: true, bookingId: true, vesselId: true, date: true, hours: true, status: true },
+    }),
     getLakeConroeForecast(),
     prisma.testimonial.findMany({
       where: { status: "approved" },
@@ -56,7 +65,10 @@ export default async function HomePage() {
 
   const packages = packageRows.map(parsePackage);
   const blocked = groupBlockedDates(blockedRows);
-  const partialDates = groupExternalBookingState(externalBookingRows);
+  // Both tables, deduped -- a card booking exists in each and counting its
+  // hours twice would show a half-day as full. See lib/occupancy.js.
+  const occupied = occupyingRows(externalBookingRows, confirmedInquiries);
+  const partialDates = groupExternalBookingState(occupied);
 
   // Full names are shown, on the owner's call: the site already publishes
   // guests' faces, so withholding a surname protected nothing.

@@ -157,6 +157,15 @@ one-off correction to an id that never conformed — not a precedent.
 Block days per vessel. A day with bookings that do not fill it shows as partially
 booked, calculated from the summed hours of that day's charters.
 
+**A booking you confirm by text now blocks its date.** Until 5 September 2026 the
+public calendar only knew about charters paid for by card, because the Stripe
+webhook was the only thing that wrote a diary entry. Anything you took over the
+phone and marked **booked** left the day still on sale — you could have sold it
+twice. Marking an enquiry booked is now enough.
+
+Nothing else changed: an enquiry still blocks nothing, and a charter paid by card
+is counted once rather than twice even though it exists in both lists.
+
 ---
 
 # Money
@@ -182,6 +191,17 @@ Two income rows against one charter is normal, not a duplicate.
 ## Tax Report
 
 Pick a year for totals, a CSV export, and breakdowns.
+
+**Money held for a charter that never ran is not counted as income**, in this
+report or in "Season in" on the Overview. It is a deposit against a trip that has
+not happened — if the guest asks for it back, it goes back — so it becomes income
+in the year the charter actually sails.
+
+It is never just removed. Both places name the excluded amount, because your bank
+statement will show that money arriving and the two figures have to be
+reconcilable. The Overview shows it as **"Held, not earned"**; the Tax Report
+shows an amber note above the totals saying how much and why. Anyone marked
+**Owed** in Bookings is where it comes from.
 
 Income is split **by vessel** and **by origin** rather than by category — every
 reservation is logged under the single category "Reservation", so a by-category

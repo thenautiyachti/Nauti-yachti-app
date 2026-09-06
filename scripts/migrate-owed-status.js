@@ -178,6 +178,37 @@ async function step2LinkTheMoney(booking) {
   console.log("     LINKED to " + booking.bookingId + ". No new row was written.");
 }
 
+// --- step 3: stop pretending "TBD" is a date ---------------------------------
+//
+// His date was the literal string "TBD". Now that `owed` carries that meaning,
+// the placeholder is redundant -- and it is worse than redundant, it is a
+// landmine: "TBD" > "2026-09-05" as a string comparison, so any code that
+// filters `date >= today` without also checking status reads him as an upcoming
+// charter. Nothing does today, because every such filter happens to require
+// status "booked". The next one written might not.
+//
+// EMPTY STRING, NOT NULL. The column is non-null, and making it nullable would
+// be a schema migration touching 153 read sites for a cosmetic gain. "" gets
+// the same result with none of that risk: it is falsy, so the `b.date && ...`
+// guard every consumer already uses treats it as absent, and "" >= today is
+// false, so it can never be mistaken for the future. The status is what says
+// "no date yet"; the column no longer has to lie to convey it.
+async function step3ClearFakeDates() {
+  const REAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const owed = await prisma.externalBooking.findMany({ where: { status: "owed" } });
+  const fake = owed.filter((b) => b.date && !REAL_DATE.test(b.date));
+
+  console.log("\n  STEP 3 (placeholder dates)");
+  if (!fake.length) { console.log("     none — no owed charter is carrying a fake date."); return; }
+  fake.forEach((b) => console.log("     " + b.bookingId + "   date " + JSON.stringify(b.date) + " -> \"\""));
+  if (!canWrite()) return;
+
+  for (const b of fake) {
+    await prisma.externalBooking.update({ where: { id: b.id }, data: { date: "" } });
+  }
+  console.log("     cleared " + fake.length + ".");
+}
+
 // --- anyone else in the same shape, reported and never changed ---------------
 // A genuine cancellation with a refund issued must stay cancelled, and only the
 // owner knows which is which.
@@ -207,6 +238,7 @@ async function reportOthers(booking) {
 (async () => {
   const booking = await step1Rename();
   await step2LinkTheMoney(booking);
+  await step3ClearFakeDates();
   await reportOthers(booking);
   console.log("");
 })()

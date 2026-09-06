@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { currency, tierPrice, dayTypeForDate, imageFocus } from "../lib/pricing";
+import { currency, dayTypeForDate, quotePackage, quoteTotal, imageFocus } from "../lib/pricing";
 import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
-import { addOnTotal, includedIds, isIncluded, isCovered, chargeableIds } from "../lib/addOns";
+import { includedIds, isIncluded, isCovered, chargeableIds } from "../lib/addOns";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -693,10 +693,14 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
     if (currentVessel && guests > currentVessel.capacity) setGuests(currentVessel.capacity);
   }, [currentVessel]); // eslint-disable-line
 
-  let price = pkg.price;
-  if (pkg.pricingType === "hourly-by-vessel") price = pkg.hourlyByVessel[vesselId]?.[dayType]?.[hour];
-  if (pkg.pricingType === "per-guest") price = guests * pkg.pricePerGuest;
-  if (pkg.pricingType === "tiered-by-guests") price = tierPrice(pkg.tiers, guests);
+  // Same function as the booking form and the checkout endpoint. This card was
+  // the third copy of the arithmetic; a price explorer that quietly disagreed
+  // with the form underneath it is its own kind of wrong.
+  //
+  // dayType is passed rather than derived: here it is a control the visitor
+  // flips to compare weekday against weekend, not a consequence of a chosen
+  // date. No add-ons -- this is the package price on its own.
+  const price = quotePackage(pkg, { vesselId, dayType, hours: hour, partySize: guests });
 
   return (
     <div style={{ background: `var(--paper-site-${plate})`, border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -927,21 +931,24 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     const pkg = packages.find((p) => p.id === form.packageId);
     const vessel = vessels.find((v) => v.id === form.vesselId);
 
-    let priceQuoted = pkg?.price;
-    if (pkg?.pricingType === "hourly-by-vessel") priceQuoted = pkg.hourlyByVessel[form.vesselId]?.[dayType]?.[form.hours];
-    if (pkg?.pricingType === "per-guest") priceQuoted = Number(form.partySize || 0) * pkg.pricePerGuest;
-    if (pkg?.pricingType === "tiered-by-guests") priceQuoted = tierPrice(pkg.tiers, Number(form.partySize || 1));
-
-    // Add-ons were being collected and never charged. The ids were stored on
-    // the booking, the dropdown offered them with prices beside them, and
-    // nothing anywhere added them to the total — client or server. Every
-    // decoration package sold since this form went up was free.
+    // The same quoteTotal the checkout endpoint runs. This used to be four
+    // lines of arithmetic here and nothing at all on the server, which is how
+    // /api/checkout came to take the browser's number on trust. Keeping ONE
+    // function matters more than where it lives: two copies drift, and the day
+    // they disagree every honest booking is rejected as tampering.
     //
-    // Anything included with the chosen package is excluded here rather than
-    // added at zero; see lib/addOns.js.
-    if (priceQuoted != null) {
-      priceQuoted = Math.round((priceQuoted + addOnTotal(addOns, form.packageId, form.addOnIds)) * 100) / 100;
-    }
+    // Add-ons are inside it. They were being collected and never charged --
+    // stored on the booking, priced in the dropdown, and added to the total by
+    // nothing anywhere, so every decoration package sold since this form went
+    // up was free. Anything included with the chosen package is excluded rather
+    // than added at zero; see lib/addOns.js.
+    const priceQuoted = quoteTotal(pkg, addOns, {
+      vesselId: form.vesselId,
+      date: form.date,
+      hours: form.hours,
+      partySize: form.partySize,
+      addOnIds: form.addOnIds,
+    });
 
     setSubmitting(true);
     const ok = await handler({ ...form, packageName: pkg?.name, vesselName: vessel?.name, priceQuoted, termsAccepted: form.agreeTerms });

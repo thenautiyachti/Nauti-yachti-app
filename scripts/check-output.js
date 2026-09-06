@@ -261,9 +261,28 @@ async function moneyNotOnTheBooks() {
   }
 }
 
+// --- 9. a date column must hold a date, or nothing --------------------------
+// "TBD" lived in this column for two months. It is not merely untidy: string
+// comparison puts "TBD" AFTER every real date, so `date >= today` reads it as
+// an upcoming charter. Nothing was fooled, because every such filter also
+// required status "booked" -- which is luck, not design. Empty means "no date";
+// anything else must parse.
+async function fakeDates() {
+  const REAL = /^\d{4}-\d{2}-\d{2}$/;
+  const rows = await prisma.externalBooking.findMany({
+    select: { bookingId: true, guestName: true, date: true, status: true },
+  });
+  for (const b of rows.filter((r) => r.date && !REAL.test(r.date))) {
+    fail(2, "data", (b.bookingId || "a booking") + " has a date that is not a date",
+      JSON.stringify(b.date) + " — sorts as if it were later than every real date. " +
+      "Use \"\" for no date; the status is what says why.");
+  }
+}
+
 (async () => {
   await paidButSilent();
   await datesNotHeld();
+  await fakeDates();
   await addOnPricing();
   await unreachableBookings();
   await photosOwed();

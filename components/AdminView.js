@@ -8,7 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { owedCharters, owedMessage, windowFor } from "../lib/owedCharters";
-import { isLinked } from "../lib/ledgerLinks";
+import { isLinked, earnedIncome, unearnedTotal } from "../lib/ledgerLinks";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { version as APP_VERSION } from "../package.json";
@@ -4673,8 +4673,13 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // A calendar month is a misleading frame here: on the 3rd it shows a month of
   // fixed bills against three days of income. March is when the season starts.
   const seasonLedger = ledger.filter((e) => (e.date || "") >= SEASON_FROM);
-  const seasonIn = seasonLedger.filter((e) => e.type === "income")
+  // Money held against a charter that never ran is not revenue -- it is a
+  // deposit that goes back if the guest asks. It is excluded here and shown on
+  // its own line below, never silently dropped: a total that quietly shrinks is
+  // worse than one that is slightly wrong, because it stops matching the bank.
+  const seasonIn = earnedIncome(seasonLedger, externalBookings)
     .reduce((a, e) => a + Number(e.amount || 0), 0);
+  const seasonHeld = unearnedTotal(seasonLedger, externalBookings);
   const seasonOut = seasonLedger.filter((e) => e.type === "expense")
     .reduce((a, e) => a + Number(e.amount || 0), 0);
   const seasonNet = seasonIn - seasonOut;
@@ -5031,6 +5036,14 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
               <span style={{ color: "var(--muted)" }}>Season in</span>
               <span className="mono" style={{ color: "#7FE0B8", fontWeight: 700 }}>{currency(seasonIn)}</span>
             </div>
+            {seasonHeld > 0 && (
+              // The bank holds this money and the season total does not count
+              // it. Both facts have to be visible or the two stop reconciling.
+              <div style={{ display: "flex", justifyContent: "space-between" }} title="Paid for a charter that never ran. Not earned until it sails, or returned.">
+                <span style={{ color: "#E8934A" }}>Held, not earned</span>
+                <span className="mono" style={{ color: "#E8934A" }}>{currency(seasonHeld)}</span>
+              </div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "var(--muted)" }}>Season out</span>
               <span className="mono" style={{ color: "var(--pink)" }}>{currency(seasonOut)}</span>
@@ -6516,7 +6529,13 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
   const [year, setYear] = useState(years[0] || String(currentYear));
 
   const yearLedger = ledger.filter((l) => l.date && l.date.startsWith(year));
-  const income = yearLedger.filter((l) => l.type === "income");
+  // A deposit for a charter that never ran is not revenue for this year. It is
+  // money held against a trip that has not happened, and if the guest asks for
+  // it back it goes back. This is the report where getting that wrong actually
+  // costs something, so it is excluded from income and stated on its own line
+  // rather than quietly removed.
+  const income = earnedIncome(yearLedger, externalBookings);
+  const heldNotEarned = unearnedTotal(yearLedger, externalBookings);
   const expenses = yearLedger.filter((l) => l.type === "expense");
   const totalIncome = income.reduce((sum, l) => sum + Number(l.amount || 0), 0);
   const totalExpense = expenses.reduce((sum, l) => sum + Number(l.amount || 0), 0);
@@ -6595,6 +6614,24 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
         <StatCard label={`${year} net profit`} value={currency(net)} color="#E8934A" />
         <StatCard label="Annual recurring subscription cost" value={currency(annualSubscriptionCost)} color="#00d9ff" />
       </div>
+
+      {heldNotEarned > 0 && (
+        // Stated, not hidden. The bank received this money in the selected
+        // year, so a bookkeeper reconciling against a statement will find it
+        // and needs to know why the income figure above does not include it.
+        <div style={{ background: "rgba(232,147,74,0.09)", border: "1px solid rgba(232,147,74,0.35)", borderRadius: 8, padding: "10px 12px", maxWidth: 640 }}>
+          <div style={{ fontSize: 12.5, color: "#E8934A", fontWeight: 700 }}>
+            {currency(heldNotEarned)} received in {year} is NOT counted in the income above
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.5 }}>
+            It was paid for a charter that never ran and has not been rescheduled, so it is money
+            held rather than revenue earned — it goes back if the guest asks. It will count as
+            income in the year the charter actually sails. Your bank statement will show it in
+            {" " + year}, which is why it is named here rather than left out silently.
+            See Bookings for anyone marked <strong>Owed</strong>.
+          </div>
+        </div>
+      )}
 
       <p style={{ fontSize: 12.5, color: "var(--muted)", maxWidth: 640 }}>
         This isn't a filed tax form — it's a plain summary of everything logged in the Income &amp; expenses and Subscriptions tabs for the selected year, exportable as CSV to hand to a bookkeeper or drop into tax software. Categories below mirror the expense categories used when logging entries.

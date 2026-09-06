@@ -4,6 +4,8 @@ const { sendInquiryEmail } = require("../../../lib/email");
 const { checkCoupon, discountedAmount } = require("../../../lib/coupons");
 const { checkGiftCertificate, applicableAmount, redeem: redeemGiftCertificate } = require("../../../lib/giftCertificates");
 const { generateBookingId } = require("../../../lib/bookingId");
+const { quoteTotal } = require("../../../lib/pricing");
+const { parsePackage } = require("../../../lib/serialize");
 
 // Public: customer clicks "Book this" / submits the booking form and is sent
 // to Stripe's hosted Checkout for the exact quoted price. We still create the
@@ -28,9 +30,54 @@ async function POST(req) {
     }
   }
 
-  const priceQuoted = body.priceQuoted != null ? Number(body.priceQuoted) : null;
+  // THE PRICE IS COMPUTED HERE, NOT ACCEPTED HERE.
+  //
+  // Until 5 Sep 2026 `body.priceQuoted` went straight into Stripe's
+  // `unit_amount`, so a crafted POST paid whatever it chose for an $850
+  // charter. The coupon and gift-certificate code below had always been
+  // careful -- "the code is the only thing trusted from the client" -- and the
+  // base price had simply never been given the same treatment.
+  //
+  // Same function the booking form uses, so the two cannot drift and start
+  // rejecting honest bookings.
+  const claimed = body.priceQuoted != null ? Number(body.priceQuoted) : null;
+  const pkgRow = await prisma.package.findUnique({ where: { id: String(body.packageId) } });
+  if (!pkgRow) {
+    return NextResponse.json({ error: "Unknown package" }, { status: 400 });
+  }
+  const addOnRows = await prisma.addOn.findMany();
+  const priceQuoted = quoteTotal(parsePackage(pkgRow), addOnRows, {
+    vesselId: body.vesselId,
+    date: body.date,
+    hours: body.hours,
+    partySize: body.partySize,
+    addOnIds: Array.isArray(body.addOnIds) ? body.addOnIds : [],
+  });
+
   if (!priceQuoted || priceQuoted <= 0) {
-    return NextResponse.json({ error: "Missing or invalid priceQuoted" }, { status: 400 });
+    // Null means the package cannot be priced from what was sent -- an unknown
+    // vessel, a duration it does not offer. Never treat that as free.
+    return NextResponse.json({ error: "That combination cannot be priced" }, { status: 400 });
+  }
+
+  // Charging MORE than the page displayed is not acceptable even when the
+  // server is right: the guest agreed to the number they were shown. That
+  // happens when a price rises while a tab sits open, so send them back to a
+  // fresh page rather than surprising their card.
+  //
+  // The other direction is safe and is left alone: if the server price is
+  // lower, the guest pays the lower one. That also means an attacker sending a
+  // huge number gains nothing, and one sending $1 is refused here.
+  if (claimed != null && priceQuoted > claimed + 0.01) {
+    console.warn("[checkout] quoted " + claimed + " but server says " + priceQuoted +
+      " for package " + body.packageId + " — refusing rather than overcharging");
+    return NextResponse.json({
+      error: "Our prices have changed since this page loaded. Please refresh and try again.",
+      priceChanged: true,
+    }, { status: 409 });
+  }
+  if (claimed != null && Math.abs(priceQuoted - claimed) > 0.01) {
+    console.warn("[checkout] client quoted " + claimed + ", charging server price " + priceQuoted);
   }
 
   // A coupon code is optional and never trusted from the client beyond the
