@@ -48,6 +48,14 @@ model Vessel {
   slip      String
   name      String
   capacity  Int
+  // Does this boat have an engine-hour meter?
+  //
+  // It decides what a row in EngineHoursLog MEANS for this vessel. With a
+  // meter, hours is a reading off the dial and the current value is the latest
+  // one. Without, the owner logs the length of each charter and the current
+  // value is all of them added up. Two of the three have no meter, so false is
+  // the honest default. See lib/engineHours.js.
+  hasHourMeter Boolean @default(false)
   note      String
   image     String?
   sortOrder Int     @default(0)
@@ -253,7 +261,11 @@ model EngineHoursLog {
   id        String   @id @default(cuid())
   vesselId  String
   date      String // "YYYY-MM-DD"
-  hours     Float // hour-meter reading at that point, not a duration
+  // Means one of two things, depending on Vessel.hasHourMeter: a meter READING
+  // on a boat that has a dial, or the DURATION of one charter on a boat that
+  // does not. Never read this column directly — lib/engineHours.js knows which
+  // is which, and getting it wrong makes an engine appear to run backwards.
+  hours     Float
   note      String?
   createdAt DateTime @default(now())
 }

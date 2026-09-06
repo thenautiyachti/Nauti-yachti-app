@@ -9,6 +9,7 @@ import {
 } from "../lib/reviews";
 import { owedCharters, owedMessage, windowFor } from "../lib/owedCharters";
 import { isLinked, earnedIncome, unearnedTotal } from "../lib/ledgerLinks";
+import { hoursByVessel, fleetHours as fleetHoursOf, currentHours, isMetered } from "../lib/engineHours";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { version as APP_VERSION } from "../package.json";
@@ -2647,8 +2648,8 @@ const DUE_SOON_FRACTION = 0.9; // flag "due soon" within 10% of either threshold
 // MaintenanceItem isn't tied to a specific vessel (it's one shared checklist
 // for the fleet), so status is judged against whichever vessel currently has
 // the most hours on it — the worst case, so nothing slips through unnoticed.
-function maintenanceStatus(item, currentHours) {
-  const hasHoursBasis = item.intervalHours != null && item.lastDoneHours != null && currentHours != null;
+function maintenanceStatus(item, hoursNow) {
+  const hasHoursBasis = item.intervalHours != null && item.lastDoneHours != null && hoursNow != null;
   const hasMonthsBasis = item.intervalMonths != null && !!item.lastDoneDate;
 
   if (!hasHoursBasis && !hasMonthsBasis) {
@@ -2661,7 +2662,7 @@ function maintenanceStatus(item, currentHours) {
   let monthsSinceVal = null;
 
   if (hasHoursBasis) {
-    hoursSince = currentHours - item.lastDoneHours;
+    hoursSince = hoursNow - item.lastDoneHours;
     if (hoursSince >= item.intervalHours) overdue = true;
     else if (hoursSince >= item.intervalHours * DUE_SOON_FRACTION) dueSoon = true;
   }
@@ -2684,9 +2685,15 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
   const latestHours = latestPerVessel(engineHours);
   const latestFuel = latestPerVessel(fuelLogs);
 
-  const vesselHours = vessels.map((v) => ({ vessel: v, log: latestHours[v.id] || null }));
-  const knownHours = vesselHours.map((vh) => vh.log?.hours).filter((h) => h != null);
-  const fleetMaxHours = knownHours.length ? Math.max(...knownHours) : null;
+  // A row means a meter READING on a boat that has a meter, and a charter
+  // DURATION on a boat that does not. Two of the three have no meter, so the
+  // current figure is the latest row in one case and the SUM of them in the
+  // other. Taking the latest either way made the Explorer appear to go from 4
+  // hours to 3 on its second charter — and maintenance intervals are judged
+  // against that number. See lib/engineHours.js.
+  const hoursPerVessel = hoursByVessel(vessels, engineHours);
+  const vesselHours = vessels.map((v) => ({ vessel: v, log: latestHours[v.id] || null, hours: hoursPerVessel[v.id] }));
+  const fleetMaxHours = fleetHoursOf(vessels, engineHours);
 
   const statuses = maintenanceItems.map((item) => ({ item, ...maintenanceStatus(item, fleetMaxHours) }));
   const overdueCount = statuses.filter((s) => s.status === "overdue").length;
@@ -2698,10 +2705,17 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
 
   const fuelGaps = vessels.map((v) => {
     const lastFuel = latestFuel[v.id];
-    const currentLog = latestHours[v.id];
     if (!lastFuel) return { vessel: v, flag: false };
     const tripsSince = engineHours.filter((e) => e.vesselId === v.id && e.date > lastFuel.date).length;
-    const hoursSince = currentLog && lastFuel.hoursAtFillup != null ? currentLog.hours - lastFuel.hoursAtFillup : null;
+    // Measure from the boat's CURRENT hours, not its latest row. On an unmetered
+    // boat the latest row is one charter's length, so subtracting a fillup total
+    // from it gave a negative number — which never reaches 15, so this warning
+    // quietly never fired on either boat that has no meter.
+    const nowHours = hoursPerVessel[v.id];
+    const raw = nowHours != null && lastFuel.hoursAtFillup != null ? nowHours - lastFuel.hoursAtFillup : null;
+    // A negative gap means the two numbers were recorded on different bases;
+    // that is unknown, not zero, so it must not read as "recently fuelled".
+    const hoursSince = raw != null && raw >= 0 ? raw : null;
     const flag = (hoursSince != null && hoursSince >= 15) || tripsSince >= 3;
     return { vessel: v, flag, hoursSince, tripsSince, lastFuelDate: lastFuel.date };
   }).filter((g) => g.flag);
@@ -2710,8 +2724,17 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
     <div style={{ display: "grid", gap: 24 }}>
       <div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, marginBottom: 10 }}>
-          {vesselHours.map(({ vessel, log }) => (
-            <StatCard key={vessel.id} label={`${vessel.name} hours`} value={log ? `${log.hours.toLocaleString()} hrs` : "No log yet"} color="var(--purple)" />
+          {/* The card shows the boat's TOTAL, not the last row. On an unmetered
+              boat those are different numbers and only the total is the answer
+              to "how much has this engine run". The label says which kind it is
+              so the figure cannot be misread as a dial reading. */}
+          {vesselHours.map(({ vessel, hours }) => (
+            <StatCard
+              key={vessel.id}
+              label={`${vessel.name} — ${isMetered(vessel) ? "meter" : "hours run"}`}
+              value={hours != null ? `${hours.toLocaleString()} hrs` : "No log yet"}
+              color="var(--purple)"
+            />
           ))}
           <StatCard label="Overdue items" value={String(overdueCount)} color="var(--pink)" />
           <StatCard label="Due soon" value={String(dueSoonCount)} color="#E8934A" />
@@ -2804,7 +2827,7 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
         <EngineHoursLogPanel vessels={vessels} engineHours={engineHours} onAdd={onAddEngineHoursLog} />
-        <FuelLogPanel vessels={vessels} fuelLogs={fuelLogs} onAdd={onAddFuelLog} />
+        <FuelLogPanel vessels={vessels} fuelLogs={fuelLogs} engineHours={engineHours} onAdd={onAddFuelLog} />
       </div>
     </div>
   );
@@ -2825,6 +2848,14 @@ function EngineHoursLogPanel({ vessels, engineHours, onAdd }) {
     return vessels.find((v) => v.id === id)?.name || id;
   }
 
+  // The field asked for "Hour-meter reading" no matter which boat was picked,
+  // and two of the three have no meter to read. Whoever is standing at the dock
+  // has to be told which number this box wants, because the same "4" means
+  // "the dial says 4" on one boat and "we ran it four hours" on another.
+  const picked = vessels.find((v) => v.id === form.vesselId) || null;
+  const metered = isMetered(picked);
+  const runningTotal = picked ? currentHours(picked, engineHours) : null;
+
   return (
     <div>
       <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Engine hours log</div>
@@ -2839,9 +2870,18 @@ function EngineHoursLogPanel({ vessels, engineHours, onAdd }) {
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
             style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
-          <input type="number" placeholder="Hour-meter reading" value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })}
+          <input type="number" step="0.1" placeholder={metered ? "Hour-meter reading" : "Hours run this trip"}
+            value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })}
             style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} required />
         </div>
+        {picked && (
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8, lineHeight: 1.45 }}>
+            {metered
+              ? `${picked.name} has an hour meter — enter what the dial reads. The newest reading is the boat's hours.`
+              : `${picked.name} has no hour meter — enter this trip's hours only. They are added to the running total.`}
+            {runningTotal != null && ` Currently ${runningTotal.toLocaleString()} hrs.`}
+          </div>
+        )}
         <input type="text" placeholder="Note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
           style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 10 }} />
         <button type="submit" style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "10px", fontWeight: 700 }}>Add entry</button>
@@ -2850,7 +2890,9 @@ function EngineHoursLogPanel({ vessels, engineHours, onAdd }) {
         {engineHours.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No entries yet.</div>}
         {engineHours.map((h) => (
           <div key={h.id} style={{ background: "var(--card)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "var(--text)" }}>
-            <div>{h.date} — {vesselName(h.vesselId)} — {h.hours.toLocaleString()} hrs</div>
+            {/* Say which kind of number this row is, or the history reads as a
+                meter that jumps around. */}
+            <div>{h.date} — {vesselName(h.vesselId)} — {h.hours.toLocaleString()} hrs{isMetered(vessels.find((v) => v.id === h.vesselId)) ? " on the meter" : " run"}</div>
             {h.note && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{h.note}</div>}
           </div>
         ))}
@@ -2859,7 +2901,7 @@ function EngineHoursLogPanel({ vessels, engineHours, onAdd }) {
   );
 }
 
-function FuelLogPanel({ vessels, fuelLogs, onAdd }) {
+function FuelLogPanel({ vessels, fuelLogs, engineHours, onAdd }) {
   const emptyForm = { vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), hoursAtFillup: "", gallons: "", cost: "", note: "" };
   const [form, setForm] = useState(emptyForm);
 
@@ -2879,6 +2921,13 @@ function FuelLogPanel({ vessels, fuelLogs, onAdd }) {
     return vessels.find((v) => v.id === id)?.name || id;
   }
 
+  // "Hours at fillup" is only useful if it is on the same basis as the boat's
+  // hours — otherwise the "due for fuel" check subtracts two unrelated numbers.
+  // On a boat with no meter that basis is a running total, which is not
+  // something anyone should be totalling in their head at the pump, so offer it.
+  const picked = vessels.find((v) => v.id === form.vesselId) || null;
+  const hoursNowForPicked = picked ? currentHours(picked, engineHours) : null;
+
   return (
     <div>
       <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Fuel log</div>
@@ -2896,9 +2945,16 @@ function FuelLogPanel({ vessels, fuelLogs, onAdd }) {
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
             style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
-          <input type="number" placeholder="Hours at fillup" value={form.hoursAtFillup} onChange={(e) => setForm({ ...form, hoursAtFillup: e.target.value })}
+          <input type="number" step="0.1" placeholder={isMetered(picked) ? "Meter at fillup" : "Total hours at fillup"}
+            value={form.hoursAtFillup} onChange={(e) => setForm({ ...form, hoursAtFillup: e.target.value })}
             style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
         </div>
+        {hoursNowForPicked != null && form.hoursAtFillup === "" && (
+          <button type="button" onClick={() => setForm({ ...form, hoursAtFillup: String(hoursNowForPicked) })}
+            style={{ background: "none", border: "none", padding: 0, marginBottom: 8, color: "var(--purple)", fontSize: 11.5, cursor: "pointer", textAlign: "left" }}>
+            Use {picked.name}&rsquo;s current {hoursNowForPicked.toLocaleString()} hrs
+          </button>
+        )}
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <input type="number" placeholder="Gallons" value={form.gallons} onChange={(e) => setForm({ ...form, gallons: e.target.value })}
             style={{ flex: 1, padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }} />
@@ -4728,8 +4784,10 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   const newInquiries = inquiries.filter((i) => isRealInquiry(i) && i.status === "new");
   // Judged against the highest engine-hour reading in the fleet, which is what
   // the Maintenance tab does — the worst case, so nothing slips through.
-  const fleetHours = (engineHours || []).map((h) => h.hours).filter((h) => h != null);
-  const maxHours = fleetHours.length ? Math.max(...fleetHours) : null;
+  // Same correction as the Maintenance tab: the max of raw ROWS is the longest
+  // single charter on an unmetered boat, not its total. A fleet with 300
+  // accumulated hours would have reported 8.
+  const maxHours = fleetHoursOf(vessels, engineHours);
   const overdue = maintenanceItems.filter((m) => maintenanceStatus(m, maxHours).status === "overdue");
   const dueSoon = maintenanceItems.filter((m) => maintenanceStatus(m, maxHours).status === "due-soon");
   // Items that cannot be judged at all. 13 items are configured and not one can
