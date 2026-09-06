@@ -45,6 +45,11 @@ async function PATCH(req, { params }) {
   if ("marketingOptOut" in body) data.marketingOptOut = Boolean(body.marketingOptOut);
   // null clears the mark ("undo ask"); a truthy value stamps it now.
   if ("reviewRequestedAt" in body) data.reviewRequestedAt = body.reviewRequestedAt ? new Date(body.reviewRequestedAt) : null;
+  // Same shape for the gate code: stamped when it is texted from the dock page,
+  // cleared to undo. The dock page had no way to record this at all, so a card
+  // looked identical before and after sending and the only way to answer "did I
+  // already do this?" was to go and read your own text messages.
+  if ("gateCodeSentAt" in body) data.gateCodeSentAt = body.gateCodeSentAt ? new Date(body.gateCodeSentAt) : null;
   if ("platformRef" in body) data.platformRef = body.platformRef || null;
 
   const updated = await prisma.externalBooking.update({ where: { id }, data });

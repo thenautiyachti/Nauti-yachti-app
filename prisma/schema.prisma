@@ -193,6 +193,16 @@ model ExternalBooking {
   platformRef       String? // the platform's own reservation number (Boatsetter/GetMyBoat) - shared key with LedgerEntry
   referralSource    String? // how the booking was won: "repeat guest", "word of mouth", "website", "walk-up" - distinct from `platform`, which is who processed it
   reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
+  // When the gate code was texted for this charter; null = not yet sent.
+  //
+  // The dock page listed arriving guests with a "Text them the gate code"
+  // button and recorded nothing when it was pressed. On 6 Sep 2026 the owner
+  // sent Oscar his code twenty minutes before an 11am charter, and the card sat
+  // there afterwards looking exactly as it had before -- no confirmation, no
+  // change. His question was the right one: does it go away, or sit forever?
+  // It sat until the date rolled past, which is the worst of both, because the
+  // honest answer to "did I already send this?" was "look in your texts".
+  gateCodeSentAt    DateTime?
   marketingOptOut   Boolean       @default(false)
   ledgerEntries     LedgerEntry[]
 

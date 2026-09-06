@@ -87,6 +87,45 @@ export default function AskPage() {
     }
   }, []);
 
+  // "+18653824319" tells you nothing at a glance; "(865) 382-4319" is a number
+  // you can recognise as right or wrong before you tap.
+  function prettyPhone(raw) {
+    const d = String(raw || "").replace(/\D/g, "");
+    const n = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
+    if (n.length !== 10) return String(raw || "");
+    return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
+  }
+
+  // "9:47am" beats a timestamp when the question is "was that just now, or
+  // yesterday when I was doing tomorrow's charters?"
+  function sentWhen(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase().replace(" ", "");
+    return sameDay ? time : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " + time;
+  }
+
+  // Record that the code went out — or take it back.
+  //
+  // Optimistic: the tap has already opened the messaging app and this page is
+  // about to lose focus, so waiting on a round trip before showing anything
+  // would show nothing at all. If the write fails the mark is rolled back.
+  const markGateCodeSent = useCallback(async (booking, sent) => {
+    const at = sent ? new Date().toISOString() : null;
+    setArriving((list) => list.map((x) => (x.id === booking.id ? { ...x, gateCodeSentAt: at } : x)));
+    try {
+      await api(`/api/external-bookings/${booking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gateCodeSentAt: at }),
+      });
+    } catch {
+      setArriving((list) => list.map((x) => (x.id === booking.id ? { ...x, gateCodeSentAt: booking.gateCodeSentAt || null } : x)));
+    }
+  }, []);
+
   // Who is coming today or tomorrow, and still needs the gate code.
   const loadArriving = useCallback(async () => {
     try {
@@ -295,14 +334,64 @@ export default function AskPage() {
                   {b.when} · {b.vesselName}{b.startTime ? ` · ${b.startTime}` : ""}
                   {b.hours ? ` · ${b.hours}h` : ""}{b.partySize ? ` · ${b.partySize} guests` : ""}
                 </div>
+                {/* Who this is actually going to. The number is shown because
+                    on 6 Sep 2026 the owner sent Oscar his gate code and the
+                    text opened on a number he did not recognise — with nothing
+                    on the card to check it against, the first he knew was the
+                    messaging app. A booking's phone can be mistyped or belong
+                    to whoever made the reservation; better to see it before
+                    tapping than after. */}
+                {b.phone && (
+                  <div className="mono" style={{ fontSize: 12.5, color: "var(--muted, #9A8FB4)", marginBottom: 10 }}>
+                    to {prettyPhone(b.phone)}
+                  </div>
+                )}
+
                 {href ? (
-                  <a href={href} style={{
-                    display: "block", textAlign: "center", background: "var(--purple, #CB6CE6)",
-                    color: "#0A0612", borderRadius: 8, padding: "13px", fontSize: 15.5,
-                    fontWeight: 700, textDecoration: "none",
-                  }}>
-                    Text {first} the gate code
-                  </a>
+                  <>
+                    <a
+                      href={canText ? href : undefined}
+                      onClick={(e) => {
+                        // Marking it sent when nothing can send it is the same
+                        // trap the review flow already guards: the record says
+                        // done and the guest is still standing at a gate.
+                        if (!canText) {
+                          e.preventDefault();
+                          window.alert("This only works on a phone.\n\nA desktop has nothing to hand an sms: link to, so no message would be sent — and marking it sent here would be a lie.\n\nOpen this page on your phone.");
+                          return;
+                        }
+                        markGateCodeSent(b, true);
+                      }}
+                      style={{
+                        display: "block", textAlign: "center",
+                        background: b.gateCodeSentAt ? "transparent" : "var(--purple, #CB6CE6)",
+                        color: b.gateCodeSentAt ? "var(--muted, #9A8FB4)" : "#0A0612",
+                        border: b.gateCodeSentAt ? "1px solid rgba(203,108,230,0.35)" : "none",
+                        borderRadius: 8, padding: "13px", fontSize: 15.5,
+                        fontWeight: 700, textDecoration: "none",
+                      }}>
+                      {b.gateCodeSentAt
+                        ? `Send ${first} the gate code again`
+                        : canText ? `Text ${first} the gate code` : "Text the gate code (phone only)"}
+                    </a>
+                    {/* The card stays on the list either way. It is not hidden
+                        once sent, because a guest who cannot find the gate will
+                        ring while you are casting off and you need the button
+                        again — and it drops off by itself once the date passes. */}
+                    {b.gateCodeSentAt && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
+                        <span style={{ fontSize: 13, color: "#4FBF8B", fontWeight: 700 }}>
+                          ✓ Sent {sentWhen(b.gateCodeSentAt)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => markGateCodeSent(b, false)}
+                          style={{ background: "none", border: "none", color: "var(--muted, #9A8FB4)", fontSize: 12.5, textDecoration: "underline", padding: 0 }}>
+                          undo
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div style={{ fontSize: 13, color: "var(--muted, #9A8FB4)" }}>
                     No usable phone number on this booking.
