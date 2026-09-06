@@ -11,8 +11,10 @@
 // One screen, one tap per guest, biggest thumb targets available.
 import { useState, useEffect, useCallback } from "react";
 import { smsHref, reviewMessage, daysSince, askWindow, ASK_WINDOWS, GOOGLE_REVIEW_URL } from "../../../lib/reviews";
-import { isMetered, currentHours } from "../../../lib/engineHours";
+import { isMetered, currentHours, fleetHours } from "../../../lib/engineHours";
 import { bookingPhones, addPhone, removePhone, makePrimary, prettyPhone as fmtPhone, normalizePhone } from "../../../lib/bookingPhones";
+import { charterNow, minutesLeft, humanLeft, addOnsFor } from "../../../lib/charterNow";
+import { KINDS, KIND_LABEL, KIND_ICON, nearest } from "../../../lib/waterPoints";
 
 async function api(path, options) {
   const res = await fetch(path, {
@@ -69,6 +71,23 @@ export default function AskPage() {
   // this only overrides for the tap in front of you, so choosing a party
   // member's phone once does not silently re-point the booking.
   const [textTo, setTextTo] = useState({});
+
+  // The charter actually on the water, and what it is owed.
+  const [allBookings, setAllBookings] = useState([]);
+  const [inquiries, setInquiries] = useState([]);
+  const [addOns, setAddOns] = useState([]);
+  // Re-rendered on a timer so the countdown is a countdown rather than whatever
+  // it said when the page loaded.
+  const [tick, setTick] = useState(Date.now());
+
+  // Service checks, off the desktop table and onto the phone.
+  const [maintItems, setMaintItems] = useState([]);
+  const [maintBusy, setMaintBusy] = useState("");
+
+  // Saved places: fuel, cover, ramps.
+  const [places, setPlaces] = useState([]);
+  const [placeForm, setPlaceForm] = useState({ kind: "fuel", name: "", note: "" });
+  const [placeOpen, setPlaceOpen] = useState(false);
 
   // Weather, and the run home.
   const [nowcast, setNowcast] = useState(null);
@@ -185,6 +204,31 @@ export default function AskPage() {
     }
   }, []);
 
+  // Everything the "on the water now" card and the service list need. Each
+  // call falls back to an empty list on its own so one dead endpoint cannot
+  // blank the whole page while someone is standing on a boat holding a phone.
+  const loadContext = useCallback(async () => {
+    const [b, i, a, m, p] = await Promise.all([
+      api("/api/external-bookings").catch(() => []),
+      api("/api/inquiries").catch(() => []),
+      api("/api/addons").catch(() => []),
+      api("/api/maintenance-items").catch(() => []),
+      api("/api/water-points").catch(() => []),
+    ]);
+    setAllBookings(Array.isArray(b) ? b : []);
+    setInquiries(Array.isArray(i) ? i : []);
+    setAddOns(Array.isArray(a) ? a : []);
+    setMaintItems(Array.isArray(m) ? m : []);
+    setPlaces(Array.isArray(p) ? p : []);
+  }, []);
+
+  // A countdown that does not count is just a number. One minute is plenty —
+  // this is a phone in a pocket on a boat, not a stopwatch.
+  useEffect(() => {
+    const id = setInterval(() => setTick(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   const loadHours = useCallback(async () => {
     try {
       const [v, l, f] = await Promise.all([
@@ -198,7 +242,7 @@ export default function AskPage() {
     } catch { /* the ask list still works without this */ }
   }, []);
 
-  useEffect(() => { if (authed) { load(); loadHours(); loadArriving(); } }, [authed, load, loadHours, loadArriving]);
+  useEffect(() => { if (authed) { load(); loadHours(); loadArriving(); loadContext(); } }, [authed, load, loadHours, loadArriving, loadContext]);
 
   // The last reading for a boat, so a new one can be sanity-checked against it.
   function lastFor(vesselId) {
@@ -321,6 +365,63 @@ export default function AskPage() {
     }
   }
 
+  // Mark a service item done, right now.
+  //
+  // Stamps today's date AND the fleet hours in one tap. Both matter: an item
+  // with an interval in hours and no lastDoneHours can never be judged, which
+  // is exactly why thirteen of them sat reading "OK" while meaning "nobody has
+  // ever told me anything".
+  const markServiced = useCallback(async (item) => {
+    const hoursNow = fleetHours(vessels, logs);
+    const label = item.label;
+    if (!window.confirm(
+      `Mark "${label}" done today?` +
+      (hoursNow != null ? `\n\nRecorded at ${hoursNow} fleet hours.` : "\n\nNo hours logged yet, so this records the date only.")
+    )) return;
+    setMaintBusy(item.id);
+    const patch = { lastDoneDate: todayKey() };
+    if (hoursNow != null) patch.lastDoneHours = hoursNow;
+    setMaintItems((list) => list.map((x) => (x.id === item.id ? { ...x, ...patch } : x)));
+    try {
+      await api(`/api/maintenance-items/${item.id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    } catch {
+      setMaintItems((list) => list.map((x) => (x.id === item.id ? item : x)));
+      window.alert("Could not save that. Check signal and try again.");
+    } finally {
+      setMaintBusy("");
+    }
+  }, [vessels, logs]);
+
+  // Save where you are standing as a place worth finding again.
+  //
+  // One tap while tied up at the fuel dock beats typing coordinates from
+  // memory later, which is the version that never happens.
+  async function savePlace(e) {
+    e.preventDefault();
+    if (!placeForm.name.trim()) return;
+    if (!herePos) {
+      window.alert("No position yet.\n\nTap “Can I get back before it hits?” first so the page knows where you are, then save the spot.");
+      return;
+    }
+    setBusy("place");
+    try {
+      const made = await api("/api/water-points", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: placeForm.kind, name: placeForm.name.trim(),
+          lat: herePos.lat, lon: herePos.lon, note: placeForm.note || null,
+        }),
+      });
+      setPlaces((list) => [...list, made]);
+      setPlaceForm({ kind: placeForm.kind, name: "", note: "" });
+      setPlaceOpen(false);
+    } catch {
+      window.alert("Could not save that spot. Check signal and try again.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function login(e) {
     e.preventDefault();
     setLoginError("");
@@ -386,6 +487,65 @@ export default function AskPage() {
         <h1 style={{ fontSize: 21, margin: 0 }}>On the dock</h1>
         <a href="/admin" style={{ color: "var(--purple, #CB6CE6)", fontSize: 14, textDecoration: "none" }}>Console →</a>
       </div>
+
+      {/* THE CHARTER YOU ARE ON. Above the tabs, so it is context for all of
+          them rather than a page you have to go and find. Everything else here
+          — the gate code, the hours, the fuel, the weather — is in service of
+          one charter, and the page never said which. The answers all lived on a
+          desktop at home: who is aboard, how many, what they paid for, and what
+          time they are due back. Running long is unpaid; running short is a
+          refund conversation on the dock. */}
+      {(() => {
+        const { running, next } = charterNow(allBookings, tick);
+        const on = running || next;
+        if (!on) return null;
+        const b = on.booking;
+        const live = !!running;
+        const left = minutesLeft(on.window, tick);
+        const over = left != null && left < 0;
+        const extras = addOnsFor(b, inquiries, addOns);
+        const numbers = bookingPhones(b);
+        const backBy = on.window.endMs
+          ? new Date(on.window.endMs).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase().replace(" ", "")
+          : null;
+        const startsAt = new Date(on.window.startMs)
+          .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase().replace(" ", "");
+        return (
+          <div style={{
+            border: "2px solid " + (over ? "#E2685F" : live ? "#4FBF8B" : "rgba(203,108,230,0.35)"),
+            borderRadius: 12, padding: "12px 14px", marginBottom: 14,
+            background: over ? "rgba(226,104,95,0.08)" : "rgba(79,191,139,0.06)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: over ? "#E2685F" : live ? "#4FBF8B" : "var(--purple, #CB6CE6)" }}>
+                {live ? "On the water now" : "Up next"}
+              </span>
+              {left != null && (
+                <span style={{ fontSize: 15, fontWeight: 800, color: over ? "#E2685F" : "var(--text, #ECE7F5)", fontVariantNumeric: "tabular-nums" }}>
+                  {live ? humanLeft(left) : `starts ${startsAt}`}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, marginTop: 4 }}>{b.guestName || "Guest"}</div>
+            <div style={{ fontSize: 13.5, color: "var(--muted, #9A8FB4)", marginTop: 2 }}>
+              {[b.vesselName, b.partySize ? `${b.partySize} aboard` : null,
+                on.window.hours ? `${on.window.hours}h` : null,
+                backBy ? `back by ${backBy}` : null].filter(Boolean).join(" · ")}
+            </div>
+            {extras.length > 0 && (
+              <div style={{ fontSize: 13, marginTop: 8, color: "var(--text, #ECE7F5)" }}>
+                🎁 {extras.map((a) => a.name).join(", ")}
+              </div>
+            )}
+            {numbers.length > 0 && (
+              <a href={`tel:${numbers[0].number}`}
+                style={{ display: "inline-block", marginTop: 10, fontSize: 13.5, color: "var(--purple, #CB6CE6)", textDecoration: "none" }}>
+                📞 {fmtPhone(numbers[0].number)}
+              </a>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Four tabs do not fit across a phone in one row, so they wrap rather
           than shrink the text to nothing. Weather sits first: it is the one
@@ -482,6 +642,114 @@ export default function AskPage() {
                     </div>
                   )}
                   {geoError && <div style={{ color: "#E8934A", marginTop: 8 }}>{geoError}</div>}
+                </div>
+
+                {/* NEAREST PLACES. Sits directly under the verdict because
+                    when that verdict is "shelter", the very next question is
+                    "where". Cover leads when it is raining on you; fuel leads
+                    the rest of the time, which is what was actually asked for. */}
+                <div style={S.card}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>Nearest</div>
+                    <button
+                      type="button" onClick={() => setPlaceOpen((o) => !o)}
+                      style={{ background: "none", border: "none", padding: 0, color: "var(--purple, #CB6CE6)", fontSize: 13 }}>
+                      {placeOpen ? "cancel" : "save this spot"}
+                    </button>
+                  </div>
+
+                  {placeOpen && (
+                    <form onSubmit={savePlace} style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {KINDS.map((k) => (
+                          <button
+                            key={k} type="button" onClick={() => setPlaceForm((f) => ({ ...f, kind: k }))}
+                            style={{
+                              flex: "1 1 22%", padding: "10px 4px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                              border: "1px solid " + (placeForm.kind === k ? "var(--purple, #CB6CE6)" : "rgba(203,108,230,0.25)"),
+                              background: placeForm.kind === k ? "rgba(203,108,230,0.18)" : "transparent",
+                              color: "var(--text, #ECE7F5)",
+                            }}>
+                            {KIND_ICON[k]} {KIND_LABEL[k]}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="text" placeholder="What is it called?"
+                        value={placeForm.name}
+                        onChange={(e) => setPlaceForm((f) => ({ ...f, name: e.target.value }))}
+                        style={{ padding: "13px", fontSize: 16, borderRadius: 8, border: "1px solid rgba(203,108,230,0.3)", background: "var(--card, #171029)", color: "inherit" }}
+                      />
+                      <input
+                        type="text" placeholder="Note — hours, depth, anything (optional)"
+                        value={placeForm.note}
+                        onChange={(e) => setPlaceForm((f) => ({ ...f, note: e.target.value }))}
+                        style={{ padding: "12px", fontSize: 15, borderRadius: 8, border: "1px solid rgba(203,108,230,0.3)", background: "var(--card, #171029)", color: "inherit" }}
+                      />
+                      <div style={{ fontSize: 12, color: "var(--muted, #9A8FB4)" }}>
+                        {herePos
+                          ? `Saves your position now: ${herePos.lat.toFixed(5)}, ${herePos.lon.toFixed(5)}`
+                          : "Tap the button above first so the page knows where you are."}
+                      </div>
+                      <button type="submit" disabled={busy === "place" || !placeForm.name.trim() || !herePos}
+                        style={{ ...S.tap, background: "var(--purple, #CB6CE6)", color: "#0A0612", opacity: placeForm.name.trim() && herePos ? 1 : 0.5 }}>
+                        {busy === "place" ? "Saving…" : "Save this spot"}
+                      </button>
+                    </form>
+                  )}
+
+                  {places.length === 0 && !placeOpen && (
+                    <div style={{ fontSize: 13, color: "var(--muted, #9A8FB4)", lineHeight: 1.5 }}>
+                      Nothing saved yet. Next time you are tied up at a fuel dock, or under cover
+                      waiting one out, tap <em>save this spot</em> — one tap while you are there beats
+                      typing coordinates from memory later.
+                      <div style={{ marginTop: 6 }}>
+                        These are yours on purpose: a built-in list that is wrong about which dock
+                        pumps gas is how a tank runs dry pointed at the wrong marina.
+                      </div>
+                    </div>
+                  )}
+
+                  {places.length > 0 && !herePos && (
+                    <div style={{ fontSize: 13, color: "var(--muted, #9A8FB4)" }}>
+                      {places.length} saved. Tap the button above to sort them by how far away they are.
+                    </div>
+                  )}
+
+                  {herePos && KINDS
+                    .slice()
+                    // Cover first when you are about to get wet.
+                    .sort((a, x) => {
+                      const wet = v.verdict === "shelter" || v.verdict === "tight";
+                      const rank = (k) => (wet ? (k === "shelter" ? 0 : k === "fuel" ? 1 : 2) : (k === "fuel" ? 0 : k === "shelter" ? 1 : 2));
+                      return rank(a) - rank(x);
+                    })
+                    .map((kind) => {
+                      const list = nearest(places, herePos, kind).slice(0, 3);
+                      if (!list.length) return null;
+                      return (
+                        <div key={kind} style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+                            {KIND_ICON[kind]} {KIND_LABEL[kind]}
+                          </div>
+                          {list.map((p) => (
+                            <div key={p.id} style={{
+                              display: "flex", justifyContent: "space-between", gap: 10,
+                              padding: "9px 0", borderBottom: "1px solid rgba(203,108,230,0.1)",
+                            }}>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.name}</div>
+                                {p.note && <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)" }}>{p.note}</div>}
+                              </div>
+                              <div style={{ flex: "0 0 auto", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                                <div style={{ fontSize: 14.5, fontWeight: 700 }}>{p.miles} mi</div>
+                                <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)" }}>{p.compass} · {p.bearing}°</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
                 </div>
 
                 {Array.isArray(v.here) && v.here.length > 0 && (
@@ -998,8 +1266,85 @@ export default function AskPage() {
             </button>
           </form>
 
+          {/* SERVICE CHECKS. The same thirteen items as the Boat tab in the
+              console, which is a desktop — and every one of these gets done
+              standing next to the engine, not sitting at a desk afterwards.
+              Marking one done stamps the date AND the fleet hours together,
+              because an hours-interval item with no lastDoneHours can never be
+              judged, which is how all thirteen came to read "OK" while meaning
+              "nobody has ever told me anything". */}
+          <h2 style={{ fontSize: 17, margin: "22px 0 4px" }}>Service checks</h2>
+          <p style={{ color: "var(--muted, #9A8FB4)", fontSize: 13, margin: "0 0 10px", lineHeight: 1.45 }}>
+            Tap one to mark it done today. Full intervals stay on the console — this is the
+            list you work through with the cowling up.
+          </p>
+
+          {maintItems.length === 0 && (
+            <div style={{ ...S.card, color: "var(--muted, #9A8FB4)", fontSize: 14 }}>
+              No service items configured.
+            </div>
+          )}
+
+          {(() => {
+            const hoursNow = fleetHours(vessels, logs);
+            // Worst first: the point of a list on a phone is that the top of it
+            // is the thing to deal with.
+            const RANK = { overdue: 0, "due-soon": 1, unknown: 2, ok: 3 };
+            const judged = maintItems.map((item) => {
+              const hasHours = item.intervalHours != null && item.lastDoneHours != null && hoursNow != null;
+              const sinceHours = hasHours ? hoursNow - item.lastDoneHours : null;
+              let months = null;
+              if (item.lastDoneDate) {
+                const d = new Date(item.lastDoneDate + "T12:00:00");
+                if (!Number.isNaN(d.getTime())) {
+                  months = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+                }
+              }
+              const hasMonths = item.intervalMonths != null && months != null;
+              let status = "unknown";
+              if (hasHours || hasMonths) {
+                const overdue = (hasHours && sinceHours >= item.intervalHours) ||
+                  (hasMonths && months >= item.intervalMonths);
+                const soon = (hasHours && sinceHours >= item.intervalHours * 0.9) ||
+                  (hasMonths && months >= item.intervalMonths * 0.9);
+                status = overdue ? "overdue" : soon ? "due-soon" : "ok";
+              }
+              return { item, status, sinceHours, months };
+            }).sort((a, b) => RANK[a.status] - RANK[b.status] || (a.item.sortOrder || 0) - (b.item.sortOrder || 0));
+
+            const COLOR = { overdue: "#E2685F", "due-soon": "#E8934A", ok: "#4FBF8B", unknown: "var(--muted, #9A8FB4)" };
+            const WORD = { overdue: "Overdue", "due-soon": "Due soon", ok: "OK", unknown: "Never recorded" };
+
+            return judged.map(({ item, status, sinceHours, months }) => (
+              <button
+                key={item.id} type="button"
+                disabled={maintBusy === item.id}
+                onClick={() => markServiced(item)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                  width: "100%", textAlign: "left", marginBottom: 8, padding: "13px 14px",
+                  borderRadius: 10, border: "1px solid " + (status === "overdue" ? COLOR.overdue : "rgba(203,108,230,0.25)"),
+                  background: status === "overdue" ? "rgba(226,104,95,0.08)" : "var(--card, #171029)",
+                  color: "var(--text, #ECE7F5)", opacity: maintBusy === item.id ? 0.5 : 1,
+                }}
+              >
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{item.label}</span>
+                  <span style={{ display: "block", fontSize: 11.5, color: "var(--muted, #9A8FB4)", marginTop: 3 }}>
+                    {item.lastDoneDate ? `last done ${item.lastDoneDate}` : "no record of it ever being done"}
+                    {sinceHours != null ? ` · ${Math.round(sinceHours)} hrs since` : ""}
+                    {months != null && sinceHours == null ? ` · ${months} mo since` : ""}
+                  </span>
+                </span>
+                <span style={{ flex: "0 0 auto", fontSize: 11.5, fontWeight: 700, color: COLOR[status], textAlign: "right" }}>
+                  {WORD[status]}
+                </span>
+              </button>
+            ));
+          })()}
+
           {fuel.length > 0 && (
-            <div style={S.card}>
+            <div style={{ ...S.card, marginTop: 18 }}>
               <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 15 }}>Recent fill-ups</div>
               {fuel.slice(0, 6).map((f) => {
                 const v = vessels.find((x) => x.id === f.vesselId);

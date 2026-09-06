@@ -255,6 +255,25 @@ model LedgerEntry {
   createdAt         DateTime         @default(now())
 }
 
+// Places on the lake worth being able to find from the water: fuel docks,
+// somewhere to get under cover, ramps.
+//
+// DELIBERATELY OWNER-ENTERED. Being wrong about a fuel dock is expensive in a
+// specific way — a boat runs a tank down heading somewhere that turns out not
+// to pump gas, or not on a Tuesday, or not since last season. Coordinates
+// recalled from nowhere in particular are not worth that risk, and the owner
+// runs this lake every week. Captured by standing somewhere and tapping once,
+// which is also the least typing possible on a boat. See lib/waterPoints.js.
+model WaterPoint {
+  id        String   @id @default(cuid())
+  kind      String // "fuel" | "shelter" | "ramp" | "spot"
+  name      String
+  lat       Float
+  lon       Float
+  note      String?
+  createdAt DateTime @default(now())
+}
+
 model MaintenanceItem {
   id             String  @id @default(cuid())
   label          String
