@@ -183,6 +183,36 @@ html, body {
 /* Media should shrink to its container rather than set the page width. */
 img, video, canvas, svg, iframe { max-width: 100%; }
 
+/* The bookings table carries twelve columns and a 1080px minimum, which on a
+   phone means dragging sideways through three screens of table to find out
+   whether a booking is confirmed.
+
+   Below 760px the detail columns are hidden — phone, email, vessel, start,
+   duration, party size, price, source — leaving booking id, guest, status and
+   the actions. Nothing is lost: those are the fields you open a booking to see,
+   and the desktop table is unchanged.
+
+   Column numbers rather than classes because the table is plain <th>/<td> and
+   giving twelve columns individual classes to hide eight of them is more
+   moving parts, not fewer. If a column is ever added or reordered, THIS LIST
+   MOVES WITH IT. */
+@media (max-width: 760px) {
+  .bookings-table { min-width: 0 !important; }
+  .bookings-table th:nth-child(3),  .bookings-table td:nth-child(3),
+  .bookings-table th:nth-child(4),  .bookings-table td:nth-child(4),
+  .bookings-table th:nth-child(5),  .bookings-table td:nth-child(5),
+  .bookings-table th:nth-child(6),  .bookings-table td:nth-child(6),
+  .bookings-table th:nth-child(7),  .bookings-table td:nth-child(7),
+  .bookings-table th:nth-child(8),  .bookings-table td:nth-child(8),
+  .bookings-table th:nth-child(9),  .bookings-table td:nth-child(9),
+  .bookings-table th:nth-child(10), .bookings-table td:nth-child(10) {
+    display: none;
+  }
+  /* The id is the longest thing left and carries the date, so let it wrap
+     rather than force the row wide again. */
+  .bookings-table td:nth-child(1) { white-space: normal !important; word-break: break-all; }
+}
+
 /* The site header is sticky, so its height is a permanent tax on every screen.
    On a phone the eleven links wrapped onto three rows and the bar stood 151px
    tall. Tightening the gaps and the type keeps every link reachable — nothing

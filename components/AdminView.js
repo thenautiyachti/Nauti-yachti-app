@@ -269,6 +269,12 @@ export default function AdminView({
   // Guests promised their photographs who have not had them yet.
   const photoRequestsOwed = (photoRequests || []).filter((r) => !r.sentAt).length;
 
+  // The tab counter has to agree with the list under it. A card-paid booking
+  // exists in both tables by design — see toUnifiedRows — so a straight
+  // inquiries + externalBookings sum counts it twice, and the number on the tab
+  // would not match the rows the owner can actually see.
+  const bookingRowCount = toUnifiedRows(inquiries, externalBookings).length;
+
   const TAB_GROUPS = [
     {
       id: "overview", label: "Overview", tabs: [
@@ -283,7 +289,7 @@ export default function AdminView({
       defaultTab: "bookings",
       tabs: [
         { id: "inquiries", label: `Inquiries (${bookingInquiries.length})`, count: bookingInquiries.length },
-        { id: "bookings", label: `Bookings (${bookingInquiries.length + externalBookings.length})` },
+        { id: "bookings", label: `Bookings (${bookingRowCount})` },
         { id: "availability", label: "Availability" },
       ],
     },
@@ -730,7 +736,36 @@ function toUnifiedRows(inquiries, externalBookings) {
     statusBucket: b.status,
     raw: b,
   }));
-  return [...fromInquiries, ...fromExternal].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  // ONE CHARTER, ONE ROW.
+  //
+  // A booking paid by card exists in BOTH tables on purpose. The Inquiry is the
+  // enquiry-and-payment record; the ExternalBooking is the diary entry the
+  // availability calendar actually reads. The Stripe webhook creates the second
+  // from the first, because before it did, a paid website booking sat as an
+  // Inquiry and never appeared in the diary at all — somebody could pay in full
+  // and, as far as every other screen was concerned, not exist.
+  //
+  // But this list concatenated the two, so such a charter appeared TWICE. It went
+  // unnoticed until 5 Sep 2026 because no card payment had ever completed:
+  // Oscar's was the first, and he showed up twice the moment he paid.
+  //
+  // The ExternalBooking wins, because it is the charter — it holds the date, it
+  // carries what was actually charged, and it is what the rest of the tab acts
+  // on. What only the Inquiry knows is folded into it rather than lost.
+  const externalByBookingId = new Map(
+    fromExternal.filter((b) => b.bookingId).map((b) => [b.bookingId, b])
+  );
+  for (const i of fromInquiries) {
+    const twin = i.bookingId && externalByBookingId.get(i.bookingId);
+    if (!twin) continue;
+    // Add-ons live only on the Inquiry, and the payment status is the Inquiry's
+    // to know. Neither is worth losing to a de-duplication.
+    if (!twin.addOnIds || !twin.addOnIds.length) twin.addOnIds = i.addOnIds;
+    twin.paidInquiry = i.raw;
+  }
+  const deduped = fromInquiries.filter((i) => !(i.bookingId && externalByBookingId.has(i.bookingId)));
+
+  return [...deduped, ...fromExternal].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
 
 // ---- Inquiries tab -------------------------------------------------
@@ -1334,6 +1369,11 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
   // live booking was the normal case.
   const [filterStatus, setFilterStatus] = useState("active"); // "active" | "all" | "pending" | "booked" | "completed" | "cancelled"
   const [sortBy, setSortBy] = useState("date-desc"); // "date-desc" | "date-asc" | "status"
+  // Collapsed by default, on every screen. Logging a booking by hand is the
+  // occasional job; reading the diary is the constant one, and the form is
+  // fourteen fields tall — on a phone it filled the screen twice over before a
+  // single booking appeared. Opening it is one tap; scrolling past it was not.
+  const [addOpen, setAddOpen] = useState(false);
 
   function submit(e) {
     e.preventDefault();
@@ -1380,7 +1420,21 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
           beside it. The bookings table is wide — booking id through actions —
           and surrendering a 340px column to this form pushed it off the screen,
           so the tab could only be read zoomed out. */}
-      <form onSubmit={submit} style={{ background: "var(--paper-6)", borderRadius: 10, padding: 14 }}>
+      <button
+        type="button"
+        onClick={() => setAddOpen((o) => !o)}
+        style={{
+          background: "var(--paper-6)", color: "var(--text)",
+          border: "1px solid rgba(203,108,230,0.35)", borderRadius: 10,
+          padding: "12px 14px", fontSize: 14, fontWeight: 700, textAlign: "left",
+          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+        }}
+      >
+        <span>{addOpen ? "Close" : "Log a booking taken elsewhere"}</span>
+        <span style={{ opacity: 0.6, fontSize: 12 }}>{addOpen ? "▲" : "▼"}</span>
+      </button>
+
+      <form onSubmit={submit} hidden={!addOpen} style={{ background: "var(--paper-6)", borderRadius: 10, padding: 14 }}>
         <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 12 }}>
           Log a booking from GetMyBoat, Boatsetter, or elsewhere. Marking it completed reserves that day (its own hours, or the whole day at 8+ combined hours) on the public availability calendar.
         </p>
@@ -1490,7 +1544,12 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
         {rows.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No bookings match this filter.</div>}
         {rows.length > 0 && (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1080, fontSize: 12.5, color: "var(--text)" }}>
+            {/* bookings-table: below 760px the detail columns are hidden and the
+                minimum width is dropped, so a phone shows booking id, guest,
+                status and actions without dragging sideways through 1080px of
+                table. Nothing is lost — the hidden fields are what you open a
+                booking to see. See globals.css. */}
+            <table className="bookings-table" style={{ borderCollapse: "collapse", width: "100%", minWidth: 1080, fontSize: 12.5, color: "var(--text)" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                   <th style={{ padding: "4px 8px" }}>Booking ID</th>
