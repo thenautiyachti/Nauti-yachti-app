@@ -212,21 +212,32 @@ console.log("  Now tag the code:  git tag -a v" + version + " -m \"...\"  &&  gi
   // script at the mercy of an install that a restore might not have.
   const zip = OUT + ".zip";
   let compressed = false;
-  // -ErrorAction Stop is load-bearing. Compress-Archive's failures are
-  // NON-TERMINATING: without it, PowerShell writes the error to stderr and
-  // still exits 0, so the catch below never fires, `compressed` is false, and
-  // nothing at all is printed. That happened cutting v1.8.0 -- a file lock on
-  // one crew brief (Drive sync, most likely) meant no zip was written, and the
-  // only visible symptom was that v1.7.0.zip had been deleted.
+  // ZipFile.CreateFromDirectory, NOT Compress-Archive.
   //
-  // The \\* is also deliberate: "\*" in a JS string is just "*", which asks
-  // PowerShell to archive a sibling matching "v1.8.0*" rather than the contents
-  // of the folder.
+  // This folder lives inside the Google Drive tree, and make-release has just
+  // finished writing 100-odd files into it, so Drive is actively uploading them
+  // while this runs. Compress-Archive opens each file with a sharing mode that
+  // refuses to read anything another process has open, so it fails on whichever
+  // crew brief Drive happens to be touching -- v1.8.0 failed once and retried
+  // clean, v1.9.0 failed four times in a row on crew-standup/SKILL.md while
+  // that same file opened fine for reading a second later.
+  //
+  // The .NET API allows a shared read and simply works. It also captures hidden
+  // files (Drive's desktop.ini), which Compress-Archive skipped.
+  //
+  // -ErrorAction Stop is still load-bearing: PowerShell's failures here are
+  // non-terminating by default, so without it the command writes to stderr,
+  // exits 0, and this catch never fires -- which is how v1.8.0 came to delete
+  // v1.7.0.zip having produced nothing.
   try {
     execFileSync("powershell", [
       "-NoProfile", "-Command",
-      "Compress-Archive -Path '" + OUT.replace(/'/g, "''") + "\\*' -DestinationPath '" +
-        zip.replace(/'/g, "''") + "' -Force -ErrorAction Stop",
+      "$ErrorActionPreference='Stop';" +
+      "Add-Type -AssemblyName System.IO.Compression.FileSystem;" +
+      "if (Test-Path -LiteralPath '" + zip.replace(/'/g, "''") + "') { Remove-Item -LiteralPath '" +
+        zip.replace(/'/g, "''") + "' -Force };" +
+      "[System.IO.Compression.ZipFile]::CreateFromDirectory('" + OUT.replace(/'/g, "''") + "','" +
+        zip.replace(/'/g, "''") + "',[System.IO.Compression.CompressionLevel]::Optimal,$false)",
     ], { stdio: "pipe" });
     compressed = fs.existsSync(zip);
   } catch (e) {

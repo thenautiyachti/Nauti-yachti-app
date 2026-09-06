@@ -285,14 +285,35 @@ try {
   for (const [label, file] of docs) {
     const body = read(file);
     if (!body) continue;
-    const heads = body.split(/\r?\n/).filter((l) => /^#{2,3} /.test(l.trim())).map((l) => l.trim());
-    const counts = {};
-    for (const h of heads) counts[h] = (counts[h] || 0) + 1;
-    const repeated = Object.keys(counts).filter((h) => counts[h] > 1);
-    if (repeated.length) {
-      fail(label, "carries " + repeated.length + " repeated heading(s), which usually means a\n" +
-        "        section was pasted in twice and one copy has since drifted:\n" +
-        repeated.slice(0, 5).map((h) => "          " + h.slice(0, 62) + "  (×" + counts[h] + ")").join("\n"));
+
+    // The changelog is checked ENTRY BY ENTRY, not as one document.
+    //
+    // It is append-only, and every release entry legitimately carries the same
+    // subheadings -- "If you are restoring this" is meant to appear once per
+    // version, and did the moment a second entry was written that way. Checking
+    // the whole file would train everyone to ignore this warning, which is
+    // exactly how the crew protocol came to be pasted into itself unnoticed.
+    //
+    // Splitting on the "## vX.Y.Z" boundaries keeps the real protection: an
+    // entry pasted in twice still repeats its own headings, inside its own
+    // section, and still fails.
+    const chunks = label === "changelog"
+      ? body.split(/\n(?=## v\d)/)
+      : [body];
+
+    for (const chunk of chunks) {
+      const heads = chunk.split(/\r?\n/).filter((l) => /^#{2,3} /.test(l.trim())).map((l) => l.trim());
+      const counts = {};
+      for (const h of heads) counts[h] = (counts[h] || 0) + 1;
+      const repeated = Object.keys(counts).filter((h) => counts[h] > 1);
+      if (repeated.length) {
+        const where = label === "changelog"
+          ? label + " (" + (heads.find((h) => /^## v/.test(h)) || "an entry") + ")"
+          : label;
+        fail(where, "carries " + repeated.length + " repeated heading(s), which usually means a\n" +
+          "        section was pasted in twice and one copy has since drifted:\n" +
+          repeated.slice(0, 5).map((h) => "          " + h.slice(0, 62) + "  (×" + counts[h] + ")").join("\n"));
+      }
     }
   }
 }
