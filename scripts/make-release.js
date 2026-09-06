@@ -212,16 +212,33 @@ console.log("  Now tag the code:  git tag -a v" + version + " -m \"...\"  &&  gi
   // script at the mercy of an install that a restore might not have.
   const zip = OUT + ".zip";
   let compressed = false;
+  // -ErrorAction Stop is load-bearing. Compress-Archive's failures are
+  // NON-TERMINATING: without it, PowerShell writes the error to stderr and
+  // still exits 0, so the catch below never fires, `compressed` is false, and
+  // nothing at all is printed. That happened cutting v1.8.0 -- a file lock on
+  // one crew brief (Drive sync, most likely) meant no zip was written, and the
+  // only visible symptom was that v1.7.0.zip had been deleted.
+  //
+  // The \\* is also deliberate: "\*" in a JS string is just "*", which asks
+  // PowerShell to archive a sibling matching "v1.8.0*" rather than the contents
+  // of the folder.
   try {
     execFileSync("powershell", [
       "-NoProfile", "-Command",
-      "Compress-Archive -Path '" + OUT.replace(/'/g, "''") + "\*' -DestinationPath '" +
-        zip.replace(/'/g, "''") + "' -Force",
+      "Compress-Archive -Path '" + OUT.replace(/'/g, "''") + "\\*' -DestinationPath '" +
+        zip.replace(/'/g, "''") + "' -Force -ErrorAction Stop",
     ], { stdio: "pipe" });
     compressed = fs.existsSync(zip);
   } catch (e) {
     console.log("\n  could not compress: " + String(e.message).split("\n")[0]);
     console.log("  the folder is still there and is still a valid release.");
+  }
+  if (!compressed) {
+    console.log("\n  NO ZIP WAS WRITTEN. The release folder is intact and valid,");
+    console.log("  but it is not compressed and older releases have been LEFT ALONE.");
+    console.log("  Compress it by hand before relying on it:");
+    console.log("    Compress-Archive -Path '" + OUT + "\\*' \\");
+    console.log("      -DestinationPath '" + zip + "' -Force -ErrorAction Stop");
   }
 
   if (compressed) {
@@ -241,23 +258,32 @@ console.log("  Now tag the code:  git tag -a v" + version + " -m \"...\"  &&  gi
     fs.rmSync(OUT, { recursive: true, force: true });
   }
 
-  // Everything older than this release.
-  const keep = new Set([path.basename(zip), path.basename(OUT)]);
-  const removed = [];
-  for (const e of fs.readdirSync(RELEASES, { withFileTypes: true })) {
-    if (keep.has(e.name) || e.name === "desktop.ini") continue;
-    if (!/^v\d+\.\d+/.test(e.name)) continue;
-    const p = path.join(RELEASES, e.name);
-    try {
-      fs.rmSync(p, { recursive: true, force: true });
-      removed.push(e.name);
-    } catch (err) {
-      console.log("  could not remove " + e.name + ": " + String(err.message).split("\n")[0]);
+  // Everything older than this release -- but ONLY once the new backup exists.
+  //
+  // This used to run unconditionally, and cutting v1.8.0 showed why that is
+  // backwards: compression failed, so the pruner deleted v1.7.0.zip and left
+  // nothing compressed behind it. Delete the old backup after the new one is on
+  // disk, never before. The whole value of a backup is that there is one.
+  if (!compressed) {
+    console.log("  older releases KEPT, because this one did not compress.");
+  } else {
+    const keep = new Set([path.basename(zip), path.basename(OUT)]);
+    const removed = [];
+    for (const e of fs.readdirSync(RELEASES, { withFileTypes: true })) {
+      if (keep.has(e.name) || e.name === "desktop.ini") continue;
+      if (!/^v\d+\.\d+/.test(e.name)) continue;
+      const p = path.join(RELEASES, e.name);
+      try {
+        fs.rmSync(p, { recursive: true, force: true });
+        removed.push(e.name);
+      } catch (err) {
+        console.log("  could not remove " + e.name + ": " + String(err.message).split("\n")[0]);
+      }
     }
-  }
-  if (removed.length) {
-    console.log("  removed " + removed.length + " older release(s): " + removed.join(", "));
-    console.log("  their git tags are untouched -- the code for each is still on GitHub.");
+    if (removed.length) {
+      console.log("  removed " + removed.length + " older release(s): " + removed.join(", "));
+      console.log("  their git tags are untouched -- the code for each is still on GitHub.");
+    }
   }
 
   // The changelog entry. A stub, not a fabrication: the notes flag carries what
