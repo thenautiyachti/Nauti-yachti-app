@@ -56,6 +56,17 @@ model Vessel {
   // value is all of them added up. Two of the three have no meter, so false is
   // the honest default. See lib/engineHours.js.
   hasHourMeter Boolean @default(false)
+  // WHERE THIS BOAT LIVES. There is not one dock.
+  //
+  // The Explorer is at Pearl Bay on the east side; the Islander and the Yachti
+  // are three miles WSW. Ten minutes apart at cruise, which in weather is the
+  // difference between making it and not — so "the run home" is a question
+  // about a boat, not about the business, and a single DOCK_LAT/DOCK_LON would
+  // have routed two of the three fleet to the wrong shore.
+  //
+  // Null falls back to DOCK_LAT/DOCK_LON, then to the middle of the lake.
+  dockLat   Float?
+  dockLon   Float?
   note      String
   image     String?
   sortOrder Int     @default(0)

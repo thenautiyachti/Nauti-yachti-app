@@ -321,8 +321,20 @@ export default function AskPage() {
         "This phone did not give a location, so there is no run home to work out — " +
         "only the forecast at the lake. Check location is on for the browser, then tap again."
       );
-      const q = pos ? `?lat=${pos.lat.toFixed(5)}&lon=${pos.lon.toFixed(5)}` : "";
-      const data = await api("/api/admin/nowcast" + q);
+      // WHICH BOAT, so the run home goes to the right shore. The Explorer
+      // lives at Pearl Bay and the other two are three miles WSW — ten minutes
+      // apart, which in weather is the whole question. Taken from the charter
+      // actually running, because that is the boat under your feet.
+      const onNow = charterNow(allBookings, Date.now()).running;
+      const vesselId = onNow && onNow.booking ? onNow.booking.vesselId : null;
+      const params = new URLSearchParams();
+      if (pos) {
+        params.set("lat", pos.lat.toFixed(5));
+        params.set("lon", pos.lon.toFixed(5));
+      }
+      if (vesselId) params.set("vesselId", vesselId);
+      const qs = params.toString();
+      const data = await api("/api/admin/nowcast" + (qs ? "?" + qs : ""));
       setNowcast(data);
     } catch {
       setNowcast({
@@ -333,7 +345,7 @@ export default function AskPage() {
     } finally {
       setNowcastBusy(false);
     }
-  }, []);
+  }, [allBookings]);
 
   // Opening the tab should already be doing the work — nobody wants to tap
   // twice in weather. Runs once per visit to the screen.
@@ -623,6 +635,7 @@ export default function AskPage() {
                         {v.miles != null && (
                           <span style={{ fontVariantNumeric: "tabular-nums" }}>
                             🧭 {v.miles} mi {v.compass} · {v.bearing}°
+                            {v.dockVessel ? ` to ${v.dockVessel}'s dock` : ""}
                           </span>
                         )}
                         {v.runMinutes != null && (

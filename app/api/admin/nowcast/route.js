@@ -1,5 +1,6 @@
 const { NextResponse } = require("next/server");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
+const { prisma } = require("../../../../lib/db");
 const { sampleLine, assess, parseCoord, withinReach } = require("../../../../lib/runForHome");
 
 // What the weather is about to do, here and between here and the dock.
@@ -32,10 +33,32 @@ function looksLikeLakeConroe(lat, lon) {
     lon >= PLAUSIBLE.lonMin && lon <= PLAUSIBLE.lonMax;
 }
 
-// The dock. Env, not the repository — it is a private residence, and the same
-// reasoning that keeps DOCK_ADDRESS and DOCK_GATE_CODE out of git applies to
-// its coordinates. Falls back to the lake centre so the page still renders
-// something honest before these are set.
+// WHICH DOCK. There is not one.
+//
+// The Explorer lives at Pearl Bay on the east side; the Islander and the Yachti
+// are three miles WSW. Ten minutes apart at cruise, which in weather is the
+// difference between reaching cover and not — so the run home is a question
+// about a BOAT. Sending the Islander to Pearl Bay because the business has one
+// DOCK_LAT would have cost ten minutes nobody had.
+//
+// Vessel.dockLat/dockLon wins. The env pair is the fallback for a boat with no
+// dock recorded, and the lake centre is the fallback for that.
+async function dockForVessel(vesselId) {
+  if (vesselId) {
+    try {
+      const v = await prisma.vessel.findUnique({ where: { id: vesselId } });
+      if (v && v.dockLat != null && v.dockLon != null &&
+          looksLikeLakeConroe(v.dockLat, v.dockLon)) {
+        return { lat: v.dockLat, lon: v.dockLon, configured: true, vesselName: v.name };
+      }
+    } catch { /* fall through to the env pair */ }
+  }
+  return dockPoint();
+}
+
+// The business-wide fallback. Env, not the repository — it is a private
+// residence, and the same reasoning that keeps DOCK_ADDRESS and DOCK_GATE_CODE
+// out of git applies to its coordinates.
 function dockPoint() {
   const lat = Number(process.env.DOCK_LAT);
   const lon = Number(process.env.DOCK_LON);
@@ -90,7 +113,9 @@ async function GET(req) {
   const lat = parseCoord(searchParams.get("lat"));
   const lon = parseCoord(searchParams.get("lon"));
   const cruiseMph = parseCoord(searchParams.get("cruise")) || 20;
-  const dock = dockPoint();
+  // The boat being asked about, so the right shore is used.
+  const vesselId = searchParams.get("vesselId") || null;
+  const dock = await dockForVessel(vesselId);
   // Without the boat's position there is nothing to measure from; report the
   // dock's own forecast so the page still has something true to show.
   let here = lat != null && lon != null ? { lat, lon } : null;
@@ -138,6 +163,7 @@ async function GET(req) {
       // and this page is already trusted with the dock's address and its gate
       // code, so its coordinates are not a new disclosure.
       dockPoint: { lat: dock.lat, lon: dock.lon },
+      dockVessel: dock.vesselName || null,
       hereRejected,
       // The window the forecast actually covers, so "no rain showing" can be
       // reported as "in the next N minutes" rather than as a promise.
