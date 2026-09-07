@@ -1,6 +1,6 @@
 const { NextResponse } = require("next/server");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
-const { sampleLine, assess } = require("../../../../lib/runForHome");
+const { sampleLine, assess, parseCoord, withinReach } = require("../../../../lib/runForHome");
 
 // What the weather is about to do, here and between here and the dock.
 //
@@ -52,11 +52,6 @@ function dockPoint() {
   return { ...LAKE, configured: false };
 }
 
-function num(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
 // One Open-Meteo call for every point we care about. Open-Meteo accepts
 // comma-separated coordinates and returns an array in the same order, so the
 // whole picture is a single request rather than one per sample.
@@ -92,13 +87,29 @@ async function GET(req) {
   }
 
   const { searchParams } = new URL(req.url);
-  const lat = num(searchParams.get("lat"));
-  const lon = num(searchParams.get("lon"));
-  const cruiseMph = num(searchParams.get("cruise")) || 20;
+  const lat = parseCoord(searchParams.get("lat"));
+  const lon = parseCoord(searchParams.get("lon"));
+  const cruiseMph = parseCoord(searchParams.get("cruise")) || 20;
   const dock = dockPoint();
   // Without the boat's position there is nothing to measure from; report the
   // dock's own forecast so the page still has something true to show.
-  const here = lat != null && lon != null ? { lat, lon } : null;
+  let here = lat != null && lon != null ? { lat, lon } : null;
+
+  // A SECOND LAYER, because the first one already failed once.
+  //
+  // The null-island bug got a position of (0,0) all the way through to a
+  // confident "no rain showing" for the Gulf of Guinea. Whatever the route
+  // in — a parsing slip, a phone with a broken fix, a stale cached position
+  // from another continent — a boat on Lake Conroe is not thousands of miles
+  // from Lake Conroe, and this must refuse rather than compute.
+  //
+  // The box is deliberately wide (roughly a whole day's tow, not a lake) so
+  // that a genuinely odd but real position still works.
+  let hereRejected = null;
+  if (here && !withinReach(here, LAKE)) {
+    hereRejected = `${here.lat.toFixed(4)}, ${here.lon.toFixed(4)}`;
+    here = null;
+  }
 
   try {
     const path = here ? sampleLine(here, dock, 5) : [];
@@ -114,8 +125,8 @@ async function GET(req) {
     const verdict = assess({
       here, dock, atHere, atDock, alongPath,
       cruiseMph,
-      windMph: num(current.wind_speed_10m),
-      gustMph: num(current.wind_gusts_10m),
+      windMph: parseCoord(current.wind_speed_10m),
+      gustMph: parseCoord(current.wind_gusts_10m),
       nowMs: Date.now(),
     });
 
@@ -123,6 +134,7 @@ async function GET(req) {
       ...verdict,
       dockConfigured: dock.configured,
       dockBadValues: dock.badValues || null,
+      hereRejected,
       // The window the forecast actually covers, so "no rain showing" can be
       // reported as "in the next N minutes" rather than as a promise.
       windowMinutes: atHere.length ? Math.round((new Date(atHere[atHere.length - 1].time) - Date.now()) / 60000) : null,
@@ -140,6 +152,7 @@ async function GET(req) {
       detail: "No signal, or the weather service is down. Trust your eyes, not this page.",
       dockConfigured: dock.configured,
       dockBadValues: dock.badValues || null,
+      hereRejected,
       error: String(err && err.message ? err.message : err),
     }, { status: 200 });
   }

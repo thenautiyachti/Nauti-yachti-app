@@ -314,7 +314,10 @@ export default function AskPage() {
     try {
       const pos = await ask();
       if (pos) setHerePos(pos);
-      else setGeoError("No location — this can still show the forecast at the dock, but not the run home.");
+      else setGeoError(
+        "This phone did not give a location, so there is no run home to work out — " +
+        "only the forecast at the lake. Check location is on for the browser, then tap again."
+      );
       const q = pos ? `?lat=${pos.lat.toFixed(5)}&lon=${pos.lon.toFixed(5)}` : "";
       const data = await api("/api/admin/nowcast" + q);
       setNowcast(data);
@@ -659,6 +662,16 @@ export default function AskPage() {
                           {" "}right now — if you are standing on the dock, those are the two values.
                         </div>
                       )}
+                    </div>
+                  )}
+                  {/* A position that is nowhere near this lake was thrown away
+                      rather than measured from. Said out loud, because silently
+                      falling back to "no position" would hide a phone that is
+                      confidently reporting the wrong continent. */}
+                  {v.hereRejected && (
+                    <div style={{ color: "#E2685F", marginTop: 8 }}>
+                      <strong>Ignored a position that is not near Lake Conroe</strong>
+                      {" "}(<span className="mono">{v.hereRejected}</span>). Nothing was measured from it.
                     </div>
                   )}
                   {geoError && <div style={{ color: "#E8934A", marginTop: 8 }}>{geoError}</div>}

@@ -1880,7 +1880,7 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
   const commissionLost = groupCommissionLost(ledger);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,360px) 1fr", gap: 24 }}>
+    <div className="panel-split" style={{ display: "grid", gridTemplateColumns: "minmax(280px,360px) 1fr", gap: 24 }}>
       <div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, marginBottom: 16 }}>
           <StatCard label="Income" value={currency(totals.income)} color="var(--purple)" />
@@ -2008,11 +2008,11 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
           })}
         </div>
       </div>
-      <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="pair-split" style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <BreakdownPanel title="Expenses by category" rows={expenseBreakdown} color="#F0559C" />
         <BreakdownPanel title="Income by vessel / package" rows={incomeBreakdown} color="#7FE0B8" />
       </div>
-      <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="pair-split" style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <BookingProfitPanel rows={bookingProfit} />
         <BreakdownPanel title="Commission lost to platforms" rows={commissionLost} color="#F0559C" />
       </div>
@@ -2470,7 +2470,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
         {visible.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>Nothing outstanding for this selection.</div>}
         {visible.length > 0 && (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1000, fontSize: 12.5, color: "var(--text)" }}>
+            <table className="stack-table" style={{ borderCollapse: "collapse", width: "100%", minWidth: 1000, fontSize: 12.5, color: "var(--text)" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                   <th style={{ padding: "4px 8px" }}>Booking ID</th>
@@ -2487,16 +2487,16 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
               <tbody>
                 {visible.map((r) => (
                   <tr key={r.id} style={{ background: "var(--card)" }}>
-                    <td className="mono" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", color: "#E8934A", whiteSpace: "nowrap" }}>{r.bookingId || "—"}</td>
-                    <td className="mono" style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{fmtLedgerDate(r.date)}</td>
-                    <td style={{ padding: "6px 8px", fontWeight: 600 }}>{r.guestName || "Guest"}</td>
-                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.platform}</td>
-                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                    <td data-label="Booking ID" className="mono" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", color: "#E8934A", whiteSpace: "nowrap" }}>{r.bookingId || "—"}</td>
+                    <td data-label="Date" className="mono" style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{fmtLedgerDate(r.date)}</td>
+                    <td data-label="Item" style={{ padding: "6px 8px", fontWeight: 600 }}>{r.guestName || "Guest"}</td>
+                    <td data-label="Platform" style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.platform}</td>
+                    <td data-label="Status" style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
                       <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: BOOKING_STATUS_COLOR[r.status], textTransform: "uppercase" }}>
                         {BOOKING_STATUS_LABEL[r.status] || r.status}
                       </span>
                     </td>
-                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                    <td data-label="Price paid" style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
                       <input
                         type="number" step="0.01" defaultValue={r.pricePaid ?? ""} placeholder="—"
                         onBlur={(e) => {
@@ -2505,12 +2505,12 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
                         }}
                         style={{ width: 86, padding: "4px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                     </td>
-                    <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                    <td data-label="In the ledger?" style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
                       <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: MATCH_COLOR[r.match], textTransform: "uppercase" }}>
                         {MATCH_LABEL[r.match]}
                       </span>
                     </td>
-                    <td className="mono" style={{ padding: "6px 8px", whiteSpace: "nowrap", fontWeight: 700, color: r.shortfall ? "#F0559C" : "var(--muted)" }}>
+                    <td data-label="Unaccounted" className="mono" style={{ padding: "6px 8px", whiteSpace: "nowrap", fontWeight: 700, color: r.shortfall ? "#F0559C" : "var(--muted)" }}>
                       {r.shortfall == null ? "unknown" : r.shortfall > 0 ? currency(r.shortfall) : "—"}
                     </td>
                     {/* Show the arithmetic, not just a verdict. A Boatsetter
@@ -2518,7 +2518,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
                         after the trip, less the platform's fees — stating that
                         plainly is the difference between "trust me" and "here
                         is why". */}
-                    <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0", color: "var(--muted)", fontSize: 11.5 }}>
+                    <td data-label="Ledger row" style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0", color: "var(--muted)", fontSize: 11.5 }}>
                       {r.linkedRows && r.linkedRows.length ? (
                         <>
                           <div style={{ color: "var(--text)" }}>
@@ -3007,7 +3007,7 @@ function AddOnsTab({ addons, onUpdate, onAdd }) {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
+    <div className="panel-split" style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
       <form onSubmit={submit} style={{ background: "var(--paper-8)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
         <div style={{ fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>Add a new add-on</div>
         <input type="text" placeholder="Name (e.g. Champagne bottle)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -3124,7 +3124,7 @@ function CouponsTab({ coupons, onAdd, onToggleActive, onUpdate }) {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
+    <div className="panel-split" style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
       <form onSubmit={submit} style={{ background: "var(--paper-1)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
         <label style={{ display: "block", marginBottom: 8 }}>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Code</div>
@@ -6949,7 +6949,7 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
         <StatCard label="Active subscriptions" value={String(active.length)} color="#E8934A" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
+      <div className="panel-split" style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
         <form onSubmit={submit} style={{ background: "var(--paper-12)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
           <input type="text" placeholder="Name (e.g. Boat storage)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginBottom: 8 }} required />

@@ -1,8 +1,8 @@
 // Someone decides whether to run twelve people home through weather based on
 // what this returns, so every branch is pinned and the pessimistic direction is
 // asserted explicitly.
-const { milesBetween, bearingTo, compass, sampleLine, minutesUntilWet, minutesHome, assess } =
-  require("../lib/runForHome");
+const { milesBetween, bearingTo, compass, sampleLine, minutesUntilWet, minutesHome, assess,
+  parseCoord, withinReach } = require("../lib/runForHome");
 
 let pass = 0, fail = 0;
 function ok(what, got, want) {
@@ -106,6 +106,43 @@ near("distance rounded to a tenth", r.miles, 3.5, 0.6);
 ok("compass point for the helm", r.compass, "SSE");
 ok("wind rounded", [r.windMph, r.gustMph], [13, 24]);
 ok("headline is a sentence, not a number", typeof r.headline === "string" && r.headline.length > 10, true);
+
+console.log("\n  NULL ISLAND — ABSENT IS NOT ZERO\n");
+// The live bug, 6 Sep 2026. searchParams.get() returns null when a parameter is
+// missing, Number(null) is 0, and 0 is finite — so a phone that could not get a
+// fix was read as sitting at 0N 0E, and the page reported "Dock is 6551.1 mi
+// WNW, about 19654 min at cruise" over a forecast fetched for the Gulf of
+// Guinea and presented as this lake.
+ok("a missing parameter is null, NOT zero", parseCoord(null), null);
+ok("undefined is null", parseCoord(undefined), null);
+ok("an empty parameter is null — Number('') is 0 too", parseCoord(""), null);
+ok("a real coordinate survives", parseCoord("30.39350"), 30.3935);
+ok("a negative longitude survives", parseCoord("-95.58360"), -95.5836);
+ok("a genuine zero is still zero", parseCoord("0"), 0);
+ok("nonsense is null", parseCoord("north-ish"), null);
+ok("infinity is null", parseCoord("Infinity"), null);
+
+console.log("\n  AND A SECOND LAYER, BECAUSE THE FIRST ONE FAILED\n");
+ok("null island is rejected outright", withinReach({ lat: 0, lon: 0 }, DOCK), false);
+ok("and it really is 6551 miles away",
+  Math.round(milesBetween({ lat: 0, lon: 0 }, DOCK)), 6551);
+ok("the lake itself is fine", withinReach(DOCK, DOCK), true);
+ok("out on the water is fine", withinReach(OUT, DOCK), true);
+ok("Houston, 40 miles off, is believed", withinReach({ lat: 29.7604, lon: -95.3698 }, DOCK), true);
+ok("Dallas, 200 miles off, is believed", withinReach({ lat: 32.7767, lon: -96.797 }, DOCK), true);
+ok("Denver is not", withinReach({ lat: 39.7392, lon: -104.9903 }, DOCK), false);
+ok("a sign-flipped longitude is not", withinReach({ lat: 30.3935, lon: 95.5836 }, DOCK), false);
+ok("swapped lat/lon is not", withinReach({ lat: -95.5836, lon: 30.3935 }, DOCK), false);
+ok("NaN is not", withinReach({ lat: NaN, lon: NaN }, DOCK), false);
+ok("nothing is not", withinReach(null, DOCK), false);
+
+// End to end: a rejected position must produce "unknown", never a confident
+// distance next to a cheerful forecast.
+const nullIsland = assess({ here: null, dock: DOCK, nowMs: T0, atHere: dry, atDock: dry });
+ok("a rejected position gives no distance", nullIsland.miles, null);
+ok("and no run time", nullIsland.runMinutes, null);
+ok("and refuses to call it clear", nullIsland.verdict, "unknown");
+
 
 console.log("\n  " + pass + " passed, " + fail + " failed\n");
 process.exit(fail ? 1 : 0);
