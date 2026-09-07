@@ -14,7 +14,7 @@ import { smsHref, reviewMessage, daysSince, askWindow, ASK_WINDOWS, GOOGLE_REVIE
 import { isMetered, currentHours } from "../../../lib/engineHours";
 import { bookingPhones, addPhone, removePhone, makePrimary, prettyPhone as fmtPhone, normalizePhone } from "../../../lib/bookingPhones";
 import { charterNow, minutesLeft, humanLeft, addOnsFor } from "../../../lib/charterNow";
-import { KINDS, KIND_LABEL, KIND_ICON, nearest } from "../../../lib/waterPoints";
+import { KINDS, PLACE_KINDS, HAZARD_KINDS, KIND_LABEL, KIND_ICON, nearest, isHazard } from "../../../lib/waterPoints";
 import { byVessel as maintByVessel, summarise as maintSummarise, hoursForItem as maintHoursFor } from "../../../lib/maintenance";
 import RadarMap from "../../../components/RadarMap";
 
@@ -88,7 +88,7 @@ export default function AskPage() {
 
   // Saved places: fuel, cover, ramps.
   const [places, setPlaces] = useState([]);
-  const [placeForm, setPlaceForm] = useState({ kind: "fuel", name: "", note: "" });
+  const [placeForm, setPlaceForm] = useState({ kind: "fuel", name: "", note: "", radiusYards: "" });
   const [placeOpen, setPlaceOpen] = useState(false);
 
   // Weather, and the run home.
@@ -417,10 +417,11 @@ export default function AskPage() {
         body: JSON.stringify({
           kind: placeForm.kind, name: placeForm.name.trim(),
           lat: herePos.lat, lon: herePos.lon, note: placeForm.note || null,
+          radiusYards: placeForm.radiusYards === "" ? null : Number(placeForm.radiusYards),
         }),
       });
       setPlaces((list) => [...list, made]);
-      setPlaceForm({ kind: placeForm.kind, name: "", note: "" });
+      setPlaceForm({ kind: placeForm.kind, name: "", note: "", radiusYards: "" });
       setPlaceOpen(false);
     } catch {
       window.alert("Could not save that spot. Check signal and try again.");
@@ -694,20 +695,52 @@ export default function AskPage() {
 
                   {placeOpen && (
                     <form onSubmit={savePlace} style={{ display: "grid", gap: 8, marginBottom: 12 }}>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {KINDS.map((k) => (
-                          <button
-                            key={k} type="button" onClick={() => setPlaceForm((f) => ({ ...f, kind: k }))}
-                            style={{
-                              flex: "1 1 22%", padding: "10px 4px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                              border: "1px solid " + (placeForm.kind === k ? "var(--purple, #CB6CE6)" : "rgba(203,108,230,0.25)"),
-                              background: placeForm.kind === k ? "rgba(203,108,230,0.18)" : "transparent",
-                              color: "var(--text, #ECE7F5)",
-                            }}>
-                            {KIND_ICON[k]} {KIND_LABEL[k]}
-                          </button>
-                        ))}
-                      </div>
+                      {[["Somewhere to go", PLACE_KINDS], ["Something to avoid", HAZARD_KINDS]].map(([heading, group]) => (
+                        <div key={heading}>
+                          <div style={{ fontSize: 11, color: "var(--muted, #9A8FB4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+                            {heading}
+                          </div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {group.map((k) => (
+                              <button
+                                key={k} type="button" onClick={() => setPlaceForm((f) => ({ ...f, kind: k }))}
+                                style={{
+                                  flex: "1 1 30%", padding: "10px 4px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                                  border: "1px solid " + (placeForm.kind === k ? "var(--purple, #CB6CE6)" : "rgba(203,108,230,0.25)"),
+                                  background: placeForm.kind === k ? "rgba(203,108,230,0.18)" : "transparent",
+                                  color: "var(--text, #ECE7F5)",
+                                }}>
+                                {KIND_ICON[k]} {KIND_LABEL[k]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* A hazard is an area, not a pin. Marking a stump field
+                          as a point says the danger is one spot and the water
+                          beside it is fine, which is the opposite of the truth. */}
+                      {isHazard(placeForm.kind) && (
+                        <>
+                          <input
+                            type="number" inputMode="numeric" min="1" max="5000"
+                            placeholder="How far does it reach? (yards)"
+                            value={placeForm.radiusYards}
+                            onChange={(e) => setPlaceForm((f) => ({ ...f, radiusYards: e.target.value }))}
+                            style={{ padding: "13px", fontSize: 16, borderRadius: 8, border: "1px solid rgba(232,147,74,0.4)", background: "var(--card, #171029)", color: "inherit" }}
+                          />
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {[100, 250, 500, 1000].map((yd) => (
+                              <button key={yd} type="button"
+                                onClick={() => setPlaceForm((f) => ({ ...f, radiusYards: String(yd) }))}
+                                style={{ flex: 1, padding: "8px 4px", borderRadius: 7, fontSize: 12, fontWeight: 700,
+                                  border: "1px solid rgba(232,147,74,0.35)", background: "transparent", color: "#E8934A" }}>
+                                {yd} yd
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
                       <input
                         type="text" placeholder="What is it called?"
                         value={placeForm.name}
@@ -826,7 +859,7 @@ export default function AskPage() {
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, padding: "0 4px" }}>
                     Radar &mdash; drag to see what is coming
                   </div>
-                  <RadarMap here={herePos} dock={v.dockPoint || null} height={340} />
+                  <RadarMap here={herePos} dock={v.dockPoint || null} points={places} height={340} />
                 </div>
               </>
             );

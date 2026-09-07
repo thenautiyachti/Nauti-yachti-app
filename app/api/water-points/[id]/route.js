@@ -35,6 +35,17 @@ async function PATCH(req, { params }) {
     }
     data.lon = lon;
   }
+  if ("radiusYards" in body) {
+    if (body.radiusYards == null || body.radiusYards === "") {
+      data.radiusYards = null;
+    } else {
+      const r = Math.round(Number(body.radiusYards));
+      if (!Number.isFinite(r) || r <= 0 || r > 5000) {
+        return NextResponse.json({ error: "Radius must be 1-5000 yards" }, { status: 400 });
+      }
+      data.radiusYards = r;
+    }
+  }
   if ("note" in body) data.note = String(body.note || "").trim() || null;
 
   const updated = await prisma.waterPoint.update({ where: { id }, data });

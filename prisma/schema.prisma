@@ -266,10 +266,20 @@ model LedgerEntry {
 // which is also the least typing possible on a boat. See lib/waterPoints.js.
 model WaterPoint {
   id        String   @id @default(cuid())
-  kind      String // "fuel" | "shelter" | "ramp" | "spot"
+  // "fuel" | "shelter" | "ramp" | "spot" | "stumps" | "shallow" | "nowake"
+  kind      String
   name      String
   lat       Float
   lon       Float
+  // How far the thing extends, in yards. A fuel dock is a point and leaves this
+  // null; a stump field is not. "The north end above 1375 is stumps" is an AREA,
+  // and marking it as a pin would say the hazard is one spot and the water
+  // beside it is fine.
+  //
+  // A circle is a crude shape for a stump field. It is deliberately crude: the
+  // owner is dropping it from memory or from the helm, and a circle he can
+  // actually judge the size of beats a polygon that implies a survey.
+  radiusYards Int?
   note      String?
   createdAt DateTime @default(now())
 }

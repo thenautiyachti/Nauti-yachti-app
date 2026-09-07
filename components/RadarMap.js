@@ -23,7 +23,8 @@
 // panning and layer management that one fixed view of one lake does not need.
 // The projection maths lives in lib/tiles.js, where it is tested.
 import { useState, useEffect, useRef, useCallback } from "react";
-import { TILE, tilesFor, pointIn, isVisible, zoomToFit } from "../lib/tiles";
+import { TILE, tilesFor, pointIn, isVisible, zoomToFit, project } from "../lib/tiles";
+import { isHazard, HAZARD_COLOUR, HAZARD_EDGE, KIND_LABEL } from "../lib/waterPoints";
 
 // Dark basemap, so it does not glare at someone at dusk. Labels ride above the
 // weather so place names stay readable through it.
@@ -51,7 +52,7 @@ function rainColour(mm) {
   return "rgba(226,80,80,0.62)";
 }
 
-export default function RadarMap({ here, dock, height = 340 }) {
+export default function RadarMap({ here, dock, points = [], height = 340 }) {
   const [radar, setRadar] = useState(null);
   const [grid, setGrid] = useState(null);
   const [idx, setIdx] = useState(0);
@@ -144,6 +145,21 @@ export default function RadarMap({ here, dock, height = 340 }) {
   const futureMinutes = timeline.length ? Math.round((timeline[timeline.length - 1].time - now) / 60000) : 0;
   const historyMinutes = timeline.length ? Math.round((now - timeline[0].time) / 60000) : 0;
 
+  // Marked hazards, sized from their radius in yards. A hazard with no radius
+  // still draws, at a small fixed size, rather than vanishing — a mark he took
+  // the trouble to make must not be invisible because a field was left blank.
+  const YARDS_PER_DEGREE_LAT = 121740; // 1 degree of latitude, near enough
+  const hazards = (points || [])
+    .filter((p) => p && isHazard(p.kind) && p.lat != null && p.lon != null)
+    .map((p) => {
+      const at = pointIn(p.lat, p.lon, centre.lat, centre.lon, z, width, height);
+      const degrees = (p.radiusYards || 120) / YARDS_PER_DEGREE_LAT;
+      const edge = pointIn(p.lat + degrees, p.lon, centre.lat, centre.lon, z, width, height);
+      return { ...p, left: at.left, top: at.top, r: Math.max(6, Math.abs(at.top - edge.top)) };
+    })
+    // Off-screen circles still lay out and drag the container about.
+    .filter((h) => isVisible({ left: h.left, top: h.top }, width, height, h.r + 40));
+
   // Forecast cells, sized in pixels from their span in degrees.
   let cellBoxes = null;
   if (frame && frame.kind === "forecast" && grid && grid.cells) {
@@ -190,6 +206,25 @@ export default function RadarMap({ here, dock, height = 340 }) {
         {tiles.map((t) => (
           <img key={"l" + t.key} src={fill(LABELS, t)} alt="" draggable={false}
             style={{ position: "absolute", left: t.left, top: t.top, width: TILE, height: TILE, pointerEvents: "none", opacity: 0.85 }} />
+        ))}
+
+        {/* HAZARDS, over the weather and under the boat.
+            His own marks, because the published hazard map for this lake is
+            somebody else's copyrighted drawing from 2009 and the surveyed stump
+            positions the Lake Conroe Association took in 2011 are not published
+            anywhere reachable. A circle is crude on purpose: it is dropped from
+            the helm or from memory, and a circle whose size he can judge beats
+            a polygon that implies a survey nobody did. */}
+        {hazards.map((h) => (
+          <div key={"h" + h.id}
+            title={KIND_LABEL[h.kind] + ": " + h.name + (h.radiusYards ? ` (~${h.radiusYards} yd)` : "")}
+            style={{
+              position: "absolute", left: h.left - h.r, top: h.top - h.r,
+              width: h.r * 2, height: h.r * 2, borderRadius: "50%",
+              background: HAZARD_COLOUR[h.kind] || "rgba(226,104,95,0.28)",
+              border: "1px dashed " + (HAZARD_EDGE[h.kind] || "rgba(226,104,95,0.8)"),
+              pointerEvents: "none",
+            }} />
         ))}
 
         {home && isVisible(home, width, height, 20) && (
@@ -259,6 +294,11 @@ export default function RadarMap({ here, dock, height = 340 }) {
         </>
       )}
 
+      {hazards.length > 0 && (
+        <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)", marginTop: 6 }}>
+          Dashed circles are hazards you marked &mdash; {hazards.map((h) => h.name).join(", ")}.
+        </div>
+      )}
       <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)", marginTop: 8, lineHeight: 1.5 }}>
         Left of now is real radar. Right of now is a forecast — coarse cells, because it is a
         model rather than a picture of rain that exists.
