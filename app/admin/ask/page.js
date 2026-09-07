@@ -358,8 +358,14 @@ export default function AskPage() {
       // lives at Pearl Bay and the other two are three miles WSW — ten minutes
       // apart, which in weather is the whole question. Taken from the charter
       // actually running, because that is the boat under your feet.
-      const onNow = charterNow(allBookings, Date.now()).running;
-      const vesselId = onNow && onNow.booking ? onNow.booking.vesselId : null;
+      // The boat under your feet if one is out; otherwise the one you are about
+      // to take. Checking only for a RUNNING charter meant that at four in the
+      // afternoon, with an Explorer trip up next at seven, the page fell back to
+      // the business-wide dock and reported "dock position not set" — while the
+      // Explorer's own dock was sitting right there in the database.
+      const when = charterNow(allBookings, Date.now());
+      const on = when.running || when.next;
+      const vesselId = on && on.booking ? on.booking.vesselId : null;
       const params = new URLSearchParams();
       if (pos) {
         params.set("lat", pos.lat.toFixed(5));
@@ -786,9 +792,13 @@ export default function AskPage() {
                         </>
                       ) : (
                         <>
-                          Dock position not set, so distances are measured from the middle of the lake.
-                          Set <span className="mono">DOCK_LAT</span> and <span className="mono">DOCK_LON</span> in
-                          Vercel, then redeploy.
+                          {/* Docks live on the boat now, not in the environment.
+                              Sending someone to Vercel for this is a leftover
+                              from before Vessel.dockLat existed, and it is the
+                              wrong place to send them. */}
+                          No dock recorded for this boat, so distances are measured from the middle
+                          of the lake. Use the boat buttons below while standing on its dock, or tap
+                          one and paste the position.
                         </>
                       )}
                       {herePos && (
