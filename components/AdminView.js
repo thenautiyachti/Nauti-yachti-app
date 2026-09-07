@@ -3746,7 +3746,7 @@ function crewRows(agentActivity = []) {
     );
 
     return { ...c, run, status, stalled, state, repeatedDetail, detailEchoesStatus,
-      stale: isStale(run, c.schedule) };
+      stale: isStale(run, c.schedule, undefined, c.scheduleChangedAt) };
   });
 }
 
