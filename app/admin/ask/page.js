@@ -457,24 +457,42 @@ export default function AskPage() {
   // currently the street from OpenStreetMap, about a hundred yards out.
   const [dockSaved, setDockSaved] = useState("");
   async function setVesselDock(vessel) {
-    if (!herePos) {
-      window.alert(
-        "No position yet.\n\n" +
-        "Tap “Can I get back before it hits?” first so the page knows where you are."
+    let at = herePos;
+
+    // TYPING THE NUMBERS IS THE FALLBACK, and it has to exist.
+    //
+    // A browser that has been told "no" to location once never asks again — it
+    // just returns nothing, with no prompt. Standing on the dock with a phone
+    // in that state and no way to record the berth is a wasted trip, so the
+    // coordinates can be pasted instead: long-press the spot in Google Maps and
+    // it hands you exactly this format.
+    if (!at) {
+      const typed = window.prompt(
+        `This phone is not giving a location, so type ${vessel.name}'s dock position.\n\n` +
+        "Long-press the spot in Google Maps and copy what it shows.\n\n" +
+        "Format: 30.372740, -95.546670   (longitude is negative here)",
+        ""
       );
-      return;
+      if (typed == null) return;
+      const parts = String(typed).split(/[, ]+/).map((x) => Number(x.trim())).filter((n) => Number.isFinite(n));
+      if (parts.length !== 2) {
+        window.alert("Could not read that.\n\nTwo numbers separated by a comma, like:\n30.372740, -95.546670");
+        return;
+      }
+      at = { lat: parts[0], lon: parts[1] };
     }
+
     if (!window.confirm(
-      `Set ${vessel.name}'s dock to where you are standing?\n\n` +
-      `${herePos.lat.toFixed(6)}, ${herePos.lon.toFixed(6)}` +
-      (herePos.accuracy ? `\n(accurate to about ${Math.round(herePos.accuracy)} m)` : "") +
+      `Set ${vessel.name}'s dock to ${herePos ? "where you are standing" : "this position"}?\n\n` +
+      `${at.lat.toFixed(6)}, ${at.lon.toFixed(6)}` +
+      (herePos && herePos.accuracy ? `\n(accurate to about ${Math.round(herePos.accuracy)} m)` : "") +
       "\n\nEvery run home for this boat is measured from here."
     )) return;
     setBusy("dock");
     try {
       await api(`/api/vessels/${vessel.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ dockLat: herePos.lat, dockLon: herePos.lon }),
+        body: JSON.stringify({ dockLat: at.lat, dockLon: at.lon }),
       });
       setDockSaved(vessel.name + "’s dock set");
       loadHours();
@@ -789,10 +807,12 @@ export default function AskPage() {
                       until now only writable by editing the database. Each run
                       home is measured from this, and the Explorer's is
                       currently the street from OSM rather than the berth. */}
-                  {herePos && vessels.length > 0 && (
+                  {vessels.length > 0 && (
                     <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(203,108,230,0.15)" }}>
                       <div style={{ fontSize: 12.5, color: "var(--muted, #9A8FB4)", marginBottom: 7, lineHeight: 1.45 }}>
-                        Standing on a dock? Record it, and that boat&rsquo;s run home is measured from here.
+                        {herePos
+                          ? "Standing on a dock? Record it, and that boat’s run home is measured from here."
+                          : "Standing on a dock? Tap the boat and type the position — long-press the spot in Google Maps to get it."}
                       </div>
                       {dockSaved && (
                         <div style={{ fontSize: 13, color: "#4FBF8B", fontWeight: 700, marginBottom: 7 }}>{dockSaved}</div>
@@ -800,7 +820,7 @@ export default function AskPage() {
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {vessels.map((vv) => {
                           const set = vv.dockLat != null && vv.dockLon != null;
-                          const away = set
+                          const away = set && herePos
                             ? Math.round(milesBetween(herePos, { lat: vv.dockLat, lon: vv.dockLon }) * 1760)
                             : null;
                           return (
@@ -816,7 +836,7 @@ export default function AskPage() {
                             >
                               {vv.name.replace("Nauti ", "")}
                               <span style={{ display: "block", fontSize: 10.5, fontWeight: 400, color: "var(--muted, #9A8FB4)", marginTop: 2 }}>
-                                {away == null ? "not set" : away < 40 ? "set · you are here" : `set · ${away} yd away`}
+                                {!set ? "not set" : away == null ? "set" : away < 40 ? "set · you are here" : `set · ${away} yd away`}
                               </span>
                             </button>
                           );
