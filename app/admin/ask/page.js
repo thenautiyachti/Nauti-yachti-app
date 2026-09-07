@@ -16,6 +16,7 @@ import { bookingPhones, addPhone, removePhone, makePrimary, prettyPhone as fmtPh
 import { charterNow, minutesLeft, humanLeft, addOnsFor } from "../../../lib/charterNow";
 import { KINDS, KIND_LABEL, KIND_ICON, nearest } from "../../../lib/waterPoints";
 import { byVessel as maintByVessel, summarise as maintSummarise, hoursForItem as maintHoursFor } from "../../../lib/maintenance";
+import RadarMap from "../../../components/RadarMap";
 
 async function api(path, options) {
   const res = await fetch(path, {
@@ -814,21 +815,18 @@ export default function AskPage() {
                   </div>
                 )}
 
-                {/* The radar itself, here rather than halfway down the public
-                    site. Same Windy embed, zoomed tighter, because on the water
-                    the question is about this lake and not the county. */}
+                {/* THE RADAR, DRAWN RATHER THAN EMBEDDED. The Windy iframe
+                    that was here is pinned to calendar=now — it plays back
+                    where rain has been, which is exactly what failed on the
+                    water. An iframe also cannot be told where the boat is.
+                    This scrubs from two hours back to whatever the nowcast can
+                    see, with you and the dock drawn on it. The homepage keeps
+                    Windy, which is right for a guest deciding whether to come. */}
                 <div style={{ ...S.card, padding: 10 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, padding: "0 4px" }}>Radar</div>
-                  <iframe
-                    title="Live weather radar centered on Lake Conroe"
-                    src="https://embed.windy.com/embed2.html?lat=30.394&lon=-95.584&detailLat=30.394&detailLon=-95.584&zoom=10&level=surface&overlay=radar&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"
-                    style={{ width: "100%", height: 420, border: "1px solid rgba(203,108,230,0.18)", borderRadius: 8, display: "block" }}
-                    loading="lazy"
-                  />
-                  <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)", marginTop: 7, padding: "0 4px", lineHeight: 1.45 }}>
-                    Windy&rsquo;s radar plays back where rain <em>has</em> been. The numbers above are a
-                    separate forecast, which is the part it cannot show you.
+                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, padding: "0 4px" }}>
+                    Radar &mdash; drag to see what is coming
                   </div>
+                  <RadarMap here={herePos} dock={v.dockPoint || null} height={340} />
                 </div>
               </>
             );

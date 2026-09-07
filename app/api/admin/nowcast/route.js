@@ -134,6 +134,10 @@ async function GET(req) {
       ...verdict,
       dockConfigured: dock.configured,
       dockBadValues: dock.badValues || null,
+      // Where the dock is, so the radar can draw it. This route is admin-only
+      // and this page is already trusted with the dock's address and its gate
+      // code, so its coordinates are not a new disclosure.
+      dockPoint: { lat: dock.lat, lon: dock.lon },
       hereRejected,
       // The window the forecast actually covers, so "no rain showing" can be
       // reported as "in the next N minutes" rather than as a promise.
