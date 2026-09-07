@@ -28,6 +28,7 @@ import {
 import { formatBody } from "../lib/boardText";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
+import SocialCommentsTab from "./SocialCommentsTab";
 
 // Names only. The leading numbers came from a spreadsheet's sort order and had
 // started to do real damage: 05 was three different repair categories, 06 was
@@ -277,6 +278,23 @@ export default function AdminView({
   // Guests promised their photographs who have not had them yet.
   const photoRequestsOwed = (photoRequests || []).filter((r) => !r.sentAt).length;
 
+  // Comments on our posts nobody has answered. Fetched here rather than only in
+  // the panel so the badge is visible from any tab — the whole problem is that
+  // David's challenge sat for twenty-three hours before anyone looked.
+  const [openComments, setOpenComments] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const read = () => fetch("/api/admin/social-comments")
+      .then((r) => r.json())
+      .then((d) => { if (alive && d && d.summary) setOpenComments(d.summary.open || 0); })
+      .catch(() => {});
+    read();
+    // Comments arrive whenever they arrive, so this is the one queue worth
+    // re-reading while the console sits open.
+    const id = setInterval(read, 5 * 60 * 1000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
   // The tab counter has to agree with the list under it. A card-paid booking
   // exists in both tables by design — see toUnifiedRows — so a straight
   // inquiries + externalBookings sum counts it twice, and the number on the tab
@@ -318,6 +336,9 @@ export default function AdminView({
       tabs: [
         { id: "media", label: "Media" },
         { id: "mediaDrafts", label: tabLabel("Media Drafts", needsReviewCount(mediaDrafts)), count: needsReviewCount(mediaDrafts) },
+        // Sits beside Media Drafts because it is the same shape of job: a
+        // queue of things waiting on a decision only the owner can make.
+        { id: "socialComments", label: tabLabel("Comments", openComments), count: openComments },
         { id: "testimonials", label: tabLabel("Testimonials", needsReviewCount(testimonials)), count: needsReviewCount(testimonials) },
         // Badged on the OUTSTANDING count, not the total: this is a queue of
         // promises still owed, and once it is empty it should say nothing.
@@ -603,6 +624,8 @@ export default function AdminView({
         {tab === "mediaDrafts" && (
           <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} onAttachMedia={onAttachMediaDraftMedia} />
         )}
+
+        {tab === "socialComments" && <SocialCommentsTab />}
 
         {tab === "photoRequests" && (
           <PhotoRequestsTab
