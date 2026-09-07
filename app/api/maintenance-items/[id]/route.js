@@ -19,6 +19,9 @@ async function PATCH(req, { params }) {
 
   const data = {};
   if ("label" in body) data.label = body.label;
+  // Which boat. Empty string or null means fleet-wide, which is a real choice
+  // (a trailer, a shared spare) and not a missing value.
+  if ("vesselId" in body) data.vesselId = body.vesselId || null;
   if ("intervalHours" in body) data.intervalHours = body.intervalHours === "" || body.intervalHours == null ? null : Number(body.intervalHours);
   if ("intervalMonths" in body) data.intervalMonths = body.intervalMonths === "" || body.intervalMonths == null ? null : Number(body.intervalMonths);
   if ("lastDoneDate" in body) data.lastDoneDate = body.lastDoneDate || null;

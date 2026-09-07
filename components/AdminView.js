@@ -10,6 +10,7 @@ import {
 import { owedCharters, owedMessage, windowFor } from "../lib/owedCharters";
 import { isLinked, earnedIncome, unearnedTotal } from "../lib/ledgerLinks";
 import { hoursByVessel, fleetHours as fleetHoursOf, currentHours, isMetered } from "../lib/engineHours";
+import { byVessel as maintByVessel, summarise as maintSummarise, statusFor as maintStatusFor } from "../lib/maintenance";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { version as APP_VERSION } from "../package.json";
@@ -2619,16 +2620,6 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
 
 // ---- Maintenance tab -------------------------------------------------
 
-// Whole months elapsed since a "YYYY-MM-DD" date, floored — e.g. a date
-// 45 days ago reads as 1 month, not 1.5.
-function monthsSinceDate(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  const now = new Date();
-  let months = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-  if (now.getDate() < d.getDate()) months -= 1;
-  return Math.max(0, months);
-}
-
 // Most recent log per vessel, "most recent" meaning latest date (ties broken
 // by createdAt) — these are point-in-time readings (hour-meter, fillup), not
 // events to sum.
@@ -2641,42 +2632,6 @@ function latestPerVessel(logs) {
     }
   }
   return result;
-}
-
-const DUE_SOON_FRACTION = 0.9; // flag "due soon" within 10% of either threshold
-
-// MaintenanceItem isn't tied to a specific vessel (it's one shared checklist
-// for the fleet), so status is judged against whichever vessel currently has
-// the most hours on it — the worst case, so nothing slips through unnoticed.
-function maintenanceStatus(item, hoursNow) {
-  const hasHoursBasis = item.intervalHours != null && item.lastDoneHours != null && hoursNow != null;
-  const hasMonthsBasis = item.intervalMonths != null && !!item.lastDoneDate;
-
-  if (!hasHoursBasis && !hasMonthsBasis) {
-    return { status: "unknown", label: "Enter last serviced info", hoursSince: null, monthsSince: null };
-  }
-
-  let overdue = false;
-  let dueSoon = false;
-  let hoursSince = null;
-  let monthsSinceVal = null;
-
-  if (hasHoursBasis) {
-    hoursSince = hoursNow - item.lastDoneHours;
-    if (hoursSince >= item.intervalHours) overdue = true;
-    else if (hoursSince >= item.intervalHours * DUE_SOON_FRACTION) dueSoon = true;
-  }
-  if (hasMonthsBasis) {
-    monthsSinceVal = monthsSinceDate(item.lastDoneDate);
-    if (monthsSinceVal >= item.intervalMonths) overdue = true;
-    else if (monthsSinceVal >= item.intervalMonths * DUE_SOON_FRACTION) dueSoon = true;
-  }
-
-  return {
-    status: overdue ? "overdue" : dueSoon ? "due-soon" : "ok",
-    label: overdue ? "Overdue" : dueSoon ? "Due soon" : "OK",
-    hoursSince, monthsSince: monthsSinceVal,
-  };
 }
 
 const STATUS_COLORS = { overdue: "var(--pink)", "due-soon": "#E8934A", ok: "#7FE0B8", unknown: "var(--muted)" };
@@ -2695,7 +2650,11 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
   const vesselHours = vessels.map((v) => ({ vessel: v, log: latestHours[v.id] || null, hours: hoursPerVessel[v.id] }));
   const fleetMaxHours = fleetHoursOf(vessels, engineHours);
 
-  const statuses = maintenanceItems.map((item) => ({ item, ...maintenanceStatus(item, fleetMaxHours) }));
+  // Judged PER BOAT. Each item is measured against its own engine's hours —
+  // the Islander's oil against the Islander's 5 hours, not the Explorer's 120.
+  // Items with no vesselId are fleet-wide and keep the old worst-case reading.
+  const groups = maintByVessel(maintenanceItems, vessels, engineHours);
+  const statuses = groups.flatMap((g) => g.items);
   const overdueCount = statuses.filter((s) => s.status === "overdue").length;
   const dueSoonCount = statuses.filter((s) => s.status === "due-soon").length;
   // Items nothing can be said about, because they have neither a last-done date
@@ -2771,11 +2730,34 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
 
       <div>
         <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Maintenance schedule</div>
-        <div style={{ overflowX: "auto" }}>
+        {/* ONE SCHEDULE PER BOAT. It used to be a single flat list of thirteen
+            judged against whichever engine had the most hours — "just a long
+            list", in the owner's words, and wrong the moment hours became real:
+            an oil change belongs to an engine, not to a company. */}
+        {groups.map((group) => (
+        <div key={group.vesselId || "fleet"} style={{ marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>
+              {group.name}
+              {group.vessel && hoursPerVessel[group.vesselId] != null && (
+                <span style={{ fontWeight: 400, color: "var(--muted)", fontSize: 12 }}>
+                  {" "}· {hoursPerVessel[group.vesselId]} hrs {isMetered(group.vessel) ? "on the meter" : "run"}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{maintSummarise(group)}</div>
+          </div>
+          {group.items.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: "#E8934A", background: "var(--card)", borderRadius: 8, padding: "10px 12px" }}>
+              No schedule set up for this boat yet.
+            </div>
+          ) : (
+          <div style={{ overflowX: "auto" }}>
           <table className="maint-table" style={{ borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 12.5, color: "var(--text)" }}>
             <thead>
               <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                 <th style={{ padding: "4px 8px" }}>Item</th>
+                <th style={{ padding: "4px 8px" }}>Boat</th>
                 <th style={{ padding: "4px 8px" }}>Interval (hrs)</th>
                 <th style={{ padding: "4px 8px" }}>Interval (mo)</th>
                 <th style={{ padding: "4px 8px" }}>Last done date</th>
@@ -2784,9 +2766,20 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
               </tr>
             </thead>
             <tbody>
-              {statuses.map(({ item, status, label, hoursSince, monthsSince }) => (
+              {group.items.map(({ item, status, label, hoursSince, monthsSince }) => (
                 <tr key={item.id} style={{ background: "var(--card)" }}>
                   <td data-label="Item" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>{item.label}</td>
+                  {/* Moving an item between boats, for when the same job was
+                      logged against the wrong hull — or when the 1 Aug oil
+                      change turns out to have been a different boat. */}
+                  <td data-label="Boat" style={{ padding: "6px 8px" }}>
+                    <select value={item.vesselId || ""}
+                      onChange={(e) => onUpdateItem(item.id, { vesselId: e.target.value || null })}
+                      style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12, maxWidth: 150 }}>
+                      {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                      <option value="">Whole fleet</option>
+                    </select>
+                  </td>
                   <td data-label="Interval (hrs)" style={{ padding: "6px 8px" }}>
                     <input type="number" defaultValue={item.intervalHours ?? ""} placeholder="—"
                       onBlur={(e) => onUpdateItem(item.id, { intervalHours: e.target.value === "" ? null : Number(e.target.value) })}
@@ -2819,9 +2812,15 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
               ))}
             </tbody>
           </table>
+          </div>
+          )}
         </div>
+        ))}
         <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8 }}>
-          Fleet-wide status is judged against the highest-hours vessel so nothing slips through unnoticed. Intervals shown are generic starting points — swap in the real numbers from each engine's manual when you have them.
+          Each boat is judged against its own engine hours. Anything left on &ldquo;Whole fleet&rdquo; is
+          measured against the hardest-worked engine instead, which is the right reading for a
+          trailer or a shared spare. Intervals shown are generic starting points — swap in the
+          real numbers from each engine&rsquo;s manual when you have them.
         </p>
       </div>
 
@@ -2986,6 +2985,11 @@ function AddOnsTab({ addons, onUpdate, onAdd }) {
   const emptyForm = { name: "", price: "", unit: "", blurb: "" };
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
+  // The Archived toggle below reads this. It was never declared here, so the
+  // whole tab threw "showArchived is not defined" on render and showed nothing
+  // — CouponsTab and GalleryTab each declare their own copy and were fine,
+  // which is why only this one tab was broken.
+  const [showArchived, setShowArchived] = useState(false);
 
   const live = addons.filter((a) => !a.archived);
   const archived = addons.filter((a) => a.archived);
@@ -4788,14 +4792,18 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   // single charter on an unmetered boat, not its total. A fleet with 300
   // accumulated hours would have reported 8.
   const maxHours = fleetHoursOf(vessels, engineHours);
-  const overdue = maintenanceItems.filter((m) => maintenanceStatus(m, maxHours).status === "overdue");
-  const dueSoon = maintenanceItems.filter((m) => maintenanceStatus(m, maxHours).status === "due-soon");
+  // Judged per boat, same as the Maintenance tab — each item against its own
+  // engine. Reading every item against the fleet maximum reported the quiet
+  // boats overdue for work their own engines had not earned.
+  const maintJudged = maintByVessel(maintenanceItems, vessels, engineHours).flatMap((g) => g.items);
+  const overdue = maintJudged.filter((m) => m.status === "overdue").map((m) => m.item);
+  const dueSoon = maintJudged.filter((m) => m.status === "due-soon").map((m) => m.item);
   // Items that cannot be judged at all. 13 items are configured and not one can
   // be assessed, because no engine hours or last-serviced dates were ever
   // entered -- so the whole maintenance system reports "fine" while knowing
   // nothing. Silence from an empty system looks identical to silence from a
   // healthy one, which is the dangerous part.
-  const unjudgeable = maintenanceItems.filter((m) => maintenanceStatus(m, maxHours).status === "unknown");
+  const unjudgeable = maintJudged.filter((m) => m.status === "unknown").map((m) => m.item);
   const neverAsked = externalBookings.filter((b) => b.status === "completed" && b.phone && !b.reviewRequestedAt && !b.marketingOptOut);
   const noPhone = externalBookings.filter((b) => b.status === "completed" && !b.phone);
   const noPrice = externalBookings.filter((b) => b.status === "completed" && b.pricePaid == null);

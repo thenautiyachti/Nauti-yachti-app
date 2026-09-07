@@ -276,6 +276,15 @@ model WaterPoint {
 
 model MaintenanceItem {
   id             String  @id @default(cuid())
+  // Which boat this belongs to. null = the whole fleet (a trailer, a shared
+  // spare), judged against the hardest-worked engine as everything used to be.
+  //
+  // This was one shared checklist for all three boats, which was the right call
+  // while no hours had ever been logged and stopped being right the moment they
+  // were: an oil change belongs to an engine, not to a company. Judging the
+  // Islander's oil against the Explorer's 120 hours reports it overdue for work
+  // its own engine has not earned. See lib/maintenance.js.
+  vesselId       String?
   label          String
   intervalHours  Int?
   intervalMonths Int?

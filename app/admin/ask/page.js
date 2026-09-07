@@ -11,10 +11,11 @@
 // One screen, one tap per guest, biggest thumb targets available.
 import { useState, useEffect, useCallback } from "react";
 import { smsHref, reviewMessage, daysSince, askWindow, ASK_WINDOWS, GOOGLE_REVIEW_URL } from "../../../lib/reviews";
-import { isMetered, currentHours, fleetHours } from "../../../lib/engineHours";
+import { isMetered, currentHours } from "../../../lib/engineHours";
 import { bookingPhones, addPhone, removePhone, makePrimary, prettyPhone as fmtPhone, normalizePhone } from "../../../lib/bookingPhones";
 import { charterNow, minutesLeft, humanLeft, addOnsFor } from "../../../lib/charterNow";
 import { KINDS, KIND_LABEL, KIND_ICON, nearest } from "../../../lib/waterPoints";
+import { byVessel as maintByVessel, summarise as maintSummarise, hoursForItem as maintHoursFor } from "../../../lib/maintenance";
 
 async function api(path, options) {
   const res = await fetch(path, {
@@ -372,7 +373,9 @@ export default function AskPage() {
   // is exactly why thirteen of them sat reading "OK" while meaning "nobody has
   // ever told me anything".
   const markServiced = useCallback(async (item) => {
-    const hoursNow = fleetHours(vessels, logs);
+    // That boat's hours, not the fleet's. Stamping the fleet maximum onto an
+    // Islander item would measure its next interval from the Explorer's engine.
+    const hoursNow = maintHoursFor(item, vessels, logs);
     const label = item.label;
     if (!window.confirm(
       `Mark "${label}" done today?` +
@@ -1302,63 +1305,50 @@ export default function AskPage() {
             </div>
           )}
 
-          {(() => {
-            const hoursNow = fleetHours(vessels, logs);
-            // Worst first: the point of a list on a phone is that the top of it
-            // is the thing to deal with.
-            const RANK = { overdue: 0, "due-soon": 1, unknown: 2, ok: 3 };
-            const judged = maintItems.map((item) => {
-              const hasHours = item.intervalHours != null && item.lastDoneHours != null && hoursNow != null;
-              const sinceHours = hasHours ? hoursNow - item.lastDoneHours : null;
-              let months = null;
-              if (item.lastDoneDate) {
-                const d = new Date(item.lastDoneDate + "T12:00:00");
-                if (!Number.isNaN(d.getTime())) {
-                  months = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-                }
-              }
-              const hasMonths = item.intervalMonths != null && months != null;
-              let status = "unknown";
-              if (hasHours || hasMonths) {
-                const overdue = (hasHours && sinceHours >= item.intervalHours) ||
-                  (hasMonths && months >= item.intervalMonths);
-                const soon = (hasHours && sinceHours >= item.intervalHours * 0.9) ||
-                  (hasMonths && months >= item.intervalMonths * 0.9);
-                status = overdue ? "overdue" : soon ? "due-soon" : "ok";
-              }
-              return { item, status, sinceHours, months };
-            }).sort((a, b) => RANK[a.status] - RANK[b.status] || (a.item.sortOrder || 0) - (b.item.sortOrder || 0));
-
-            const COLOR = { overdue: "#E2685F", "due-soon": "#E8934A", ok: "#4FBF8B", unknown: "var(--muted, #9A8FB4)" };
-            const WORD = { overdue: "Overdue", "due-soon": "Due soon", ok: "OK", unknown: "Never recorded" };
-
-            return judged.map(({ item, status, sinceHours, months }) => (
-              <button
-                key={item.id} type="button"
-                disabled={maintBusy === item.id}
-                onClick={() => markServiced(item)}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-                  width: "100%", textAlign: "left", marginBottom: 8, padding: "13px 14px",
-                  borderRadius: 10, border: "1px solid " + (status === "overdue" ? COLOR.overdue : "rgba(203,108,230,0.25)"),
-                  background: status === "overdue" ? "rgba(226,104,95,0.08)" : "var(--card, #171029)",
-                  color: "var(--text, #ECE7F5)", opacity: maintBusy === item.id ? 0.5 : 1,
-                }}
-              >
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ fontSize: 15, fontWeight: 600 }}>{item.label}</span>
-                  <span style={{ display: "block", fontSize: 11.5, color: "var(--muted, #9A8FB4)", marginTop: 3 }}>
-                    {item.lastDoneDate ? `last done ${item.lastDoneDate}` : "no record of it ever being done"}
-                    {sinceHours != null ? ` · ${Math.round(sinceHours)} hrs since` : ""}
-                    {months != null && sinceHours == null ? ` · ${months} mo since` : ""}
+          {/* Grouped by boat, worst first within each. The same job on two
+              hulls is two different answers now: the Explorer's oil against the
+              Explorer's hours, the Islander's against its own. */}
+          {maintByVessel(maintItems, vessels, logs).map((group) => (
+            <div key={group.vesselId || "fleet"} style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+                <span style={{ fontSize: 14.5, fontWeight: 700 }}>{group.name}</span>
+                <span style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)" }}>{maintSummarise(group)}</span>
+              </div>
+              {group.items.length === 0 && (
+                <div style={{ fontSize: 12.5, color: "#E8934A", padding: "8px 2px" }}>
+                  No schedule set up for this boat yet.
+                </div>
+              )}
+              {group.items.map(({ item, status, label, hoursSince, monthsSince }) => (
+                <button
+                  key={item.id} type="button"
+                  disabled={maintBusy === item.id}
+                  onClick={() => markServiced(item)}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                    width: "100%", textAlign: "left", marginBottom: 8, padding: "13px 14px",
+                    borderRadius: 10, border: "1px solid " + (status === "overdue" ? "#E2685F" : "rgba(203,108,230,0.25)"),
+                    background: status === "overdue" ? "rgba(226,104,95,0.08)" : "var(--card, #171029)",
+                    color: "var(--text, #ECE7F5)", opacity: maintBusy === item.id ? 0.5 : 1,
+                  }}
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: 15, fontWeight: 600 }}>{item.label}</span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--muted, #9A8FB4)", marginTop: 3 }}>
+                      {item.lastDoneDate ? `last done ${item.lastDoneDate}` : "no record of it ever being done"}
+                      {hoursSince != null ? ` · ${Math.round(hoursSince)} hrs since` : ""}
+                      {monthsSince != null && hoursSince == null ? ` · ${monthsSince} mo since` : ""}
+                    </span>
                   </span>
-                </span>
-                <span style={{ flex: "0 0 auto", fontSize: 11.5, fontWeight: 700, color: COLOR[status], textAlign: "right" }}>
-                  {WORD[status]}
-                </span>
-              </button>
-            ));
-          })()}
+                  <span style={{ flex: "0 0 auto", fontSize: 11.5, fontWeight: 700, textAlign: "right",
+                    color: status === "overdue" ? "#E2685F" : status === "due-soon" ? "#E8934A"
+                      : status === "ok" ? "#4FBF8B" : "var(--muted, #9A8FB4)" }}>
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
 
           {fuel.length > 0 && (
             <div style={{ ...S.card, marginTop: 18 }}>
