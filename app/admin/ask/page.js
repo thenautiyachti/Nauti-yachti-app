@@ -14,6 +14,7 @@ import { smsHref, reviewMessage, daysSince, askWindow, ASK_WINDOWS, GOOGLE_REVIE
 import { isMetered, currentHours } from "../../../lib/engineHours";
 import { bookingPhones, addPhone, removePhone, makePrimary, prettyPhone as fmtPhone, normalizePhone } from "../../../lib/bookingPhones";
 import { charterNow, minutesLeft, humanLeft, addOnsFor } from "../../../lib/charterNow";
+import { milesBetween } from "../../../lib/runForHome";
 import { KINDS, PLACE_KINDS, HAZARD_KINDS, KIND_LABEL, KIND_ICON, nearest, isHazard } from "../../../lib/waterPoints";
 import { byVessel as maintByVessel, summarise as maintSummarise, hoursForItem as maintHoursFor } from "../../../lib/maintenance";
 import RadarMap from "../../../components/RadarMap";
@@ -417,6 +418,43 @@ export default function AskPage() {
   //
   // One tap while tied up at the fuel dock beats typing coordinates from
   // memory later, which is the version that never happens.
+  // Record where a boat lives, standing on its dock.
+  //
+  // The one fact you can only learn by being somewhere, and until now the only
+  // way to write it was by editing the database. The Explorer's berth is
+  // currently the street from OpenStreetMap, about a hundred yards out.
+  const [dockSaved, setDockSaved] = useState("");
+  async function setVesselDock(vessel) {
+    if (!herePos) {
+      window.alert(
+        "No position yet.\n\n" +
+        "Tap “Can I get back before it hits?” first so the page knows where you are."
+      );
+      return;
+    }
+    if (!window.confirm(
+      `Set ${vessel.name}'s dock to where you are standing?\n\n` +
+      `${herePos.lat.toFixed(6)}, ${herePos.lon.toFixed(6)}` +
+      (herePos.accuracy ? `\n(accurate to about ${Math.round(herePos.accuracy)} m)` : "") +
+      "\n\nEvery run home for this boat is measured from here."
+    )) return;
+    setBusy("dock");
+    try {
+      await api(`/api/vessels/${vessel.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ dockLat: herePos.lat, dockLon: herePos.lon }),
+      });
+      setDockSaved(vessel.name + "’s dock set");
+      loadHours();
+      checkWeather();
+      setTimeout(() => setDockSaved(""), 5000);
+    } catch {
+      window.alert("Could not save that. Check signal and try again.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function savePlace(e) {
     e.preventDefault();
     if (!placeForm.name.trim()) return;
@@ -714,6 +752,46 @@ export default function AskPage() {
                       {placeOpen ? "cancel" : "save this spot"}
                     </button>
                   </div>
+
+                  {/* WHERE A BOAT LIVES. Only learnable by standing there, and
+                      until now only writable by editing the database. Each run
+                      home is measured from this, and the Explorer's is
+                      currently the street from OSM rather than the berth. */}
+                  {herePos && vessels.length > 0 && (
+                    <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(203,108,230,0.15)" }}>
+                      <div style={{ fontSize: 12.5, color: "var(--muted, #9A8FB4)", marginBottom: 7, lineHeight: 1.45 }}>
+                        Standing on a dock? Record it, and that boat&rsquo;s run home is measured from here.
+                      </div>
+                      {dockSaved && (
+                        <div style={{ fontSize: 13, color: "#4FBF8B", fontWeight: 700, marginBottom: 7 }}>{dockSaved}</div>
+                      )}
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {vessels.map((vv) => {
+                          const set = vv.dockLat != null && vv.dockLon != null;
+                          const away = set
+                            ? Math.round(milesBetween(herePos, { lat: vv.dockLat, lon: vv.dockLon }) * 1760)
+                            : null;
+                          return (
+                            <button
+                              key={vv.id} type="button"
+                              disabled={busy === "dock"}
+                              onClick={() => setVesselDock(vv)}
+                              style={{
+                                flex: "1 1 30%", padding: "10px 5px", borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+                                border: "1px solid rgba(203,108,230,0.35)", background: "transparent",
+                                color: "var(--text, #ECE7F5)", opacity: busy === "dock" ? 0.5 : 1,
+                              }}
+                            >
+                              {vv.name.replace("Nauti ", "")}
+                              <span style={{ display: "block", fontSize: 10.5, fontWeight: 400, color: "var(--muted, #9A8FB4)", marginTop: 2 }}>
+                                {away == null ? "not set" : away < 40 ? "set · you are here" : `set · ${away} yd away`}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {placeOpen && (
                     <form onSubmit={savePlace} style={{ display: "grid", gap: 8, marginBottom: 12 }}>
