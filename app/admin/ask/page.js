@@ -508,11 +508,34 @@ export default function AskPage() {
   async function savePlace(e) {
     e.preventDefault();
     if (!placeForm.name.trim()) return;
-    const at = pickedAt || herePos;
+    let at = pickedAt || herePos;
+
+    // Typing the numbers is the third way in, and it has to exist.
+    //
+    // The owner stood on the Pearl Bay dock with the form filled in — name,
+    // note, kind all chosen — and the save button did nothing, because his
+    // browser had location blocked and he had not tapped the map. A form that
+    // takes everything you type and then refuses silently is worse than one
+    // that never asked.
+    if (!at) {
+      const typed = window.prompt(
+        `Where is "${placeForm.name.trim()}"?\n\n` +
+        "Long-press the spot in Google Maps and copy what it shows.\n\n" +
+        "Format: 30.372740, -95.546670   (longitude is negative here)",
+        ""
+      );
+      if (typed == null) return;
+      const parts = String(typed).split(/[, ]+/).map((x) => Number(x.trim())).filter((n) => Number.isFinite(n));
+      if (parts.length === 2) {
+        at = { lat: parts[0], lon: parts[1] };
+      }
+    }
+
     if (!at) {
       window.alert(
-        "No position yet.\n\n" +
-        "Either tap the map where the place is, or tap “Can I get back before it hits?” so the page knows where you are."
+        "No position for it.\n\n" +
+        "Three ways: tap the map where it is, allow location and use the button above, " +
+        "or paste the coordinates from Google Maps."
       );
       return;
     }
@@ -966,11 +989,11 @@ export default function AskPage() {
                           ? `Placed on the map: ${pickedAt.lat.toFixed(5)}, ${pickedAt.lon.toFixed(5)} — tap the map again to move it.`
                           : herePos
                             ? `Will save where you are: ${herePos.lat.toFixed(5)}, ${herePos.lon.toFixed(5)}. Or tap the map to put it somewhere else.`
-                            : "Tap the map where it is, or use the button above to use your own position."}
+                            : "No position yet — tap the map where it is, or just press Save and paste the coordinates from Google Maps."}
                       </div>
-                      <button type="submit" disabled={busy === "place" || !placeForm.name.trim() || !(pickedAt || herePos)}
-                        style={{ ...S.tap, background: "var(--purple, #CB6CE6)", color: "#0A0612", opacity: placeForm.name.trim() && (pickedAt || herePos) ? 1 : 0.5 }}>
-                        {busy === "place" ? "Saving…" : "Save this spot"}
+                      <button type="submit" disabled={busy === "place" || !placeForm.name.trim()}
+                        style={{ ...S.tap, background: "var(--purple, #CB6CE6)", color: "#0A0612", opacity: placeForm.name.trim() ? 1 : 0.45 }}>
+                        {busy === "place" ? "Saving…" : (pickedAt || herePos) ? "Save this spot" : "Save this spot — asks for the position"}
                       </button>
                     </form>
                   )}
