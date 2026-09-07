@@ -26,10 +26,22 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { TILE, tilesFor, pointIn, isVisible, zoomToFit, project } from "../lib/tiles";
 import { isHazard, HAZARD_COLOUR, HAZARD_EDGE, KIND_LABEL } from "../lib/waterPoints";
 
-// Dark basemap, so it does not glare at someone at dusk. Labels ride above the
-// weather so place names stay readable through it.
-const BASE = "https://basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png";
-const LABELS = "https://basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png";
+// THE LAKE IS DRAWN, NOT TILED.
+//
+// This used CARTO's dark basemap. Their tiles now answer with an "API KEY
+// REQUIRED / Zoom Level Not Supported" watermark painted across the map — and
+// they answer it with HTTP 200 and a valid PNG, so a check that verified the
+// status and the file signature passed it as working. Only looking at the
+// rendered page caught it.
+//
+// Rather than take a key and a per-view dependency on eighteen tile requests
+// over boat signal, the one thing that actually matters is drawn directly: the
+// shoreline, fetched once from OpenStreetMap and shipped with the app. 29KB,
+// no third party at runtime, and it still works when the signal does not.
+//
+// OSM DATA is ODbL — free to use with attribution, which is a different thing
+// from a tile rendering service's terms.
+import LAKE_SHAPE from "../lib/lakeConroe.json";
 
 const WET_MM = 0.2;
 
@@ -145,6 +157,13 @@ export default function RadarMap({ here, dock, points = [], height = 340 }) {
   const futureMinutes = timeline.length ? Math.round((timeline[timeline.length - 1].time - now) / 60000) : 0;
   const historyMinutes = timeline.length ? Math.round((now - timeline[0].time) / 60000) : 0;
 
+  // The shoreline, projected into this view. Rebuilt when the centre or zoom
+  // changes, which on a phone that is not panning is rarely.
+  const shore = LAKE_SHAPE.rings.map((ring) => ring.map(([lon, lat]) => {
+    const pt = pointIn(lat, lon, centre.lat, centre.lon, z, width, height);
+    return Math.round(pt.left) + "," + Math.round(pt.top);
+  }).join(" "));
+
   // Marked hazards, sized from their radius in yards. A hazard with no radius
   // still draws, at a small fixed size, rather than vanishing — a mark he took
   // the trouble to make must not be invisible because a field was left blank.
@@ -184,10 +203,13 @@ export default function RadarMap({ here, dock, points = [], height = 340 }) {
           border: "1px solid " + (isFuture ? "rgba(232,147,74,0.55)" : "rgba(203,108,230,0.18)"),
         }}
       >
-        {tiles.map((t) => (
-          <img key={"b" + t.key} src={fill(BASE, t)} alt="" draggable={false}
-            style={{ position: "absolute", left: t.left, top: t.top, width: TILE, height: TILE, pointerEvents: "none" }} />
-        ))}
+        {/* The water. One SVG path set, drawn from shipped coordinates. */}
+        <svg width={width} height={height} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
+          {shore.map((d, i) => (
+            <polyline key={i} points={d} fill="none" stroke="rgba(110,170,220,0.55)" strokeWidth="1.5"
+              strokeLinejoin="round" strokeLinecap="round" />
+          ))}
+        </svg>
 
         {/* Observed or nowcast radar: real tiles. */}
         {frame && frame.url && tiles.map((t) => (
@@ -201,11 +223,6 @@ export default function RadarMap({ here, dock, points = [], height = 340 }) {
           <div key={"c" + c.key} title={c.mm.toFixed(1) + "mm"}
             style={{ position: "absolute", left: c.left, top: c.top, width: c.w, height: c.h,
               background: c.colour, filter: "blur(6px)", pointerEvents: "none" }} />
-        ))}
-
-        {tiles.map((t) => (
-          <img key={"l" + t.key} src={fill(LABELS, t)} alt="" draggable={false}
-            style={{ position: "absolute", left: t.left, top: t.top, width: TILE, height: TILE, pointerEvents: "none", opacity: 0.85 }} />
         ))}
 
         {/* HAZARDS, over the weather and under the boat.
@@ -262,7 +279,7 @@ export default function RadarMap({ here, dock, points = [], height = 340 }) {
           position: "absolute", right: 6, bottom: 4, fontSize: 9.5,
           color: "rgba(236,231,245,0.5)", pointerEvents: "none",
         }}>
-          RainViewer · Open-Meteo · © OpenStreetMap, CARTO
+          RainViewer · Open-Meteo · © OpenStreetMap
         </div>
       </div>
 

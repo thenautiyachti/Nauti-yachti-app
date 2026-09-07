@@ -748,7 +748,12 @@ export default function AskPage() {
                         style={{ padding: "13px", fontSize: 16, borderRadius: 8, border: "1px solid rgba(203,108,230,0.3)", background: "var(--card, #171029)", color: "inherit" }}
                       />
                       <input
-                        type="text" placeholder="Note — hours, depth, anything (optional)"
+                        type="text"
+                        placeholder={placeForm.kind === "shelter"
+                          ? "Whose slip, is it covered, usually empty? (optional)"
+                          : isHazard(placeForm.kind)
+                            ? "What is there, and how bad (optional)"
+                            : "Note — hours, depth, anything (optional)"}
                         value={placeForm.note}
                         onChange={(e) => setPlaceForm((f) => ({ ...f, note: e.target.value }))}
                         style={{ padding: "12px", fontSize: 15, borderRadius: 8, border: "1px solid rgba(203,108,230,0.3)", background: "var(--card, #171029)", color: "inherit" }}

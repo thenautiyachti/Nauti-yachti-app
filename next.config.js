@@ -105,11 +105,14 @@ const nextConfig = {
   //
   // Origins a real policy has to admit: embed.windy.com (frame-src, the radar
   // map on the public site page), fonts.googleapis.com (style-src),
-  // fonts.gstatic.com (font-src), and two tile hosts under img-src --
-  // tilecache.rainviewer.com and basemaps.cartocdn.com, which draw the owner's
-  // scrubable radar on the dock page. Those are IMAGES only; the frame index
-  // itself is proxied through /api/admin/radar-frames precisely so that
-  // connect-src can stay 'self'.
+  // fonts.gstatic.com (font-src), and ONE tile host under img-src --
+  // tilecache.rainviewer.com, which supplies the radar frames on the dock page.
+  //
+  // There is deliberately no basemap host. CARTO's tiles were here briefly and
+  // began answering with an "API KEY REQUIRED" watermark; the lake is now drawn
+  // from shoreline coordinates shipped with the app, so the map needs no tile
+  // service at all. The radar frame index is proxied through
+  // /api/admin/radar-frames precisely so connect-src can stay 'self'.
   async headers() {
     return [
       {
@@ -137,7 +140,7 @@ const nextConfig = {
           // claimed a wrong policy would break payment. It would not.
           {
             key: "Content-Security-Policy-Report-Only",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://tilecache.rainviewer.com https://basemaps.cartocdn.com; media-src 'self' data: blob:; connect-src 'self'; frame-src https://embed.windy.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; report-uri /api/csp-report",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://tilecache.rainviewer.com; media-src 'self' data: blob:; connect-src 'self'; frame-src https://embed.windy.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; report-uri /api/csp-report",
           },
           { key: "X-Frame-Options", value: "DENY" },
           // Stop a browser from second-guessing a declared Content-Type, which
