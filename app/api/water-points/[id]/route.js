@@ -1,7 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
-const { isKind } = require("../../../../lib/waterPoints");
+const { isKind, PERMISSION } = require("../../../../lib/waterPoints");
 
 // Rename a saved place, move it, or add a note — a fuel dock that changes hands
 // keeps its position and loses its name.
@@ -45,6 +45,17 @@ async function PATCH(req, { params }) {
       }
       data.radiusYards = r;
     }
+  }
+  // The four safe-harbor facts. Unknown stays null: "nobody has checked" is a
+  // different answer from "no", and only one of them excludes a slip.
+  for (const f of ["covered", "onProperty", "motorized"]) {
+    if (f in body) data[f] = body[f] == null || body[f] === "" ? null : Boolean(body[f]);
+  }
+  if ("permission" in body) {
+    if (!body.permission) data.permission = null;
+    else if (!PERMISSION.includes(body.permission)) {
+      return NextResponse.json({ error: "Permission must be yes, no or asked" }, { status: 400 });
+    } else data.permission = body.permission;
   }
   if ("note" in body) data.note = String(body.note || "").trim() || null;
 

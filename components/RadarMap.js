@@ -23,7 +23,7 @@
 // panning and layer management that one fixed view of one lake does not need.
 // The projection maths lives in lib/tiles.js, where it is tested.
 import { useState, useEffect, useRef, useCallback } from "react";
-import { TILE, tilesFor, pointIn, isVisible, zoomToFit, project } from "../lib/tiles";
+import { TILE, tilesFor, pointIn, isVisible, zoomToFit, project, unproject } from "../lib/tiles";
 import { isHazard, HAZARD_COLOUR, HAZARD_EDGE, KIND_LABEL } from "../lib/waterPoints";
 
 // THE LAKE IS DRAWN, NOT TILED.
@@ -64,7 +64,7 @@ function rainColour(mm) {
   return "rgba(226,80,80,0.62)";
 }
 
-export default function RadarMap({ here, dock, points = [], height = 340 }) {
+export default function RadarMap({ here, dock, points = [], height = 340, onPickPoint = null }) {
   const [radar, setRadar] = useState(null);
   const [grid, setGrid] = useState(null);
   const [idx, setIdx] = useState(0);
@@ -197,7 +197,19 @@ export default function RadarMap({ here, dock, points = [], height = 340 }) {
     <div>
       <div
         ref={boxRef}
+        onClick={onPickPoint ? (e) => {
+          // Marking a place should not require standing on it. Party Cove from
+          // the helm, or a slip passed an hour ago, are exactly the ones worth
+          // recording — so a tap on the map yields a position too.
+          const r = e.currentTarget.getBoundingClientRect();
+          const px = e.clientX - r.left;
+          const py = e.clientY - r.top;
+          const c = project(centre.lat, centre.lon, z);
+          const at = unproject(c.x + (px - width / 2) / TILE, c.y + (py - height / 2) / TILE, z);
+          onPickPoint({ lat: at.lat, lon: at.lon });
+        } : undefined}
         style={{
+          cursor: onPickPoint ? "crosshair" : "default",
           position: "relative", width: "100%", height, overflow: "hidden",
           borderRadius: 8, background: "#0a1020",
           border: "1px solid " + (isFuture ? "rgba(232,147,74,0.55)" : "rgba(203,108,230,0.18)"),
@@ -272,6 +284,16 @@ export default function RadarMap({ here, dock, points = [], height = 340 }) {
             fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, pointerEvents: "none",
           }}>
             {frame.kind === "forecast" ? "FORECAST" : frame.kind === "nowcast" ? "NOWCAST" : "RADAR"}
+          </div>
+        )}
+
+        {onPickPoint && (
+          <div style={{
+            position: "absolute", left: 8, bottom: 8, padding: "4px 9px", borderRadius: 6,
+            background: "rgba(203,108,230,0.9)", color: "#0A0612",
+            fontSize: 11.5, fontWeight: 700, pointerEvents: "none",
+          }}>
+            Tap the map to place it
           </div>
         )}
 

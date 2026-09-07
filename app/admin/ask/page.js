@@ -88,7 +88,9 @@ export default function AskPage() {
 
   // Saved places: fuel, cover, ramps.
   const [places, setPlaces] = useState([]);
-  const [placeForm, setPlaceForm] = useState({ kind: "fuel", name: "", note: "", radiusYards: "" });
+  const [placeForm, setPlaceForm] = useState({ kind: "fuel", name: "", note: "", radiusYards: "", covered: null, onProperty: null, motorized: null, permission: "" });
+  // A position tapped on the map, for a place you are not standing on.
+  const [pickedAt, setPickedAt] = useState(null);
   const [placeOpen, setPlaceOpen] = useState(false);
 
   // Weather, and the run home.
@@ -406,8 +408,12 @@ export default function AskPage() {
   async function savePlace(e) {
     e.preventDefault();
     if (!placeForm.name.trim()) return;
-    if (!herePos) {
-      window.alert("No position yet.\n\nTap “Can I get back before it hits?” first so the page knows where you are, then save the spot.");
+    const at = pickedAt || herePos;
+    if (!at) {
+      window.alert(
+        "No position yet.\n\n" +
+        "Either tap the map where the place is, or tap “Can I get back before it hits?” so the page knows where you are."
+      );
       return;
     }
     setBusy("place");
@@ -416,12 +422,15 @@ export default function AskPage() {
         method: "POST",
         body: JSON.stringify({
           kind: placeForm.kind, name: placeForm.name.trim(),
-          lat: herePos.lat, lon: herePos.lon, note: placeForm.note || null,
+          lat: at.lat, lon: at.lon, note: placeForm.note || null,
           radiusYards: placeForm.radiusYards === "" ? null : Number(placeForm.radiusYards),
+          covered: placeForm.covered, onProperty: placeForm.onProperty,
+          motorized: placeForm.motorized, permission: placeForm.permission || null,
         }),
       });
       setPlaces((list) => [...list, made]);
-      setPlaceForm({ kind: placeForm.kind, name: "", note: "", radiusYards: "" });
+      setPlaceForm({ kind: placeForm.kind, name: "", note: "", radiusYards: "", covered: null, onProperty: null, motorized: null, permission: "" });
+      setPickedAt(null);
       setPlaceOpen(false);
     } catch {
       window.alert("Could not save that spot. Check signal and try again.");
@@ -758,13 +767,66 @@ export default function AskPage() {
                         onChange={(e) => setPlaceForm((f) => ({ ...f, note: e.target.value }))}
                         style={{ padding: "12px", fontSize: 15, borderRadius: 8, border: "1px solid rgba(203,108,230,0.3)", background: "var(--card, #171029)", color: "inherit" }}
                       />
-                      <div style={{ fontSize: 12, color: "var(--muted, #9A8FB4)" }}>
-                        {herePos
-                          ? `Saves your position now: ${herePos.lat.toFixed(5)}, ${herePos.lon.toFixed(5)}`
-                          : "Tap the button above first so the page knows where you are."}
+                      {/* THE FOUR THINGS THAT DECIDE WHETHER A BORROWED SLIP IS
+                          ACTUALLY USABLE. Lightning is the reason you are going,
+                          so covered is the one that matters most; a slip whose
+                          owner has said no is never recommended whatever the
+                          weather is doing; a lift usually means it is spoken for
+                          even when it looks empty. Unknown stays unknown —
+                          "nobody has checked" is not "no". */}
+                      {placeForm.kind === "shelter" && (
+                        <div style={{ display: "grid", gap: 7, padding: "10px 11px", borderRadius: 9, background: "rgba(79,191,139,0.06)", border: "1px solid rgba(79,191,139,0.25)" }}>
+                          {[["covered", "Is it covered?"],
+                            ["onProperty", "Connected to a property?"],
+                            ["motorized", "Motorised slip / lift?"]].map(([field, label]) => (
+                            <div key={field} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                              <span style={{ fontSize: 13.5 }}>{label}</span>
+                              <span style={{ display: "flex", gap: 5, flex: "0 0 auto" }}>
+                                {[[true, "Yes"], [false, "No"], [null, "?"]].map(([val, txt]) => (
+                                  <button key={txt} type="button"
+                                    onClick={() => setPlaceForm((f) => ({ ...f, [field]: val }))}
+                                    style={{
+                                      minWidth: 44, padding: "7px 8px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
+                                      border: "1px solid " + (placeForm[field] === val ? "#4FBF8B" : "rgba(203,108,230,0.25)"),
+                                      background: placeForm[field] === val ? "rgba(79,191,139,0.22)" : "transparent",
+                                      color: "var(--text, #ECE7F5)",
+                                    }}>{txt}</button>
+                                ))}
+                              </span>
+                            </div>
+                          ))}
+                          <div style={{ borderTop: "1px solid rgba(79,191,139,0.2)", paddingTop: 7 }}>
+                            <div style={{ fontSize: 13.5, marginBottom: 5 }}>Do they mind?</div>
+                            <div style={{ display: "flex", gap: 5 }}>
+                              {[["yes", "Said yes"], ["asked", "Never asked"], ["no", "Said no"]].map(([val, txt]) => (
+                                <button key={val} type="button"
+                                  onClick={() => setPlaceForm((f) => ({ ...f, permission: val }))}
+                                  style={{
+                                    flex: 1, padding: "9px 4px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
+                                    border: "1px solid " + (placeForm.permission === val
+                                      ? (val === "no" ? "#E2685F" : "#4FBF8B") : "rgba(203,108,230,0.25)"),
+                                    background: placeForm.permission === val
+                                      ? (val === "no" ? "rgba(226,104,95,0.18)" : "rgba(79,191,139,0.22)") : "transparent",
+                                    color: "var(--text, #ECE7F5)",
+                                  }}>{txt}</button>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--muted, #9A8FB4)", marginTop: 5, lineHeight: 1.4 }}>
+                              A &ldquo;said no&rdquo; slip is never suggested, whatever the weather is doing.
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ fontSize: 12, color: pickedAt ? "#4FBF8B" : "var(--muted, #9A8FB4)", lineHeight: 1.45 }}>
+                        {pickedAt
+                          ? `Placed on the map: ${pickedAt.lat.toFixed(5)}, ${pickedAt.lon.toFixed(5)} — tap the map again to move it.`
+                          : herePos
+                            ? `Will save where you are: ${herePos.lat.toFixed(5)}, ${herePos.lon.toFixed(5)}. Or tap the map to put it somewhere else.`
+                            : "Tap the map where it is, or use the button above to use your own position."}
                       </div>
-                      <button type="submit" disabled={busy === "place" || !placeForm.name.trim() || !herePos}
-                        style={{ ...S.tap, background: "var(--purple, #CB6CE6)", color: "#0A0612", opacity: placeForm.name.trim() && herePos ? 1 : 0.5 }}>
+                      <button type="submit" disabled={busy === "place" || !placeForm.name.trim() || !(pickedAt || herePos)}
+                        style={{ ...S.tap, background: "var(--purple, #CB6CE6)", color: "#0A0612", opacity: placeForm.name.trim() && (pickedAt || herePos) ? 1 : 0.5 }}>
                         {busy === "place" ? "Saving…" : "Save this spot"}
                       </button>
                     </form>
@@ -864,7 +926,8 @@ export default function AskPage() {
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, padding: "0 4px" }}>
                     Radar &mdash; drag to see what is coming
                   </div>
-                  <RadarMap here={herePos} dock={v.dockPoint || null} points={places} height={340} />
+                  <RadarMap here={herePos} dock={v.dockPoint || null} points={places} height={340}
+                    onPickPoint={placeOpen ? (p) => setPickedAt(p) : null} />
                 </div>
               </>
             );

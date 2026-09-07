@@ -280,6 +280,24 @@ model WaterPoint {
   // owner is dropping it from memory or from the helm, and a circle he can
   // actually judge the size of beats a polygon that implies a survey.
   radiusYards Int?
+  // Safe-harbor detail. These are the four things the owner said decide whether
+  // a borrowed slip is actually usable when a storm catches you out:
+  //
+  //   covered    lightning is the reason to go, so an open slip is barely worth
+  //              the trip
+  //   onProperty whether it hangs off somebody's house, which changes entirely
+  //              how welcome an unannounced boat is
+  //   permission "yes" | "no" | "asked" — has anyone actually asked. A "no" is
+  //              never recommended whatever the weather is doing
+  //   motorized  whether the slip has a lift, which usually means it is spoken
+  //              for even when it looks empty
+  //
+  // Null everywhere means unknown, which is different from false and is why
+  // these are nullable rather than defaulted.
+  covered     Boolean?
+  onProperty  Boolean?
+  permission  String?
+  motorized   Boolean?
   note      String?
   createdAt DateTime @default(now())
 }
