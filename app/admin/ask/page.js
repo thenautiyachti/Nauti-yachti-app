@@ -46,7 +46,10 @@ export default function AskPage() {
   // Engine hours. Thirteen maintenance items are configured against hour
   // intervals and not one has ever been judged, because no reading has ever
   // been taken -- which is how a breakdown reached the 4th of July unannounced.
-  const [screen, setScreen] = useState("ask"); // "weather" | "arriving" | "ask" | "hours"
+  // Weather opens first. It is the one you reach for one-handed with the
+  // engine running, and the owner asked for it: "I want the default to be the
+  // weather when opening the on the dock tab."
+  const [screen, setScreen] = useState("weather"); // "weather" | "arriving" | "ask" | "hours"
   const [vessels, setVessels] = useState([]);
   const [logs, setLogs] = useState([]);
   const [hoursForm, setHoursForm] = useState({ vesselId: "", hours: "", note: "" });
@@ -307,20 +310,49 @@ export default function AskPage() {
   const checkWeather = useCallback(async () => {
     setNowcastBusy(true);
     setGeoError("");
-    const ask = () => new Promise((resolve) => {
-      if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
+    // TWO ATTEMPTS, NOT ONE.
+    //
+    // A single enableHighAccuracy request waits on the GPS chip, and indoors,
+    // under a covered slip, or with a weak sky view it simply times out and
+    // reports nothing — which is what happened on the owner's phone. Falling
+    // back to a coarse fix uses wifi and cell towers instead: accurate to a few
+    // hundred metres rather than a few, which is useless for marking a slip and
+    // perfectly good for "which end of the lake am I on".
+    //
+    // The error is also kept, because "you denied permission" and "the GPS
+    // could not get a fix" need different things done about them.
+    const once = (opts) => new Promise((resolve) => {
+      if (typeof navigator === "undefined" || !navigator.geolocation) return resolve({ pos: null, err: null });
       navigator.geolocation.getCurrentPosition(
-        (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }),
-        () => resolve(null),
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+        (p) => resolve({ pos: { lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }, err: null }),
+        (e) => resolve({ pos: null, err: e }),
+        opts
       );
     });
+    const ask = async () => {
+      const precise = await once({ enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+      if (precise.pos) return precise;
+      // Permission refused is final — asking again just fails again.
+      if (precise.err && precise.err.code === 1) return precise;
+      return once({ enableHighAccuracy: false, timeout: 15000, maximumAge: 120000 });
+    };
     try {
-      const pos = await ask();
+      const { pos, err } = await ask();
       if (pos) setHerePos(pos);
+      // Say which failure it was, because the fix is different for each. "Turn
+      // location on" is useless advice to someone who has it on and is stood
+      // under a metal boat cover.
+      else if (err && err.code === 1) setGeoError(
+        "Location is blocked for this site. Tap the icon to the left of the address bar → " +
+        "Permissions → Location → Allow, then tap the button again."
+      );
+      else if (err && err.code === 3) setGeoError(
+        "The GPS did not get a fix in time — usually indoors or under a cover. " +
+        "Step into the open and tap again. Everything below still works without it."
+      );
       else setGeoError(
-        "This phone did not give a location, so there is no run home to work out — " +
-        "only the forecast at the lake. Check location is on for the browser, then tap again."
+        "No location from this phone, so there is no run home to work out — the forecast, " +
+        "the radar and your saved places all still work. Check location is on for the browser and tap again."
       );
       // WHICH BOAT, so the run home goes to the right shore. The Explorer
       // lives at Pearl Bay and the other two are three miles WSW — ten minutes
@@ -935,13 +967,21 @@ export default function AskPage() {
                     </div>
                   )}
 
+                  {/* THE LIST SHOWS WITHOUT A POSITION.
+                      It used to be gated on geolocation, so a phone that would
+                      not give one — which is most of them, indoors — showed a
+                      bare count and nothing else. The distances need a fix; the
+                      LIST does not, and being able to read what is saved is
+                      most of the value. Without a position it is everything,
+                      grouped; with one it is the nearest three of each, sorted
+                      by how far away they are. */}
                   {places.length > 0 && !herePos && (
-                    <div style={{ fontSize: 13, color: "var(--muted, #9A8FB4)" }}>
-                      {places.length} saved. Tap the button above to sort them by how far away they are.
+                    <div style={{ fontSize: 12, color: "var(--muted, #9A8FB4)", marginBottom: 8, lineHeight: 1.45 }}>
+                      {places.length} saved. Tap the button above to allow location and these sort by distance.
                     </div>
                   )}
 
-                  {herePos && KINDS
+                  {places.length > 0 && KINDS
                     .slice()
                     // Cover first when you are about to get wet.
                     .sort((a, x) => {
@@ -950,7 +990,9 @@ export default function AskPage() {
                       return rank(a) - rank(x);
                     })
                     .map((kind) => {
-                      const list = nearest(places, herePos, kind).slice(0, 3);
+                      const list = herePos
+                        ? nearest(places, herePos, kind).slice(0, 3)
+                        : places.filter((p) => p.kind === kind).sort((a, b) => a.name.localeCompare(b.name));
                       if (!list.length) return null;
                       return (
                         <div key={kind} style={{ marginBottom: 10 }}>
@@ -966,10 +1008,16 @@ export default function AskPage() {
                                 <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.name}</div>
                                 {p.note && <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)" }}>{p.note}</div>}
                               </div>
-                              <div style={{ flex: "0 0 auto", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                                <div style={{ fontSize: 14.5, fontWeight: 700 }}>{p.miles} mi</div>
-                                <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)" }}>{p.compass} · {p.bearing}°</div>
-                              </div>
+                              {p.miles != null ? (
+                                <div style={{ flex: "0 0 auto", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                                  <div style={{ fontSize: 14.5, fontWeight: 700 }}>{p.miles} mi</div>
+                                  <div style={{ fontSize: 11.5, color: "var(--muted, #9A8FB4)" }}>{p.compass} · {p.bearing}°</div>
+                                </div>
+                              ) : (
+                                <div style={{ flex: "0 0 auto", fontSize: 11.5, color: "var(--muted, #9A8FB4)", fontVariantNumeric: "tabular-nums" }}>
+                                  {p.lat.toFixed(4)}, {p.lon.toFixed(4)}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
