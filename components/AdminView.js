@@ -8,6 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { owedCharters, owedMessage, windowFor } from "../lib/owedCharters";
+import { bookingPhones } from "../lib/bookingPhones";
 import { isLinked, earnedIncome, unearnedTotal } from "../lib/ledgerLinks";
 import { hoursByVessel, fleetHours as fleetHoursOf, currentHours, isMetered } from "../lib/engineHours";
 import { byVessel as maintByVessel, summarise as maintSummarise, statusFor as maintStatusFor } from "../lib/maintenance";
@@ -1379,6 +1380,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
 }
 
 function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
+  const canSendSms = useCanSendSms();
   const emptyForm = {
     vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), startTime: "", hours: 4,
     guestName: "", phone: "", email: "", partySize: "", platform: BOOKING_PLATFORMS[0], referralSource: "", status: "booked", note: "", pricePaid: "",
@@ -1670,7 +1672,57 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                             style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
                             {BOOKING_STATUS_BUCKETS.map((s) => <option key={s} value={s}>{BOOKING_STATUS_LABEL[s]}</option>)}
                           </select>
-                          <button type="button" onClick={() => onDeleteExternalBooking(r.id)}
+                          {/* An owed charter is money the business is holding for
+                              a trip that never ran, and the nudge for it lived
+                              only in the Overview's Guests panel. This is where
+                              he actually looks a booking up, so the same one-tap
+                              text is here too — same wording, same template. */}
+                          {isOwed(r.status) && (() => {
+                            const body = owedMessage("sms", r, localDayKey(new Date()));
+                            const phone = bookingPhones(r)[0];
+                            if (!phone) {
+                              return (
+                                <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap" }}
+                                  title="No number on this booking, so there is nothing to text.">
+                                  owed · no number
+                                </span>
+                              );
+                            }
+                            return (
+                              <a
+                                href={smsHref(phone.number, body)}
+                                onClick={(e) => {
+                                  if (!canSendSms) {
+                                    e.preventDefault();
+                                    window.alert(
+                                      "This only works on a phone.\n\n" +
+                                      "A desktop has nothing to hand an sms: link to, so nothing would be sent.\n\n" +
+                                      "Open the console on your phone, or use the Guests panel on Overview to copy the wording."
+                                    );
+                                  }
+                                }}
+                                style={{
+                                  background: "transparent", color: "#E8934A", border: "1px solid #E8934A",
+                                  borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600,
+                                  whiteSpace: "nowrap", textDecoration: "none",
+                                }}
+                                title={"Text " + (r.guestName || "them") + " about the charter we still owe"}
+                              >
+                                Text about owed
+                              </a>
+                            );
+                          })()}
+                          <button type="button" onClick={() => {
+                            if (window.confirm(
+                              `Delete ${r.guestName || "this booking"}${r.date ? " on " + r.date : ""} permanently?
+
+` +
+                              (Number(r.pricePaid) > 0 ? `${currency(r.pricePaid)} is recorded against it. Any linked ledger rows stay, and will be left pointing at nothing.
+
+` : "") +
+                              "There is no undo."
+                            )) onDeleteExternalBooking(r.id);
+                          }}
                             style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
                             Delete
                           </button>
@@ -3597,7 +3649,16 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
                     style={{ flex: 1, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
                     Back to review
                   </button>
-                  <button type="button" onClick={() => onDelete(d.id)}
+                  <button type="button" onClick={() => {
+                    if (window.confirm(
+                      `Delete this ${d.theme || ""} draft permanently?
+
+"${String(d.caption || "").slice(0, 90)}${(d.caption || "").length > 90 ? "…" : ""}"
+
+` +
+                      "The caption and its schedule go with it. There is no undo."
+                    )) onDelete(d.id);
+                  }}
                     style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
                     Delete
                   </button>
@@ -4634,7 +4695,13 @@ function BoardItem({ t, color, onToggle, onDelete }) {
       </div>
       <button
         type="button"
-        onClick={() => onDelete(t.id)}
+        onClick={() => {
+          if (window.confirm(`Delete this board item permanently?
+
+"${String(t.text || "").slice(0, 120)}"
+
+There is no undo.`)) onDelete(t.id);
+        }}
         title="Delete"
         style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.4, flexShrink: 0, cursor: "pointer" }}
       >
@@ -5328,7 +5395,14 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
                     <input type="checkbox" checked readOnly onClick={() => onToggleTodo(t.id, false)}
                       style={{ accentColor: "var(--purple)", flexShrink: 0, marginTop: 2 }} />
                     <span style={{ flex: 1, minWidth: 0, textDecoration: "line-through" }}>{t.text}</span>
-                    <button type="button" onClick={(e) => { e.preventDefault(); onDeleteTodo(t.id); }}
+                    <button type="button" onClick={(e) => {
+                      e.preventDefault();
+                      if (window.confirm(`Delete this finished item permanently?
+
+"${String(t.text || "").slice(0, 120)}"
+
+There is no undo.`)) onDeleteTodo(t.id);
+                    }}
                       style={{ background: "transparent", color: "var(--pink)", border: "none", fontSize: 13, opacity: 0.4, flexShrink: 0 }}>✕</button>
                   </label>
                 ))}
@@ -6383,7 +6457,16 @@ function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateSt
                   style={{ flex: 1, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
                   Reset to pending
                 </button>
-                <button type="button" onClick={() => onDelete(t.id)}
+                <button type="button" onClick={() => {
+                  if (window.confirm(
+                    `Delete ${t.name || "this"}’s testimonial permanently?
+
+"${String(t.quote || "").slice(0, 120)}"
+
+` +
+                    "A guest wrote this and it cannot be recovered. Reset to pending instead if you only want it off the site."
+                  )) onDelete(t.id);
+                }}
                   style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
                   Delete
                 </button>
@@ -7038,7 +7121,14 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                       </button>
                     </td>
                     <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
-                      <button type="button" onClick={() => onDelete(s.id)}
+                      <button type="button" onClick={() => {
+                        if (window.confirm(
+                          `Delete the ${s.name} subscription permanently?
+
+` +
+                          "Its history stays in the ledger; this only stops it being tracked as recurring. There is no undo."
+                        )) onDelete(s.id);
+                      }}
                         style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600 }}>
                         Delete
                       </button>
