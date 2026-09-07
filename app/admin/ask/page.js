@@ -636,9 +636,26 @@ export default function AskPage() {
                   where the stumps, shallows or no-wake zones are. Steering stays with you.
                   {v.dockConfigured === false && (
                     <div style={{ color: "#E8934A", marginTop: 8 }}>
-                      Dock position not set, so distances are measured from the middle of the lake.
-                      Set <span className="mono">DOCK_LAT</span> and <span className="mono">DOCK_LON</span> in
-                      Vercel{herePos ? ` — standing on the dock right now you are at ${herePos.lat.toFixed(5)}, ${herePos.lon.toFixed(5)}` : ""}.
+                      {v.dockBadValues ? (
+                        <>
+                          <strong>The dock position is set to somewhere that is not Lake Conroe</strong>
+                          {" "}(<span className="mono">{v.dockBadValues}</span>). Almost always a dropped
+                          minus sign — the longitude has to be negative here. Distances are being
+                          measured from the middle of the lake until it is fixed.
+                        </>
+                      ) : (
+                        <>
+                          Dock position not set, so distances are measured from the middle of the lake.
+                          Set <span className="mono">DOCK_LAT</span> and <span className="mono">DOCK_LON</span> in
+                          Vercel, then redeploy.
+                        </>
+                      )}
+                      {herePos && (
+                        <div style={{ marginTop: 6, color: "var(--text, #ECE7F5)" }}>
+                          You are at <span className="mono">{herePos.lat.toFixed(5)}, {herePos.lon.toFixed(5)}</span>
+                          {" "}right now — if you are standing on the dock, those are the two values.
+                        </div>
+                      )}
                     </div>
                   )}
                   {geoError && <div style={{ color: "#E8934A", marginTop: 8 }}>{geoError}</div>}

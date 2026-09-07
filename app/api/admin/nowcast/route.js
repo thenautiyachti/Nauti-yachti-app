@@ -17,6 +17,21 @@ const { sampleLine, assess } = require("../../../../lib/runForHome");
 
 const LAKE = { lat: 30.3935, lon: -95.5836 };
 
+// A generous box around Lake Conroe. Anything outside it is a typo, not a dock.
+//
+// The failure this catches is a dropped minus sign. Texas is west of Greenwich,
+// so the longitude is negative; entering 95.58 instead of -95.58 puts the dock
+// in western China, and every distance and run-home time on the page becomes
+// confident nonsense in the thousands of miles. That is worse than not being
+// configured at all, because an unconfigured page says so and a wrong one does
+// not. Roughly ±35 miles, which is far more slack than a lake needs.
+const PLAUSIBLE = { latMin: 29.9, latMax: 30.9, lonMin: -96.1, lonMax: -95.1 };
+
+function looksLikeLakeConroe(lat, lon) {
+  return lat >= PLAUSIBLE.latMin && lat <= PLAUSIBLE.latMax &&
+    lon >= PLAUSIBLE.lonMin && lon <= PLAUSIBLE.lonMax;
+}
+
 // The dock. Env, not the repository — it is a private residence, and the same
 // reasoning that keeps DOCK_ADDRESS and DOCK_GATE_CODE out of git applies to
 // its coordinates. Falls back to the lake centre so the page still renders
@@ -24,7 +39,16 @@ const LAKE = { lat: 30.3935, lon: -95.5836 };
 function dockPoint() {
   const lat = Number(process.env.DOCK_LAT);
   const lon = Number(process.env.DOCK_LON);
-  if (Number.isFinite(lat) && Number.isFinite(lon)) return { lat, lon, configured: true };
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    if (looksLikeLakeConroe(lat, lon)) return { lat, lon, configured: true };
+    // Set, but not anywhere near the lake. Say which values were read, because
+    // the whole point is that someone can look at them and spot the sign.
+    return {
+      ...LAKE,
+      configured: false,
+      badValues: `DOCK_LAT=${lat}, DOCK_LON=${lon}`,
+    };
+  }
   return { ...LAKE, configured: false };
 }
 
@@ -98,6 +122,7 @@ async function GET(req) {
     return NextResponse.json({
       ...verdict,
       dockConfigured: dock.configured,
+      dockBadValues: dock.badValues || null,
       // The window the forecast actually covers, so "no rain showing" can be
       // reported as "in the next N minutes" rather than as a promise.
       windowMinutes: atHere.length ? Math.round((new Date(atHere[atHere.length - 1].time) - Date.now()) / 60000) : null,
@@ -114,6 +139,7 @@ async function GET(req) {
       headline: "Could not reach the forecast",
       detail: "No signal, or the weather service is down. Trust your eyes, not this page.",
       dockConfigured: dock.configured,
+      dockBadValues: dock.badValues || null,
       error: String(err && err.message ? err.message : err),
     }, { status: 200 });
   }
