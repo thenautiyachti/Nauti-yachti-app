@@ -190,7 +190,7 @@ async function POST(req) {
   //
   // If they DO pay, sendBookingConfirmationEmail follows from the Stripe
   // webhook. Two emails on a completed booking is the right number: one says
-  // "we have your enquiry", the other says "you are booked, here is the dock".
+  // "we have your inquiry", the other says "you are booked, here is the dock".
   sendInquiryEmail(created).catch(() => {});
   sendInquiryAckEmail(created).catch(() => {});
 

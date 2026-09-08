@@ -6,7 +6,7 @@ const { occupyingRows } = require("../../../lib/occupancy");
 
 // Returns { [vesselId]: { [date]: "partial" | "full" } } derived from the hours
 // of bookings that actually occupy the boat (see groupExternalBookingState).
-// Enquiries occupy nothing and must never shade a date -- but a booking the
+// Inquiries occupy nothing and must never shade a date -- but a booking the
 // owner CONFIRMED does, and until 5 Sep 2026 one taken by text held no date at
 // all because only the Stripe webhook ever wrote a diary row. See
 // lib/occupancy.js, which also stops a card booking being counted twice.

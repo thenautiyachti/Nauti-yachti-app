@@ -303,10 +303,10 @@ export default function AdminView({
   const bookingRowCount = bookingRows.length;
   // OWED CHARTERS COUNT ON THE TAB. The group badge sums the `count` of its
   // tabs, and the Bookings tab carried none at all — so the badge showed 1 for
-  // a single enquiry while two rows sat underneath it, and the owner reasonably
+  // a single inquiry while two rows sat underneath it, and the owner reasonably
   // read that as the number being wrong about bookings.
   //
-  // Owed is the right thing to surface and an enquiry is not the only thing
+  // Owed is the right thing to surface and an inquiry is not the only thing
   // waiting on him: it means a guest paid, never sailed, and has no new date —
   // we are holding their money and owe them a trip. That is work outstanding in
   // exactly the way a badge is for. A `booked` charter is settled business and
@@ -323,7 +323,7 @@ export default function AdminView({
       id: "bookings", label: "Bookings",
       // Opens on Bookings, not on the first tab in the row. The group is called
       // Bookings and the confirmed diary is what the owner actually wants when
-      // he clicks it; enquiries are a queue he goes to deliberately.
+      // he clicks it; inquiries are a queue he goes to deliberately.
       defaultTab: "bookings",
       tabs: [
         { id: "inquiries", label: `Inquiries (${bookingInquiries.length})`, count: bookingInquiries.length },
@@ -732,10 +732,10 @@ const BOOKING_REFERRAL_SOURCES = [
 // consistently without changing either model's own real values.
 //
 // This map used to say `lapsed: "cancelled"`, which is the same mistake the
-// ExternalBooking side was making: a website enquiry that went quiet was
+// ExternalBooking side was making: a website inquiry that went quiet was
 // displayed as a cancelled booking. A cancellation means money moved. Going
 // quiet means nothing went wrong at all, it just did not convert.
-// "new" and "pending" both mean an enquiry nobody has closed out yet.
+// "new" and "pending" both mean an inquiry nobody has closed out yet.
 const INQUIRY_STATUS_BUCKET = INQUIRY_BUCKET_MAP;
 
 function toUnifiedRows(inquiries, externalBookings) {
@@ -782,7 +782,7 @@ function toUnifiedRows(inquiries, externalBookings) {
   // ONE CHARTER, ONE ROW.
   //
   // A booking paid by card exists in BOTH tables on purpose. The Inquiry is the
-  // enquiry-and-payment record; the ExternalBooking is the diary entry the
+  // inquiry-and-payment record; the ExternalBooking is the diary entry the
   // availability calendar actually reads. The Stripe webhook creates the second
   // from the first, because before it did, a paid website booking sat as an
   // Inquiry and never appeared in the diary at all — somebody could pay in full
@@ -836,7 +836,7 @@ const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none
 // they'd read as leads that were never followed up.
 
 // People who were aboard someone else's booking. Not a guest of their own
-// reservation and not an enquirer, so they get their own strip rather than
+// reservation and not an inquirer, so they get their own strip rather than
 // muddying either list. Distinct from GuestContactsPanel below, which is about
 // bookings whose contact details are missing.
 
@@ -882,7 +882,7 @@ function buildContacts(externalBookings, inquiries) {
     }
   }
   for (const i of inquiries) {
-    const source = isGuestContactRow(i) ? "extra contact" : isCrewListRow(i) ? "crew list" : "enquiry";
+    const source = isGuestContactRow(i) ? "extra contact" : isCrewListRow(i) ? "crew list" : "inquiry";
     add(i.name, i.phone, i.email, i.date, i.status, source);
     if (i.reviewRequestedAt) {
       const e = map.get(contactKey(i.name, i.phone, i.email));
@@ -1172,7 +1172,7 @@ function PriceHistoryPanel({ priceHistory }) {
 //
 // "inquiry" was added on 4 Sep 2026 because "cancelled" was doing two jobs at
 // once. Of 34 rows marked cancelled, 33 had never had a cent move: they were
-// platform enquiries that never became bookings. One was a real cancellation.
+// platform inquiries that never became bookings. One was a real cancellation.
 // Mixing them made every conversion count wrong and, worse, meant the only way
 // to say "this never happened" was to say "this was called off".
 // Both lists are now taken straight from lib/bookingStatus.js rather than
@@ -1181,7 +1181,7 @@ function PriceHistoryPanel({ priceHistory }) {
 // unfilterable. The order there is the lifecycle order, which is also the
 // order the "sort by status" control should use, so it does double duty.
 const BOOKING_STATUS_BUCKETS = BOOKING_STATUSES;
-// No separate "pending": on the website side that IS an enquiry, and showing
+// No separate "pending": on the website side that IS an inquiry, and showing
 // them as two things invited exactly the confusion this pass is fixing.
 const UNIFIED_STATUS_BUCKETS = BOOKING_STATUSES;
 const BOOKING_STATUS_COLOR = BOOKING_COLORS;
@@ -1335,7 +1335,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
           </div>
 
           <div style={{ background: "rgba(240,85,156,0.07)", border: "1px solid rgba(240,85,156,0.3)", borderRadius: 10, padding: 12, fontSize: 12.5, color: "var(--text)", lineHeight: 1.55 }}>
-            Neither platform will ever hand over a guest&apos;s phone number or email. Checked every one: Boatsetter forwards message text but guests almost never type a number into it, GetMyBoat forwards no message text at all, and its booking confirmations carry no contact details by design. So this table is the only way past charters get contact details — typed in from your own phone, or asked for on the boat and filled in the same day. Guests who already paid are worth far more than enquiries, so those are listed first.
+            Neither platform will ever hand over a guest&apos;s phone number or email. Checked every one: Boatsetter forwards message text but guests almost never type a number into it, GetMyBoat forwards no message text at all, and its booking confirmations carry no contact details by design. So this table is the only way past charters get contact details — typed in from your own phone, or asked for on the boat and filled in the same day. Guests who already paid are worth far more than inquiries, so those are listed first.
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -1454,10 +1454,10 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
   const allRows = toUnifiedRows(inquiries, externalBookings);
   const rows = (
     filterStatus === "all" ? allRows
-    // "Active" means live work: still to run, or being worked. An enquiry that
+    // "Active" means live work: still to run, or being worked. An inquiry that
     // never converted is history, and it used to sit in here purely because it
     // was not labelled cancelled.
-    // "Active" is live work: an open enquiry, a booking not yet sailed, or a
+    // "Active" is live work: an open inquiry, a booking not yet sailed, or a
     // charter still owed. Lapsed and cancelled are both finished, in their
     // different ways. An owed charter is the most active thing in the table --
     // the guest has paid and is waiting on us for a date.
@@ -1945,7 +1945,7 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
   // hand is nearly always about a trip that just happened.
   const bookingOptions = [...externalBookings]
     // Only something that ran, is going to, or was paid for and never sailed.
-    // You cannot attach money to an enquiry, and offering one in this list
+    // You cannot attach money to an inquiry, and offering one in this list
     // invites exactly that mistake -- but an owed charter is the opposite case:
     // real money is already sitting against it and has to be recordable.
     .filter((b) => holdsTheDay(b.status) || isOwed(b.status))
@@ -2224,8 +2224,8 @@ function guestNameToken(booking) {
 // A charter that never sailed owes the ledger nothing.
 //
 // This guard used to be the only thing standing between the reconciliation and
-// 33 phantom "unpriced bookings", because an enquiry and a cancellation shared
-// a status. Since 4 Sep 2026 they do not: an enquiry says so, and the guard is
+// 33 phantom "unpriced bookings", because an inquiry and a cancellation shared
+// a status. Since 4 Sep 2026 they do not: an inquiry says so, and the guard is
 // now stating something obvious rather than papering over a modelling mistake.
 //
 // It still matches the old spellings, because rows written before that day may
@@ -2236,7 +2236,7 @@ function guestNameToken(booking) {
 // matching: money changed hands and then the trip was called off, which is a
 // refund question, and refunds are exactly the thing this business keeps
 // getting wrong.
-const NEVER_SAILED = /^(inquiry|enquiry|cancelled|canceled|declined|expired|no.?show)$/i;
+const NEVER_SAILED = /^(inquiry|inquiry|cancelled|canceled|declined|expired|no.?show)$/i;
 
 function matchBookingToLedger(booking, incomeRows) {
   const price = booking.pricePaid;
@@ -2443,7 +2443,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
 
   // A charter that never happened owes no revenue. Only "completed" rows are
   // held to the standard of "this money should be on the books" — the
-  // "booked" pile is mostly platform enquiries that were imported as
+  // "booked" pile is mostly platform inquiries that were imported as
   // bookings and never confirmed (see the callout in the UI below).
   const completed = rows.filter((r) => r.status === "completed");
   const unpriced = completed.filter((r) => r.pricePaid == null);
@@ -2546,7 +2546,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
 
       {notCompleted.length > 0 && (
         <div style={{ background: "rgba(232,147,74,0.08)", border: "1px solid rgba(232,147,74,0.35)", borderRadius: 10, padding: 14, color: "var(--text)", fontSize: 13, lineHeight: 1.55 }}>
-          <span style={{ fontWeight: 700, color: "#E8934A" }}>{notCompleted.length} bookings are not marked completed</span> and are excluded from every figure above. Their notes say most were platform enquiries that never produced a confirmed booking or a payment. They are not missing revenue — but if any of them <em>did</em> sail, mark it completed and the amount will start counting here.
+          <span style={{ fontWeight: 700, color: "#E8934A" }}>{notCompleted.length} bookings are not marked completed</span> and are excluded from every figure above. Their notes say most were platform inquiries that never produced a confirmed booking or a payment. They are not missing revenue — but if any of them <em>did</em> sail, mark it completed and the amount will start counting here.
         </div>
       )}
 
@@ -3745,7 +3745,7 @@ const ATTENTION_KIND = {
   guests:   { icon: "📇", color: "#FFB454", label: "Guests" },      // Joy again
   money:    { icon: "💵", color: "#4FF3FF", label: "Money" },       // Penny's cyan
   bookings: { icon: "⛵", color: "#4FA8E8", label: "Bookings" },
-  enquiry:  { icon: "📨", color: "#CB6CE6", label: "Enquiries" },
+  inquiry:  { icon: "📨", color: "#CB6CE6", label: "Inquiries" },
 };
 
 // Side profiles, 24x16, stroke-only so they take the row's colour and stay
@@ -4927,7 +4927,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
   });
 
   const attention = [
-    newInquiries.length && { k: "enquiry", t: `${newInquiries.length} new ${newInquiries.length === 1 ? "enquiry" : "enquiries"}`, w: "Bookings → Inquiries", go: "inquiries", urgent: true },
+    newInquiries.length && { k: "inquiry", t: `${newInquiries.length} new ${newInquiries.length === 1 ? "inquiry" : "inquiries"}`, w: "Bookings → Inquiries", go: "inquiries", urgent: true },
     overdue.length && { k: "boat", t: `${overdue.length} maintenance ${overdue.length === 1 ? "item" : "items"} overdue`, w: "Boat", go: "maintenance", urgent: true },
     dueSoon.length && { k: "boat", t: `${dueSoon.length} maintenance ${dueSoon.length === 1 ? "item" : "items"} due soon`, w: "Boat", go: "maintenance" },
     unjudgeable.length === maintenanceItems.length && maintenanceItems.length > 0 && {

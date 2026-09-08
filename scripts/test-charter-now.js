@@ -56,7 +56,7 @@ ok("gone once the grace period passes", charterNow([oscar], wellAfter).running, 
 console.log("\n  CANCELLED CHARTERS ARE NOT ON THE WATER\n");
 ok("a cancelled booking never runs",
   charterNow([{ ...oscar, status: "cancelled" }], noon).running, null);
-ok("nor does an enquiry", charterNow([{ ...oscar, status: "inquiry" }], noon).running, null);
+ok("nor does an inquiry", charterNow([{ ...oscar, status: "inquiry" }], noon).running, null);
 ok("nor an owed one — it has no date to be on", charterNow([{ ...oscar, status: "owed" }], noon).running, null);
 ok("completed still counts, so the card survives the tie-up",
   charterNow([{ ...oscar, status: "completed" }], noon).running != null, true);

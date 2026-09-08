@@ -296,9 +296,9 @@ export default async function PackagePage({ params }) {
         <div style={SECTION}>
           <h2 className="display" style={H2}>How to book</h2>
           <p style={BODY}>
-            Send an enquiry with your date, group size and how many hours you want, and you will get a
+            Send an inquiry with your date, group size and how many hours you want, and you will get a
             quote back at the rates above. Availability for every boat is published on the site, so you
-            can check your date before you enquire. You can also call or text{" "}
+            can check your date before you inquire. You can also call or text{" "}
             <a href={`tel:${PHONE_E164}`} style={{ color: "var(--purple)" }}>{PHONE_DISPLAY}</a>.
           </p>
           <p style={BODY}>

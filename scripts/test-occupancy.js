@@ -24,11 +24,11 @@ console.log("\n  (a full day is " + FULL_DAY_HOURS + " hours)\n");
 console.log("  WHICH INQUIRIES OCCUPY A BOAT\n");
 ok("a booked inquiry with a date and a vessel does",
   inquiryHoldsTheDay({ status: "booked", date: "2026-09-20", vesselId: "explorer" }), true);
-ok("a pending enquiry does not",
+ok("a pending inquiry does not",
   inquiryHoldsTheDay({ status: "pending", date: "2026-09-20", vesselId: "explorer" }), false);
-ok("a new enquiry does not",
+ok("a new inquiry does not",
   inquiryHoldsTheDay({ status: "new", date: "2026-09-20", vesselId: "explorer" }), false);
-ok("a lapsed enquiry does not",
+ok("a lapsed inquiry does not",
   inquiryHoldsTheDay({ status: "lapsed", date: "2026-09-20", vesselId: "explorer" }), false);
 ok("a cancelled one does not",
   inquiryHoldsTheDay({ status: "cancelled", date: "2026-09-20", vesselId: "explorer" }), false);
@@ -80,7 +80,7 @@ console.log("\n  A CHARTER ON SOMEBODY ELSE'S BOAT OCCUPIES NONE OF OURS\n");
 // Wake Surfing Lessons is a coaching session run on a partner's boat, which is
 // why its vessel list is empty. The booking form seeds vesselId with the first
 // vessel and hid the picker rather than clearing it, so the booking was filed
-// against the Nauti Explorer — and a booked enquiry with a date and a vesselId
+// against the Nauti Explorer — and a booked inquiry with a date and a vesselId
 // occupies that boat. Every lesson would have taken the Explorer off sale for a
 // day it was never needed.
 const wakesurf = { id: "i9", bookingId: "NY-20261003-01", status: "booked", date: "2026-10-03", vesselId: null, hours: 3 };
@@ -95,13 +95,13 @@ ok("but with a vesselId it WOULD block the Explorer — hence the null",
   groupExternalBookingState(occupyingRows([], [{ ...wakesurf, vesselId: "explorer" }])),
   { explorer: { "2026-10-03": "partial" } });
 
-console.log("\n  ENQUIRIES STILL OCCUPY NOTHING\n");
+console.log("\n  INQUIRIES STILL OCCUPY NOTHING\n");
 const noise = [
   { id: "i4", status: "pending", date: "2026-09-21", vesselId: "explorer", hours: 4 },
   { id: "i5", status: "lapsed", date: "2026-09-22", vesselId: "explorer", hours: 4 },
   { id: "i6", status: "cancelled", date: "2026-09-23", vesselId: "explorer", hours: 4 },
 ];
-ok("33 enquiries do not become 33 booked days", occupyingRows([], noise), []);
+ok("33 inquiries do not become 33 booked days", occupyingRows([], noise), []);
 ok("a cancelled DIARY row occupies nothing either",
   occupyingRows([{ id: "e4", status: "cancelled", date: "2026-09-24", vesselId: "explorer", hours: 4 }], []), []);
 

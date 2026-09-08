@@ -48,7 +48,7 @@ async function POST(req) {
     },
   });
 
-  // BOTH SIDES — the owner is told, and the enquirer gets an acknowledgement.
+  // BOTH SIDES — the owner is told, and the inquirer gets an acknowledgement.
   // Until 8 Sep 2026 somebody who filled in the website form received nothing
   // at all, which reads as a form that did not work.
   const [ownerRes, guestRes] = await Promise.allSettled([

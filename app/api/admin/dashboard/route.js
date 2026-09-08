@@ -93,7 +93,7 @@ async function GET() {
           date: { gte: today },
           // Upcoming means booked and not yet sailed. Spelled as what it IS rather
           // than as everything-except, so a new status cannot silently join it --
-          // which is exactly how enquiries would have arrived here.
+          // which is exactly how inquiries would have arrived here.
           status: "booked",
           OR: [{ status: "booked" }, { paymentStatus: "paid" }],
         },

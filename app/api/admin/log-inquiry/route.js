@@ -4,10 +4,10 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 const { sendInquiryEmail } = require("../../../../lib/email");
 const { generateBookingId } = require("../../../../lib/bookingId");
 
-// Log an enquiry that arrived by text, WhatsApp or phone.
+// Log an inquiry that arrived by text, WhatsApp or phone.
 //
 // WHY THIS EXISTS. Most bookings do not come through the booking form, and the
-// public /api/inquiries route is shaped for a guest filling one in. So enquiries
+// public /api/inquiries route is shaped for a guest filling one in. So inquiries
 // were being written straight into the database with a script instead — which
 // worked, and silently skipped the one thing that tells the owner a booking now
 // exists: sendInquiryEmail. Oscar's booking on 5 Sep 2026 was logged that way

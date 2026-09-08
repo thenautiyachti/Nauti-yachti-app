@@ -39,7 +39,7 @@ export default async function HomePage() {
     prisma.blockedDate.findMany(),
     // Only what actually occupies the boat. "not cancelled" used to stand in for
     // this, which was fine while every non-booking happened to be labelled
-    // cancelled -- and would have put 33 enquiries onto the public calendar as
+    // cancelled -- and would have put 33 inquiries onto the public calendar as
     // booked days the moment they were labelled honestly.
     prisma.externalBooking.findMany({ where: { status: { in: HOLDS_THE_DAY } } }),
     // A booking confirmed by text lives only as an Inquiry -- nothing writes a

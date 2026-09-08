@@ -986,7 +986,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     // the Nauti Explorer.
     //
     // That is not just an untidy record. lib/occupancy.js treats a booked
-    // enquiry with a date and a vesselId as occupying that boat, so every wake
+    // inquiry with a date and a vesselId as occupying that boat, so every wake
     // surfing lesson would have taken the Explorer off sale for a day it was
     // never needed — losing the best boat's Saturday to a session run on
     // somebody else's.

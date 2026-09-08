@@ -31,13 +31,13 @@ a decision.
 
 ## Inquiries
 
-Enquiries submitted through the website form. Each shows the guest, package, date
+Inquiries submitted through the website form. Each shows the guest, package, date
 and party size, and can be marked new / pending / booked / **owed** / completed /
 cancelled. See *A charter that was paid for and never happened* below for what
 "owed" means and when to use it.
 
 Two separate lists live on this tab and are deliberately **not** counted as
-enquiries:
+inquiries:
 
 - **Crew list** — name and email captures from the `/glow` page and the on-boat QR
   code. This is the list to mail when a glow date is set. To honour an
@@ -161,9 +161,9 @@ booked, calculated from the summed hours of that day's charters.
 public calendar only knew about charters paid for by card, because the Stripe
 webhook was the only thing that wrote a diary entry. Anything you took over the
 phone and marked **booked** left the day still on sale — you could have sold it
-twice. Marking an enquiry booked is now enough.
+twice. Marking an inquiry booked is now enough.
 
-Nothing else changed: an enquiry still blocks nothing, and a charter paid by card
+Nothing else changed: an inquiry still blocks nothing, and a charter paid by card
 is counted once rather than twice even though it exists in both lists.
 
 ---

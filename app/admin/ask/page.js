@@ -197,7 +197,7 @@ export default function AskPage() {
       const t = new Date();
       const tomorrow = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1);
       const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
-      // Only charters that are actually happening — a lapsed enquiry must never
+      // Only charters that are actually happening — a lapsed inquiry must never
       // be handed a gate code.
       // No `b.phone` requirement any more. A booking with no number used to
       // vanish from this list entirely, which is exactly backwards: that is the
