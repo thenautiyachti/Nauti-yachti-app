@@ -66,6 +66,26 @@ A booking paid through the website checkout now appears here on its own, created
 from the Stripe webhook as **booked** (not completed — the trip has not happened
 yet).
 
+### One charter, two rows — and they now stay in step
+
+A website checkout leaves **two** records for the same charter: the Inquiry the
+guest filled in, and the mirror booking above that blocks the date on the
+calendar. Nothing used to join their statuses.
+
+So marking a charter **completed** here left the Inquiries tab still showing it
+as **booked and paid** — which is what happened to Oscar RoblesGil's 6 September
+charter. He was the first website checkout to produce such a pair, which is the
+only reason nobody had seen it; every one after him would have done the same.
+
+Changing the status on **either** tab now updates the other. It works in both
+directions, so it does not matter which screen you happen to be on. Platform
+bookings — Boatsetter, GetMyBoat, cash — have no inquiry behind them and are
+unaffected.
+
+Completing a charter from **Inquiries** writes the income row too, by the same
+rule as above. That was worth being careful about: without it, the tab you
+completed a charter from would have decided whether its money got recorded.
+
 ## A charter that was paid for and never happened
 
 Weather, a breakdown, a guest who cannot make it. They have paid, the day is gone,
@@ -156,6 +176,20 @@ one-off correction to an id that never conformed — not a precedent.
 
 Block days per vessel. A day with bookings that do not fill it shows as partially
 booked, calculated from the summed hours of that day's charters.
+
+**A partly-booked day now says *when* it is taken.** A guest complained on
+8 September 2026 that clicking a date told him it was partially booked and
+nothing more — which hid the one fact that decides whether he can still come.
+The day now reads its windows: `7–11pm`, `10am–2pm`.
+
+The information was always there; the calendar was throwing it away and keeping
+only the total hours, because all it needed to answer was whether the day was
+full.
+
+A booking with no start time on record is left out rather than guessed at.
+Twelve of the forty-two are like that — mostly older ones taken by text — and an
+invented window would be worse than a vague one, because a wrong time is
+something a guest will act on.
 
 **A booking you confirm by text now blocks its date.** Until 5 September 2026 the
 public calendar only knew about charters paid for by card, because the Stripe
@@ -277,6 +311,107 @@ next thing to touch it is Siren.
 
 To stop one, press **Don't post**. That is the only thing that takes it out of
 her way.
+
+### Saying what is wrong with a post
+
+**Discuss** is on every card, at every stage — including after it is scheduled,
+which is exactly when "not that clip" tends to get noticed. It replaced
+**Preview** on 8 September 2026, which showed the caption and the media a second
+time underneath the ones already on the card, and so cost a click to learn
+nothing.
+
+Pick what is wrong from the list, then say whether the post survives it:
+
+| Reason | Means |
+|---|---|
+| **Wrong photo or clip** | It does not match the post — wrong guest, wrong trip, wrong thing happening |
+| **Find a better one** | Right footage, weak shot. There is better in the same folder |
+| **Caption needs work** | Wording, tone, hashtags or a wrong detail |
+| **Wrong day or time** | Right post, wrong slot |
+| **Too similar to another post** | Same clip, angle or message as something already queued |
+| **Guest or privacy problem** | Someone in it should not be, or it names the wrong guest |
+| **Not right for us** | Wrong message for the business, whatever the media |
+| **Something else** | Say what in the note |
+
+**Wrong photo or clip** and **Find a better one** are deliberately separate.
+Wrong means find the *right* one, and sends whoever picks the replacement to a
+different folder; better means find a *stronger* one, usually from the same
+shoot. Both offer **Swap the media now** so you can replace it without leaving
+the card.
+
+Then either:
+
+- **Keep it — send back for changes.** The post stays in the queue and moves to
+  *Needs work*.
+- **Don't post it at all.** It moves to *Rejected*.
+
+**Neither of these deletes anything.** Rejected is not gone: **Back to review**
+brings it straight back. Deleting is a separate button that only appears on a
+rejected card, behind a confirm. The note is optional — "wrong clip" is already
+a complete answer.
+
+### Why the reason is a fixed list
+
+A rejected post used to record nothing at all. It vanished from the queue and
+the reason lived only in your head, so the same mistake could be proposed again
+the following week and nothing could count how often that happened.
+
+The list is short and fixed because the point is counting. *"Six of the last ten
+were killed for the wrong clip"* is a fact that changes what Coral does next
+week; ten sentences roughly saying that are not. The free-text note still
+exists — the two are written together, and both show on the card afterwards,
+including on rejected posts, so a post you killed still says why when you come
+back to it.
+
+### "I posted it myself"
+
+This button used to say **Mark posted**, which did not explain when to use it.
+For anything Siren publishes you never touch it — she marks her own as posted
+and records the live URL. It is only for posts that go out by hand, which is
+still most of TikTok.
+
+### What each account will actually take
+
+| | photo | video |
+|---|---|---|
+| **Facebook** | yes | yes — publishes as a **Reel** |
+| **Instagram** | **no** | yes |
+| **TikTok** | **no** | yes |
+
+**A still cannot be published to Instagram or TikTok at all.** The publisher
+reaches Instagram only as reels and stories, and both need video. Siren treats
+an Instagram or TikTok draft with a still as blocked: she will not attempt it,
+and reports it instead.
+
+So a photo-only post can go to Facebook, and if you want it on the other two it
+has to be posted by hand from your phone. Facebook takes either, freely.
+
+### Five hashtags, never six
+
+Blotato rejects an Instagram post with more than five: *"Instagram allows a
+maximum of 5 hashtags per post."* It does not trim, warn or retry — the draft
+stays marked **scheduled** and looks perfectly healthy.
+
+The sober-captains video failed this way on 4 September 2026 and again on the
+5th with the caption untouched. On the 8th an audit found **seventeen of
+twenty-one** Instagram drafts over the limit at once — the better part of a
+fortnight of Instagram silently not posting, with nothing to say so until each
+day came and went.
+
+The limit is now applied to every platform, because nothing this business has
+ever published carried more than five on any account, and a dropped generic
+hashtag costs less than a post that never goes out. `drafts.js --check` reports
+any caption over five as **T1**.
+
+### Where a clip came from
+
+Every draft cut since 8 September 2026 records its source in the photo hint —
+which charter folder, which file, which second of it.
+
+That exists because of a real confusion: a night-cruise clip was read as coming
+from one guest's folder when it was another's, and nothing on the card said
+otherwise. Older drafts whose media predates this are left blank rather than
+guessed at.
 
 ### Approved with no date
 
@@ -524,6 +659,52 @@ summarises:
 | Daily 10:51 | Crew Standup | Files a one-screen status for all eight. |
 | Daily 11:18 | **Nauti Pearl** · Chief of Staff | Reads everything, decides what reaches you. |
 
+## The email the site sends
+
+Four things a guest can do on the website send mail, and **every one of them now
+emails both the guest and you**. Three of the four used to be one-sided: an
+inquiry and a crew-list signup told only you, and a gift certificate told only
+the recipient — so a guest who typed their details into the form got silence,
+and a certificate could be bought without the business hearing about it.
+
+| What the guest did | They get | You get |
+|---|---|---|
+| Sent an inquiry | acknowledgement, "we'll come back to you personally" | CC of the same message |
+| Paid for a charter | booking confirmation with the details | CC of the same message |
+| Joined the crew list | welcome, with the unsubscribe line | CC of the same message |
+| Bought a gift certificate | the certificate and how to redeem it | your own copy |
+
+**You are CC'd on the guest's copy rather than sent a separate notification.**
+That is deliberate, and it is a workaround. On 7 September a crew-list signup
+was accepted by Resend, returned an ID, and never arrived — the business's own
+sending domain silently stopped delivering while everything else kept working.
+Being on the guest's copy means you see the message they actually got, and it
+travels by the route that demonstrably works.
+
+**`bookings@thenautiyachti.com` cannot receive mail.** The domain has no MX
+record, so anything sent to it is accepted and evaporates. It is still fine as a
+*from* address, and replies go to the Gmail address instead. This is unfixed —
+if anything ever assumes a reply can reach that address, it will fail.
+
+### How they sign off
+
+Every one closes as **The Nauti Yachti LLC**, through a single setting, so the
+four cannot drift apart. A templated email is sent by the business, and a first
+name on it promises a named human is waiting at the other end of a reply.
+
+The text messages are the opposite and stay that way: the review asks and the
+owed-charter messages read **"Austin & Brooke"**, because you paste those into a
+thread and send them from your own phone. The rule is who is really doing the
+thing, not which channel it went down.
+
+### Crew list
+
+A phone number is now **required** to join. Corey signed up on 7 September with
+no number, which left email as the only way to reach him about a seat.
+
+Joy also reads the signups on every run and puts new names in her status,
+because an email you cannot see fail is not a notification.
+
 ## Why some things still say "Jarvis"
 
 The Jarvis tab was retired on 3 September 2026. Six of its seven panels had
@@ -686,6 +867,9 @@ there, it is not a rule.
 | Pull tax numbers, or see per-charter and per-hour | Money → Tax Report |
 | Add a photo to the public gallery | Marketing → Media |
 | Approve or reschedule a social post | Marketing → Media Drafts |
+| Say what is wrong with a post, or stop one | Marketing → Media Drafts → **Discuss** |
+| See when a partly-booked day is actually taken | Bookings → Availability |
+| Reply to a Facebook or Instagram comment | Marketing → Comments |
 | Ask a past guest for a Google review | **On the dock** → Reviews *(phone)* |
 | Change a price | Setup → Packages & pricing |
 | Log engine hours after an outing | **On the dock** → Engine hours *(phone)* |
@@ -704,3 +888,13 @@ there, it is not a rule.
   and shot at midday. Trust the timestamp inside the file, not the name.
 - **The Lake Bryan charters of 6 and 13 June 2026 are under NDA.** No media from
   those may be posted, ever.
+- **"Don't post" does not delete.** It moves the draft to Rejected, and *Back to
+  review* brings it back. Deleting is a separate button behind a confirm.
+- **Six hashtags is a failed post, not a style note.** The publisher rejects it
+  outright and the draft still looks scheduled. Five, on every platform.
+- **A photo on Instagram or TikTok is untested.** Both accounts have only ever
+  published video. Facebook takes either.
+- **"I posted it myself" is only for posts you published by hand.** Siren marks
+  her own and records the link.
+- **`bookings@thenautiyachti.com` cannot receive mail.** Fine to send *from*,
+  never somewhere to expect a reply.
