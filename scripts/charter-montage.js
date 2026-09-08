@@ -85,6 +85,21 @@ if (MUSIC && !fs.existsSync(MUSIC)) {
   process.exit(1);
 }
 const DRY = has("dry");
+// TRANSITIONS between shots, because the owner's own CapCuts have them and a
+// wall of hard cuts reads as unedited beside one that does not.
+//
+// The workhorse is a dissolve with a slide every third join. That ratio is
+// deliberate: his cuts use two or three transition types, not twelve, and
+// variety past that stops reading as a style and starts reading as somebody
+// clicking every button in the menu.
+//
+// 0.35s matches what a ~3s shot can spare. Longer and the shot is more
+// transition than picture.
+const NO_TRANS = has("no-transitions");
+const TRANS_D = Math.max(0.15, Math.min(0.8, Number(arg("transition-length", 0.35)) || 0.35));
+const FORCED_TRANS = arg("transition");
+const TRANS_CYCLE = ["dissolve", "slideleft", "dissolve", "slideright", "dissolve", "smoothup"];
+const transitionAt = (i) => FORCED_TRANS || TRANS_CYCLE[i % TRANS_CYCLE.length];
 // Scoring is on by default; --no-score falls back to a fixed offset in every
 // clip, which is what this did before it could listen.
 const SCORE = !has("no-score");
@@ -160,18 +175,81 @@ function pairs(stderr, valueRe, keep) {
   return out;
 }
 
+// WHAT THE PICTURE IS MADE OF, per second. Two numbers, both earned from the
+// owner's notes on the first two test cuts.
+//
+// DARK — the wakeboard tower. His note on Anna: "from 3 to 4 seconds you see
+// the wakeboard tower blocking the entire view", and again at 10-12s. The
+// tower is the nearest object to a boat-mounted lens and it swallows the shot.
+// The first attempt at catching it assumed it sits STILL in frame because it
+// is bolted down — it does not, the footage is shot on head-mounted glasses,
+// so it swings as he looks around, and a static-pixel test found nothing at
+// either moment. What it is instead is DARK: a black tube against sky and
+// water. Measured over his flagged seconds that reads 26.7% against 13.9% for
+// the rest of the video.
+//
+// COLOUR — people. Saturated, non-blue pixels are life jackets, swimwear and
+// skin; fibreglass, foam, sky and water are not. This is the closest thing
+// here to "is anybody in this shot", which is the other half of his note:
+// "you see nothing but the back of the boat, no people in it, just a wave."
+//
+// The sky third is excluded from both. The top of a 9:16 boat frame is nearly
+// always sky and including it just dilutes whatever is happening lower down.
+function visualTrack(file) {
+  const W = 96, H = 170, FPS = 2;
+  function planes(pixfmt, bpp) {
+    const r = spawnSync(FFMPEG, ["-hide_banner", "-loglevel", "error", "-nostats", "-an",
+      "-i", file, "-vf", `fps=${FPS},scale=${W}:${H},format=${pixfmt}`, "-f", "rawvideo", "-"],
+      { maxBuffer: 1 << 28 });
+    const buf = r.stdout;
+    if (!buf || !buf.length) return [];
+    const size = W * H * bpp, out = [];
+    for (let i = 0; i + size <= buf.length; i += size) out.push(buf.subarray(i, i + size));
+    return out;
+  }
+  const grays = planes("gray", 1), rgbs = planes("rgb24", 3);
+  const lowFrom = Math.floor(H / 3);
+  const out = [];
+  for (let i = 0; i < grays.length; i++) {
+    const g = grays[i], rgb = rgbs[i];
+    let dark = 0, n = 0, colour = 0;
+    for (let y = lowFrom; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const p = y * W + x;
+        if (g[p] < 60) dark++;
+        n++;
+        if (rgb) {
+          const q = p * 3, r = rgb[q], gg = rgb[q + 1], b = rgb[q + 2];
+          const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
+          // Blue-dominant pixels are sky and water, not a person.
+          if (mx && (mx - mn) / mx > 0.35 && !(b > r && b > gg)) colour++;
+        }
+      }
+    }
+    out.push({ t: i / FPS, dark: dark / n, colour: colour / Math.max(1, n) });
+  }
+  return out;
+}
+
 // Measuring is minutes of decode. Cache beside the footage so a re-run at a
 // different length is instant, and so a second montage of the same charter
 // costs nothing.
 function measureAll(list, dir) {
-  const cachePath = path.join(dir, ".montage-scores.json");
+  // v2: the cache gained the visual track. An old cache has no `visual` key,
+  // and silently scoring against a missing one would quietly restore the old
+  // behaviour, so the version is in the filename.
+  const cachePath = path.join(dir, ".montage-scores-v2.json");
   let cache = {};
   try { cache = JSON.parse(fs.readFileSync(cachePath, "utf8")); } catch {}
   let fresh = 0;
   for (const c of list) {
     if (cache[c.file]) continue;
     process.stdout.write(`    measuring ${c.file.slice(9, 15)} …\r`);
-    cache[c.file] = { motion: motionTrack(c.full), loud: loudnessTrack(c.full) };
+    cache[c.file] = {
+      motion: motionTrack(c.full),
+      loud: loudnessTrack(c.full),
+      visual: visualTrack(c.full),
+    };
     fresh++;
   }
   if (fresh) { try { fs.writeFileSync(cachePath, JSON.stringify(cache)); } catch {} }
@@ -268,7 +346,12 @@ if (SCORE) {
 // over five and a minute only holds a dozen moments.
 const per = Math.max(2, Math.min(4.5, TARGET / pool.length));
 const used = pool.filter((c) => c.seconds >= per + 0.5);
-const slice = Math.max(2, Math.min(4.5, TARGET / Math.max(1, used.length)));
+// Each transition OVERLAPS two shots, so N slices joined by N-1 transitions
+// run for N*L - (N-1)*D, not N*L. Ignoring that quietly delivers a 54-second
+// video when 60 was asked for — the slices have to grow to pay for the joins.
+const nUsed = Math.max(1, used.length);
+const overlap = NO_TRANS ? 0 : (nUsed - 1) * TRANS_D;
+const slice = Math.max(2, Math.min(5.5, (TARGET + overlap) / nUsed));
 
 console.log(`  using ${used.length}, ${slice.toFixed(1)}s each -> about ${Math.round(used.length * slice)}s\n`);
 
@@ -301,8 +384,26 @@ const rows = used.map((c) => {
     // problem.
     const m = norm(mv.reduce((a, b) => a + b, 0) / mv.length, mScale);
     const l = norm(Math.max(...lv), lScale);
-    const score = Math.min(m, l);
-    if (!best || score > best.score) best = { start: s, m, l, score };
+    let score = Math.min(m, l);
+
+    const vv = (scores[c.file].visual || []).filter((x) => x.t >= s && x.t < e);
+    let dark = 0, colour = 0;
+    if (vv.length) {
+      dark = vv.reduce((a, x) => a + x.dark, 0) / vv.length;
+      colour = vv.reduce((a, x) => a + x.colour, 0) / vv.length;
+      // THE TOWER PENALTY. Below 15% dark costs nothing — every shot from a
+      // boat has some hull in it. Past that it falls away fast, and a window
+      // that is a third black is worth about half what it was. A penalty and
+      // not a veto on purpose: a clip whose every window is dark should still
+      // offer its least-bad three seconds rather than drop out entirely.
+      score *= 1 - Math.min(0.55, Math.max(0, (dark - 0.15) * 1.8));
+      // THE PEOPLE BONUS. Weaker evidence than the dark signal — forward-facing
+      // seconds measured 5.1% coloured against 8.4% elsewhere, a real
+      // difference but not a clean split — so it is allowed to move the score
+      // by about a third, not to decide it.
+      score *= 0.85 + Math.min(0.30, colour * 3.5);
+    }
+    if (!best || score > best.score) best = { start: s, m, l, dark, colour, score };
   }
   // Bring each clip toward a common level, but never shout at a quiet one.
   // -18 LUFS is roughly where these clips already sit; the cap is what stops
@@ -316,7 +417,7 @@ const rows = used.map((c) => {
     ...c,
     start: Math.round(best.start * 10) / 10,
     gainDb,
-    why: `motion ${best.m.toFixed(2)} loud ${best.l.toFixed(2)}`,
+    why: `mot ${best.m.toFixed(2)} loud ${best.l.toFixed(2)} dark ${((best.dark || 0) * 100).toFixed(0)}% ppl ${((best.colour || 0) * 100).toFixed(1)}%`,
   };
 });
 
@@ -372,9 +473,15 @@ rows.forEach((r, i) => {
     // Instead: one static gain per clip, computed from the loudness already
     // measured for slice-picking, and CAPPED at +3 dB. A clip that is quiet
     // because nothing is happening in it stays quiet.
-    const af = [`afade=t=in:st=0:d=0.12`,
-      `afade=t=out:st=${Math.max(0, slice - 0.12).toFixed(2)}:d=0.12`];
+    // With transitions on, acrossfade already fades each join — adding a
+    // 0.12s fade underneath a 0.35s crossfade digs a hole in the audio at
+    // every single join.
+    const hardCuts = NO_TRANS || rows.length < 2;
+    const af = hardCuts
+      ? [`afade=t=in:st=0:d=0.12`, `afade=t=out:st=${Math.max(0, slice - 0.12).toFixed(2)}:d=0.12`]
+      : [];
     if (r.gainDb) af.unshift(`volume=${r.gainDb.toFixed(1)}dB`);
+    if (!af.length) af.push("anull");
     args.push("-af", af.join(","), "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2");
   } else {
     args.push("-an");
@@ -388,13 +495,53 @@ rows.forEach((r, i) => {
 const listFile = path.join(work, "list.txt");
 fs.writeFileSync(listFile, parts.map((p) => `file '${p.replace(/\\/g, "/")}'`).join("\n"));
 
-console.log("\n  joining…");
 const joined = MUSIC ? path.join(work, "joined.mp4") : outPath;
-execFileSync(FFMPEG, [
-  "-hide_banner", "-loglevel", "error", "-y",
-  "-f", "concat", "-safe", "0", "-i", listFile,
-  "-c", "copy", joined,
-], { stdio: ["ignore", "ignore", "pipe"] });
+
+if (NO_TRANS || parts.length < 2) {
+  // Hard cuts: the segments are already identical in every respect, so this
+  // is a stream copy and costs nothing.
+  console.log("\n  joining…");
+  execFileSync(FFMPEG, [
+    "-hide_banner", "-loglevel", "error", "-y",
+    "-f", "concat", "-safe", "0", "-i", listFile,
+    "-c", "copy", joined,
+  ], { stdio: ["ignore", "ignore", "pipe"] });
+} else {
+  console.log(`\n  joining with ${parts.length - 1} transitions (${TRANS_D}s)…`);
+  // xfade OVERLAPS two streams, so every join has to be told where in the
+  // running timeline it begins. After k joins the chain is (k+1) slices long
+  // MINUS the k overlaps already spent, so the next one starts at
+  // (k+1)*(slice - D). Getting this wrong does not error — it silently drops
+  // or freezes footage, which is why it is spelled out rather than fiddled
+  // with until it looked right.
+  const args = ["-hide_banner", "-loglevel", "error", "-y"];
+  for (const p of parts) args.push("-i", p);
+
+  const vChain = [], aChain = [];
+  let vPrev = "0:v", aPrev = "0:a";
+  for (let i = 1; i < parts.length; i++) {
+    const offset = (i * (slice - TRANS_D)).toFixed(3);
+    const vOut = `v${i}`;
+    vChain.push(`[${vPrev}][${i}:v]xfade=transition=${transitionAt(i - 1)}:duration=${TRANS_D}:offset=${offset}[${vOut}]`);
+    vPrev = vOut;
+    if (KEEP_AUDIO) {
+      // acrossfade needs no offset — it always joins the tail of one to the
+      // head of the next — and spends exactly the same D as the video, which
+      // is what keeps picture and sound the same length.
+      const aOut = `a${i}`;
+      aChain.push(`[${aPrev}][${i}:a]acrossfade=d=${TRANS_D}:c1=tri:c2=tri[${aOut}]`);
+      aPrev = aOut;
+    }
+  }
+  args.push("-filter_complex", [...vChain, ...aChain].join(";"));
+  args.push("-map", `[${vPrev}]`);
+  if (KEEP_AUDIO) args.push("-map", `[${aPrev}]`, "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2");
+  else args.push("-an");
+  // The whole thing is re-encoded here rather than copied — unavoidable, since
+  // a crossfade invents frames that exist in neither source.
+  args.push("-c:v", "libx264", "-preset", "medium", "-crf", CRF, "-pix_fmt", "yuv420p", joined);
+  execFileSync(FFMPEG, args, { stdio: ["ignore", "ignore", "pipe"] });
+}
 
 if (MUSIC) {
   console.log("  laying the music over it…");

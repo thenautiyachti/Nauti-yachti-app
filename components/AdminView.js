@@ -299,7 +299,19 @@ export default function AdminView({
   // exists in both tables by design — see toUnifiedRows — so a straight
   // inquiries + externalBookings sum counts it twice, and the number on the tab
   // would not match the rows the owner can actually see.
-  const bookingRowCount = toUnifiedRows(inquiries, externalBookings).length;
+  const bookingRows = toUnifiedRows(inquiries, externalBookings);
+  const bookingRowCount = bookingRows.length;
+  // OWED CHARTERS COUNT ON THE TAB. The group badge sums the `count` of its
+  // tabs, and the Bookings tab carried none at all — so the badge showed 1 for
+  // a single enquiry while two rows sat underneath it, and the owner reasonably
+  // read that as the number being wrong about bookings.
+  //
+  // Owed is the right thing to surface and an enquiry is not the only thing
+  // waiting on him: it means a guest paid, never sailed, and has no new date —
+  // we are holding their money and owe them a trip. That is work outstanding in
+  // exactly the way a badge is for. A `booked` charter is settled business and
+  // needs no chasing, so it is deliberately NOT counted.
+  const owedCount = bookingRows.filter((r) => r && r.status === "owed").length;
 
   const TAB_GROUPS = [
     {
@@ -315,7 +327,7 @@ export default function AdminView({
       defaultTab: "bookings",
       tabs: [
         { id: "inquiries", label: `Inquiries (${bookingInquiries.length})`, count: bookingInquiries.length },
-        { id: "bookings", label: `Bookings (${bookingRowCount})` },
+        { id: "bookings", label: `Bookings (${bookingRowCount})`, count: owedCount },
         { id: "availability", label: "Availability" },
       ],
     },
