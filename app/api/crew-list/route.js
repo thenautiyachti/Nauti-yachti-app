@@ -12,6 +12,16 @@ function looksLikeEmail(value) {
   return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
 }
 
+// Ten digits, however they were typed. People enter numbers with brackets,
+// dots, dashes, spaces and a +1 in front, and rejecting any of those teaches
+// them the form is broken rather than that their number is. Count the digits
+// and accept the rest: 10, or 11 starting with a US country code.
+function looksLikePhone(value) {
+  if (typeof value !== "string") return false;
+  const d = value.replace(/\D/g, "");
+  return d.length === 10 || (d.length === 11 && d.startsWith("1"));
+}
+
 async function POST(req) {
   let body;
   try {
@@ -30,6 +40,22 @@ async function POST(req) {
   if (!looksLikeEmail(email)) {
     return NextResponse.json({ error: "That email address doesn't look right." }, { status: 400 });
   }
+  // PHONE IS REQUIRED FROM 8 SEP 2026, and enforced HERE as well as in the
+  // form — a required attribute on an input is a courtesy to the browser, not
+  // a rule, and anything can POST to this endpoint.
+  //
+  // It used to be optional because a two-field form converts better than a
+  // three-field one. In a week the list produced ONE contact, so there was not
+  // much conversion left to protect; and a number is worth more than an
+  // address here, because this business books over text. On the same day this
+  // changed, the owner's own sending domain turned out to be silently failing
+  // to deliver — which is the argument in one line.
+  if (!looksLikePhone(phone)) {
+    return NextResponse.json(
+      { error: "We need a mobile number so we can text you the date." },
+      { status: 400 }
+    );
+  }
 
   // Don't create a second row for someone who already signed up — the point
   // of this list is unique contacts, not a submission log.
@@ -44,8 +70,6 @@ async function POST(req) {
     data: {
       name,
       email,
-      // Phone is optional here (a two-field form converts far better than a
-      // three-field one) but the column is non-null, so store an empty string.
       phone,
       packageId: CREW_LIST_PACKAGE_ID,
       packageName: CREW_LIST_PACKAGE_NAME,

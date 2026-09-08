@@ -22,7 +22,7 @@ export default function CrewListForm({
   blurb = "Boatz & Glowz only runs twice a year and seats go fast. Drop your name and we'll email you the moment the next date opens — no spam, just the dates.",
   showReviewPrompt = false,
 }) {
-  const [form, setForm] = useState({ name: "", email: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [state, setState] = useState("idle"); // idle | sending | done | already | error
   const [error, setError] = useState("");
 
@@ -120,6 +120,29 @@ export default function CrewListForm({
               required
               style={inputStyle}
             />
+          </label>
+          {/* PHONE IS REQUIRED, from 8 Sep 2026. It was left out on the
+              reasoning that a two-field form converts better than a three —
+              and then the list produced one contact in a week, so there was
+              not much conversion to protect. A phone number is also worth far
+              more here than an email: this business books over text, and on
+              the same day this changed the owner's own email domain turned out
+              to be silently failing to deliver. */}
+          <label style={{ display: "block" }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Mobile</div>
+            <input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="832-555-0123"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              required
+              style={inputStyle}
+            />
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>
+              So we can text you the date — we don&apos;t call.
+            </div>
           </label>
           {state === "error" && (
             <div style={{ fontSize: 13, color: "var(--pink)" }}>{error}</div>
