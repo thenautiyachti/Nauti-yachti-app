@@ -1,8 +1,13 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
-const { STATUSES } = require("../../../../lib/bookingStatus");
+const {
+  STATUSES,
+  statusesAgree,
+  bookingStatusToInquiry,
+} = require("../../../../lib/bookingStatus");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 const { normalizePhone } = require("../../../../lib/bookingPhones");
+const { recordCompletedBookingIncome } = require("../../../../lib/bookingLedger");
 
 // Body: { status?, pricePaid?, startTime?, hours?, guestName?, email?, partySize?, note? } —
 // only the fields present are updated. Setting status updates whether the
@@ -83,44 +88,46 @@ async function PATCH(req, { params }) {
   // That is exactly how six charters' income went missing and had to be found
   // and re-entered one at a time.
   //
-  // Idempotent on purpose: it looks for an existing linked income row first, so
-  // re-saving a completed booking, or flipping the status back and forth, can
-  // never double the income.
+  // The rule itself moved to lib/bookingLedger.js on 8 Sep 2026, so that
+  // completing a charter from the Inquiries tab recognises its money the same
+  // way this route does. It is idempotent and refuses to guess a price.
+  const ledgerCreated = await recordCompletedBookingIncome(prisma, updated);
+
+  // KEEP THE WEBSITE INQUIRY IN STEP.
   //
-  // It also refuses to guess. No pricePaid means no row, because a fabricated
-  // number sitting in the ledger is worse than an obviously missing one.
-  let ledgerCreated = null;
-  if (updated.status === "completed" && updated.pricePaid > 0) {
-    const already = await prisma.ledgerEntry.findFirst({
-      where: { type: "income", externalBookingId: updated.id },
-    });
-    if (!already) {
-      ledgerCreated = await prisma.ledgerEntry.create({
-        data: {
-          type: "income",
-          category: "Reservation",
-          subcategory: updated.vesselName || null,
-          amount: updated.pricePaid,
-          // For a platform booking, pricePaid is the payout — what the guest
-          // was charged is not knowable here. Left null rather than guessed;
-          // the reconciliation tab is where a gross figure gets filled in.
-          grossAmount: null,
-          note: [
-            updated.guestName,
-            updated.vesselName,
-            updated.hours ? `${updated.hours}hr` : null,
-            "auto-logged when marked completed",
-          ].filter(Boolean).join(" — "),
-          origin: updated.platform === "Other" ? "Cash" : updated.platform,
-          bookingId: updated.bookingId || null,
-          externalBookingId: updated.id,
-          date: updated.date,
-        },
-      });
+  // A website checkout leaves two rows for one charter — the Inquiry the guest
+  // filled in, and the mirror booking the Stripe webhook creates. Nothing
+  // joined their statuses, so marking a charter completed here left the
+  // Inquiries tab still showing it as booked and paid. Reported 8 Sep 2026 on
+  // Oscar RoblesGil's 6 Sep charter, the first website checkout to make such a
+  // pair; every one after him would have done the same.
+  //
+  // Matched on bookingId, which the checkout stamps on both rows, and falling
+  // back to the Stripe session id. Both are unique, so this can never touch a
+  // different guest's row.
+  //
+  // updateMany, not update: a booking with no inquiry behind it (every platform
+  // booking) must be a no-op, not a crash.
+  let inquirySynced = null;
+  if ("status" in body) {
+    const where = updated.bookingId
+      ? { bookingId: updated.bookingId }
+      : updated.platformRef
+        ? { stripeSessionId: updated.platformRef }
+        : null;
+    if (where) {
+      const linked = await prisma.inquiry.findFirst({ where });
+      // Compare buckets rather than strings, or a live inquiry sitting at
+      // "pending" gets rewritten to "new" on every unrelated save.
+      if (linked && !statusesAgree(linked.status, updated.status)) {
+        const next = bookingStatusToInquiry(updated.status);
+        await prisma.inquiry.update({ where: { id: linked.id }, data: { status: next } });
+        inquirySynced = { id: linked.id, from: linked.status, to: next };
+      }
     }
   }
 
-  return NextResponse.json({ ...updated, ledgerCreated });
+  return NextResponse.json({ ...updated, ledgerCreated, inquirySynced });
 }
 
 async function DELETE(req, { params }) {

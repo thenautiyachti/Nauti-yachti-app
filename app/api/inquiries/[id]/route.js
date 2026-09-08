@@ -1,8 +1,13 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
+const { recordCompletedBookingIncome } = require("../../../../lib/bookingLedger");
 
-const { INQUIRY_STATUS_BUCKET } = require("../../../../lib/bookingStatus");
+const {
+  INQUIRY_STATUS_BUCKET,
+  statusesAgree,
+  inquiryStatusToBooking,
+} = require("../../../../lib/bookingStatus");
 
 // Derived, not retyped. This list was a hand-kept copy, and a status the
 // console offered but this route rejected would have failed as a silent 400 on
@@ -57,7 +62,40 @@ async function PATCH(req, { params }) {
   }
 
   const updated = await prisma.inquiry.update({ where: { id: params.id }, data });
-  return NextResponse.json(updated);
+
+  // KEEP THE MIRROR BOOKING IN STEP — the other half of the same problem.
+  //
+  // A website checkout leaves an Inquiry and a mirror ExternalBooking for one
+  // charter. The bookings route now pushes its status here; this pushes the
+  // other way, so it does not matter which tab the owner happens to be looking
+  // at when he changes a charter's state.
+  //
+  // See the same block in app/api/external-bookings/[id]/route.js, and
+  // lib/bookingStatus.js for why the comparison is on buckets.
+  let bookingSynced = null;
+  if ("status" in body) {
+    const where = updated.bookingId
+      ? { bookingId: updated.bookingId }
+      : updated.stripeSessionId
+        ? { platformRef: updated.stripeSessionId }
+        : null;
+    if (where) {
+      const linked = await prisma.externalBooking.findFirst({ where });
+      if (linked && !statusesAgree(updated.status, linked.status)) {
+        const next = inquiryStatusToBooking(updated.status);
+        if (next) {
+          const b = await prisma.externalBooking.update({ where: { id: linked.id }, data: { status: next } });
+          // Completing a charter has to recognise its money the same way here
+          // as it does in the bookings tab, or the ledger silently misses a
+          // website booking depending on which screen it was completed from.
+          const ledgerCreated = await recordCompletedBookingIncome(prisma, b);
+          bookingSynced = { id: linked.id, from: linked.status, to: next, ledgerCreated };
+        }
+      }
+    }
+  }
+
+  return NextResponse.json({ ...updated, bookingSynced });
 }
 
 module.exports = { PATCH };
