@@ -94,6 +94,20 @@ async function GET(req) {
       OWNER_EMAIL: shape(process.env.OWNER_EMAIL),
       FROM_EMAIL: shape(process.env.FROM_EMAIL),
       REPLY_TO_EMAIL: shape(process.env.REPLY_TO_EMAIL),
+      // IS PRODUCTION EVEN USING THE SAME RESEND ACCOUNT?
+      //
+      // A hash, never the key. Enough to compare what production holds against
+      // what is on the owner's PC, and useless to anybody who reads it.
+      //
+      // This exists because on 8 Sep 2026 hand-rolled calls to Resend from his
+      // machine arrived every single time while the deployed app's identical
+      // calls — same sender, same recipient, same subject, all confirmed by the
+      // app reporting them back — silently did not. Every other variable had
+      // been eliminated. The key itself had not, because nothing could see it.
+      resendKeyFingerprint: process.env.RESEND_API_KEY
+        ? require("crypto").createHash("sha256")
+            .update(process.env.RESEND_API_KEY.trim()).digest("hex").slice(0, 12)
+        : null,
     },
   });
 }
