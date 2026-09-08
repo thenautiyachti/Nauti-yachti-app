@@ -1,5 +1,6 @@
 const { NextResponse } = require("next/server");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
+const { prisma } = require("../../../../lib/db");
 const { threadsFrom, summarise, PLATFORMS } = require("../../../../lib/socialComments");
 
 // Comments on our published posts, and replying to them.
@@ -58,8 +59,33 @@ async function GET() {
     for (const p of PLATFORMS) params.append("platform", p);
     const body = await blotato("/comments?" + params.toString(), { method: "GET" });
     const items = (body && body.items) || [];
+    const threads = threadsFrom(items);
+
+    // Siren's suggested replies, attached to the thread they answer so the box
+    // opens with a sentence in it instead of empty. A suggestion is a draft:
+    // nothing here sends, and the owner types over it freely.
+    let suggestions = [];
+    try {
+      suggestions = await prisma.commentReplyDraft.findMany({ where: { usedAt: null } });
+    } catch {
+      // A missing suggestion table must not take the comment queue down with
+      // it — the comments are the point, the pre-fill is a convenience.
+    }
+    const byComment = new Map(suggestions.map((s) => [s.commentId, s]));
+    for (const t of threads) {
+      const s = t.comment && byComment.get(t.comment.id);
+      if (!s) continue;
+      t.suggestion = s.suggestion;
+      t.suggestionAuthor = s.author;
+      t.suggestionAt = s.createdAt;
+      // If the comment has been edited since Siren read it, the suggestion may
+      // answer a question nobody asked. Say so rather than pre-filling it
+      // silently.
+      t.suggestionStale = !!(s.commentText && t.comment.text && s.commentText !== t.comment.text);
+    }
+
     return NextResponse.json({
-      threads: threadsFrom(items),
+      threads,
       summary: summarise(items),
       platforms: PLATFORMS,
       fetchedAt: Date.now(),

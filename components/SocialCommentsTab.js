@@ -37,8 +37,23 @@ export default function SocialCommentsTab() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  // What is actually in the box. `drafts` only holds what the owner has TYPED,
+  // so an untouched box falls back to Siren's suggestion — while a box he
+  // deliberately emptied stays empty. That is why this checks for null rather
+  // than falsiness: "" is a real edit and must not be overwritten by the
+  // suggestion again.
+  function draftOf(thread) {
+    const typed = drafts[thread.comment.id];
+    if (typed != null) return typed;
+    // A suggestion written against different comment text does not pre-fill.
+    // The owner can still put it in the box with "restore suggestion", having
+    // been told why it is not there already.
+    if (thread.suggestion && !thread.suggestionStale) return thread.suggestion;
+    return "";
+  }
+
   async function send(thread) {
-    const text = String(drafts[thread.comment.id] || "").trim();
+    const text = String(draftOf(thread) || "").trim();
     if (!text) return;
     const quoted = thread.comment.text ? String(thread.comment.text).slice(0, 70) : "this comment";
     if (!window.confirm(
@@ -59,6 +74,15 @@ export default function SocialCommentsTab() {
       const body = await res.json();
       if (!res.ok || body.error) throw new Error(body.error || "failed");
       setDrafts((d) => ({ ...d, [thread.comment.id]: "" }));
+      // Retire the suggestion so it does not reappear in the box under a reply
+      // that has already gone out.
+      if (thread.suggestion) {
+        fetch("/api/comment-suggestions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ commentId: thread.comment.id }),
+        }).catch(() => {});
+      }
       // It comes back "queued" and becomes "posted" a moment later, so re-read
       // rather than claim success from the response.
       setTimeout(load, 2500);
@@ -164,10 +188,39 @@ export default function SocialCommentsTab() {
 
               {!t.answered && (
                 <div style={{ marginTop: 10 }}>
+                  {t.suggestion && (
+                    <div style={{
+                      fontSize: 11.5, color: "var(--muted)", marginBottom: 5,
+                      display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap",
+                    }}>
+                      <span>
+                        {t.suggestionStale
+                          // The comment changed after the suggestion was
+                          // written, so it may answer a question that is no
+                          // longer being asked. Say it plainly; do not
+                          // pre-fill it as if it were current.
+                          ? "⚠ " + (t.suggestionAuthor || "Siren") + " drafted this before the comment was edited — read it before you send it"
+                          : (t.suggestionAuthor || "Siren") + " suggested this. Type over it if you'd rather."}
+                      </span>
+                      {draftOf(t) !== t.suggestion && (
+                        <button
+                          type="button"
+                          onClick={() => setDrafts((d) => ({ ...d, [t.comment.id]: t.suggestion }))}
+                          style={{
+                            padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700,
+                            border: "1px solid rgba(203,108,230,0.35)", background: "transparent",
+                            color: "var(--purple)", cursor: "pointer",
+                          }}
+                        >
+                          restore suggestion
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <textarea
                     rows={3}
                     placeholder="Your reply — it posts publicly as The Nauti Yachti"
-                    value={drafts[t.comment.id] || ""}
+                    value={draftOf(t)}
                     onChange={(e) => setDrafts((d) => ({ ...d, [t.comment.id]: e.target.value }))}
                     style={{
                       width: "100%", padding: "9px 10px", borderRadius: 7, fontSize: 13.5, lineHeight: 1.45,
@@ -177,12 +230,12 @@ export default function SocialCommentsTab() {
                   />
                   <button
                     type="button"
-                    disabled={sending === t.comment.id || !String(drafts[t.comment.id] || "").trim()}
+                    disabled={sending === t.comment.id || !String(draftOf(t) || "").trim()}
                     onClick={() => send(t)}
                     style={{
                       marginTop: 7, padding: "9px 16px", borderRadius: 7, fontSize: 13, fontWeight: 700, border: "none",
-                      background: String(drafts[t.comment.id] || "").trim() ? "var(--purple)" : "rgba(203,108,230,0.2)",
-                      color: String(drafts[t.comment.id] || "").trim() ? "#0A0612" : "var(--muted)",
+                      background: String(draftOf(t) || "").trim() ? "var(--purple)" : "rgba(203,108,230,0.2)",
+                      color: String(draftOf(t) || "").trim() ? "#0A0612" : "var(--muted)",
                     }}
                   >
                     {sending === t.comment.id ? "Posting…" : "Post reply"}

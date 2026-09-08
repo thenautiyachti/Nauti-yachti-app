@@ -390,6 +390,38 @@ model MediaDraft {
   @@index([status])
 }
 
+model CommentReplyDraft {
+  // A suggested reply waiting in the box, so answering a comment is editing a
+  // sentence rather than starting from a blank field at eleven at night.
+  //
+  // WHY THIS IS A TABLE AND NOT GENERATED IN THE BROWSER. The console has no
+  // model access; the crew do. Siren reads the comments on her run and leaves a
+  // suggestion here, exactly the way Coral leaves a MediaDraft. The owner then
+  // types over it or sends it.
+  //
+  // IT IS NEVER SENT ON ITS OWN. The one time this really mattered, a comment
+  // read "Just using my photo with no heads up huh??" and the confident answer
+  // — that the image was AI-generated — was false: the file still had Samsung
+  // camera Exif on it. A suggestion that posts itself would have published
+  // that. So this table holds text for a human to look at, nothing more.
+  id        String   @id @default(cuid())
+  // Blotato's comment id, which is what the console keys replies on.
+  commentId String   @unique
+  platform  String // "facebook" | "instagram"
+  // What the comment said when the suggestion was written. If the thread has
+  // moved on since, the suggestion is stale and the console says so rather
+  // than pre-filling an answer to a different question.
+  commentText String?
+  suggestion  String
+  author      String   @default("Nauti Siren")
+  createdAt   DateTime @default(now())
+  // Set when the owner sends a reply to this comment, so a used suggestion
+  // stops reappearing.
+  usedAt DateTime?
+
+  @@index([platform])
+}
+
 model Testimonial {
   id              String    @id @default(cuid())
   name            String
