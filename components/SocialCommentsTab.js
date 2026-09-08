@@ -55,7 +55,13 @@ export default function SocialCommentsTab() {
   async function send(thread) {
     const text = String(draftOf(thread) || "").trim();
     if (!text) return;
-    const quoted = thread.comment.text ? String(thread.comment.text).slice(0, 70) : "this comment";
+    // Quote what is actually being answered. In a thread somebody came back to,
+    // that is their follow-up, not the comment at the top — and the confirm
+    // dialog is the last place to catch a reply aimed at the wrong sentence.
+    const answering =
+      (thread.suggestionFor && (thread.replies || []).find((r) => r.id === thread.suggestionFor)) ||
+      thread.comment;
+    const quoted = answering.text ? String(answering.text).slice(0, 70) : "this comment";
     if (!window.confirm(
       "Post this publicly as The Nauti Yachti?\n\n" + text +
       "\n\nIt replies to: " + quoted + "\non " + thread.platform + "."
@@ -76,11 +82,15 @@ export default function SocialCommentsTab() {
       setDrafts((d) => ({ ...d, [thread.comment.id]: "" }));
       // Retire the suggestion so it does not reappear in the box under a reply
       // that has already gone out.
+      //
+      // Retire it under the id it was FILED against. A suggestion written for a
+      // follow-up lives under that reply's id, so patching the top-level id
+      // updated nothing and the draft kept coming back after it had been sent.
       if (thread.suggestion) {
         fetch("/api/comment-suggestions", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ commentId: thread.comment.id }),
+          body: JSON.stringify({ commentId: thread.suggestionFor || thread.comment.id }),
         }).catch(() => {});
       }
       // It comes back "queued" and becomes "posted" a moment later, so re-read

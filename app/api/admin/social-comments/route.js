@@ -71,17 +71,42 @@ async function GET() {
       // A missing suggestion table must not take the comment queue down with
       // it — the comments are the point, the pre-fill is a convenience.
     }
+    // MATCH ON THE COMMENT THE SUGGESTION ANSWERS, NOT THE TOP OF THE THREAD.
+    //
+    // This looked at t.comment.id only, and t.comment is always the TOP-LEVEL
+    // comment. But a suggestion is filed against the comment that is actually
+    // waiting, and in a thread somebody came back to, that is the follow-up
+    // reply — which has its own id. So every suggestion written for a
+    // follow-up was stored correctly, returned correctly by
+    // /api/comment-suggestions, and then silently failed to find its thread.
+    //
+    // On 8 Sep 2026 both Facebook suggestions in the box were follow-ups and
+    // neither appeared in the console; the only one that rendered was an
+    // Instagram comment that happened to be top-level. It read exactly like the
+    // suggestions had never been written, which is the worst way for this to
+    // fail — the owner cannot tell a missing draft from an unrendered one.
+    //
+    // Newest reply first, then the root: the last thing said is the thing being
+    // answered.
     const byComment = new Map(suggestions.map((s) => [s.commentId, s]));
     for (const t of threads) {
-      const s = t.comment && byComment.get(t.comment.id);
+      const chain = [...(t.replies || [])].reverse().concat(t.comment ? [t.comment] : []);
+      let s = null, answers = null;
+      for (const c of chain) {
+        const hit = c && byComment.get(c.id);
+        if (hit) { s = hit; answers = c; break; }
+      }
       if (!s) continue;
       t.suggestion = s.suggestion;
       t.suggestionAuthor = s.author;
       t.suggestionAt = s.createdAt;
-      // If the comment has been edited since Siren read it, the suggestion may
+      // Which comment it answers, so a draft written for a follow-up is not
+      // read as an answer to the comment at the top of the card.
+      t.suggestionFor = answers.id;
+      // If the comment has been edited since it was read, the suggestion may
       // answer a question nobody asked. Say so rather than pre-filling it
-      // silently.
-      t.suggestionStale = !!(s.commentText && t.comment.text && s.commentText !== t.comment.text);
+      // silently. Compared against the comment it was WRITTEN for.
+      t.suggestionStale = !!(s.commentText && answers.text && s.commentText !== answers.text);
     }
 
     return NextResponse.json({
