@@ -51,12 +51,50 @@ async function GET(req) {
 
   const has = (k) => typeof process.env[k] === "string" && process.env[k].trim() !== "";
 
+  // WHERE DOES MAIL ACTUALLY GO? Presence was not enough.
+  //
+  // On 8 Sep 2026 every required name was present, Resend returned success on
+  // every send, and the owner still received nothing from the app — while a
+  // hand-rolled probe from the SAME sending address arrived instantly. Presence
+  // cannot tell a working address from an undeliverable one, and
+  // bookings@thenautiyachti.com is undeliverable: the domain has no MX record
+  // at all, so Resend accepts mail for it and it evaporates.
+  //
+  // This reports the SHAPE of the two addresses, never the addresses. A local
+  // part is reduced to its first character and its length; the domain is shown
+  // in full because a domain is not a secret and is the whole diagnostic —
+  // "gmail.com" is deliverable and "thenautiyachti.com" is not.
+  const shape = (raw) => {
+    const v = typeof raw === "string" ? raw.trim() : "";
+    if (!v) return null;
+    // Accepts "Name <a@b.com>" as well as a bare address.
+    const m = v.match(/<([^>]+)>\s*$/);
+    const addr = (m ? m[1] : v).trim();
+    const quoted = /^["'].*["']$/.test(v);
+    const at = addr.lastIndexOf("@");
+    if (at < 1) return { valid: false, quoted, note: "not an email address" };
+    const local = addr.slice(0, at), domain = addr.slice(at + 1).toLowerCase();
+    return {
+      valid: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(addr),
+      quoted,
+      localHint: local[0] + "…(" + local.length + ")",
+      domain,
+      // The one that has bitten: a domain with no MX swallows mail silently.
+      deliverable: domain !== "thenautiyachti.com",
+    };
+  };
+
   return NextResponse.json({
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
     missing: REQUIRED.filter(([k]) => !has(k)).map(([k, breaks]) => ({ name: k, breaks })),
     presentCount: REQUIRED.filter(([k]) => has(k)).length,
     requiredCount: REQUIRED.length,
     optionalMissing: OPTIONAL.filter(([k]) => !has(k)).map(([k, note]) => ({ name: k, note })),
+    mail: {
+      OWNER_EMAIL: shape(process.env.OWNER_EMAIL),
+      FROM_EMAIL: shape(process.env.FROM_EMAIL),
+      REPLY_TO_EMAIL: shape(process.env.REPLY_TO_EMAIL),
+    },
   });
 }
 
