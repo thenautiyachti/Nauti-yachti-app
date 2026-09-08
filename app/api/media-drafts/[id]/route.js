@@ -1,6 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
+const { REVIEW_REASON_IDS } = require("../../../../lib/reviewReasons");
 
 // Body: { status?, reviewNote? }
 // Setting status updates it; reviewedAt is stamped whenever status moves
@@ -54,6 +55,27 @@ async function PATCH(req, { params }) {
     else if (existing.status === "posted" && body.status !== "delisted") data.postedAt = null;
   }
   if ("reviewNote" in body) data.reviewNote = body.reviewNote || null;
+  // WHY it was sent back or killed, from the fixed list in lib/reviewReasons.js.
+  //
+  // Validated rather than accepted as free text: the whole reason this column
+  // exists instead of another sentence in reviewNote is that it can be counted,
+  // and a typo'd or invented value is a row that never shows up in the count.
+  if ("reviewReason" in body) {
+    const value = body.reviewReason || null;
+    if (value && !REVIEW_REASON_IDS.includes(value)) {
+      return NextResponse.json(
+        { error: `reviewReason must be one of: ${REVIEW_REASON_IDS.join(", ")}` },
+        { status: 400 },
+      );
+    }
+    data.reviewReason = value;
+  }
+  // Approving is the owner saying the objection is answered, so a stale reason
+  // must not stay attached — otherwise the counts fill up with drafts that were
+  // sent back once and went out fine.
+  if (body.status === "approved" || body.status === "scheduled" || body.status === "posted") {
+    if (!("reviewReason" in body)) data.reviewReason = null;
+  }
   // Scheduling — giving a draft a date is what moves it from approved to
   // scheduled, which is the step that used to be missing entirely.
   if ("scheduledDate" in body) data.scheduledDate = body.scheduledDate || null;

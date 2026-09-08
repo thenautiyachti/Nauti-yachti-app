@@ -2,6 +2,8 @@
 
 import { Fragment, useEffect, useState } from "react";
 
+import { REVIEW_REASONS, reviewReasonLabel } from "../lib/reviewReasons";
+
 // One social pipeline: proposed -> approved -> scheduled -> posted.
 //
 // This replaces the old split between a "Media Queue" (agent proposals awaiting
@@ -54,7 +56,16 @@ export default function SocialPipelinePanel() {
   const [copied, setCopied] = useState("");
   const [busy, setBusy] = useState("");
   const [view, setView] = useState("active"); // "active" | "all"
-  const [previewId, setPreviewId] = useState(null);
+  // WHAT THE PREVIEW BUTTON BECAME.
+  //
+  // "The preview button really just displays again what is already displayed"
+  // — and it did: opening a card already shows the media and the caption, and
+  // the preview panel underneath showed the same media and the same caption a
+  // second time. It cost a click to learn nothing.
+  //
+  // The space it occupied now holds the thing there was no room for: saying
+  // what is wrong. { id, mode: "revise" | "kill", reason, note }
+  const [feedback, setFeedback] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -90,15 +101,29 @@ export default function SocialPipelinePanel() {
     }
   }
 
-  function discuss(row) {
-    // The note is the whole point of this stage — "needs work" with no note is
-    // just a draft nobody can act on, so an empty answer cancels.
-    const note = window.prompt(
-      "What needs changing? This is saved against the draft so it can be rewritten.",
-      row.reviewNote || ""
-    );
-    if (note === null || !note.trim()) return;
-    move(row, "discussing", { reviewNote: note.trim() });
+  // Open the feedback form. "revise" keeps the post and asks for a change;
+  // "kill" stops it. Both need a reason — that is the whole point.
+  function openFeedback(row, mode) {
+    setFeedback({
+      id: row.id,
+      mode,
+      reason: row.reviewReason || "",
+      note: row.reviewNote || "",
+    });
+  }
+
+  // Saving is the same write either way; only the stage differs. A reason is
+  // required and the note is not: picking "wrong photo or clip" already says
+  // enough to act on, while forcing a sentence on every rejection is how a
+  // required field turns into people typing "n/a".
+  function submitFeedback(row, mode) {
+    if (!feedback || !feedback.reason) return;
+    const note = (feedback.note || "").trim();
+    setFeedback(null);
+    move(row, mode === "kill" ? "rejected" : "discussing", {
+      reviewReason: feedback.reason,
+      reviewNote: note || null,
+    });
   }
 
   function schedule(row) {
@@ -262,7 +287,11 @@ export default function SocialPipelinePanel() {
                   <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13, color: "#dffcff", lineHeight: 1.5, margin: "0 0 8px", background: "rgba(0,0,0,0.3)", padding: 10, borderRadius: 4 }}>
                     {r.caption}
                   </pre>
-                  {r.reviewNote && (
+                  {/* The reason shows even with no note against it, which is
+                      the common case — "wrong photo or clip" is a complete
+                      answer on its own and should not need a sentence to be
+                      visible. */}
+                  {(r.reviewNote || r.reviewReason) && (
                     <div style={{
                       fontSize: 12, lineHeight: 1.5, marginBottom: 8, padding: "8px 10px", borderRadius: 4,
                       color: r.status === "discussing" ? "#dffcff" : "#1c7a86",
@@ -270,28 +299,43 @@ export default function SocialPipelinePanel() {
                       border: r.status === "discussing" ? "1px solid rgba(232,106,168,0.4)" : "none",
                     }}>
                       {r.status === "discussing" && <strong style={{ color: "#e86aa8" }}>Change requested: </strong>}
+                      {r.status === "rejected" && r.reviewReason && <strong style={{ color: "#ff4d5e" }}>Not posted — </strong>}
+                      {r.reviewReason && (
+                        <strong>{reviewReasonLabel(r.reviewReason)}{r.reviewNote ? ". " : ""}</strong>
+                      )}
                       {r.reviewNote}
                     </div>
                   )}
 
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {/* Preview first: the caption alone never showed whether a
-                        post actually has a photo or clip attached, and almost
-                        none of them do. */}
-                    <button type="button" onClick={() => setPreviewId(previewId === r.id ? null : r.id)}
-                      style={btn(r.mediaUrl ? "#00d9ff" : "#ffb454", true)}>
-                      {previewId === r.id ? "HIDE PREVIEW" : r.mediaUrl ? "PREVIEW" : "PREVIEW · NO MEDIA"}
+                    {/* DISCUSS, on every stage. A post can be wrong at any
+                        point, including after it is scheduled — that is exactly
+                        when "not that clip" tends to get noticed. */}
+                    <button type="button"
+                      onClick={() => (feedback && feedback.id === r.id ? setFeedback(null) : openFeedback(r, "revise"))}
+                      style={btn("#e86aa8", true)}>
+                      {feedback && feedback.id === r.id ? "CLOSE" : "DISCUSS"}
                     </button>
-                    {/* Three answers, not two: yes, no, and "nearly". */}
+                    {/* Copying moved up here from the old preview panel: the
+                        caption still has to reach the app by hand. */}
+                    <button type="button" onClick={() => copy(r)} style={btn("#00d9ff")}>
+                      {copied === r.id ? "COPIED ✓" : "COPY CAPTION"}
+                    </button>
+                    <button type="button" disabled={busy === r.id} onClick={() => attachMedia(r)}
+                      style={btn(r.mediaUrl ? "#1c7a86" : "#ffb454", !r.mediaUrl)}>
+                      {r.mediaUrl ? "REPLACE MEDIA" : "ATTACH MEDIA"}
+                    </button>
                     {(r.status === "proposed" || r.status === "discussing") && (
                       <>
                         <button type="button" disabled={busy === r.id} onClick={() => move(r, "approved")} style={btn("#4ff3ff")}>
                           APPROVE
                         </button>
-                        <button type="button" disabled={busy === r.id} onClick={() => discuss(r)} style={btn("#e86aa8")}>
-                          {r.status === "discussing" ? "EDIT NOTES" : "NEEDS WORK"}
-                        </button>
-                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} style={btn("#ff4d5e")}>
+                        {/* Goes to the form rather than straight to rejected.
+                            A killed post used to leave no trace of what was
+                            wrong with it, so the same idea could come back the
+                            following week and nothing could count how often
+                            that happened. */}
+                        <button type="button" disabled={busy === r.id} onClick={() => openFeedback(r, "kill")} style={btn("#ff4d5e")}>
                           DENY
                         </button>
                       </>
@@ -315,7 +359,7 @@ export default function SocialPipelinePanel() {
                             only existed at the proposal stage, so changing your
                             mind after scheduling left no way out but posting it
                             or pushing the date back forever. */}
-                        <button type="button" disabled={busy === r.id} onClick={() => move(r, "rejected")} style={btn("#ff4d5e")}>
+                        <button type="button" disabled={busy === r.id} onClick={() => openFeedback(r, "kill")} style={btn("#ff4d5e")}>
                           DON&apos;T POST
                         </button>
                       </>
@@ -347,57 +391,88 @@ export default function SocialPipelinePanel() {
                     )}
                   </div>
 
-                  {previewId === r.id && (
-                    <div style={{ marginTop: 12, border: "1px solid rgba(0,217,255,0.35)", borderRadius: 6, overflow: "hidden", background: "rgba(0,0,0,0.35)" }}>
-                      <div style={{ padding: "7px 10px", borderBottom: "1px solid rgba(0,217,255,0.2)", fontSize: 10.5, letterSpacing: "0.08em", color: PLATFORM_COLOR[r.platform] || "#4ff3ff", fontWeight: 700 }}>
-                        {(r.platform || "POST").toUpperCase()} — HOW IT GOES OUT
+                  {/* WHAT IS WRONG WITH IT — the panel that replaced the
+                      duplicate preview.
+                      Two decisions in one place, because they are the same
+                      thought: pick what is wrong, then say whether the post
+                      survives it. "Wrong photo or clip" is the case that had
+                      nowhere to go before — the caption was fine and the only
+                      options were to accept a post he did not want or kill one
+                      he did. */}
+                  {feedback && feedback.id === r.id && (
+                    <div style={{ marginTop: 12, border: "1px solid rgba(232,106,168,0.45)", borderRadius: 6, background: "rgba(232,106,168,0.06)", padding: "11px 12px" }}>
+                      <div style={{ fontSize: 10.5, letterSpacing: "0.08em", color: "#e86aa8", fontWeight: 700, marginBottom: 9 }}>
+                        WHAT&apos;S WRONG WITH IT?
                       </div>
 
-                      {r.mediaUrl ? (
-                        r.mediaType === "video"
-                          ? <video src={r.mediaUrl} controls style={{ width: "100%", maxHeight: 300, background: "#000", display: "block" }} />
-                          : <img src={r.mediaUrl} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "contain", background: "#000", display: "block" }} />
-                      ) : (
-                        // The honest empty state. These posts were written as
-                        // copy plus a shot brief, so "no media" is the norm and
-                        // the brief is the useful thing to show instead.
-                        <div style={{ padding: "18px 14px", textAlign: "center", background: "rgba(255,180,84,0.07)" }}>
-                          <div style={{ fontSize: 12.5, color: "#ffb454", fontWeight: 700, marginBottom: 6 }}>
-                            No photo or clip attached yet
-                          </div>
-                          {r.photoHint && (
-                            <div style={{ fontSize: 12, color: "#dffcff", opacity: 0.85, lineHeight: 1.5, maxWidth: 460, margin: "0 auto 10px" }}>
-                              Shot needed: {r.photoHint}
-                            </div>
-                          )}
-                          <button type="button" disabled={busy === r.id} onClick={() => attachMedia(r)}
-                            style={btn("#ffb454", true)}>
-                            ATTACH MEDIA
-                          </button>
-                        </div>
-                      )}
-
-                      <div style={{ padding: "10px 12px" }}>
-                        <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 12.5, color: "#dffcff", lineHeight: 1.5, margin: 0 }}>
-                          {r.caption}
-                        </pre>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+                        {REVIEW_REASONS.map((reason) => {
+                          const picked = feedback.reason === reason.id;
+                          return (
+                            <button key={reason.id} type="button"
+                              onClick={() => setFeedback((f) => ({ ...f, reason: reason.id }))}
+                              style={{
+                                background: picked ? "#e86aa8" : "transparent",
+                                color: picked ? "#04070a" : "#dffcff",
+                                border: `1px solid ${picked ? "#e86aa8" : "rgba(223,252,255,0.25)"}`,
+                                borderRadius: 4, padding: "5px 10px", fontSize: 11.5,
+                                fontWeight: picked ? 700 : 500, cursor: "pointer",
+                              }}>
+                              {reason.label}
+                            </button>
+                          );
+                        })}
                       </div>
 
-                      {/* Copying lives here rather than on the row: nothing
-                          posts itself yet, so the caption still has to reach
-                          the app by hand — but that belongs next to the words,
-                          not among the decisions. */}
-                      <div style={{ padding: "0 12px 10px", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <button type="button" onClick={() => copy(r)} style={btn("#00d9ff")}>
-                          {copied === r.id ? "COPIED ✓" : "COPY CAPTION"}
+                      {/* The hint for the picked reason, so the list can stay
+                          short labels without losing what each one means. */}
+                      <div style={{ fontSize: 11.5, color: "#dffcff", opacity: 0.7, minHeight: 17, margin: "6px 0 8px" }}>
+                        {(REVIEW_REASONS.find((x) => x.id === feedback.reason) || {}).hint || "Pick one — it is what makes the queue learn."}
+                      </div>
+
+                      <textarea
+                        value={feedback.note}
+                        onChange={(e) => setFeedback((f) => ({ ...f, note: e.target.value }))}
+                        placeholder="Anything else worth saying (optional)"
+                        rows={2}
+                        style={{
+                          width: "100%", boxSizing: "border-box", resize: "vertical",
+                          background: "rgba(0,0,0,0.35)", color: "#dffcff",
+                          border: "1px solid rgba(223,252,255,0.2)", borderRadius: 4,
+                          padding: "7px 9px", fontSize: 12.5, fontFamily: "inherit", lineHeight: 1.5,
+                          marginBottom: 9,
+                        }}
+                      />
+
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                        {/* Keeping the post is the FIRST button, because it is
+                            the answer most of these have. */}
+                        <button type="button" disabled={!feedback.reason || busy === r.id}
+                          onClick={() => submitFeedback(r, "revise")}
+                          style={{ ...btn("#e86aa8", true), opacity: feedback.reason ? 1 : 0.4, cursor: feedback.reason ? "pointer" : "not-allowed" }}>
+                          KEEP IT — SEND BACK FOR CHANGES
                         </button>
-                        {r.mediaUrl && (
-                          <button type="button" disabled={busy === r.id} onClick={() => attachMedia(r)}
-                            style={btn("#1c7a86")}>
-                            REPLACE MEDIA
+                        <button type="button" disabled={!feedback.reason || busy === r.id}
+                          onClick={() => submitFeedback(r, "kill")}
+                          style={{ ...btn("#ff4d5e"), opacity: feedback.reason ? 1 : 0.4, cursor: feedback.reason ? "pointer" : "not-allowed" }}>
+                          DON&apos;T POST IT AT ALL
+                        </button>
+                        {/* When the only problem is the clip, the fix is right
+                            here rather than two screens away. */}
+                        {feedback.reason === "wrong-media" && (
+                          <button type="button" disabled={busy === r.id}
+                            onClick={() => { setFeedback(null); attachMedia(r); }}
+                            style={btn("#ffb454")}>
+                            SWAP THE MEDIA NOW
                           </button>
                         )}
                       </div>
+
+                      {!feedback.reason && (
+                        <div style={{ fontSize: 11, color: "#ffb454", marginTop: 8 }}>
+                          Choose a reason first — it is what lets us count why posts get pulled.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

@@ -372,6 +372,22 @@ model MediaDraft {
   platform   String? // intended platform, e.g. "instagram", "facebook", "tiktok" — nullable, may be undecided
   status     String    @default("proposed") // pipeline stage: "proposed" | "approved" | "scheduled" | "posted" | "rejected"
   reviewNote String? // optional owner note when approving/rejecting
+
+  // WHY a draft was sent back or killed, as one of a fixed set of reasons.
+  //
+  // Asked for on 8 Sep 2026: "if I select don't post, should I disclose why so
+  // it can be ruled why it didn't work?" Until then DENY recorded nothing at
+  // all — a post vanished from the queue and the reason lived only in the
+  // owner's head, so the same mistake could be proposed again the next week and
+  // nobody could count how often it happened.
+  //
+  // Separate from reviewNote on purpose. The note is prose for whoever rewrites
+  // the draft; this is the countable half — "six of the last ten were killed
+  // for the wrong clip" is a fact you can act on, and free text will not give
+  // it to you.
+  //
+  // Vocabulary lives in lib/reviewReasons.js, not here.
+  reviewReason String?
   createdAt  DateTime  @default(now())
   reviewedAt DateTime?
 
