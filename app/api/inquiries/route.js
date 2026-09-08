@@ -1,7 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
-const { sendInquiryEmail } = require("../../../lib/email");
+const { sendInquiryEmail, sendInquiryAckEmail } = require("../../../lib/email");
 const { generateBookingId } = require("../../../lib/bookingId");
 
 // Admin-only: view all inquiries.
@@ -48,9 +48,17 @@ async function POST(req) {
     },
   });
 
-  const emailResult = await sendInquiryEmail(created);
+  // BOTH SIDES — the owner is told, and the enquirer gets an acknowledgement.
+  // Until 8 Sep 2026 somebody who filled in the website form received nothing
+  // at all, which reads as a form that did not work.
+  const [ownerRes, guestRes] = await Promise.allSettled([
+    sendInquiryEmail(created),
+    sendInquiryAckEmail(created),
+  ]);
+  const emailResult = ownerRes.status === "fulfilled" ? ownerRes.value : { sent: false, reason: "threw" };
+  const guestEmailResult = guestRes.status === "fulfilled" ? guestRes.value : { sent: false, reason: "threw" };
 
-  return NextResponse.json({ inquiry: created, email: emailResult });
+  return NextResponse.json({ inquiry: created, email: emailResult, guestEmail: guestEmailResult });
 }
 
 module.exports = { GET, POST };

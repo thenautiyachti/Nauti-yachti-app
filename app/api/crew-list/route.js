@@ -1,6 +1,6 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
-const { sendInquiryEmail } = require("../../../lib/email");
+const { sendInquiryEmail, sendCrewListWelcomeEmail } = require("../../../lib/email");
 const { CREW_LIST_PACKAGE_ID, CREW_LIST_PACKAGE_NAME } = require("../../../lib/crewList");
 
 // Public: a two-field name + email signup for the guest mailing list.
@@ -79,11 +79,23 @@ async function POST(req) {
     },
   });
 
-  // Reuse the existing owner-notification path so a signup surfaces the same
-  // way an inquiry does. Best-effort — the row is already saved either way.
-  const emailResult = await sendInquiryEmail(created);
+  // BOTH SIDES. The owner hears about it, and the person who just typed their
+  // details into a small business's website gets told it arrived.
+  //
+  // Best-effort, and settled in parallel: the row is already saved, and a mail
+  // failure must not fail the signup. allSettled rather than all, so one
+  // failing does not hide whether the other worked.
+  const [ownerRes, guestRes] = await Promise.allSettled([
+    sendInquiryEmail(created),
+    sendCrewListWelcomeEmail(created),
+  ]);
+  const unwrap = (r) => (r.status === "fulfilled" ? r.value : { sent: false, reason: "threw" });
 
-  return NextResponse.json({ ok: true, email: emailResult });
+  return NextResponse.json({
+    ok: true,
+    email: unwrap(ownerRes),
+    guestEmail: unwrap(guestRes),
+  });
 }
 
 module.exports = { POST };

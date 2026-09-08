@@ -1,6 +1,6 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
-const { sendInquiryEmail } = require("../../../lib/email");
+const { sendInquiryEmail, sendInquiryAckEmail } = require("../../../lib/email");
 const { checkCoupon, discountedAmount } = require("../../../lib/coupons");
 const { checkGiftCertificate, applicableAmount, redeem: redeemGiftCertificate } = require("../../../lib/giftCertificates");
 const { generateBookingId } = require("../../../lib/bookingId");
@@ -184,8 +184,15 @@ async function POST(req) {
   }
 
   // Owner still gets the usual inquiry email regardless of whether payment
-  // completes — same as the plain-inquiry flow today.
+  // completes — same as the plain-inquiry flow today. The guest gets an
+  // acknowledgement for the same reason: they have typed their details in and
+  // may yet abandon checkout, and silence at that point reads as a broken form.
+  //
+  // If they DO pay, sendBookingConfirmationEmail follows from the Stripe
+  // webhook. Two emails on a completed booking is the right number: one says
+  // "we have your enquiry", the other says "you are booked, here is the dock".
   sendInquiryEmail(created).catch(() => {});
+  sendInquiryAckEmail(created).catch(() => {});
 
   // A gift certificate can cover the charter outright, and Stripe cannot
   // create a checkout session for $0 — it rejects a zero unit_amount. So when

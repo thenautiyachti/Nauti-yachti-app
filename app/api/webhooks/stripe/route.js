@@ -1,7 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { redeem: redeemGiftCertificate, generateUniqueCode: generateGiftCode } = require("../../../../lib/giftCertificates");
-const { sendGiftCertificateEmail, sendBookingConfirmationEmail } = require("../../../../lib/email");
+const { sendGiftCertificateEmail, sendGiftCertificateOwnerEmail, sendBookingConfirmationEmail } = require("../../../../lib/email");
 
 // Stripe signature verification needs the exact raw request body — reading
 // req.text() (not req.json()) preserves that. Must run on the Node.js
@@ -96,6 +96,9 @@ async function POST(req) {
           // Best-effort: the buyer already sees the code on the success page,
           // so a failed send is not a failed purchase.
           sendGiftCertificateEmail(cert).catch(() => {});
+          // And tell the business. Until 8 Sep 2026 nothing did, so the first
+          // anyone heard of a certificate was somebody turning up to redeem it.
+          sendGiftCertificateOwnerEmail(cert).catch(() => {});
         }
       } catch (err) {
         console.error("[webhooks/stripe] Failed to mint gift certificate:", err);
