@@ -144,6 +144,30 @@ function motionTrack(file) {
   return pairs(r.stderr, /YAVG=([\d.]+)/);
 }
 
+// IS ANYBODY TALKING IN THIS WINDOW?
+//
+// Returns how much of the level survives a 300-3000Hz band-pass. Speech lives
+// in that band; a boat engine is rumble below it and water is broadband hiss.
+// Closer to zero means more of the sound was already voice.
+//
+// Validated against the one labelled example there is: the owner's spoken intro
+// on Tasha's first clip reads -2.0dB, while engine-only windows on the same
+// charter read -6.0dB. Less negative is more voice.
+function voiceGap(file, from, to) {
+  const grab = (band) => {
+    const af = (band ? "highpass=f=300,lowpass=f=3000," : "") +
+      "ebur128=peak=none:metadata=1,ametadata=print:key=lavfi.r128.M";
+    const r = spawnSync(FFMPEG, ["-hide_banner", "-nostats", "-vn",
+      "-ss", String(from), "-t", String(Math.max(1, to - from)), "-i", file,
+      "-af", af, "-f", "null", "-"], { encoding: "utf8", maxBuffer: 1 << 26 });
+    const vals = [...String(r.stderr || "").matchAll(/lavfi\.r128\.M=(-?[\d.]+)/g)]
+      .map((m) => Number(m[1])).filter((v) => v > -70);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  };
+  const full = grab(false), band = grab(true);
+  return full == null || band == null ? null : band - full;
+}
+
 function loudnessTrack(file) {
   // ebur128 MOMENTARY (400ms window, emitted every 100ms). Not astats: its
   // Overall.RMS_level is a running accumulator that produced the same smooth
@@ -307,12 +331,18 @@ function readPicks(dir) {
     };
     // One line may carry several moments: "12-16, 30-34".
     for (const part of m[2].split(",")) {
-      const r = part.trim().match(/^([\d:.]+)(?:\s*-\s*([\d:.]+))?$/);
+      // A trailing "!" is his "very good" as against merely "good". He marked
+      // both on Anna's footage and the difference is worth keeping: it is the
+      // only ranking signal in the file, and there is always more good
+      // material than there is room for.
+      const t = part.trim();
+      const veryGood = /!\s*$/.test(t);
+      const r = t.replace(/!\s*$/, "").trim().match(/^([\d:.]+)(?:\s*-\s*([\d:.]+))?$/);
       if (!r) continue;
       const start = toSec(r[1]);
       const end = r[2] ? toSec(r[2]) : null;
       if (start == null) continue;
-      out.push({ match: m[1], start, end });
+      out.push({ match: m[1], start, end, veryGood });
     }
   }
   return out;
@@ -367,7 +397,7 @@ console.log(`  source: ${dir}\n`);
 let PICKED = null;
 const PICKS = readPicks(dir);
 if (PICKS.length) {
-  const chosen = [];
+  let chosen = [];
   for (const p of PICKS) {
     const clip = clips.find((c) => c.file.includes(p.match));
     if (!clip) { console.log(`    ?  no clip matches "${p.match}" — skipped`); continue; }
@@ -394,25 +424,78 @@ if (PICKS.length) {
         `${len.toFixed(1)}s — too short to read as a shot. Skipped.`);
       continue;
     }
-    chosen.push({ ...clip, start: p.start, pickLen: len });
+    // veryGood has to be carried across explicitly — it lives on the parsed
+    // pick, not on the clip, and spreading `...clip` does not bring it.
+    chosen.push({ ...clip, start: p.start, pickLen: len, veryGood: p.veryGood });
   }
   if (!chosen.length) {
     console.error("\n  picks.txt matched no clips. Check the filenames.\n");
     process.exit(1);
   }
-  // He timed these deliberately, so a pick keeps the length he gave it. Only a
-  // start-only pick gets a house-length slice.
-  const totalPicked = chosen.reduce((a, c) => a + (c.pickLen || 0), 0);
-  const openEnded = chosen.filter((c) => !c.pickLen).length;
-  const fill = openEnded
-    ? Math.max(2, Math.min(5.5, (TARGET - totalPicked) / openEnded))
-    : 0;
+  // THERE IS ALWAYS MORE GOOD MATERIAL THAN ROOM. On Anna's charter he marked
+  // 27 moments totalling about four minutes for a sixty-second cut, so the
+  // question is not whether to trim but how.
+  //
+  // Each moment gets `base` seconds, doubled if he marked it "very good", and
+  // never more than he actually marked — a two-second pick stays two seconds
+  // rather than being padded into footage he did not choose. Solve for `base`
+  // by bisection so the total lands on the target; a closed form does not
+  // exist once picks start hitting their own ceiling.
+  // A SHOT HAS TO BE LONG ENOUGH TO READ. The first attempt at this squeezed
+  // all 28 of his marks on Anna into sixty seconds, which is 2.1s each, and he
+  // could not follow it: "the video goes so quickly, I can't even see what just
+  // happened, it transitioned in like 1 second."
+  //
+  // So the length is fixed FIRST and the count follows. His own CapCuts hold
+  // about 3 seconds and fit 18-20 shots in a minute; that is the target, and
+  // when he marks more than fits, the surplus is DROPPED rather than everything
+  // being compressed. His words: "you may just have to choose which ones to not
+  // even show."
+  const marked = chosen.reduce((a, c) => a + (c.pickLen || 0), 0);
+  const SHOT = Math.max(2.2, Math.min(4.5, Number(arg("shot", 3.2)) || 3.2));
+  const roomFor = Math.max(1, Math.floor(
+    (TARGET + (NO_TRANS ? 0 : TRANS_D)) / (SHOT - (NO_TRANS ? 0 : TRANS_D))
+  ));
 
-  console.log(`  picks.txt: ${chosen.length} moments you marked — using those, not the scoring\n`);
+  if (chosen.length > roomFor) {
+    // WHICH ONES SURVIVE. His tiebreaker, in his words: "some clips may have
+    // better vocals in them, like people talking. I would probably prioritise
+    // those." Speech sits in 300-3000Hz where an engine does not, and the one
+    // labelled example available — his spoken intro on Tasha's first clip —
+    // reads -2.0dB against -6.0dB for engine-only footage.
+    //
+    // Ties and unmeasurable clips fall back to the longer mark, on the grounds
+    // that a moment he watched for twenty seconds is one he rated higher than
+    // one he watched for three.
+    console.log(`  ${chosen.length} marks is more than ${roomFor} shots of ${SHOT}s — ` +
+      `keeping the ones with people talking\n`);
+    for (const c of chosen) {
+      c.voice = voiceGap(c.full, c.start, c.start + Math.min(6, c.pickLen || 4));
+    }
+    const ranked = [...chosen].sort((a, b) =>
+      (b.voice == null ? -99 : b.voice) - (a.voice == null ? -99 : a.voice) ||
+      (b.pickLen || 0) - (a.pickLen || 0));
+    const keep = new Set(ranked.slice(0, roomFor));
+    for (const c of chosen) {
+      if (!keep.has(c)) {
+        console.log("    -  " + c.file.slice(9, 15).replace(/(\d\d)(\d\d)(\d\d)/, "$1:$2") +
+          " @" + String(c.start).padStart(4) + "s  dropped" +
+          (c.voice == null ? "" : "   voice " + c.voice.toFixed(1) + "dB"));
+      }
+    }
+    chosen = chosen.filter((c) => keep.has(c)); // still in shooting order
+    console.log("");
+  }
+
+  console.log(`  picks.txt: ${chosen.length} of your marks, ${SHOT}s each` +
+    ` (you marked ${Math.round(marked)}s in total)\n`);
   for (const c of chosen) {
-    if (!c.pickLen) c.pickLen = fill;
+    // Never longer than he marked — a 2s mark stays 2s rather than running on
+    // into footage he did not choose.
+    c.pickLen = c.pickLen == null ? SHOT : Math.min(c.pickLen, SHOT);
     console.log("    " + c.file.slice(9, 15).replace(/(\d\d)(\d\d)(\d\d)/, "$1:$2") +
-      "  from " + String(c.start).padStart(6) + "s  for " + c.pickLen.toFixed(1) + "s");
+      "  from " + String(c.start).padStart(6) + "s  for " + c.pickLen.toFixed(1) + "s" +
+      (c.voice == null ? "" : "   voice " + c.voice.toFixed(1) + "dB"));
   }
   PICKED = chosen.map((c) => ({ ...c, len: c.pickLen, gainDb: 0, why: "your pick" }));
 }
