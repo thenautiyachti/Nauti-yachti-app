@@ -3685,9 +3685,17 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
                     style={{ flex: "1 1 46%", background: feedback ? "#e86aa8" : "transparent", color: feedback ? "#0A0612" : "#e86aa8", border: "1px solid #e86aa8", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
                     {feedback ? "Close" : "Discuss"}
                   </button>
+                  {/* "Not sure the purpose of this button if it auto uploads
+                      due to Siren, she marks it posted." Correct — she PATCHes
+                      the draft to posted and records the live URL, so for
+                      anything she publishes this button is never touched. It
+                      exists for the posts that go out by hand, which is still
+                      most of TikTok. The old label "Mark posted" did not say
+                      that; this one does. */}
                   <button type="button" onClick={() => onUpdateStatus(d.id, "posted")}
+                    title="Only for posts you published yourself. Siren marks her own as posted and records the link."
                     style={{ flex: "1 1 46%", background: "#7FE0B8", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
-                    Mark posted
+                    I posted it myself
                   </button>
                   <button type="button" onClick={() => reschedule()}
                     style={{ flex: "1 1 46%", background: "transparent", color: "#4ff3ff", border: "1px solid #4ff3ff", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
@@ -3780,9 +3788,10 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
                       }}>
                       Don&apos;t post it at all
                     </button>
-                    {/* When the only problem is the clip, the fix is right here
-                        rather than two screens away. */}
-                    {feedback.reason === "wrong-media" && (
+                    {/* When the problem is the clip — wrong one or just a weak
+                        one — the fix is right here rather than two screens
+                        away. */}
+                    {(feedback.reason === "wrong-media" || feedback.reason === "better-shot") && (
                       <button type="button"
                         onClick={() => { setFeedback(null); onAttachMedia(d); }}
                         style={{
@@ -3793,6 +3802,19 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
                         Swap the media now
                       </button>
                     )}
+                  </div>
+
+                  {/* SAYING WHAT THE RED BUTTON ACTUALLY DOES.
+                      "I didn't want to click don't post because I feel it would
+                      delete it." It does not — it moves the draft to Rejected,
+                      where Back to review brings it straight back. Deleting is a
+                      separate button on a rejected card, behind a confirm. A
+                      button people are afraid of is a button that does not
+                      work. */}
+                  <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.45, marginTop: 7 }}>
+                    Neither of these deletes anything. <strong>Send back</strong> keeps it in the
+                    queue for a rewrite; <strong>Don&apos;t post</strong> moves it to Rejected,
+                    where <strong>Back to review</strong> returns it.
                   </div>
                 </div>
               )}
