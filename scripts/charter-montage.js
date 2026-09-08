@@ -208,6 +208,19 @@ function sourceDir() {
 }
 
 const dir = sourceDir();
+
+// NDA CHARTERS GET NOTHING. This rule existed only in Coral's brief, which
+// meant the tool itself would happily cut a montage of an NDA trip if anyone
+// pointed it at one — and on 7 Sep 2026 every charter folder gained a
+// "compilation video" subfolder, so the invitation is now sitting in the NDA
+// charter too. A rule that lives only in a brief is a rule the next person
+// runs straight past.
+if (/\[NDA/i.test(dir)) {
+  console.error("\n  REFUSING: " + path.basename(dir));
+  console.error("  This charter is marked NDA - NO MEDIA MAY BE POSTED.");
+  console.error("  No montage, no stills, no mention. Nothing is written.\n");
+  process.exit(1);
+}
 const clips = fs.readdirSync(dir)
   .filter((f) => f.startsWith(DAY) && /\.(mp4|mov|m4v)$/i.test(f))
   .sort()
