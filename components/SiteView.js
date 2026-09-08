@@ -62,12 +62,13 @@ function WakeLine({ flip }) {
   );
 }
 
-export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates, forecast, initialTestimonials, initialAddOns }) {
+export default function SiteView({ initialPackages, initialVessels, initialGallery, initialBlocked, initialPartialDates, initialBookedWindows, forecast, initialTestimonials, initialAddOns }) {
   const [packages] = useState(initialPackages);
   const [vessels] = useState(initialVessels);
   const [gallery] = useState(initialGallery);
   const [blocked] = useState(initialBlocked);
   const [partialDates] = useState(initialPartialDates || {});
+  const [bookedWindows] = useState(initialBookedWindows || {});
   const [testimonials] = useState(initialTestimonials || []);
   const [addOns] = useState(initialAddOns || []);
   const [selectedVessel, setSelectedVessel] = useState(initialVessels[0]?.id);
@@ -352,10 +353,10 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
             <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "var(--purple)", verticalAlign: "middle", marginRight: 5 }} />Open</span>
-            <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "repeating-linear-gradient(45deg, #E8934A, #E8934A 3px, #C97633 3px, #C97633 6px)", verticalAlign: "middle", marginRight: 5 }} />Partially booked</span>
+            <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "repeating-linear-gradient(45deg, #E8934A, #E8934A 3px, #C97633 3px, #C97633 6px)", verticalAlign: "middle", marginRight: 5 }} />Partially booked <span style={{ opacity: 0.7 }}>&mdash; the time shown is what is already taken</span></span>
             <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "#3A2E40", verticalAlign: "middle", marginRight: 5 }} />Fully booked</span>
           </div>
-          <AvailabilityCalendar blockedDates={blocked[selectedVessel] || []} partialDates={partialDates[selectedVessel] || {}} />
+          <AvailabilityCalendar blockedDates={blocked[selectedVessel] || []} partialDates={partialDates[selectedVessel] || {}} bookedWindows={bookedWindows[selectedVessel] || {}} />
         </div>
       </div>
 
@@ -878,7 +879,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
   );
 }
 
-function AvailabilityCalendar({ blockedDates, partialDates }) {
+function AvailabilityCalendar({ blockedDates, partialDates, bookedWindows = {} }) {
   // Computed client-side only: "today" must reflect the viewer's local clock,
   // and doing this during SSR causes hydration mismatches when the server's
   // timezone differs from the browser's.
@@ -896,12 +897,20 @@ function AvailabilityCalendar({ blockedDates, partialDates }) {
     return partialDates[key] || "open";
   }
 
+  // The times for a day, or null. Only partly-booked days have anything worth
+  // showing: an open day has no window and a full one needs no explaining.
+  function getWindows(key) {
+    if (blockedDates.includes(key)) return null;
+    if (partialDates[key] !== "partial") return null;
+    return bookedWindows[key] || null;
+  }
+
   if (!months) return null;
 
   return (
     <div style={{ display: "flex", gap: 32, flexWrap: "wrap", justifyContent: "center" }}>
       {months.map((m) => (
-        <AvailabilityMonthGrid key={`${m.year}-${m.month}`} year={m.year} month={m.month} getState={getState} />
+        <AvailabilityMonthGrid key={`${m.year}-${m.month}`} year={m.year} month={m.month} getState={getState} getWindows={getWindows} />
       ))}
     </div>
   );

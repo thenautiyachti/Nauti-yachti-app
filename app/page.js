@@ -1,6 +1,6 @@
 import { prisma } from "../lib/db";
 import { HOLDS_THE_DAY } from "../lib/bookingStatus";
-import { parsePackage, groupBlockedDates, groupExternalBookingState } from "../lib/serialize";
+import { parsePackage, groupBlockedDates, groupExternalBookingState, groupBookedWindows } from "../lib/serialize";
 import { occupyingRows } from "../lib/occupancy";
 import { getLakeConroeForecast } from "../lib/weather";
 import SiteView from "../components/SiteView";
@@ -69,6 +69,9 @@ export default async function HomePage() {
   // hours twice would show a half-day as full. See lib/occupancy.js.
   const occupied = occupyingRows(externalBookingRows, confirmedInquiries);
   const partialDates = groupExternalBookingState(occupied);
+  // WHEN a partly-booked day is taken, not just THAT it is. A guest could see
+  // an orange square and had no way to find out which part of the day was gone.
+  const bookedWindows = groupBookedWindows(occupied);
 
   // Full names are shown, on the owner's call: the site already publishes
   // guests' faces, so withholding a surname protected nothing.
@@ -81,6 +84,7 @@ export default async function HomePage() {
       initialGallery={gallery}
       initialBlocked={blocked}
       initialPartialDates={partialDates}
+      initialBookedWindows={bookedWindows}
       forecast={forecast}
       initialTestimonials={publicTestimonials}
       initialAddOns={addOns}

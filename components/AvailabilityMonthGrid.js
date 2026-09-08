@@ -1,6 +1,7 @@
 "use client";
 
 import { localDateKey } from "../lib/pricing";
+import { formatWindow } from "../lib/serialize";
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTH_NAMES = [
@@ -23,7 +24,7 @@ const STATE_TEXT_COLOR = {
 // calendar and the admin console's toggle view. getState(dateKey) returns
 // "open" | "partial" | "full"; pass onDayClick to make days clickable
 // (admin only — the public calendar is read-only).
-export default function AvailabilityMonthGrid({ year, month, getState, onDayClick, size = "normal" }) {
+export default function AvailabilityMonthGrid({ year, month, getState, getWindows, onDayClick, size = "normal" }) {
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayKey = localDateKey(new Date());
@@ -51,6 +52,7 @@ export default function AvailabilityMonthGrid({ year, month, getState, onDayClic
           const key = localDateKey(dateObj);
           const isPast = key < todayKey;
           const state = isPast ? null : getState(key);
+          const windows = isPast || !getWindows ? null : getWindows(key);
           const clickable = !!onDayClick && !isPast;
           const Tag = clickable ? "button" : "div";
           return (
@@ -68,6 +70,27 @@ export default function AvailabilityMonthGrid({ year, month, getState, onDayClic
               }}
             >
               <div className="mono" style={{ fontSize: size === "compact" ? 12 : 17, fontWeight: 700 }}>{d}</div>
+              {/* WHEN it is taken, not just that it is. A guest's words on
+                  8 Sep 2026: "it just says partially booked but doesn't give
+                  you a time slot of when it's booked."
+                  Only on partly-booked days, and only where the booking
+                  actually recorded a start time — see groupBookedWindows for
+                  why a missing one is left blank rather than guessed. */}
+              {windows && windows.length > 0 && (
+                <div className="mono" style={{
+                  fontSize: size === "compact" ? 8 : 10,
+                  lineHeight: 1.25,
+                  marginTop: 2,
+                  fontWeight: 600,
+                  opacity: 0.85,
+                  whiteSpace: "nowrap",
+                }}>
+                  {windows.slice(0, 2).map((w, wi) => (
+                    <div key={wi}>{formatWindow(w)}</div>
+                  ))}
+                  {windows.length > 2 && <div>+{windows.length - 2}</div>}
+                </div>
+              )}
             </Tag>
           );
         })}
