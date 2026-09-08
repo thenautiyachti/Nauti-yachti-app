@@ -331,10 +331,14 @@ function readPicks(dir) {
     };
     // One line may carry several moments: "12-16, 30-34".
     for (const part of m[2].split(",")) {
-      // A trailing "!" is his "very good" as against merely "good". He marked
-      // both on Anna's footage and the difference is worth keeping: it is the
-      // only ranking signal in the file, and there is always more good
-      // material than there is room for.
+      // A trailing "!" means KEEP THIS ONE — it survives the cut no matter
+      // what else is dropped.
+      //
+      // It exists because ranking on voice threw away the best shot in the
+      // charter. On Tasha's footage he wrote "31 to 40 is good. It shows them
+      // wiping out" — and the voice tiebreaker dropped it, because a wipeout is
+      // watched in silence and nobody narrates it. Loud and good are different
+      // things, and when they disagree he decides, not the audio.
       const t = part.trim();
       const veryGood = /!\s*$/.test(t);
       const r = t.replace(/!\s*$/, "").trim().match(/^([\d:.]+)(?:\s*-\s*([\d:.]+))?$/);
@@ -345,7 +349,38 @@ function readPicks(dir) {
       out.push({ match: m[1], start, end, veryGood });
     }
   }
-  return out;
+
+  // MERGE OVERLAPPING MARKS ON THE SAME CLIP. These are typed while watching,
+  // often in more than one sitting, so two marks that overlap are going to
+  // happen — on Tasha's 153038 he gave 31-40 and then corrected another entry
+  // to 35-47, and 35-40 sits in both. Left alone that puts the same five
+  // seconds in the montage twice, a few shots apart, which reads as a mistake
+  // because it is one.
+  //
+  // A merged range inherits "keep" if either half had it.
+  const byClip = new Map();
+  for (const p of out) {
+    if (!byClip.has(p.match)) byClip.set(p.match, []);
+    byClip.get(p.match).push(p);
+  }
+  const merged = [];
+  for (const [, list] of byClip) {
+    list.sort((a, b) => a.start - b.start);
+    let cur = null;
+    for (const p of list) {
+      const end = p.end == null ? p.start : p.end;
+      if (cur && p.start <= (cur.end == null ? cur.start : cur.end)) {
+        cur.end = Math.max(cur.end == null ? cur.start : cur.end, end);
+        cur.veryGood = cur.veryGood || p.veryGood;
+        cur.mergedFrom = (cur.mergedFrom || 1) + 1;
+      } else {
+        cur = { ...p };
+        merged.push(cur);
+      }
+    }
+  }
+  // Back into shooting order across the whole day.
+  return merged.sort((a, b) => (a.match < b.match ? -1 : a.match > b.match ? 1 : a.start - b.start));
 }
 
 // Look in the charter's own folder first, then the inbox. Footage gets filed
@@ -472,10 +507,15 @@ if (PICKS.length) {
     for (const c of chosen) {
       c.voice = voiceGap(c.full, c.start, c.start + Math.min(6, c.pickLen || 4));
     }
-    const ranked = [...chosen].sort((a, b) =>
+    // Anything he marked "!" is kept outright and does not compete.
+    const keep = new Set(chosen.filter((c) => c.veryGood));
+    const ranked = [...chosen].filter((c) => !c.veryGood).sort((a, b) =>
       (b.voice == null ? -99 : b.voice) - (a.voice == null ? -99 : a.voice) ||
       (b.pickLen || 0) - (a.pickLen || 0));
-    const keep = new Set(ranked.slice(0, roomFor));
+    for (const c of ranked) {
+      if (keep.size >= roomFor) break;
+      keep.add(c);
+    }
     for (const c of chosen) {
       if (!keep.has(c)) {
         console.log("    -  " + c.file.slice(9, 15).replace(/(\d\d)(\d\d)(\d\d)/, "$1:$2") +
