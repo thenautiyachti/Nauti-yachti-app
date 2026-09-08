@@ -307,11 +307,22 @@ console.log("  Now tag the code:  git tag -a v" + version + " -m \"...\"  &&  gi
       const entry = "## v" + version + " — " + today + " — SIZE?\n\n" +
         "**" + (notes || "TODO: one sentence you would say out loud.") + "**\n\n" +
         "- TODO: what changed, and what it means if you restore this.\n\n---\n\n";
-      const marker = "\n---\n\n";
-      const at = existing.indexOf(marker);
+      // NEWEST FIRST, and the marker has to survive Windows line endings.
+      //
+      // This searched for the literal "\n---\n\n". CHANGELOG.md is CRLF, so on
+      // 8 Sep 2026 it matched nothing, fell through to the append branch, and
+      // put v2.2.0 at the BOTTOM of a file that runs newest-first — under v1.0,
+      // where nobody looking for the current release would ever see it.
+      //
+      // A changelog is read in one situation: something is wrong and you are
+      // deciding what to go back to. The newest entry being last is the one
+      // arrangement that defeats that.
+      const m = /\r?\n---\r?\n\r?\n/.exec(existing);
+      const eol = /\r\n/.test(existing) ? "\r\n" : "\n";
+      const body = entry.replace(/\n/g, eol);
       fs.writeFileSync(CHANGELOG,
-        at === -1 ? existing + "\n" + entry
-                  : existing.slice(0, at + marker.length) + entry + existing.slice(at + marker.length));
+        !m ? existing + eol + body
+           : existing.slice(0, m.index + m[0].length) + body + existing.slice(m.index + m[0].length));
       console.log("  CHANGELOG.md: stub written for v" + version + " -- finish it before you move on.");
       console.log("  Mark it SMALL, MODERATE or LARGE. See VERSIONING.md.");
     }
