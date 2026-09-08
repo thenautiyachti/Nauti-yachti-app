@@ -273,6 +273,51 @@ function spread(vals) {
 }
 const norm = (v, s) => Math.max(0, Math.min(1, (v - s.lo) / Math.max(1e-6, s.hi - s.lo)));
 
+// THE OWNER'S OWN PICKS BEAT EVERY SCORE IN THIS FILE.
+//
+// Drop a `picks.txt` in the charter folder and the montage is built from it.
+// One line per moment:
+//
+//     20260812_112342_2f4bac9d.mp4   12-16
+//     20260812_125156_89b550f9.mp4   1:30-1:34
+//     20260812_131004_a5fa14b1.mp4   47          (start only; takes one slice)
+//
+// Blank lines and anything after # are ignored, and the filename can be a
+// unique fragment — "112342" is enough.
+//
+// WHY THIS OUTRANKS THE SCORING. Every automatic signal here is a proxy, and
+// the labels he gave for Anna's cut on 8 Sep 2026 show how weak they are: of
+// four features measured against 23 seconds he called good, motion separated
+// at a ratio of 0.96 and evenness at 0.98 — both noise — while the strongest,
+// people-in-frame, managed 2.12. A proxy at 2:1 is worth having and is not
+// worth arguing with a person who has watched the footage.
+function readPicks(dir) {
+  const f = path.join(dir, "picks.txt");
+  if (!fs.existsSync(f)) return [];
+  const out = [];
+  for (const raw of fs.readFileSync(f, "utf8").split(/\r?\n/)) {
+    const line = raw.replace(/#.*$/, "").trim();
+    if (!line) continue;
+    const m = line.match(/^(\S+)\s+(.+)$/);
+    if (!m) continue;
+    const toSec = (s) => {
+      const p = String(s).trim().split(":").map(Number);
+      if (p.some((x) => !Number.isFinite(x))) return null;
+      return p.length === 2 ? p[0] * 60 + p[1] : p[0];
+    };
+    // One line may carry several moments: "12-16, 30-34".
+    for (const part of m[2].split(",")) {
+      const r = part.trim().match(/^([\d:.]+)(?:\s*-\s*([\d:.]+))?$/);
+      if (!r) continue;
+      const start = toSec(r[1]);
+      const end = r[2] ? toSec(r[2]) : null;
+      if (start == null) continue;
+      out.push({ match: m[1], start, end });
+    }
+  }
+  return out;
+}
+
 // Look in the charter's own folder first, then the inbox. Footage gets filed
 // eventually, and a tool that only reads the inbox stops working the day
 // somebody tidies up.
@@ -316,10 +361,70 @@ if (!clips.length) {
 console.log(`\n  ${clips.length} clips for ${DAY}${NAME ? " — " + NAME : ""}`);
 console.log(`  source: ${dir}\n`);
 
+// If he has marked the good moments, that IS the montage. No scoring, no dock
+// test, no dark penalty — those exist to guess at what he would pick, and he
+// has stopped guessing being necessary.
+let PICKED = null;
+const PICKS = readPicks(dir);
+if (PICKS.length) {
+  const chosen = [];
+  for (const p of PICKS) {
+    const clip = clips.find((c) => c.file.includes(p.match));
+    if (!clip) { console.log(`    ?  no clip matches "${p.match}" — skipped`); continue; }
+
+    // These are typed by hand off a video player, so a start past the end of
+    // the clip or an end a few seconds beyond it are both going to happen.
+    // Neither can be allowed through quietly: ffmpeg answers a start past the
+    // end with an empty segment, and an empty segment silently shifts every
+    // transition offset after it onto the wrong shot.
+    if (p.start >= clip.seconds - 0.5) {
+      console.log(`    !  ${clip.file.slice(9, 15)} is only ${clip.seconds.toFixed(0)}s ` +
+        `— a pick at ${p.start}s is past the end. Skipped.`);
+      continue;
+    }
+    let len = p.end != null ? Math.max(0.5, p.end - p.start) : null;
+    const room = clip.seconds - p.start;
+    if (len != null && len > room) {
+      console.log(`    ~  ${clip.file.slice(9, 15)} ends at ${clip.seconds.toFixed(0)}s ` +
+        `— trimming your ${len.toFixed(1)}s pick to ${room.toFixed(1)}s.`);
+      len = room;
+    }
+    if (len != null && len < 1.2) {
+      console.log(`    !  ${clip.file.slice(9, 15)} at ${p.start}s leaves only ` +
+        `${len.toFixed(1)}s — too short to read as a shot. Skipped.`);
+      continue;
+    }
+    chosen.push({ ...clip, start: p.start, pickLen: len });
+  }
+  if (!chosen.length) {
+    console.error("\n  picks.txt matched no clips. Check the filenames.\n");
+    process.exit(1);
+  }
+  // He timed these deliberately, so a pick keeps the length he gave it. Only a
+  // start-only pick gets a house-length slice.
+  const totalPicked = chosen.reduce((a, c) => a + (c.pickLen || 0), 0);
+  const openEnded = chosen.filter((c) => !c.pickLen).length;
+  const fill = openEnded
+    ? Math.max(2, Math.min(5.5, (TARGET - totalPicked) / openEnded))
+    : 0;
+
+  console.log(`  picks.txt: ${chosen.length} moments you marked — using those, not the scoring\n`);
+  for (const c of chosen) {
+    if (!c.pickLen) c.pickLen = fill;
+    console.log("    " + c.file.slice(9, 15).replace(/(\d\d)(\d\d)(\d\d)/, "$1:$2") +
+      "  from " + String(c.start).padStart(6) + "s  for " + c.pickLen.toFixed(1) + "s");
+  }
+  PICKED = chosen.map((c) => ({ ...c, len: c.pickLen, gainDb: 0, why: "your pick" }));
+}
+
 let pool = clips;
 let scores = null;
 
-if (SCORE) {
+// Picks skip every filter below. The dock test, the dark penalty and the
+// people bonus all exist to approximate his judgement; when he has supplied it
+// directly they are noise, and a dockside second he deliberately chose must
+// not be thrown away by a rule about engine noise.
+if (SCORE && !PICKED) {
   console.log("  listening and watching…");
   scores = measureAll(clips, dir);
   const dropped = [];
@@ -344,8 +449,8 @@ if (SCORE) {
 // How long each clip gets. Spread the target across everything available, but
 // keep the slices between 2 and 4.5 seconds: under two and it is a strobe,
 // over five and a minute only holds a dozen moments.
-const per = Math.max(2, Math.min(4.5, TARGET / pool.length));
-const used = pool.filter((c) => c.seconds >= per + 0.5);
+const per = Math.max(2, Math.min(4.5, TARGET / Math.max(1, pool.length)));
+const used = PICKED ? [] : pool.filter((c) => c.seconds >= per + 0.5);
 // Each transition OVERLAPS two shots, so N slices joined by N-1 transitions
 // run for N*L - (N-1)*D, not N*L. Ignoring that quietly delivers a 54-second
 // video when 60 was asked for — the slices have to grow to pay for the joins.
@@ -353,14 +458,16 @@ const nUsed = Math.max(1, used.length);
 const overlap = NO_TRANS ? 0 : (nUsed - 1) * TRANS_D;
 const slice = Math.max(2, Math.min(5.5, (TARGET + overlap) / nUsed));
 
-console.log(`  using ${used.length}, ${slice.toFixed(1)}s each -> about ${Math.round(used.length * slice)}s\n`);
+if (!PICKED) {
+  console.log(`  using ${used.length}, ${slice.toFixed(1)}s each -> about ${Math.round(used.length * slice)}s\n`);
+}
 
 // Normalise across the whole DAY, not within each clip. Scoring windows inside
 // a clip would still hand us the best three seconds of a clip with nothing in
 // it — the point is to compare moments against the trip, not against
 // themselves.
 let mScale = null, lScale = null;
-if (SCORE) {
+if (SCORE && !PICKED) {
   mScale = spread(used.flatMap((c) => (scores[c.file].motion || []).map((x) => x.v)));
   lScale = spread(used.flatMap((c) => (scores[c.file].loud || []).map((x) => x.v)));
 }
@@ -368,9 +475,9 @@ if (SCORE) {
 // Pick the best window in each clip, or fall back to a quarter of the way in —
 // the first seconds of a phone clip are usually the camera being raised and
 // pointed at nothing.
-const rows = used.map((c) => {
+const rows = PICKED || used.map((c) => {
   const fallback = Math.min(c.seconds * 0.25, Math.max(0, c.seconds - slice - 0.2));
-  if (!SCORE) return { ...c, start: Math.round(fallback * 10) / 10, why: "" };
+  if (!SCORE) return { ...c, len: slice, start: Math.round(fallback * 10) / 10, why: "" };
 
   const mt = scores[c.file].motion || [], lt = scores[c.file].loud || [];
   let best = null;
@@ -412,9 +519,10 @@ const rows = used.map((c) => {
   const mean = lv.length ? lv.reduce((a, b) => a + b, 0) / lv.length : null;
   const gainDb = mean == null ? 0 : Math.max(-12, Math.min(3, -18 - mean));
 
-  if (!best) return { ...c, start: Math.round(fallback * 10) / 10, why: "unscored", gainDb };
+  if (!best) return { ...c, len: slice, start: Math.round(fallback * 10) / 10, why: "unscored", gainDb };
   return {
     ...c,
+    len: slice,
     start: Math.round(best.start * 10) / 10,
     gainDb,
     why: `mot ${best.m.toFixed(2)} loud ${best.l.toFixed(2)} dark ${((best.dark || 0) * 100).toFixed(0)}% ppl ${((best.colour || 0) * 100).toFixed(1)}%`,
@@ -454,7 +562,7 @@ rows.forEach((r, i) => {
     "-hide_banner", "-loglevel", "error", "-y",
     // Seeking BEFORE -i decodes only what is needed, which is the difference
     // between seconds and minutes across twenty large files.
-    "-ss", String(r.start), "-t", String(slice), "-i", r.full,
+    "-ss", String(r.start), "-t", String(r.len || slice), "-i", r.full,
     "-vf", vf,
     "-c:v", "libx264", "-preset", "veryfast", "-crf", CRF, "-pix_fmt", "yuv420p",
   ];
@@ -478,7 +586,7 @@ rows.forEach((r, i) => {
     // every single join.
     const hardCuts = NO_TRANS || rows.length < 2;
     const af = hardCuts
-      ? [`afade=t=in:st=0:d=0.12`, `afade=t=out:st=${Math.max(0, slice - 0.12).toFixed(2)}:d=0.12`]
+      ? [`afade=t=in:st=0:d=0.12`, `afade=t=out:st=${Math.max(0, (r.len || slice) - 0.12).toFixed(2)}:d=0.12`]
       : [];
     if (r.gainDb) af.unshift(`volume=${r.gainDb.toFixed(1)}dB`);
     if (!af.length) af.push("anull");
@@ -518,9 +626,15 @@ if (NO_TRANS || parts.length < 2) {
   for (const p of parts) args.push("-i", p);
 
   const vChain = [], aChain = [];
+  let acc = 0;
   let vPrev = "0:v", aPrev = "0:a";
   for (let i = 1; i < parts.length; i++) {
-    const offset = (i * (slice - TRANS_D)).toFixed(3);
+    // Cumulative, NOT i*(slice-D): a picks.txt montage has shots of
+    // different lengths, and a uniform stride would drift further out of
+    // place with every join until the last transitions landed inside the
+    // wrong shot entirely.
+    acc += (rows[i - 1].len || slice);
+    const offset = (acc - i * TRANS_D).toFixed(3);
     const vOut = `v${i}`;
     vChain.push(`[${vPrev}][${i}:v]xfade=transition=${transitionAt(i - 1)}:duration=${TRANS_D}:offset=${offset}[${vOut}]`);
     vPrev = vOut;
