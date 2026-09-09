@@ -386,6 +386,28 @@ and reports it instead.
 So a photo-only post can go to Facebook, and if you want it on the other two it
 has to be posted by hand from your phone. Facebook takes either, freely.
 
+### Every Instagram post tags your personal account
+
+Instagram posts carry a **Collaborator** tag on `austinhefty` and
+`brookeashley_05_`. A collab is not a repost: Instagram puts the one post on all
+three profiles' feeds and grids, and the likes and comments pool rather than
+splitting across separate copies.
+
+You each get a notification to accept, once per post. Nothing fails if you don't
+— the post publishes to the business account regardless and simply doesn't appear
+on your profile.
+
+Instagram caps this at **three** collaborators, so there is room for one more.
+The list lives in `lib/socialPosting.js`, not in an agent's brief, so it cannot
+be forgotten on a run.
+
+**There is no equivalent on the other platforms, and there cannot be.** Meta
+removed the ability for apps to post to personal Facebook profiles in 2018, and
+TikTok's API writes only to the authorised account. Snapchat has no organic
+posting API at all and is not a platform the publisher supports. On those three,
+sharing to your own Story is a manual tap — and worth doing, because your Story
+reaches local friends who might book or refer.
+
 ### Five hashtags, never six
 
 Blotato rejects an Instagram post with more than five: *"Instagram allows a
