@@ -412,12 +412,55 @@ if (/\[NDA/i.test(dir)) {
   console.error("  No montage, no stills, no mention. Nothing is written.\n");
   process.exit(1);
 }
-const clips = fs.readdirSync(dir)
-  .filter((f) => f.startsWith(DAY) && /\.(mp4|mov|m4v)$/i.test(f))
+// WHICH FILES COUNT, and it depends on where we are looking.
+//
+// In the INBOX the day prefix is the only thing separating one charter's
+// footage from another's, so it stays. Inside a charter folder the FOLDER is
+// the day, and requiring the filename to repeat it throws away real clips:
+//
+//   * Katherine Lund's eight clips are all named "Snapchat-1006922839.mp4" and
+//     live one level down in "saved next day". Matched: zero. The script would
+//     have said "No clips for 20250703" about a folder with eight of them.
+//   * Brett has six clips, one of which is a bare uuid. Matched: five.
+//
+// Same shape of bug as harvest-stills had, and the same fix: recurse, and stop
+// asking the filename to prove something the folder already establishes.
+// "_from video" and "compilation video" are skipped so a second run cannot
+// feed on its own output.
+const SKIP_DIRS = new Set(["_from video", "compilation video"]);
+
+// FOOTAGE THE OWNER HAS ALREADY REJECTED, and the folder name says so.
+//
+// Christina Coronado's charter carries a "_not for use" subfolder. Recursing
+// without this would have fed the clips he threw away straight back into a
+// montage — and worse, presented the result as a fresh suggestion. Kept as the
+// same vocabulary harvest-stills uses so a marker that stops one tool stops
+// both.
+const FORBIDDEN_DIR = /\bNDA\b|NO MEDIA|DO NOT POST|NOT FOR (?:POST|PUBLIC|USE)/i;
+
+function clipFilesUnder(root, depth = 0) {
+  const out = [];
+  for (const e of fs.readdirSync(root, { withFileTypes: true })) {
+    const full = path.join(root, e.name);
+    if (e.isDirectory()) {
+      if (SKIP_DIRS.has(e.name) || FORBIDDEN_DIR.test(e.name) || depth > 3) continue;
+      out.push(...clipFilesUnder(full, depth + 1));
+    } else if (/\.(mp4|mov|m4v)$/i.test(e.name) && !FORBIDDEN_DIR.test(e.name)) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+const inInbox = dir === INBOX;
+const clips = (inInbox
+  ? fs.readdirSync(dir)
+      .filter((f) => f.startsWith(DAY) && /\.(mp4|mov|m4v)$/i.test(f))
+      .map((f) => path.join(dir, f))
+  : clipFilesUnder(dir))
   .sort()
-  .map((f) => {
-    const full = path.join(dir, f);
-    try { return { file: f, full, ...probe(full) }; } catch { return null; }
+  .map((full) => {
+    try { return { file: path.basename(full), full, ...probe(full) }; } catch { return null; }
   })
   .filter((c) => c && c.seconds > 2);
 
