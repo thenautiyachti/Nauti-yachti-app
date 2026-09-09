@@ -700,7 +700,15 @@ function GalleryTile({ g, height }) {
 }
 
 function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
-  const [hour, setHour] = useState(3);
+  // START AT ONE HOUR, so the first number a visitor sees is the entry price
+  // rather than a three-hour total. They move the selector up from there; the
+  // old default of 3 anchored every card at roughly $570 before anyone had
+  // decided how long they wanted to be out.
+  //
+  // Boatz & Glowz is excluded and stays where it was: it has no hourly pricing
+  // at all — it is a fixed $50 seat on a four-hour night — so the duration
+  // control is not what sets its price.
+  const [hour, setHour] = useState(pkg.id === GLOW_PACKAGE_ID ? 3 : 1);
   const [vesselId, setVesselId] = useState(defaultVesselId);
   const [dayType, setDayType] = useState("weekday");
   const [guests, setGuests] = useState(4);
@@ -936,7 +944,7 @@ function AvailabilityCalendar({ blockedDates, partialDates, bookedWindows = {} }
 function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onSubmitPay, onSubmitInquire }) {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", packageId: defaultPackageId || packages[0]?.id,
-    vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "",
+    vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 1, couponCode: "",
     addOnIds: [], agreeTerms: false,
   });
   const [sent, setSent] = useState(false);
@@ -1049,7 +1057,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     // to show a stuck button on.
     if (ok) {
       setSent(true);
-      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 3, couponCode: "", addOnIds: [], agreeTerms: false });
+      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 1, couponCode: "", addOnIds: [], agreeTerms: false });
       setTimeout(() => setSent(false), 3500);
     } else {
       setSubmitting(false);
