@@ -30,6 +30,7 @@ import { formatBody } from "../lib/boardText";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
+import SocialMessagesTab from "./SocialMessagesTab";
 
 // Names only. The leading numbers came from a spreadsheet's sort order and had
 // started to do real damage: 05 was three different repair categories, 06 was
@@ -296,6 +297,23 @@ export default function AdminView({
     return () => { alive = false; clearInterval(id); };
   }, []);
 
+  // The same badge for DMs, and for a sharper reason. A comment is public, so
+  // somebody eventually notices it going unanswered. A DM is private — nobody
+  // sees it except the person who sent it. Two had been sitting unread since
+  // 7 Sep 2026, one of them offering two boats to help with the shoreline
+  // cleanup, and there was no surface anywhere that would ever have said so.
+  const [waitingMessages, setWaitingMessages] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const read = () => fetch("/api/admin/social-messages")
+      .then((r) => r.json())
+      .then((d) => { if (alive && d && d.summary) setWaitingMessages(d.summary.waiting || 0); })
+      .catch(() => {});
+    read();
+    const id = setInterval(read, 5 * 60 * 1000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
   // The tab counter has to agree with the list under it. A card-paid booking
   // exists in both tables by design — see toUnifiedRows — so a straight
   // inquiries + externalBookings sum counts it twice, and the number on the tab
@@ -352,6 +370,9 @@ export default function AdminView({
         // Sits beside Media Drafts because it is the same shape of job: a
         // queue of things waiting on a decision only the owner can make.
         { id: "socialComments", label: tabLabel("Comments", openComments), count: openComments },
+        // Beside Comments because it is the same job on a quieter channel — and
+        // the quiet is the danger: nobody but the sender sees a DM go unread.
+        { id: "socialMessages", label: tabLabel("Messages", waitingMessages), count: waitingMessages },
         { id: "testimonials", label: tabLabel("Testimonials", needsReviewCount(testimonials)), count: needsReviewCount(testimonials) },
         // Badged on the OUTSTANDING count, not the total: this is a queue of
         // promises still owed, and once it is empty it should say nothing.
@@ -639,6 +660,7 @@ export default function AdminView({
         )}
 
         {tab === "socialComments" && <SocialCommentsTab />}
+        {tab === "socialMessages" && <SocialMessagesTab />}
 
         {tab === "photoRequests" && (
           <PhotoRequestsTab
