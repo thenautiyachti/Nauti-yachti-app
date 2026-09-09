@@ -7,6 +7,7 @@ import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
 import { includedIds, isIncluded, isCovered, chargeableIds } from "../lib/addOns";
 import { isPartnerReferral, PARTNER_PRICE_NOTE } from "../lib/partners";
+import { captureReferralSource, getReferralSource } from "../lib/referralSource";
 import NavBar from "./NavBar";
 import PageFooter from "./PageFooter";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -97,6 +98,16 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // WHERE THEY CAME FROM, stashed the moment they land.
+  //
+  // Separate effect on purpose: the one above returns early whenever there is
+  // no `?package=`, and folding this into it would mean every visitor without
+  // that parameter — most of them — recorded no source at all.
+  //
+  // Runs before anything else can navigate, because the tag is on the landing
+  // URL and almost nobody submits the form on the page they arrived at.
+  useEffect(() => { captureReferralSource(); }, []);
+
   function handleBook(pkgId, selection) {
     setActivePackage(pkgId);
     setPrefill(selection);
@@ -107,7 +118,10 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
     const res = await fetch("/api/inquiries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      // referralSource rides along rather than living in the form state: it is
+      // not something the guest fills in, and putting it in the form object
+      // would mean every caller had to remember to carry it.
+      body: JSON.stringify({ ...form, referralSource: getReferralSource() }),
     });
     if (!res.ok) {
       flashToast("Something went wrong sending that — please try again or call us directly.");
@@ -126,7 +140,10 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       const checkoutRes = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        // Same tag on the pay-now path. Losing it here would be the worse half
+        // to lose: these are the ones that turn into money, and they are
+        // exactly the conversions a campaign needs to be judged on.
+        body: JSON.stringify({ ...form, referralSource: getReferralSource() }),
       });
 
       if (checkoutRes.ok) {

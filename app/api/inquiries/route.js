@@ -3,6 +3,7 @@ const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 const { sendInquiryEmail, sendInquiryAckEmail } = require("../../../lib/email");
 const { generateBookingId } = require("../../../lib/bookingId");
+const { clean: cleanSource } = require("../../../lib/referralSource");
 
 // Admin-only: view all inquiries.
 async function GET() {
@@ -45,6 +46,10 @@ async function POST(req) {
       // supplies is worth nothing if the acceptance is ever questioned.
       termsAcceptedAt: body.termsAccepted ? new Date() : null,
       addOnIds: Array.isArray(body.addOnIds) && body.addOnIds.length ? JSON.stringify(body.addOnIds) : null,
+      // Where they came from, if the landing URL said so. Sanitised through the
+      // one module that knows the shape, so a hand-rolled payload cannot put a
+      // redirect chain into a column that ends up on a console card.
+      referralSource: cleanSource(body.referralSource),
     },
   });
 

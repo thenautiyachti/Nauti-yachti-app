@@ -192,7 +192,15 @@ async function POST(req) {
                 pricePaid: paid,
                 bookingId: paidInquiry.bookingId || null,
                 platformRef: session.id,
-                referralSource: "website",
+                // INHERIT WHAT BROUGHT THEM, not just which door they walked
+                // through. This was hardcoded "website", which is true of every
+                // checkout and therefore says nothing — the whole point of
+                // referralSource is that it is distinct from `platform`.
+                //
+                // Now a booking that started with an Instagram DM tagged
+                // ?from=ig-tube carries that all the way to the money, which is
+                // what makes a campaign answerable rather than arguable.
+                referralSource: paidInquiry.referralSource || "website",
                 note: "Booked and paid through the website checkout. Created automatically from the Stripe webhook.",
               },
             });

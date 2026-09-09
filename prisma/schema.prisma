@@ -121,6 +121,23 @@ model Inquiry {
   refundType   String? // "full" | "partial" | "none"
   refundAmount Float? // dollar amount actually refunded — mainly for "partial"
 
+  // WHERE THIS PERSON CAME FROM, captured rather than guessed.
+  //
+  // ExternalBooking has carried referralSource for a while, but it is filled in
+  // by hand and only 11 of 76 rows have one. An Inquiry had nothing at all — so
+  // somebody who arrived from an Instagram DM, a link in bio or a QR code on
+  // the boat produced a record that could not say which.
+  //
+  // Set from a `?from=` (or `utm_source`) parameter on the landing URL and
+  // carried through the form, so a DM that sends people to
+  // /packages/tubing-wakeboarding-charter?from=ig-tube is measurable. It is the
+  // difference between "did the automation bring anything in" being a fact and
+  // being a guess, which is what decides whether to build more of them.
+  //
+  // Free text on purpose: the campaign tags are invented as campaigns are, and
+  // a fixed list here would be stale within a month.
+  referralSource String?
+
   couponCode     String? // uppercase Coupon.code, if one was applied at checkout
   discountAmount Float? // dollars knocked off priceQuoted by the coupon
 

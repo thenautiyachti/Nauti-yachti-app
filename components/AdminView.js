@@ -1081,6 +1081,22 @@ function InquiriesTab({ inquiries, externalBookings = [], onUpdate }) {
                 {i.couponCode ? ` · coupon ${i.couponCode} (−${currency(i.discountAmount || 0)})` : ""}
               </div>
               {i.message && <div style={{ fontSize: 12.5, marginTop: 4 }}>{i.message}</div>}
+              {/* WHAT BROUGHT THEM. Captured from a ?from= or utm_source tag on
+                  the landing URL, so a DM or an ad that sends people to a
+                  package page can be told apart from someone who typed the
+                  address in. Shown on the row because a number nobody sees is
+                  a number nobody acts on. */}
+              {i.referralSource && (
+                <div style={{ fontSize: 11.5, marginTop: 5 }}>
+                  <span className="mono" style={{
+                    padding: "2px 7px", borderRadius: 4, letterSpacing: "0.04em",
+                    color: "#4ff3ff", background: "rgba(79,243,255,0.1)",
+                    border: "1px solid rgba(79,243,255,0.3)",
+                  }}>
+                    came from {i.referralSource}
+                  </span>
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <span

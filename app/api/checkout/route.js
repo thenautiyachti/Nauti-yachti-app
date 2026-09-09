@@ -6,6 +6,7 @@ const { checkGiftCertificate, applicableAmount, redeem: redeemGiftCertificate } 
 const { generateBookingId } = require("../../../lib/bookingId");
 const { quoteTotal } = require("../../../lib/pricing");
 const { parsePackage } = require("../../../lib/serialize");
+const { clean: cleanSource } = require("../../../lib/referralSource");
 const { isPartnerReferralRow } = require("../../../lib/partners");
 
 // Public: customer clicks "Book this" / submits the booking form and is sent
@@ -173,6 +174,9 @@ async function POST(req) {
       giftAmount: giftApplied > 0 ? giftApplied : null,
       bookingId,
       addOnIds: Array.isArray(body.addOnIds) && body.addOnIds.length ? JSON.stringify(body.addOnIds) : null,
+      // The pay-now path. This is the half that turns into money, so it is the
+      // half a campaign has to be judged on.
+      referralSource: cleanSource(body.referralSource),
     },
   });
 
