@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, createContext, useContext, Fragment } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext, Fragment } from "react";
 import { currency, localDateKey, imageFocus } from "../lib/pricing";
 import {
   GOOGLE_REVIEW_URL, GOOGLE_LISTING_URL, TEMPLATES, ASK_WINDOWS, DOCK_SCRIPT,
@@ -61,7 +61,7 @@ export default function AdminView({
   onAddCoupon, onToggleCouponActive, onUpdateCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
   onUpdateMediaDraftStatus, onDeleteMediaDraft, onAttachMediaDraftMedia,
-  onUpdateTestimonialStatus, onDeleteTestimonial,
+  onUpdateTestimonialStatus, onUpdateTestimonialDate, onDeleteTestimonial,
   photoRequests, onMarkPhotoRequestSent, onDeletePhotoRequest,
 }) {
   const [tab, setTab] = useState("overview");
@@ -676,6 +676,7 @@ export default function AdminView({
             inquiries={inquiries}
             externalBookings={externalBookings}
             onUpdateStatus={onUpdateTestimonialStatus}
+            onUpdateDate={onUpdateTestimonialDate}
             onDelete={onDeleteTestimonial}
             onUpdateExternalBooking={onUpdateExternalBooking}
             onUpdateInquiry={onUpdateInquiry}
@@ -6604,7 +6605,108 @@ const TESTIMONIAL_STATUS_TEXT_COLORS = {
   rejected: "var(--pink)",
 };
 
-function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateStatus, onDelete, onUpdateExternalBooking, onUpdateInquiry }) {
+// The date a reviewer actually sailed, guessed from their name.
+//
+// The site prints "· sailed August 2025" beside a review, and until now nothing
+// could fill that in: the public form does not ask (a review form should not
+// make a guest recall a date) and the admin PATCH did not accept one, so every
+// review submitted through the site was permanently undated.
+//
+// Matching is on first name plus surname initial, because a guest reviews as
+// "Drew M" or "Drew Morgan Tilghman" for a booking filed under "Drew Morgan".
+// It only ever SUGGESTS -- the owner still taps it -- because a wrong month
+// against a named guest is published, and two guests can share a first name.
+function suggestCharterDate(name, inquiries, externalBookings) {
+  const parts = String(name || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!parts.length) return null;
+  const first = parts[0];
+  const initial = parts.length > 1 ? parts[1][0] : null;
+
+  const rows = [
+    ...(externalBookings || []).map((b) => ({ name: b.guestName, date: b.date, status: b.status })),
+    ...(inquiries || []).map((q) => ({ name: q.name, date: q.date, status: q.status })),
+  ];
+
+  const hits = [];
+  for (const r of rows) {
+    if (!r.date) continue;
+    // Only charters that actually happened. A cancelled or still-open enquiry
+    // is not a date anybody sailed on.
+    if (r.status && /cancel|declin|reject/i.test(r.status)) continue;
+    const rp = String(r.name || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!rp.length || rp[0] !== first) continue;
+    if (initial && rp.length > 1 && rp[1][0] !== initial) continue;
+    hits.push(String(r.date).slice(0, 10));
+  }
+  if (!hits.length) return null;
+  // Same guest, several trips: the most recent is the one they just reviewed.
+  const uniq = [...new Set(hits)].sort();
+  return { date: uniq[uniq.length - 1], ambiguous: uniq.length > 1 };
+}
+
+// Sets the month printed beside a review on the public site. Shows what the
+// site will actually render, not the raw date, because month-and-year is what
+// goes out -- the exact day is deliberately not published.
+function SailedDateRow({ t, inquiries, externalBookings, onUpdateDate }) {
+  const [busy, setBusy] = useState(false);
+  const suggestion = useMemo(
+    () => (t.charterDate ? null : suggestCharterDate(t.name, inquiries, externalBookings)),
+    [t.charterDate, t.name, inquiries, externalBookings]
+  );
+
+  const save = async (value) => {
+    setBusy(true);
+    try { await onUpdateDate(t.id, value); } finally { setBusy(false); }
+  };
+
+  const asMonth = (d) => {
+    const [y, m] = String(d).split("-").map(Number);
+    if (!y || !m) return "";
+    return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  };
+
+  return (
+    <div style={{ marginBottom: 10, paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.14)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap" }}>Sailed</span>
+        <input
+          type="date"
+          value={t.charterDate || ""}
+          disabled={busy}
+          onChange={(e) => save(e.target.value || null)}
+          style={{
+            flex: "1 1 120px", minWidth: 0, background: "var(--paper-4)", color: "var(--text)",
+            border: "1px solid rgba(203,108,230,0.3)", borderRadius: 5, padding: "4px 6px", fontSize: 12,
+          }}
+        />
+        {t.charterDate && (
+          <button type="button" onClick={() => save(null)} disabled={busy} title="Clear the sailed date"
+            style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 5, padding: "4px 7px", fontSize: 11 }}>
+            ✕
+          </button>
+        )}
+      </div>
+
+      {t.charterDate ? (
+        <div style={{ fontSize: 11, color: "var(--purple)", marginTop: 4 }}>
+          Site shows &ldquo;· sailed {asMonth(t.charterDate)}&rdquo;
+        </div>
+      ) : suggestion ? (
+        <button type="button" onClick={() => save(suggestion.date)} disabled={busy}
+          style={{ marginTop: 5, width: "100%", background: "transparent", color: "var(--purple)", border: "1px dashed var(--purple)", borderRadius: 5, padding: "5px 8px", fontSize: 11.5, fontWeight: 600, textAlign: "left" }}>
+          Use {asMonth(suggestion.date)} — matched a booking for {t.name}
+          {suggestion.ambiguous && " (they have more than one; this is the latest)"}
+        </button>
+      ) : (
+        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+          No date — the site shows the name alone. No booking matched this name.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateStatus, onUpdateDate, onDelete, onUpdateExternalBooking, onUpdateInquiry }) {
   const [filterStatus, setFilterStatus] = useState("all"); // "all" | "pending" | "approved" | "rejected"
   const pendingCount = testimonials.filter((t) => t.status === "pending").length;
 
@@ -6667,6 +6769,8 @@ function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateSt
             <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
               {t.submittedAt && new Date(t.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </div>
+
+            <SailedDateRow t={t} inquiries={inquiries} externalBookings={externalBookings} onUpdateDate={onUpdateDate} />
             {t.status === "pending" ? (
               <div style={{ display: "flex", gap: 6 }}>
                 <button type="button" onClick={() => onUpdateStatus(t.id, "approved")}

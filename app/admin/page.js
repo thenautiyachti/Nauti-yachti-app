@@ -312,6 +312,14 @@ export default function AdminPage() {
     const updated = await api(`/api/testimonials/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
     setTestimonials((prev) => prev.map((t) => (t.id === id ? updated : t)));
   }
+  // The month shown beside a review on the site ("· sailed August 2025"). Pass
+  // null to clear it. Separate from the status call because the two are used at
+  // different moments: the date is usually set while reading the review, the
+  // status when deciding about it.
+  async function updateTestimonialDate(id, charterDate) {
+    const updated = await api(`/api/testimonials/${id}`, { method: "PATCH", body: JSON.stringify({ charterDate }) });
+    setTestimonials((prev) => prev.map((t) => (t.id === id ? updated : t)));
+  }
   async function deleteTestimonial(id) {
     await api(`/api/testimonials/${id}`, { method: "DELETE" });
     setTestimonials((prev) => prev.filter((t) => t.id !== id));
@@ -426,6 +434,7 @@ export default function AdminPage() {
       onAttachMediaDraftMedia={attachMediaDraftMedia}
       onDeleteMediaDraft={deleteMediaDraft}
       onUpdateTestimonialStatus={updateTestimonialStatus}
+      onUpdateTestimonialDate={updateTestimonialDate}
       onDeleteTestimonial={deleteTestimonial}
       photoRequests={photoRequests}
       onMarkPhotoRequestSent={markPhotoRequestSent}
