@@ -92,6 +92,25 @@ async function PATCH(req, { params }) {
     else if (!("mediaType" in body)) {
       data.mediaType = /\.(mp4|mov|webm|m4v)(\?|$)/i.test(body.mediaUrl) ? "video" : "image";
     }
+    // REPLACING THE MEDIA CLEARS THE REVIEW. The owner, 9 Sep 2026: "these notes
+    // on the media rejections are still saved in the history when a new media is
+    // made to replace it... now it's technically a new item."
+    //
+    // He is right, and the field says so itself: reviewNote is "optional owner
+    // note when approving/rejecting" -- HIS words about media he was looking at.
+    // Once that media is gone the note describes something that no longer
+    // exists, and the console goes on showing it as live feedback on a draft
+    // that has already been corrected.
+    //
+    // Only fires on an actual CHANGE of file, so re-saving a draft with the same
+    // media does not wipe a note he has just written. An explicit reviewNote or
+    // reviewReason in the same request still wins -- that is a caller deliberately
+    // setting one, not a leftover.
+    const changed = (body.mediaUrl || null) !== (existing.mediaUrl || null);
+    if (changed) {
+      if (!("reviewNote" in body)) data.reviewNote = null;
+      if (!("reviewReason" in body)) data.reviewReason = null;
+    }
   }
   if ("mediaType" in body && body.mediaType) data.mediaType = body.mediaType;
 
