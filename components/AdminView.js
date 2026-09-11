@@ -8,6 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { owedCharters, owedMessage, windowFor } from "../lib/owedCharters";
+import { bookingLinkMessage, reminderMessage, payLink } from "../lib/guestTexts";
 import { bookingPhones } from "../lib/bookingPhones";
 import { isLinked, earnedIncome, unearnedTotal } from "../lib/ledgerLinks";
 import { hoursByVessel, fleetHours as fleetHoursOf, currentHours, isMetered } from "../lib/engineHours";
@@ -847,12 +848,99 @@ function toUnifiedRows(inquiries, externalBookings) {
 // Inquiry saying "booked" while the ExternalBooking says "owed" is the same
 // split that had Oscar showing up as two people.
 const INQUIRY_STATUSES = Object.keys(INQUIRY_BUCKET_MAP);
-const INQUIRY_STATUS_LABEL = { new: "New", lapsed: "Lapsed", pending: "Pending", booked: "Booked", owed: "Owed", completed: "Completed", cancelled: "Cancelled" };
+// "New" reads as a lead, which is what the unified table's INQUIRY bucket
+// calls it — the two labels disagreeing on the same row is what made the owner
+// ask why Brian King "came in as New not inquiry" (11 Sep 2026). Same thing,
+// said twice; this says it once.
+const INQUIRY_STATUS_LABEL = { new: "New inquiry", lapsed: "Lapsed", pending: "Pending", booked: "Booked", owed: "Owed", completed: "Completed", cancelled: "Cancelled" };
 // "owed" borrows the same amber as "pending" on purpose: both mean the ball is
 // in our court. The difference is that this one has already been paid for.
 const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pending: "#E8934A", booked: "#4FA8E8", owed: "#E8934A", completed: "#7FE0B8", cancelled: "#F0559C" };
 const REFUND_TYPES = ["full", "partial", "none"];
 const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none: "No refund" };
+
+// One-tap text to a guest, from the row he is already looking at.
+//
+// The "Text about owed" button proved the shape: an sms: link with the wording
+// prepared, so the message is identical every time and he only has to press
+// send. This is that, factored out, because there are three of them now —
+// owed, the booking link for a lead, and the reminder for a live booking.
+//
+// A row with no number renders WHY rather than nothing. A disabled-looking
+// button with no explanation sends him hunting for a bug that is really just a
+// missing phone number, and 18 paying guests on this list have no number at all.
+function GuestTextButton({ phone, body, label, color, title, canSendSms, noneLabel }) {
+  if (!phone) {
+    return (
+      <span
+        style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap" }}
+        title="No number on this booking, so there is nothing to text."
+      >
+        {noneLabel || "no number"}
+      </span>
+    );
+  }
+  return (
+    <a
+      href={smsHref(phone, body)}
+      onClick={(e) => {
+        if (!canSendSms) {
+          e.preventDefault();
+          window.alert(
+            "This only works on a phone.\n\n" +
+            "A desktop has nothing to hand an sms: link to, so nothing would be sent.\n\n" +
+            "Open the console on your phone."
+          );
+        }
+      }}
+      style={{
+        background: "transparent", color, border: "1px solid " + color,
+        borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600,
+        whiteSpace: "nowrap", textDecoration: "none",
+      }}
+      title={title}
+    >
+      {label}
+    </a>
+  );
+}
+
+// Which text, if any, this row is asking for. Kept out of the JSX so the rule
+// is readable: a lead needs a way to pay, a live booking needs reminding, and
+// everything else needs nothing.
+function guestTextFor(r) {
+  if (!r) return null;
+
+  // toUnifiedRows keeps only what the table renders — priceQuoted,
+  // paymentStatus and packageName live on `raw`, and deciding whether a
+  // payment link exists needs all three. The unified fields win on merge
+  // because they already normalise name/date across the two models.
+  const g = { ...(r.raw || {}), ...r };
+  const link = payLink(g);
+
+  if (r.statusBucket === "inquiry") {
+    return {
+      body: bookingLinkMessage(g),
+      // Only say "payment link" when there is genuinely one in the message.
+      label: link ? "Text payment link" : "Text to confirm",
+      color: "#7FE0B8",
+      title: link
+        ? "Text " + (g.name || g.guestName || "them") + " their checkout link"
+        : "No online checkout for this row — texts them to confirm so you can send a link by hand",
+      noneLabel: "lead · no number",
+    };
+  }
+  if (r.statusBucket === "booked") {
+    return {
+      body: reminderMessage(g),
+      label: "Text reminder",
+      color: "#4FA8E8",
+      title: "Remind " + (g.name || g.guestName || "them") + " of the day, time and meeting point",
+      noneLabel: "booked · no number",
+    };
+  }
+  return null;
+}
 
 // The guest mailing list. These rows come from the two-field signup on /glow
 // and /glow/crew, not the booking form — so they get their own panel with a
@@ -1752,6 +1840,25 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                               only in the Overview's Guests panel. This is where
                               he actually looks a booking up, so the same one-tap
                               text is here too — same wording, same template. */}
+                          {/* A lead needs a way to pay; a live booking needs
+                              reminding. Both asked for 11 Sep 2026, alongside
+                              the owed nudge that was already here. */}
+                          {(() => {
+                            const t = guestTextFor(r);
+                            if (!t) return null;
+                            const phone = bookingPhones(r)[0];
+                            return (
+                              <GuestTextButton
+                                phone={phone ? phone.number : null}
+                                body={t.body}
+                                label={t.label}
+                                color={t.color}
+                                title={t.title}
+                                noneLabel={t.noneLabel}
+                                canSendSms={canSendSms}
+                              />
+                            );
+                          })()}
                           {isOwed(r.status) && (() => {
                             const body = owedMessage("sms", r, localDayKey(new Date()));
                             const phone = bookingPhones(r)[0];
@@ -1803,10 +1910,31 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                           </button>
                         </div>
                       ) : (
-                        <select value={r.status} onChange={(e) => onMarkInquiry(r.id, e.target.value)}
-                          style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
-                          {INQUIRY_STATUSES.map((s) => <option key={s} value={s}>{INQUIRY_STATUS_LABEL[s]}</option>)}
-                        </select>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                          <select value={r.status} onChange={(e) => onMarkInquiry(r.id, e.target.value)}
+                            style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12 }}>
+                            {INQUIRY_STATUSES.map((s) => <option key={s} value={s}>{INQUIRY_STATUS_LABEL[s]}</option>)}
+                          </select>
+                          {/* A website inquiry is the ONE row that can carry a
+                              real checkout link, because /pay/<id> resolves
+                              against this table. */}
+                          {(() => {
+                            const t = guestTextFor(r);
+                            if (!t) return null;
+                            const phone = bookingPhones(r)[0];
+                            return (
+                              <GuestTextButton
+                                phone={phone ? phone.number : null}
+                                body={t.body}
+                                label={t.label}
+                                color={t.color}
+                                title={t.title}
+                                noneLabel={t.noneLabel}
+                                canSendSms={canSendSms}
+                              />
+                            );
+                          })()}
+                        </div>
                       )}
                     </td>
                   </tr>
