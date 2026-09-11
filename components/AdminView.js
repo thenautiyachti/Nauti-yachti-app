@@ -860,7 +860,16 @@ function toUnifiedRows(inquiries, externalBookings) {
 //
 // It stays MAPPED, deliberately. If an old row ever surfaces carrying it, it
 // still needs to mean something.
-const INQUIRY_STATUSES = ["new", "lapsed", "booked", "owed", "completed", "cancelled"];
+//
+// STILL DERIVED, THOUGH — subtracted from, not retyped. The first version of
+// this was a hand-typed list, which is the exact thing the inquiries PATCH
+// route warns against: "a status the console offered but this route rejected
+// would have failed as a silent 400 on a dropdown that looked like it worked."
+// A hand-typed list can drift INTO that; a filtered one cannot, because it can
+// only ever be a subset of what the route accepts.
+const INQUIRY_STATUS_NOT_OFFERED = ["pending"];
+const INQUIRY_STATUSES = Object.keys(INQUIRY_BUCKET_MAP)
+  .filter((s) => !INQUIRY_STATUS_NOT_OFFERED.includes(s));
 // The stored value is "new"; the label is "Inquiry", to match the INQUIRY
 // bucket shown in the status column beside it. The two disagreeing is what made
 // the owner ask why Brian King "came in as New not inquiry" (11 Sep 2026), and
