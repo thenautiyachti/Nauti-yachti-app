@@ -108,6 +108,58 @@ async function POST(req) {
 
     const inquiryId = meta.inquiryId;
 
+    // A booking that was ALREADY a booking, paid through its own /pay link.
+    //
+    // Added 11 Sep 2026 with ExternalBooking's payment columns. This branch
+    // returns early on purpose: everything below it exists to turn a paid
+    // Inquiry into a booking row, and this row is already the booking. Falling
+    // through would mint a duplicate charter for the money just received --
+    // which is the one failure this webhook must never have.
+    const externalBookingId = meta.externalBookingId;
+    if (externalBookingId) {
+      try {
+        const data = { paymentStatus: "paid", status: "booked" };
+        // Stripe verifies these, so they beat whatever we had -- but only
+        // overwrite when it actually returned one, so a blank never clobbers a
+        // good number or address already on the record.
+        const phone = session.customer_details?.phone;
+        if (phone) data.phone = phone;
+        const email = session.customer_details?.email;
+        if (email) data.email = email;
+        // amount_total is what Stripe actually charged, in cents -- the truth
+        // after any coupon, which priceQuoted is not.
+        if (typeof session.amount_total === "number") data.pricePaid = session.amount_total / 100;
+
+        const paid = await prisma.externalBooking.update({
+          where: { id: externalBookingId }, data,
+        });
+
+        // Same courtesy the website checkout sends. Not awaited and not
+        // allowed to throw: a mail outage must never make Stripe retry a
+        // payment. ExternalBooking has no confirmationSentAt column, so unlike
+        // the inquiry path this cannot stamp the send -- the result is logged
+        // instead of silently dropped.
+        sendBookingConfirmationEmail({
+          name: paid.guestName, email: paid.email, phone: paid.phone,
+          date: paid.date, hours: paid.hours, partySize: paid.partySize,
+          packageName: paid.packageName, vesselName: paid.vesselName,
+          bookingId: paid.bookingId, priceQuoted: paid.pricePaid,
+        })
+          .then((r) => {
+            if (!r || !r.sent) {
+              console.error("[webhooks/stripe] No confirmation sent for "
+                + (paid.bookingId || externalBookingId) + ": " + (r && r.reason));
+            }
+          })
+          .catch((e) => console.error("[webhooks/stripe] Confirmation failed:", e));
+      } catch (err) {
+        // The guest has paid either way. Log loudly rather than failing the
+        // webhook, which would make Stripe retry forever.
+        console.error("[webhooks/stripe] Failed to mark external booking paid:", err);
+      }
+      return NextResponse.json({ received: true });
+    }
+
     try {
       const data = {
         paymentStatus: "paid",

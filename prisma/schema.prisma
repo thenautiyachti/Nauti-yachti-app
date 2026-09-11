@@ -225,6 +225,25 @@ model ExternalBooking {
 
   pricePaid Float? // what the guest actually paid, if the owner has logged it
 
+  // WHAT THEY ASKED FOR, AND WHAT IT COSTS — so a booking taken by text can be
+  // sent the same checkout link as one taken on the website.
+  //
+  // Added 11 Sep 2026. Until then /pay/<id> resolved against Inquiry only, so
+  // the guests this table exists for — the ones who booked by text, WhatsApp or
+  // at the dock, which is most of them — were the only ones who could not be
+  // sent a link to pay. The owner's rule: "I want all inquiry texts to contain a
+  // check out link, like Brian's ... based on their inquiry selection."
+  //
+  // priceQuoted is deliberately NOT pricePaid. pricePaid is money received;
+  // this is money asked for. Charging from pricePaid would mean a booking is
+  // owed whatever it has already paid.
+  packageId       String?
+  packageName     String?
+  priceQuoted     Float?
+  // Mirrors Inquiry so the webhook and the pay page can treat both the same.
+  paymentStatus   String  @default("unpaid") // "unpaid" | "paid" | "refunded"
+  stripeSessionId String?
+
   phone             String? // the PRIMARY number — what gets texted by default
   // Everyone else on the booking, as JSON: [{ number, label }].
   //

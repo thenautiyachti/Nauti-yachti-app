@@ -1,7 +1,7 @@
 import NavBar from "../../../components/NavBar";
 import PageFooter from "../../../components/PageFooter";
 import PayButton from "../../../components/PayButton";
-import { prisma } from "../../../lib/db";
+import { findPayable } from "../../../lib/payableBooking";
 import { currency } from "../../../lib/pricing";
 
 // thenautiyachti.com/pay/<booking id>
@@ -54,12 +54,10 @@ function Shell({ children }) {
 export default async function PayPage({ params }) {
   const { id } = await params;
 
-  let booking = null;
-  try {
-    booking = await prisma.inquiry.findUnique({ where: { id } });
-  } catch {
-    booking = null;
-  }
+  // Resolves against BOTH tables. A booking taken by text lives in
+  // ExternalBooking and is just as payable as one taken on the website — see
+  // lib/payableBooking.js.
+  const booking = await findPayable(id);
 
   if (!booking) {
     return (
@@ -129,15 +127,17 @@ export default async function PayPage({ params }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, paddingTop: 16 }}>
           <span style={{ color: "var(--text)", fontSize: 15, fontWeight: 700 }}>Total</span>
           <span className="display" style={{ color: "var(--text)", fontSize: 30, fontWeight: 800 }}>
-            {currency(booking.priceQuoted)}
+            {currency(booking.amount)}
           </span>
         </div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", textAlign: "right", marginTop: 2 }}>
-          the whole boat, not per person
+          {booking.pricingType === "per-guest"
+            ? (booking.partySize > 1 ? booking.partySize + " seats" : "one seat")
+            : "the whole boat, not per person"}
         </div>
       </div>
 
-      <PayButton bookingId={booking.id} amount={booking.priceQuoted} />
+      <PayButton bookingId={booking.id} amount={booking.amount} />
 
       <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, marginTop: 22, textAlign: "center" }}>
         Something not right? Call or text{" "}

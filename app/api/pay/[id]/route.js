@@ -1,5 +1,6 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
+const { findPayable, notPayableReason, metadataFor } = require("../../../../lib/payableBooking");
 
 // Public: hand a guest from our own payment page to Stripe.
 //
@@ -13,7 +14,9 @@ const { prisma } = require("../../../../lib/db");
 // page renders the summary server-side; this route only mints a session and
 // replies with a URL, so a guessed id leaks no name, phone or date.
 //
-// Body: none. POST /api/pay/<inquiry id>
+// Body: none. POST /api/pay/<booking id> — an Inquiry OR an ExternalBooking.
+// Both are resolved by lib/payableBooking, so a charter agreed by text can be
+// paid the same way as one booked on the site.
 
 const SITE = "https://www.thenautiyachti.com";
 
@@ -21,23 +24,24 @@ async function POST(req, { params }) {
   const { id } = await params;
   if (!id) return NextResponse.json({ error: "Missing booking" }, { status: 400 });
 
-  const booking = await prisma.inquiry.findUnique({ where: { id } });
+  const booking = await findPayable(id);
   // Same answer for "no such booking" and "not payable", so this cannot be used
   // to discover which ids exist.
-  if (!booking) {
+  const reason = notPayableReason(booking);
+  if (reason === "not-found") {
     return NextResponse.json({ error: "This payment link is no longer valid." }, { status: 404 });
   }
-  if (booking.paymentStatus === "paid") {
+  if (reason === "already-paid") {
     return NextResponse.json({ error: "This booking is already paid." }, { status: 409 });
   }
-
-  const amount = Number(booking.priceQuoted);
-  if (!amount || amount <= 0) {
+  if (reason === "no-price") {
     return NextResponse.json(
       { error: "There is no price on this booking yet — please contact us." },
       { status: 400 }
     );
   }
+
+  const amount = Number(booking.amount);
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
@@ -82,7 +86,9 @@ async function POST(req, { params }) {
       // offers to take their money.
       cancel_url: SITE + "/pay/" + booking.id,
       // The key the webhook reads to flip THIS booking to paid.
-      metadata: { inquiryId: booking.id, bookingRef: booking.bookingId || "" },
+      // Which table to flip when the money lands. An ExternalBooking carries
+      // externalBookingId instead — see lib/payableBooking metadataFor.
+      metadata: metadataFor(booking),
       phone_number_collection: { enabled: true },
       consent_collection: { terms_of_service: "required" },
       custom_text: {
@@ -99,7 +105,8 @@ async function POST(req, { params }) {
     );
   }
 
-  await prisma.inquiry.update({
+  const table = booking.kind === "external" ? prisma.externalBooking : prisma.inquiry;
+  await table.update({
     where: { id: booking.id },
     data: { stripeSessionId: session.id },
   });
