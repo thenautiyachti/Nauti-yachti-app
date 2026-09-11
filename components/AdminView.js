@@ -264,7 +264,12 @@ export default function AdminView({
 
   // Crew-list signups are mailing-list contacts stored in the Inquiry table
   // (lib/crewList.js) — they must not inflate either tab's count.
+  // Every live lead, whichever table it landed in. The tab used to count only
+  // website inquiries while the panel below it also lists the ones taken by
+  // text — a header saying 1 above a list of 2 is worse than either number.
   const bookingInquiries = inquiries.filter(isRealInquiry);
+  const externalLeadCount = externalBookings.filter((b) => b.status === "inquiry").length;
+  const allLeadCount = bookingInquiries.length + externalLeadCount;
 
   // Fourteen peer tabs had no answer to "where does the next feature go?"
   // except another tab, so the row kept growing and everything had to be
@@ -348,7 +353,7 @@ export default function AdminView({
       // he clicks it; inquiries are a queue he goes to deliberately.
       defaultTab: "bookings",
       tabs: [
-        { id: "inquiries", label: `Inquiries (${bookingInquiries.length})`, count: bookingInquiries.length },
+        { id: "inquiries", label: `Inquiries (${allLeadCount})`, count: allLeadCount },
         { id: "bookings", label: `Bookings (${bookingRowCount})`, count: owedCount },
         { id: "availability", label: "Availability" },
       ],
@@ -505,7 +510,9 @@ export default function AdminView({
 
       <div style={{ padding: 24 }}>
         {tab === "inquiries" && (
-          <InquiriesTab inquiries={inquiries} externalBookings={externalBookings} onUpdate={onUpdateInquiry} />
+          <InquiriesTab inquiries={inquiries} externalBookings={externalBookings}
+            onUpdate={onUpdateInquiry} onUpdateExternalBooking={onUpdateExternalBooking}
+            onSetExternalBookingStatus={onSetExternalBookingStatus} />
         )}
 
         {tab === "bookings" && (
@@ -1189,7 +1196,62 @@ function CrewListPanel({ signups, onUpdate }) {
   );
 }
 
-function InquiriesTab({ inquiries, externalBookings = [], onUpdate }) {
+// Leads that arrived by text, phone or at the dock — the ones this business
+// actually gets most of. They live in ExternalBooking rather than Inquiry, and
+// that is a filing detail nobody outside the code should have to know.
+//
+// Shown as its own panel rather than mixed into the list above, because the
+// two really are different in one way worth seeing: a website inquiry carries
+// the guest's own typed answers, and one of these carries whatever the owner
+// wrote down. Same status vocabulary, same payment link, different provenance.
+function ExternalLeadsPanel({ leads, onSetStatus, onUpdate }) {
+  if (!leads || leads.length === 0) return null;
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 8, padding: 14 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+        <span style={{ fontWeight: 700, color: "var(--text)" }}>Taken by text or phone</span>
+        <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+          {leads.length} lead{leads.length === 1 ? "" : "s"} · not from the website form
+        </span>
+      </div>
+      <div style={{ display: "grid", gap: 8 }}>
+        {leads.map((b) => (
+          <div key={b.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", paddingTop: 8, borderTop: "1px solid rgba(203,108,230,0.12)" }}>
+            <div>
+              <div style={{ fontWeight: 700, color: "var(--text)" }}>
+                {b.guestName || "(no name)"}{b.packageName ? " — " + b.packageName : ""}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
+                {[b.phone, b.vesselName, b.date, b.partySize ? "party of " + b.partySize : null,
+                  b.priceQuoted != null ? currency(b.priceQuoted) : null,
+                  b.bookingId].filter(Boolean).join(" · ")}
+              </div>
+              {b.referralSource && (
+                <div style={{ fontSize: 11.5, marginTop: 5 }}>
+                  <span className="mono" style={{ padding: "2px 7px", borderRadius: 4, letterSpacing: "0.04em", color: "#4ff3ff", background: "rgba(79,243,255,0.1)", border: "1px solid rgba(79,243,255,0.3)" }}>
+                    came from {b.referralSource}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <span className="mono" style={{ fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text)", background: b.paymentStatus === "paid" ? "var(--purple)" : "rgba(203,108,230,0.12)", border: "1px solid rgba(203,108,230,0.3)" }}>
+                {b.paymentStatus || "unpaid"}
+              </span>
+              <select value={b.status} onChange={(e) => onSetStatus(b.id, e.target.value)}
+                style={{ padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }}>
+                {BOOKING_STATUS_BUCKETS.map((v) => <option key={v} value={v}>{BOOKING_STATUS_LABEL[v]}</option>)}
+              </select>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InquiriesTab({ inquiries, externalBookings = [], onUpdate,
+  onUpdateExternalBooking, onSetExternalBookingStatus }) {
   const crewList = inquiries.filter(isCrewListRow);
   const guestContacts = inquiries.filter(isGuestContactRow);
   const realInquiries = inquiries.filter(isRealInquiry);
@@ -1198,6 +1260,19 @@ function InquiriesTab({ inquiries, externalBookings = [], onUpdate }) {
       <ContactsPanel externalBookings={externalBookings} inquiries={inquiries} />
       <ExtraContactsPanel contacts={guestContacts} />
       <CrewListPanel signups={crewList} onUpdate={onUpdate} />
+      {/* A LEAD IS A LEAD, WHICHEVER TABLE IT LANDED IN.
+
+          This tab read the Inquiry table only, so somebody who enquired by
+          text was invisible here and appeared solely in the Bookings list.
+          The owner went looking for Jim on 11 Sep 2026 and found only Brian,
+          which is the whole problem: "Jim isn't listed in the inquiry tab,
+          only brian." Where a lead is stored is our filing detail, not a fact
+          about the lead. */}
+      <ExternalLeadsPanel
+        leads={externalBookings.filter((b) => b.status === "inquiry")}
+        onSetStatus={onSetExternalBookingStatus}
+        onUpdate={onUpdateExternalBooking}
+      />
       {realInquiries.length === 0 && <div style={{ color: "var(--muted)" }}>No inquiries yet — they'll show up here the moment a customer submits the form.</div>}
       {realInquiries.map((i) => (
         <div key={i.id} style={{ background: "var(--card)", borderRadius: 8, padding: 14, color: "var(--text)" }}>
