@@ -49,6 +49,12 @@ Three lists, all collapsed until you open them:
   header so you do not have to open the panel to use it. To honour an
   unsubscribe set that person's status to lapsed and they drop out of the copy.
 
+**The two lower panels are subsets of the top one, not additions to it.** Their
+headings say so — *"2 of the 30 above"* — because the obvious arithmetic is
+wrong: the contacts list already folds in crew-list signups and extra contacts,
+and dedupes a person to one row however many lists they appear on. Adding 30 and
+2 and 2 counts four people twice.
+
 ## Bookings
 
 Every charter, from any source — Boatsetter, GetMyBoat, the website, cash, Zelle.

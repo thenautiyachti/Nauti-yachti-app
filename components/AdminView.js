@@ -1108,7 +1108,7 @@ function ContactsPanel({ externalBookings, inquiries }) {
 // review ask is worth making, and the rest of the time they push the actual
 // leads off the screen. Owner, 11 Sep 2026: "can be by default collapsed too,
 // like everyone we contacted".
-function ExtraContactsPanel({ contacts }) {
+function ExtraContactsPanel({ contacts, reachable }) {
   const [open, setOpen] = useState(false);
   if (!contacts.length) return null;
   return (
@@ -1117,6 +1117,7 @@ function ExtraContactsPanel({ contacts }) {
         style={{ background: "transparent", border: "none", padding: 0, textAlign: "left", width: "100%", color: "var(--text)", cursor: "pointer" }}>
         <div style={{ fontWeight: 700 }}>
           {open ? "▾" : "▸"} Extra guest contacts — {contacts.length}
+          {reachable ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> of the {reachable} above</span> : null}
         </div>
       </button>
       {open && (<>
@@ -1147,7 +1148,7 @@ function ExtraContactsPanel({ contacts }) {
 // to mail when a glow date is set, not something to read every time the tab
 // is opened. The copy button stays on the header row so the one action worth
 // reaching for does not need the panel opened first.
-function CrewListPanel({ signups, onUpdate }) {
+function CrewListPanel({ signups, onUpdate, reachable }) {
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -1177,6 +1178,7 @@ function CrewListPanel({ signups, onUpdate }) {
             style={{ background: "transparent", border: "none", padding: 0, textAlign: "left", color: "var(--text)", cursor: "pointer" }}>
           <div style={{ fontWeight: 700, color: "var(--text)" }}>
             {open ? "▾" : "▸"} Crew list — {mailable.length} contact{mailable.length === 1 ? "" : "s"}
+            {reachable ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> of the {reachable} above</span> : null}
             {optedOut > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}> ({optedOut} opted out)</span>}
           </div>
           </button>
@@ -1243,11 +1245,17 @@ function CrewListPanel({ signups, onUpdate }) {
 function ContactsTab({ inquiries, externalBookings = [], onUpdate }) {
   const crewList = inquiries.filter(isCrewListRow);
   const guestContacts = inquiries.filter(isGuestContactRow);
+  // The two panels below are SUBSETS of the panel above, not additions to it.
+  // buildContacts already folds crew-list signups and extra contacts into its
+  // total and dedupes a person to one row, so "30" plus "2" plus "2" counts
+  // four people twice — which is the arithmetic the old headings invited.
+  const reachable = buildContacts(externalBookings, inquiries)
+    .filter((c) => c.phone || String(c.email || "").includes("@")).length;
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <ContactsPanel externalBookings={externalBookings} inquiries={inquiries} />
-      <ExtraContactsPanel contacts={guestContacts} />
-      <CrewListPanel signups={crewList} onUpdate={onUpdate} />
+      <ExtraContactsPanel contacts={guestContacts} reachable={reachable} />
+      <CrewListPanel signups={crewList} onUpdate={onUpdate} reachable={reachable} />
     </div>
   );
 }
