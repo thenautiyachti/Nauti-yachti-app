@@ -333,12 +333,18 @@ export default function AdminView({
   // a single inquiry while two rows sat underneath it, and the owner reasonably
   // read that as the number being wrong about bookings.
   //
-  // Owed is the right thing to surface and an inquiry is not the only thing
-  // waiting on him: it means a guest paid, never sailed, and has no new date —
-  // we are holding their money and owe them a trip. That is work outstanding in
-  // exactly the way a badge is for. A `booked` charter is settled business and
-  // needs no chasing, so it is deliberately NOT counted.
-  const owedCount = bookingRows.filter((r) => r && r.status === "owed").length;
+  // WHAT THE BADGE COUNTS: everything still live, which is what the table's own
+  // Active filter shows. Until 11 Sep 2026 it counted owed charters alone, so a
+  // list headed "Active bookings (4 of 78)" wore a badge saying 1 — the two
+  // numbers describing the same rows and disagreeing. Owner: "Booking 1 should
+  // be booking 4 currently since 4 are active."
+  //
+  // Live means a lead waiting on an answer, a booking that has not sailed, or a
+  // charter paid for that never ran. Completed, lapsed and cancelled are
+  // history and are not counted. Same predicate as the Active filter, so the
+  // badge and the list can never drift apart again.
+  const activeBookingCount = bookingRows.filter((r) =>
+    r && ["inquiry", "booked", "owed"].includes(r.statusBucket)).length;
 
   const TAB_GROUPS = [
     {
@@ -362,7 +368,7 @@ export default function AdminView({
         // Counted on people we can actually reach, which is the question this
         // tab exists to answer.
         { id: "inquiries", label: `Contacts (${reachableContactCount})`, count: 0 },
-        { id: "bookings", label: `Bookings (${bookingRowCount})`, count: owedCount },
+        { id: "bookings", label: `Bookings (${bookingRowCount})`, count: activeBookingCount },
         { id: "availability", label: "Availability" },
       ],
     },
