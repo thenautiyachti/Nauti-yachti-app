@@ -190,6 +190,13 @@ export default function AdminPage() {
   async function markInquiry(id, status) {
     await updateInquiry(id, { status });
   }
+  async function deleteInquiry(id) {
+    await api(`/api/inquiries/${id}`, { method: "DELETE" });
+    setInquiries((prev) => prev.filter((i) => i.id !== id));
+    // An inquiry can hold a date the same way a booking can, so the partial-day
+    // map has to be recomputed -- same reason deleteExternalBooking does it.
+    await refreshPartialDates();
+  }
   async function updateInquiry(id, fields) {
     const updated = await api(`/api/inquiries/${id}`, { method: "PATCH", body: JSON.stringify(fields) });
     setInquiries((prev) => prev.map((i) => (i.id === id ? updated : i)));
@@ -421,6 +428,7 @@ export default function AdminPage() {
       onSetExternalBookingStatus={setExternalBookingStatus}
       onUpdateExternalBooking={updateExternalBooking}
       onDeleteExternalBooking={deleteExternalBooking}
+      onDeleteInquiry={deleteInquiry}
       onUpdateMaintenanceItem={updateMaintenanceItem}
       onAddEngineHoursLog={addEngineHoursLog}
       onAddFuelLog={addFuelLog}

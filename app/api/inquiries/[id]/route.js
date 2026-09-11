@@ -98,4 +98,36 @@ async function PATCH(req, { params }) {
   return NextResponse.json({ ...updated, bookingSynced });
 }
 
-module.exports = { PATCH };
+// Remove an inquiry outright. Mirrors the external-bookings route so the two
+// halves of the bookings table behave the same -- until 11 Sep 2026 a booking
+// taken by text could be deleted and a website inquiry could not, which is an
+// asymmetry nothing in the code ever argued for.
+//
+// WHAT THIS COSTS, because it is not nothing: an inquiry is the only record
+// that somebody asked and did not book. Deleting one removes a row from the
+// funnel, so "lapsed" remains the right answer for a lead that simply went
+// quiet. This is for the ones that should never have been a row at all.
+//
+// The guard against a mis-click is the confirm dialog in the console, which
+// names the guest and the date and says there is no undo. Owner, 11 Sep 2026:
+// "it's highly unlikely we will ever use the button and it asks us are we sure
+// before just deleting it in case of accidental hit."
+//
+// Nothing references Inquiry by foreign key -- LedgerEntry hangs off
+// ExternalBooking -- so this leaves no dangling rows behind it.
+async function DELETE(req, { params }) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+  const { id } = await params;
+  try {
+    await prisma.inquiry.delete({ where: { id } });
+  } catch (e) {
+    // Already gone is the outcome the caller wanted, not an error to show.
+    if (e && e.code === "P2025") return NextResponse.json({ ok: true });
+    throw e;
+  }
+  return NextResponse.json({ ok: true });
+}
+
+module.exports = { PATCH, DELETE };

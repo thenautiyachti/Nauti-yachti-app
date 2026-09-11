@@ -58,6 +58,7 @@ export default function AdminView({
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onUpdateInquiry, onLogout,
   onUpdateAddonPrice, onUpdateAddon, onAddAddon, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking,
+  onDeleteInquiry,
   onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
   onAddCoupon, onToggleCouponActive, onUpdateCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
@@ -516,6 +517,7 @@ export default function AdminView({
             onSetExternalBookingStatus={onSetExternalBookingStatus}
             onUpdateExternalBooking={onUpdateExternalBooking}
             onDeleteExternalBooking={onDeleteExternalBooking}
+            onDeleteInquiry={onDeleteInquiry}
             onMarkInquiry={onMarkInquiry}
           />
         )}
@@ -1565,7 +1567,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
   );
 }
 
-function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry }) {
+function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExternalBooking, onSetExternalBookingStatus, onUpdateExternalBooking, onDeleteExternalBooking, onMarkInquiry, onDeleteInquiry }) {
   const canSendSms = useCanSendSms();
   const emptyForm = {
     vesselId: vessels[0]?.id || "", date: localDateKey(new Date()), startTime: "", hours: 4,
@@ -1957,6 +1959,21 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                               />
                             );
                           })()}
+                          {/* Same delete as an external booking, asked for on
+                              11 Sep 2026 so the two halves of this table behave
+                              alike. The confirm is the whole safety story: this
+                              button will almost never be used, so the thing to
+                              protect against is the accidental press. */}
+                          <button type="button" onClick={() => {
+                            if (window.confirm(
+                              `Delete the inquiry from ${r.name || "this guest"}${r.date ? " for " + r.date : ""} permanently?\n\n`
+                              + `This is the only record that they asked. If they simply went quiet, mark them Lapsed instead.\n\n`
+                              + `There is no undo.`
+                            )) onDeleteInquiry(r.id);
+                          }}
+                            style={{ background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                            Delete
+                          </button>
                         </div>
                       )}
                     </td>
