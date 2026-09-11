@@ -847,7 +847,20 @@ function toUnifiedRows(inquiries, externalBookings) {
 // website booking that was paid for and never sailed is one guest; leaving the
 // Inquiry saying "booked" while the ExternalBooking says "owed" is the same
 // split that had Oscar showing up as two people.
-const INQUIRY_STATUSES = Object.keys(INQUIRY_BUCKET_MAP);
+// WHAT THE DROPDOWN OFFERS, listed on purpose rather than derived from the
+// bucket map's keys.
+//
+// Those are two different questions and deriving one from the other conflated
+// them: the map answers "what does a stored value mean", the list answers "what
+// may somebody choose". "pending" needs the first and must not have the second
+// — nothing has ever written it (zero rows, counted 11 Sep 2026), so offering
+// it only invites a status into the data that nothing else understands. Owner,
+// that day: "pending is still listed as an option, it shouldn't be since we
+// don't use that variable."
+//
+// It stays MAPPED, deliberately. If an old row ever surfaces carrying it, it
+// still needs to mean something.
+const INQUIRY_STATUSES = ["new", "lapsed", "booked", "owed", "completed", "cancelled"];
 // The stored value is "new"; the label is "Inquiry", to match the INQUIRY
 // bucket shown in the status column beside it. The two disagreeing is what made
 // the owner ask why Brian King "came in as New not inquiry" (11 Sep 2026), and
