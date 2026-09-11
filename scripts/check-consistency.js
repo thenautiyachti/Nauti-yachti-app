@@ -145,21 +145,33 @@ try {
 // matched the guest name "KuykeNDAll" and fenced off a charter with no
 // restriction on it at all.
 {
-  const guards = {};
+  // The definition now lives ONCE, in media-guard.js, so this no longer compares
+  // three copies — it checks that no copy has come back. A script that defines
+  // its own FORBIDDEN has re-opened the door this closed.
+  const GUARD = "media-guard.js";
+  const guardSrc = read(path.join(SCRIPTS, GUARD));
+  if (!guardSrc) {
+    fail("media guard", GUARD + " is missing — the three readers have nothing to share");
+  } else {
+    const m = guardSrc.match(/const FORBIDDEN = (\/.*\/[a-z]*);/);
+    if (!m) fail("media guard", GUARD + " no longer defines FORBIDDEN");
+    // Load-bearing: without the word boundaries the pattern matched the guest
+    // name "KuykeNDAll" and fenced off a charter with no restriction at all.
+    else if (!/\\bNDA\\b/.test(m[1])) fail("media guard", GUARD + " lost the word boundaries around NDA");
+    // Added 9 Sep 2026 for a "_not for use" folder, and the reason this check
+    // exists at all: it was in one reader and not the other two.
+    else if (!/NOT FOR \(\?:POST\|PUBLIC\|USE\)/.test(m[1])) {
+      fail("media guard", GUARD + " no longer blocks NOT FOR USE");
+    }
+  }
   for (const f of ["harvest-stills.js", "harvest-sweep.js", "media-index.js"]) {
     const src = read(path.join(SCRIPTS, f));
     if (!src) { fail("media guard", f + " is missing"); continue; }
-    const m = src.match(/const FORBIDDEN = (\/.*\/[a-z]*);/);
-    if (!m) { fail("media guard", f + " no longer defines FORBIDDEN"); continue; }
-    guards[f] = m[1];
-  }
-  const distinct = [...new Set(Object.values(guards))];
-  if (distinct.length > 1) {
-    fail("media guard", "the three scripts disagree about what may not be published:\n        " +
-      Object.entries(guards).map(([f, g]) => f + "  " + g).join("\n        "));
-  }
-  for (const [f, g] of Object.entries(guards)) {
-    if (!/\\bNDA\\b/.test(g)) fail("media guard", f + " lost the word boundaries around NDA");
+    if (/const FORBIDDEN = \/.*\/[a-z]*;/.test(src)) {
+      fail("media guard", f + " defines its own FORBIDDEN again — it must require ./media-guard");
+    } else if (!src.includes('require("./media-guard")')) {
+      fail("media guard", f + " does not read the shared guard in " + GUARD);
+    }
   }
 }
 
