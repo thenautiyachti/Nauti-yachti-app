@@ -32,9 +32,20 @@ a decision.
 ## Inquiries
 
 Inquiries submitted through the website form. Each shows the guest, package, date
-and party size, and can be marked new / pending / booked / **owed** / completed /
-cancelled. See *A charter that was paid for and never happened* below for what
-"owed" means and when to use it.
+and party size, and can be marked inquiry / lapsed / booked / **owed** /
+completed / cancelled. See *A charter that was paid for and never happened* below
+for what "owed" means and when to use it.
+
+"Pending" used to be on that list and was removed in v2.4.0. Nothing ever wrote
+it — there were no rows carrying it in either table — so it only invited a status
+into the data that nothing else understood. A lead that simply goes quiet is
+**lapsed**.
+
+An inquiry can also be **deleted** from the Bookings list, the same as a booking
+taken elsewhere. It asks first and names the guest. Use it for rows that should
+never have existed; for a real lead that went cold, mark it lapsed instead — the
+inquiry is the only record that somebody asked, and the conversion figures are
+counted from it.
 
 Two separate lists live on this tab and are deliberately **not** counted as
 inquiries:
@@ -574,9 +585,32 @@ This is the route that stops it happening again.
    them the charter on our own site and hands off to Stripe from there. Never
    paste a raw `checkout.stripe.com` link into a text — it looks exactly like a
    scam, and the more careful the customer the less likely they are to tap it.
-5. **When they pay, the rest happens on its own:** the inquiry is marked paid,
-   a booking is created, the calendar closes that day for that boat, and a
-   confirmation goes to the guest with you copied in.
+5. **When they pay, the rest happens on its own:** the booking is marked paid,
+   the calendar closes that day for that boat, and a confirmation goes to the
+   guest with you copied in. A website inquiry also gets a booking row created
+   at this point; a booking taken by text already is one, so nothing is
+   duplicated.
+
+## Doing it yourself, from the phone
+
+From v2.4.0 you do not need to ask for the link. Open **Bookings** on your phone
+and each row carries the text it needs:
+
+- **Text payment link** — a lead with a price on it. Sends them their own
+  `/pay/<id>`, already filled in.
+- **Text to confirm** — a lead with no price yet. Asks them to confirm so you can
+  price it and send the link after.
+- **Text reminder** — a booking that is already paid. Day, departure time and
+  where to meet. Boatz & Glowz says Scott's Ridge by name; every other charter
+  meets wherever that one was arranged, so it stays general.
+- **Text about owed** — a charter paid for that never sailed.
+
+These only work on a phone. A desktop has nothing to hand an `sms:` link to, so
+it tells you that rather than appearing to send.
+
+**A lead only gets a payment link if its row has a package and a price.** That is
+what the link charges for. A booking logged by text with neither falls back to
+*Text to confirm* until you add them.
 
 **The one gap to know about.** Between "yes" and "paid", nothing holds the date.
 The calendar only closes on a real booking, so a second party could still take
