@@ -267,7 +267,8 @@ export default function AdminView({
   // Every live lead, whichever table it landed in. The tab used to count only
   // website inquiries while the panel below it also lists the ones taken by
   // text — a header saying 1 above a list of 2 is worse than either number.
-  const bookingInquiries = inquiries.filter(isRealInquiry);
+  const bookingInquiries = inquiries.filter(isRealInquiry)
+    .filter((i) => INQUIRY_STATUS_BUCKET[i.status] === "inquiry");
   const externalLeadCount = externalBookings.filter((b) => b.status === "inquiry").length;
   const allLeadCount = bookingInquiries.length + externalLeadCount;
 
@@ -1091,13 +1092,23 @@ function ContactsPanel({ externalBookings, inquiries }) {
   );
 }
 
+// Collapsed by default, like the contacts panel above it. These are reference
+// lists, not a queue: they are consulted when a glow date is set or a second
+// review ask is worth making, and the rest of the time they push the actual
+// leads off the screen. Owner, 11 Sep 2026: "can be by default collapsed too,
+// like everyone we contacted".
 function ExtraContactsPanel({ contacts }) {
+  const [open, setOpen] = useState(false);
   if (!contacts.length) return null;
   return (
     <div style={{ background: "var(--card)", borderRadius: 8, padding: 14, marginBottom: 14, border: "1px solid rgba(127,224,184,0.3)" }}>
-      <div style={{ fontWeight: 700, color: "var(--text)" }}>
-        Extra guest contacts — {contacts.length}
-      </div>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        style={{ background: "transparent", border: "none", padding: 0, textAlign: "left", width: "100%", color: "var(--text)", cursor: "pointer" }}>
+        <div style={{ fontWeight: 700 }}>
+          {open ? "▾" : "▸"} Extra guest contacts — {contacts.length}
+        </div>
+      </button>
+      {open && (<>
       <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2, marginBottom: 10 }}>
         People who were on someone else&apos;s charter and whose number is worth keeping —
         a second review ask from the same trip, or a follow-up. Deliberately not counted
@@ -1116,12 +1127,18 @@ function ExtraContactsPanel({ contacts }) {
           </div>
         ))}
       </div>
+      </>)}
     </div>
   );
 }
 
+// Collapsed by default, same reasoning as ExtraContactsPanel: it is the list
+// to mail when a glow date is set, not something to read every time the tab
+// is opened. The copy button stays on the header row so the one action worth
+// reaching for does not need the panel opened first.
 function CrewListPanel({ signups, onUpdate }) {
   const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
 
   // Only ever hand over addresses that haven't opted out. The signup form
   // promises an unsubscribe, and until there's a real marketingOptOut column
@@ -1145,16 +1162,19 @@ function CrewListPanel({ signups, onUpdate }) {
     <div style={{ background: "var(--card)", borderRadius: 8, padding: 14, marginBottom: 14, border: "1px solid rgba(203,108,230,0.3)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div>
+          <button type="button" onClick={() => setOpen((v) => !v)}
+            style={{ background: "transparent", border: "none", padding: 0, textAlign: "left", color: "var(--text)", cursor: "pointer" }}>
           <div style={{ fontWeight: 700, color: "var(--text)" }}>
-            Crew list — {mailable.length} contact{mailable.length === 1 ? "" : "s"}
+            {open ? "▾" : "▸"} Crew list — {mailable.length} contact{mailable.length === 1 ? "" : "s"}
             {optedOut > 0 && <span style={{ color: "var(--muted)", fontWeight: 400 }}> ({optedOut} opted out)</span>}
           </div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
+          </button>
+          {open && (<div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
             Guest emails captured from /glow and the on-boat QR code — this is the
             list to mail when the next date is set. To honour an unsubscribe, set
             that person&apos;s status to &ldquo;{CREW_LIST_UNSUBSCRIBED_STATUS}&rdquo; below and they
             drop out of the copy button.
-          </div>
+          </div>)}
         </div>
         {mailable.length > 0 && (
           <button
@@ -1166,7 +1186,7 @@ function CrewListPanel({ signups, onUpdate }) {
           </button>
         )}
       </div>
-      {signups.length === 0 ? (
+      {open && (signups.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>
           No signups yet — they'll appear here as guests join from the glow page.
         </div>
@@ -1191,7 +1211,7 @@ function CrewListPanel({ signups, onUpdate }) {
             );
           })}
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -1205,6 +1225,7 @@ function CrewListPanel({ signups, onUpdate }) {
 // the guest's own typed answers, and one of these carries whatever the owner
 // wrote down. Same status vocabulary, same payment link, different provenance.
 function ExternalLeadsPanel({ leads, onSetStatus, onUpdate }) {
+  const canSendSms = useCanSendSms();
   if (!leads || leads.length === 0) return null;
   return (
     <div style={{ background: "var(--card)", borderRadius: 8, padding: 14 }}>
@@ -1238,6 +1259,23 @@ function ExternalLeadsPanel({ leads, onSetStatus, onUpdate }) {
               <span className="mono" style={{ fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text)", background: b.paymentStatus === "paid" ? "var(--purple)" : "rgba(203,108,230,0.12)", border: "1px solid rgba(203,108,230,0.3)" }}>
                 {b.paymentStatus || "unpaid"}
               </span>
+              {(() => {
+                const link = payLink(b);
+                const phone = bookingPhones(b)[0];
+                return (
+                  <GuestTextButton
+                    phone={phone ? phone.number : null}
+                    body={bookingLinkMessage(b)}
+                    label={link ? "Text payment link" : "Text to confirm"}
+                    color="#7FE0B8"
+                    title={link
+                      ? "Text " + (b.guestName || "them") + " their checkout link"
+                      : "No price on this lead yet — texts them to confirm so you can price it"}
+                    noneLabel="lead · no number"
+                    canSendSms={canSendSms}
+                  />
+                );
+              })()}
               <select value={b.status} onChange={(e) => onSetStatus(b.id, e.target.value)}
                 style={{ padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }}>
                 {BOOKING_STATUS_BUCKETS.map((v) => <option key={v} value={v}>{BOOKING_STATUS_LABEL[v]}</option>)}
@@ -1252,9 +1290,19 @@ function ExternalLeadsPanel({ leads, onSetStatus, onUpdate }) {
 
 function InquiriesTab({ inquiries, externalBookings = [], onUpdate,
   onUpdateExternalBooking, onSetExternalBookingStatus }) {
+  const canSendSms = useCanSendSms();
   const crewList = inquiries.filter(isCrewListRow);
   const guestContacts = inquiries.filter(isGuestContactRow);
-  const realInquiries = inquiries.filter(isRealInquiry);
+  // LIVE LEADS ONLY. This tab listed every inquiry ever submitted, so a
+  // charter that ran and was paid for months ago sat here next to somebody
+  // waiting on an answer. Owner, 11 Sep 2026: "Oscar paid so he can be moved
+  // off this tab for inquires. Booked and completed don't need to be here."
+  //
+  // Nothing is hidden — a booked or completed charter is in Bookings, which is
+  // where it belongs. This tab answers one question: who is waiting on me.
+  const realInquiries = inquiries
+    .filter(isRealInquiry)
+    .filter((i) => INQUIRY_STATUS_BUCKET[i.status] === "inquiry");
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <ContactsPanel externalBookings={externalBookings} inquiries={inquiries} />
@@ -1317,6 +1365,27 @@ function InquiriesTab({ inquiries, externalBookings = [], onUpdate,
               <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: INQUIRY_STATUS_COLOR[i.status], textTransform: "uppercase", letterSpacing: "0.03em" }}>
                 {INQUIRY_STATUS_LABEL[i.status] || i.status}
               </span>
+              {/* The same one-tap text the Bookings table carries. A lead on
+                  this tab is exactly the person who needs a way to pay, and
+                  asking the owner to go and find them in another tab to send
+                  it was the reason this was requested. */}
+              {(() => {
+                const link = payLink(i);
+                const phone = bookingPhones(i)[0];
+                return (
+                  <GuestTextButton
+                    phone={phone ? phone.number : null}
+                    body={bookingLinkMessage(i)}
+                    label={link ? "Text payment link" : "Text to confirm"}
+                    color="#7FE0B8"
+                    title={link
+                      ? "Text " + (i.name || "them") + " their checkout link"
+                      : "No price on this inquiry yet — texts them to confirm so you can price it"}
+                    noneLabel="lead · no number"
+                    canSendSms={canSendSms}
+                  />
+                );
+              })()}
               <select value={i.status} onChange={(e) => onUpdate(i.id, { status: e.target.value })} style={{ padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 12.5 }}>
                 {INQUIRY_STATUSES.map((s) => <option key={s} value={s}>{INQUIRY_STATUS_LABEL[s]}</option>)}
               </select>
