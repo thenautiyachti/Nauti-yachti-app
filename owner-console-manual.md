@@ -14,7 +14,7 @@ Six groups run along the top. Clicking a group reveals its tabs underneath.
 | Group | Tabs |
 |---|---|
 | **Overview** | The day at a glance, the board, and the crew |
-| **Bookings** | Inquiries · Bookings · Availability |
+| **Bookings** | Contacts · Bookings · Availability |
 | **Money** | Income & expenses · Reconciliation · Tax Report · Subscriptions |
 | **Marketing** | Media · Media Drafts · Testimonials |
 | **Setup** | Packages & pricing · Add-ons · Coupons |
@@ -29,35 +29,25 @@ a decision.
 
 # Bookings
 
-## Inquiries
+## Contacts
 
-Inquiries submitted through the website form. Each shows the guest, package, date
-and party size, and can be marked inquiry / lapsed / booked / **owed** /
-completed / cancelled. See *A charter that was paid for and never happened* below
-for what "owed" means and when to use it.
+People, and how to reach them. This tab was called Inquiries and used to list
+them; it no longer does, because **every reservation lives in Bookings** —
+inquiry, booked or completed, whether it came from Boatsetter, GetMyBoat, the
+website or a text message. A lead that showed in one place and not the other is
+exactly how one went missing.
 
-"Pending" used to be on that list and was removed in v2.4.0. Nothing ever wrote
-it — there were no rows carrying it in either table — so it only invited a status
-into the data that nothing else understood. A lead that simply goes quiet is
-**lapsed**.
+Three lists, all collapsed until you open them:
 
-An inquiry can also be **deleted** from the Bookings list, the same as a booking
-taken elsewhere. It asks first and names the guest. Use it for rows that should
-never have existed; for a real lead that went cold, mark it lapsed instead — the
-inquiry is the only record that somebody asked, and the conversion figures are
-counted from it.
-
-Two separate lists live on this tab and are deliberately **not** counted as
-inquiries:
-
-- **Crew list** — name and email captures from the `/glow` page and the on-boat QR
-  code. This is the list to mail when a glow date is set. To honour an
-  unsubscribe, set that person's status to **lapsed** and they drop out of the
-  copy button.
-- **Extra guest contacts** — people who were aboard *someone else's* booking and
-  whose number is worth keeping, for a follow-up or a second review ask. Every
-  actual guest is already under Bookings, so this list is only ever the extra
-  people.
+- **Everyone we can contact** — people, not trips, so a repeat guest appears
+  once. The count is the ones with a phone or an email; anyone with neither
+  cannot be asked for a review or told about a glow night.
+- **Extra guest contacts** — people who were on somebody else's charter and
+  whose number is worth keeping. Deliberately not counted as inquiries.
+- **Crew list** — emails captured from `/glow` and the on-boat QR code. This is
+  the list to mail when a date is set. **Copy mailable emails** sits on the
+  header so you do not have to open the panel to use it. To honour an
+  unsubscribe set that person's status to lapsed and they drop out of the copy.
 
 ## Bookings
 
@@ -110,19 +100,20 @@ A website checkout leaves **two** records for the same charter: the Inquiry the
 guest filled in, and the mirror booking above that blocks the date on the
 calendar. Nothing used to join their statuses.
 
-So marking a charter **completed** here left the Inquiries tab still showing it
-as **booked and paid** — which is what happened to Oscar RoblesGil's 6 September
-charter. He was the first website checkout to produce such a pair, which is the
+So marking a charter **completed** used to leave its inquiry record still
+reading **booked and paid** — which is what happened to Oscar RoblesGil's
+6 September charter. He was the first website checkout to produce such a pair, which is the
 only reason nobody had seen it; every one after him would have done the same.
 
-Changing the status on **either** tab now updates the other. It works in both
-directions, so it does not matter which screen you happen to be on. Platform
+Changing the status updates both records, in both directions. Since 11 Sep 2026
+there is only one place to do it — the Bookings list — but the rule still matters,
+because the two rows are what the calendar and the ledger each read. Platform
 bookings — Boatsetter, GetMyBoat, cash — have no inquiry behind them and are
 unaffected.
 
-Completing a charter from **Inquiries** writes the income row too, by the same
-rule as above. That was worth being careful about: without it, the tab you
-completed a charter from would have decided whether its money got recorded.
+Either record completing writes the income row, by the same rule as above. That
+was worth being careful about: without it, which screen you happened to use would
+have decided whether a charter's money got recorded.
 
 ## A charter that was paid for and never happened
 
@@ -941,7 +932,7 @@ there, it is not a rule.
 
 | I want to… | Go to |
 |---|---|
-| See a new website lead | Bookings → Inquiries |
+| See a new lead, from anywhere | Bookings |
 | Log a Boatsetter/GetMyBoat charter | Bookings → Bookings |
 | Record that a charter happened *(this logs the income too)* | Bookings → Bookings, set to completed |
 | Block a day off | Bookings → Availability |
