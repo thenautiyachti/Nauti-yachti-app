@@ -64,6 +64,33 @@ inquiries:
 Every charter, from any source — Boatsetter, GetMyBoat, the website, cash, Zelle.
 Add one with the form above the table.
 
+### Three questions, three fields
+
+These used to be one and a half fields, and the books paid for it. Each booking
+now answers them separately, and they are genuinely different questions:
+
+| field | the question | options |
+|---|---|---|
+| **Lead source** | Where did the enquiry come from? | Website · Text / WhatsApp · Phone · Walk-up · Instagram · Facebook · Repeat guest · Referral from a friend · Boatsetter · GetMyBoat · AI search (ChatGPT) · Other |
+| **Booking channel** | Who took and processed it? | Boatsetter · GetMyBoat · Website · Direct |
+| **How paid** | How did the money actually arrive? | Unpaid · Stripe (card) · Cash · Zelle · Venmo · PayPal · Boatsetter payout · GetMyBoat payout · Gift certificate |
+
+A GetMyBoat booking can come from a guest who found us on Instagram. That is the
+interesting fact, and until now there was nowhere to put it.
+
+**"How paid" is the one the system cannot work out for itself.** Stripe paying is
+the single exception — that gets set on its own. Everything else has to be said
+by you, because nothing anywhere proves cash changed hands except you saying so.
+Leave it blank and the income row says so rather than guessing.
+
+That guess is why this exists. The booking channel used to be read as the payment
+method — anything taken directly was assumed to be cash — so the first card
+payment on a text booking would have been filed in the cash column, the hardest
+one to reconcile and the easiest place to lose a number.
+
+The old `Other` channel is now **Direct**, which is what those bookings always
+were: ones we took ourselves, by text, on the phone or at the dock.
+
 **Marking a booking "completed" now writes its income row automatically.** That
 was the single biggest hole in the system: the two records were only ever joined
 by hand, and six charters' income went missing that way. Two rules govern it:

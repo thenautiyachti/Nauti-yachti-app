@@ -118,7 +118,9 @@ async function POST(req) {
     const externalBookingId = meta.externalBookingId;
     if (externalBookingId) {
       try {
-        const data = { paymentStatus: "paid", status: "booked" };
+        // Stripe paying IS the assertion -- the one payment method this
+        // system can know without being told. See lib/channels.js.
+        const data = { paymentStatus: "paid", status: "booked", paymentMethod: "Stripe (card)" };
         // Stripe verifies these, so they beat whatever we had -- but only
         // overwrite when it actually returned one, so a blank never clobbers a
         // good number or address already on the record.
@@ -164,6 +166,9 @@ async function POST(req) {
       const data = {
         paymentStatus: "paid",
         status: "booked",
+        // Stripe paying IS the assertion. Everything else about how money
+        // arrived has to be said by the owner -- see lib/channels.js.
+        paymentMethod: "Stripe (card)",
         stripePaymentIntentId: session.payment_intent || null,
       };
 
@@ -240,6 +245,7 @@ async function POST(req) {
                 phone: paidInquiry.phone || null,
                 partySize: Number.isFinite(party) ? party : null,
                 platform: "Website",
+                paymentMethod: "Stripe (card)",
                 status: "booked",
                 pricePaid: paid,
                 bookingId: paidInquiry.bookingId || null,

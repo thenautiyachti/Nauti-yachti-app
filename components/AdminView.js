@@ -28,6 +28,7 @@ import {
   isOwed,
 } from "../lib/bookingStatus";
 import { formatBody } from "../lib/boardText";
+import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS } from "../lib/channels";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
@@ -731,21 +732,13 @@ export default function AdminView({
   );
 }
 
-const BOOKING_PLATFORMS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "Other"];
-
-// How a booking was WON. Deliberately separate from `platform`, which records
-// who processed the payment. The highest-value bookings on record - a repeat
-// guest, a direct cash booking and a word-of-mouth referral - all share the
-// platform value "Other", so platform alone cannot show what is working.
-const BOOKING_REFERRAL_SOURCES = [
-  "platform",
-  "repeat guest",
-  "word of mouth",
-  "direct",
-  "website",
-  "social media",
-  "walk-up",
-];
+// The three vocabularies live in lib/channels.js, not here. They answer three
+// different questions -- where the lead came from, who took the booking, how
+// the money arrived -- and this file used to hold two of them as hand-typed
+// lists that had drifted: "GetmyBoat" here against "GetMyBoat" in the ledger,
+// which split that channel in two for anything grouping across both.
+const BOOKING_PLATFORMS = BOOKING_CHANNELS;
+const BOOKING_REFERRAL_SOURCES = LEAD_SOURCES;
 
 // Merges Inquiry rows (site-originated) and ExternalBooking rows (logged
 // from third-party platforms) into one shape for the unified table below.
@@ -1845,6 +1838,22 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                         />
                       ) : (
                         r.pricePaid != null ? currency(r.pricePaid) : "—"
+                      )}
+                      {/* HOW the money arrived, which nothing else can know.
+                          The ledger reads this instead of guessing from the
+                          booking channel -- that guess is what filed a card
+                          payment as cash. Blank is honest and stays blank. */}
+                      {r.kind === "external" && (
+                        <select
+                          value={r.raw?.paymentMethod || ""}
+                          onChange={(e) => onUpdateExternalBooking(r.id, {
+                            paymentMethod: e.target.value || null,
+                          })}
+                          title="How this was paid. Nothing sets this on its own except a Stripe payment."
+                          style={{ marginTop: 4, display: "block", width: 118, padding: "3px 4px", fontSize: 11, borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: r.raw?.paymentMethod ? "var(--text)" : "var(--muted)" }}>
+                          <option value="">how paid?</option>
+                          {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+                        </select>
                       )}
                     </td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.source}</td>

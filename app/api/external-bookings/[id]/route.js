@@ -9,7 +9,7 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 const { normalizePhone } = require("../../../../lib/bookingPhones");
 const { recordCompletedBookingIncome } = require("../../../../lib/bookingLedger");
 
-// Body: { status?, pricePaid?, startTime?, hours?, guestName?, email?, partySize?, note? } —
+// Body: { status?, pricePaid?, paymentMethod?, startTime?, hours?, guestName?, email?, partySize?, note? } —
 // only the fields present are updated. Setting status updates whether the
 // date counts as "partially" booked (its own hours only, and only while
 // status is "completed") — see /api/partial-dates. The rest let the owner
@@ -68,6 +68,10 @@ async function PATCH(req, { params }) {
   // mouth) all sit under platform "Other", so `platform` alone cannot answer
   // "what is actually bringing in work".
   if ("referralSource" in body) data.referralSource = body.referralSource || null;
+  // HOW the money arrived. Only ever set because somebody said so -- there is
+  // no signal anywhere that proves cash changed hands, which is precisely why
+  // the ledger must not infer it. Empty string clears it back to unknown.
+  if ("paymentMethod" in body) data.paymentMethod = body.paymentMethod || null;
   // "Never ask this one for a review." Already on the model and honoured by the
   // weekly reminder script; the console could not set it until now.
   if ("marketingOptOut" in body) data.marketingOptOut = Boolean(body.marketingOptOut);

@@ -111,6 +111,11 @@ model Inquiry {
   submittedAt DateTime @default(now())
 
   paymentStatus         String  @default("unpaid") // "unpaid" | "paid" | "refunded"
+
+  // How the money arrived. Same vocabulary and same rule as ExternalBooking:
+  // asserted, never inferred. A website inquiry is almost always Stripe, but
+  // "almost always" is exactly the assumption that filed card income as cash.
+  paymentMethod         String?
   stripeSessionId       String?
   stripePaymentIntentId String?
 
@@ -243,6 +248,16 @@ model ExternalBooking {
   // Mirrors Inquiry so the webhook and the pay page can treat both the same.
   paymentStatus   String  @default("unpaid") // "unpaid" | "paid" | "refunded"
   stripeSessionId String?
+
+  // HOW THE MONEY ARRIVED. See lib/channels.js for the vocabulary.
+  //
+  // Added 11 Sep 2026 because nothing recorded it, so the ledger was inferring
+  // it from `platform` — and called a Stripe payment "Cash". The owner's rule:
+  // "The only way to capture cash payments would be me telling u they paid in
+  // cash, no other way to confirm it really." So this is ASSERTED, never
+  // guessed. Null means nobody has said yet, which is a better answer than a
+  // confident wrong one.
+  paymentMethod String?
 
   phone             String? // the PRIMARY number — what gets texted by default
   // Everyone else on the booking, as JSON: [{ number, label }].
