@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext, Fragment } from "react";
-import { currency, localDateKey, imageFocus } from "../lib/pricing";
+import { currency, localDateKey, imageFocus, durationText } from "../lib/pricing";
 import {
   GOOGLE_REVIEW_URL, GOOGLE_LISTING_URL, TEMPLATES, ASK_WINDOWS, DOCK_SCRIPT,
   channelFor, daysSince, askWindow, reviewMessage, reviewSubject, DEFAULT_TEMPLATE_FOR_DAYS,
@@ -584,7 +584,7 @@ export default function AdminView({
 
                 {p.pricingType === "per-guest" && (
                   <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-                    / guest · {p.fixedHours}hrs · {new Date(p.eventDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    / guest · {durationText(p)} · {new Date(p.eventDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </div>
                 )}
 

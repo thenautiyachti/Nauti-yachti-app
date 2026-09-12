@@ -3,7 +3,7 @@ import NavBar from "../../components/NavBar";
 import PageFooter from "../../components/PageFooter";
 import MiniCalendar from "../../components/MiniCalendar";
 import GlowCountdown from "../../components/GlowCountdown";
-import { currency } from "../../lib/pricing";
+import { currency, durationText } from "../../lib/pricing";
 import { pageMetadata } from "../../lib/seo";
 import {
   GLOW_PACKAGE_ID,
@@ -108,11 +108,11 @@ async function FeaturedGlowEvent() {
   if (eventDate < todayKey) return null;
 
   const perGuest = pkgRow?.pricePerGuest ?? null;
-  const hours = pkgRow?.fixedHours ?? 4;
+  const hours = durationText(pkgRow) || "4 hours";
 
   const facts = [
     ["When", `${formatGlowDate(eventDate)} · ${GLOW_START_TIME}`],
-    ["How long", `${hours} hours`],
+    ["How long", hours],
     ["Price", perGuest != null ? `${currency(perGuest)} per guest` : "Ask us"],
     ["Seats", "30 across all 3 boats"],
     ["Departs", GLOW_MEETING_POINT],

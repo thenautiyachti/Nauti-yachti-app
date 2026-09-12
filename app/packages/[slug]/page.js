@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "../../../lib/db";
 import { parsePackage } from "../../../lib/serialize";
-import { currency } from "../../../lib/pricing";
+import { currency, durationText } from "../../../lib/pricing";
 import { contentFor } from "../../../lib/packageContent";
 import NavBar from "../../../components/NavBar";
 import PageFooter from "../../../components/PageFooter";
@@ -127,7 +127,7 @@ function TierTable({ pkg }) {
     <div style={{ overflowX: "auto", marginTop: 18 }}>
       <table style={{ width: "100%", minWidth: 320, borderCollapse: "collapse", fontSize: 14 }}>
         <caption style={{ captionSide: "top", textAlign: "left", color: "var(--muted)", fontSize: 13.5, paddingBottom: 10 }}>
-          Flat price for the whole {pkg.fixedHours}-hour session, by group size.
+          Flat price for the whole {durationText(pkg)} session, by group size.
         </caption>
         <thead>
           <tr>

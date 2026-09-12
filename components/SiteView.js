@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { currency, dayTypeForDate, quotePackage, quoteTotal, imageFocus } from "../lib/pricing";
+import { currency, dayTypeForDate, quotePackage, quoteTotal, imageFocus, durationText } from "../lib/pricing";
 import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
 import { includedIds, isIncluded, isCovered, chargeableIds } from "../lib/addOns";
@@ -835,7 +835,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
           <div className="mono" style={{ fontSize: 11.5, color: "var(--purple)", lineHeight: 1.6 }}>
             One date only this year: {formatGlowDate(pkg.eventDate)}
             <div style={{ color: "var(--muted)", marginTop: 2 }}>
-              Board {GLOW_CHECK_IN_TIME} · lines off {GLOW_START_TIME} · {pkg.fixedHours} hrs
+              Board {GLOW_CHECK_IN_TIME} · lines off {GLOW_START_TIME} · {durationText(pkg)}
             </div>
             <div style={{ color: "var(--muted)" }}>Departs {GLOW_MEETING_POINT}</div>
             <div style={{ color: "var(--muted)" }}>30 seats total across all 3 boats</div>
@@ -857,7 +857,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
               ))}
             </select>
           </div>
-          <div className="mono" style={{ fontSize: 11.5, color: "var(--muted)" }}>{pkg.fixedHours} hrs, fixed</div>
+          <div className="mono" style={{ fontSize: 11.5, color: "var(--muted)" }}>{durationText(pkg)}</div>
         </div>
       )}
 
@@ -1124,7 +1124,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           <div style={{ ...fullWidth, background: "rgba(203,108,230,0.08)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "10px 12px" }}>
             <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 600, marginBottom: 2 }}>Event date</div>
             <div style={{ fontSize: 14 }}>
-              {formatGlowDate(selectedPkg.eventDate)} · {selectedPkg.fixedHours} hrs — the only date available this year
+              {formatGlowDate(selectedPkg.eventDate)} · {durationText(selectedPkg)} — the only date available this year
             </div>
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.55 }}>
               Board {GLOW_CHECK_IN_TIME}, lines off {GLOW_START_TIME}, departing {GLOW_MEETING_POINT}. Party size below = number of seats.{" "}

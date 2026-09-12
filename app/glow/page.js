@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/db";
 import { parsePackage } from "../../lib/serialize";
-import { currency } from "../../lib/pricing";
+import { currency, durationText } from "../../lib/pricing";
 import { pageMetadata } from "../../lib/seo";
 import {
   GLOW_PACKAGE_ID,
@@ -95,7 +95,9 @@ export default async function GlowPage() {
   const pkg = pkgRow ? parsePackage(pkgRow) : null;
   const eventDate = pkg?.eventDate || GLOW_EVENT_DATE;
   const perGuest = pkg?.pricePerGuest ?? null;
-  const hours = pkg?.fixedHours ?? 4;
+  // The label when there is one, the number when there is not — a package
+  // whose length varies cannot be an integer. See durationText.
+  const hours = durationText(pkg) || "4 hours";
 
   return (
     <div>
@@ -145,7 +147,7 @@ export default async function GlowPage() {
           </p>
           <BookButton />
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 14 }}>
-            {perGuest != null ? `${currency(perGuest)} per guest · ${hours} hours on the water` : `${hours} hours on the water`}
+            {perGuest != null ? `${currency(perGuest)} per guest · ${hours} on the water` : `${hours} on the water`}
           </div>
         </div>
       </div>
@@ -155,7 +157,7 @@ export default async function GlowPage() {
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px,1fr))", gap: 14 }}>
             <Stat label="When" value={formatGlowDate(eventDate)} sub={`Board at ${GLOW_CHECK_IN_TIME}, lines off at ${GLOW_START_TIME}`} />
-            <Stat label="How long" value={`${hours} hours`} sub="Out and back, all in" />
+            <Stat label="How long" value={hours} sub="Out and back, all in" />
             <Stat
               label="Price"
               value={perGuest != null ? `${currency(perGuest)} / guest` : "Ask us"}

@@ -23,6 +23,15 @@ model Package {
   price         Float? // used when pricingType = "flat"
   pricePerGuest Float? // used when pricingType = "per-guest"
   fixedHours    Int? // used when pricingType = "per-guest" or "tiered-by-guests"
+  // What to SAY the duration is, when a single number would be a lie.
+  //
+  // Boatz & Glowz runs 4-6 hours depending on the night — lines off at 7pm and
+  // back around midnight, which was never the "4 hours" fixedHours claimed.
+  // fixedHours stays an integer because it is a number other things reason
+  // about; this is the label, and it wins wherever a duration is shown.
+  //
+  // Null for every package with an honest single figure.
+  durationLabel String?
   eventDate     String? // used when pricingType = "per-guest" (e.g. Boatz & Glowz)
   tiersJson     String? // JSON string: { max: number, price: number }[]
   hourlyJson    String? // JSON string: { [vesselId]: { weekday: {...}, weekend: {...} } }
