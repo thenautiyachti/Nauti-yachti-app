@@ -7570,7 +7570,15 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
         <div>
           <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Subscriptions ({subscriptions.length})</div>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 640, fontSize: 12.5, color: "var(--text)" }}>
+            {/* stack-table: below the breakpoint this stops being a table and
+                becomes one card per subscription, each row labelled by the
+                header it lost. Every cell is an input here, and a thumb drag
+                starting on an input does not scroll the container it sits in —
+                so horizontal overflow alone left the right-hand columns
+                unreachable on a phone. Same fix as the maintenance schedule.
+                The data-label on each td IS the header on mobile; keep them in
+                step with the thead above. */}
+            <table className="stack-table" style={{ borderCollapse: "collapse", width: "100%", minWidth: 640, fontSize: 12.5, color: "var(--text)" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                   <th style={{ padding: "4px 8px" }}>Name</th>
@@ -7588,37 +7596,37 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                 )}
                 {subscriptions.map((s) => (
                   <tr key={s.id} style={{ background: "var(--card)" }}>
-                    <td style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>
+                    <td data-label="Name" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>
                       <input defaultValue={s.name} onBlur={(e) => onUpdate(s.id, { name: e.target.value })}
                         style={{ width: 130, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)" }} />
                     </td>
-                    <td style={{ padding: "6px 8px" }}>
+                    <td data-label="Category" style={{ padding: "6px 8px" }}>
                       <select defaultValue={s.category || SUBSCRIPTION_CATEGORIES[SUBSCRIPTION_CATEGORIES.length - 1]} onChange={(e) => onUpdate(s.id, { category: e.target.value })}
                         style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }}>
                         {SUBSCRIPTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
-                    <td style={{ padding: "6px 8px" }}>
+                    <td data-label="Amount" style={{ padding: "6px 8px" }}>
                       <input type="number" min="0" step="0.01" defaultValue={s.amount} onBlur={(e) => onUpdate(s.id, { amount: Number(e.target.value) })}
                         style={{ width: 70, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                     </td>
-                    <td style={{ padding: "6px 8px" }}>
+                    <td data-label="Cycle" style={{ padding: "6px 8px" }}>
                       <select defaultValue={s.billingCycle} onChange={(e) => onUpdate(s.id, { billingCycle: e.target.value })}
                         style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }}>
                         {BILLING_CYCLES.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
-                    <td style={{ padding: "6px 8px" }}>
+                    <td data-label="Next due" style={{ padding: "6px 8px" }}>
                       <input type="date" defaultValue={s.nextDueDate || ""} onBlur={(e) => onUpdate(s.id, { nextDueDate: e.target.value || null })}
                         style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                     </td>
-                    <td style={{ padding: "6px 8px" }}>
+                    <td data-label="Active" style={{ padding: "6px 8px" }}>
                       <button type="button" onClick={() => onUpdate(s.id, { active: !s.active })}
                         style={{ background: "transparent", color: s.active ? "var(--purple)" : "var(--muted)", border: `1px solid ${s.active ? "var(--purple)" : "var(--muted)"}`, borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600 }}>
                         {s.active ? "Active" : "Inactive"}
                       </button>
                     </td>
-                    <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
+                    <td data-label="" style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
                       <button type="button" onClick={() => {
                         if (window.confirm(
                           `Delete the ${s.name} subscription permanently?
