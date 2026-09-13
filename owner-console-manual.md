@@ -336,9 +336,19 @@ puts out whatever is due that day. Giving a draft a date *is* the permission to
 post it, so she does not ask again — there is no second confirmation, and no
 message the morning it happens.
 
-That permission stops at SCHEDULED. Nothing in any other state is ever
-published: not a draft Coral has proposed, not one you have approved without
-giving it a date, and not one you have rejected.
+**Approving a post that already has a date is the same permission.** Siren puts
+those on the schedule herself at the start of each run, then publishes them when
+their time comes. You do not have to press anything a second time.
+
+That was not always true, and it cost a post. On 12 September 2026 the Facebook
+copy of a Boatz & Glowz post went out at its 10:30 slot and the Instagram and
+TikTok copies of the same post did not — identical date, identical time, and
+those two were sitting at APPROVED rather than SCHEDULED. Nothing errored and
+nothing logged it; it was spotted by looking at the feed.
+
+Permission still stops there. Nothing else is ever published: not a draft Coral
+has proposed, not one you have approved **without a date**, and not one you have
+rejected.
 
 So the queue is safe to leave alone **until a post's date arrives**. Up to that
 morning you have as long as you like to read it. Once the date is today, the
@@ -472,9 +482,10 @@ guessed at.
 
 ### Approved with no date
 
-An approved post with no date **will never go out**. Siren only publishes what is
-already scheduled, and nothing else in the system assigns a date — so until you
-set one, it sits.
+An approved post with no date **will never go out**, and that is the one gap
+still left on purpose. Approved with a date means "yes, and then" — Siren
+schedules those herself. Approved with NO date means you have said yes but not
+when, and nothing invents a date for you.
 
 Coral now proposes a date for each of these in her daily status, and raises one
 as a board item if it has been waiting more than three days. The Overview also

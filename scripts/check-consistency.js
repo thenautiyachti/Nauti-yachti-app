@@ -175,6 +175,27 @@ try {
   }
 }
 
+// --- 8b. the approved -> scheduled promotion must still be wired ------------
+//
+// dueDrafts considers ONLY status "scheduled". Nothing promotes an approved
+// draft to it except promote-approved.js, run by Siren at the top of her run.
+// Lose either half and dated approved drafts stop publishing SILENTLY — which
+// is exactly what happened on 12 Sep 2026: a post's Facebook copy went out and
+// its Instagram and TikTok twins did not, with no error anywhere.
+{
+  const SCRIPT = "promote-approved.js";
+  if (!read(path.join(SCRIPTS, SCRIPT))) {
+    fail("publish path", SCRIPT + " is missing — dated approved drafts will never publish");
+  }
+  const siren = read(path.join(TASKS, "nauti-siren", "SKILL.md")) || "";
+  if (!siren) {
+    fail("publish path", "Siren has no brief to run the promotion from");
+  } else if (!siren.includes(SCRIPT)) {
+    fail("publish path", "Siren's brief no longer runs " + SCRIPT
+      + " — an approved draft with a date would sit unpublished with no error");
+  }
+}
+
 // --- 9. the two board parsers must agree ------------------------------------
 //
 // The app ranks the board and the crew script writes to it. If their owner-
