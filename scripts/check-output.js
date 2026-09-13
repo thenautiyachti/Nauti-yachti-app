@@ -482,10 +482,57 @@ async function deployedSchemaCanReadTheDatabase() {
   }
 }
 
+// "POSTED" SHOULD MEAN SOMEBODY CAN GO AND LOOK AT IT.
+//
+// Publishing through Blotato is asynchronous: it ACCEPTS a post, queues it, and
+// can fail minutes later. Marking a draft posted on the strength of the accept
+// records an intention, not an outcome.
+//
+// Christina's testimonial is what this looks like when it works out. Blotato
+// failed it twice on 11 Sep 2026 — two error emails, neither read by anything —
+// and then published it on the 12th. The record was right in the end, two days
+// late, and nothing in the system knew either fact.
+//
+// The postUrl is the proof, because it can only exist once the platform has
+// given back a real address. Fifteen of the eighteen posted drafts have one. A
+// draft marked posted WITHOUT one is a claim nobody can check.
+//
+// Not tier 1: no guest is stuck. But an unpublished post is money quietly not
+// earned, and the whole reason this file exists is that a success which was not
+// a success says nothing on its own.
+async function postedWithoutProof() {
+  const posted = await prisma.mediaDraft.findMany({
+    where: { status: "posted" },
+    select: { id: true, platform: true, scheduledDate: true, postedAt: true, postUrl: true, caption: true },
+  });
+  const unproven = posted.filter((d) => !String(d.postUrl || "").trim());
+  if (!unproven.length) return;
+
+  // Grouped into one finding: these fail in batches, one per platform for the
+  // same post, and three separate lines for one caption reads as three problems.
+  const byDate = new Map();
+  for (const d of unproven) {
+    const k = d.scheduledDate || "no date";
+    if (!byDate.has(k)) byDate.set(k, []);
+    byDate.get(k).push(d);
+  }
+  for (const [date, drafts] of byDate) {
+    const where = drafts.map((d) => d.platform || "unknown platform").join(", ");
+    fail(2, "publishing",
+      drafts.length + " post" + (drafts.length === 1 ? "" : "s")
+        + " for " + date + " are marked posted with no link to show for it (" + where + ")",
+      "“" + String(drafts[0].caption || "").replace(/\s+/g, " ").slice(0, 60) + "…” — "
+      + "every other posted draft carries a postUrl, which only exists once the platform hands back a real address. "
+      + "Blotato accepts a post and can fail it minutes later, so being marked posted proves it was sent, not that it ran. "
+      + "Open the account and check; if it did go out, paste the link onto the draft.");
+  }
+}
+
 (async () => {
   await paidButSilent();
   await originsAreSelectable();
   await deployedSchemaCanReadTheDatabase();
+  await postedWithoutProof();
   await datesNotHeld();
   await fakeDates();
   await addOnPricing();
