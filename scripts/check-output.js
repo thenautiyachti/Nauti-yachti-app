@@ -395,9 +395,97 @@ async function originsAreSelectable() {
   }
 }
 
+// CAN THE CODE THAT IS ACTUALLY DEPLOYED STILL READ THIS DATABASE?
+//
+// On 13 Sep 2026 the owner console stopped loading entirely. It looked like a
+// phone problem. It was not: `Subscription.amount` had been widened to nullable
+// and five rows set to NULL, while the deployed build still declared
+// `amount Float` — required. Prisma refuses to return null for a required field,
+// so the subscriptions query threw, the console hung on "loading", and nothing
+// anywhere said why.
+//
+// Widening a column is normally the SAFE direction to migrate. It stops being
+// safe the moment a value is written that the old code cannot represent, which
+// is exactly what happened. The window between "schema pushed" and "code
+// deployed" is where this lives.
+//
+// So the comparison is deliberately against the DEPLOYED schema — origin/main,
+// not the working tree — because the working tree is by definition already
+// fixed. And it only fails when a NULL is actually present: a nullable column
+// with no nulls in it breaks nothing today, and crying about it would train
+// somebody to ignore this check.
+async function deployedSchemaCanReadTheDatabase() {
+  let schema;
+  try {
+    schema = execFileSync("git", ["show", "origin/main:prisma/schema.prisma"], {
+      cwd: APP, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return; // no git, or no origin/main to compare against — nothing to say
+  }
+
+  // Required scalar fields per model. A field is required when its type carries
+  // no "?" and it is not a list; relations are skipped because they are not
+  // columns. Prisma's default mapping is used throughout this schema — model
+  // name is the table, field name is the column — so no @@map handling is needed.
+  const models = {};
+  let current = null;
+  for (const raw of schema.split(/\r?\n/)) {
+    const line = raw.replace(/\/\/.*$/, "").trim();
+    const open = line.match(/^model\s+(\w+)\s*\{/);
+    if (open) { current = open[1]; models[current] = []; continue; }
+    if (line === "}") { current = null; continue; }
+    if (!current || !line) continue;
+    const field = line.match(/^(\w+)\s+(\w+)(\[\])?(\?)?/);
+    if (!field) continue;
+    const [, name, type, list, optional] = field;
+    if (list || optional) continue;
+    if (/^(String|Int|Float|Boolean|DateTime|Json|BigInt|Decimal|Bytes)$/.test(type) === false) continue;
+    if (/@relation/.test(line)) continue;
+    models[current].push(name);
+  }
+
+  const cols = await prisma.$queryRawUnsafe(
+    `SELECT table_name, column_name, is_nullable
+       FROM information_schema.columns
+      WHERE table_schema = 'public'`
+  );
+  const byTable = new Map();
+  for (const c of cols) {
+    if (!byTable.has(c.table_name)) byTable.set(c.table_name, new Map());
+    byTable.get(c.table_name).set(c.column_name, c.is_nullable === "YES");
+  }
+
+  for (const [model, fields] of Object.entries(models)) {
+    const table = byTable.get(model);
+    if (!table) continue; // model has no table yet: a migration not pushed, not this check's business
+    for (const field of fields) {
+      if (!table.has(field)) {
+        fail(1, "deployed schema",
+          `the deployed build expects ${model}.${field}, and the database has no such column`,
+          "Every read of that model throws. Push the migration, or roll the deploy back.");
+        continue;
+      }
+      if (!table.get(field)) continue; // NOT NULL in the database: nothing can break
+
+      const [{ n }] = await prisma.$queryRawUnsafe(
+        `SELECT count(*)::int AS n FROM "${model}" WHERE "${field}" IS NULL`
+      );
+      if (n > 0) {
+        fail(1, "deployed schema",
+          `${model}.${field} is NULL on ${n} row(s), and the deployed build declares it required`,
+          "Prisma will not return null for a required field, so every query touching " + model
+          + " throws — which shows up as a page that never finishes loading, with no error anywhere. "
+          + "Deploy the code that makes it optional, or fill those rows in.");
+      }
+    }
+  }
+}
+
 (async () => {
   await paidButSilent();
   await originsAreSelectable();
+  await deployedSchemaCanReadTheDatabase();
   await datesNotHeld();
   await fakeDates();
   await addOnPricing();
