@@ -31,7 +31,7 @@ import { formatBody } from "../lib/boardText";
 import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS, LEDGER_ORIGIN } from "../lib/channels";
 import {
   PREMISES, SUBSCRIPTION_CATEGORIES, BILLING_CYCLES,
-  monthlyAmount, needsAmount, isRunning, deductibleMonthly, summarise, overlappingDuplicates,
+  monthlyAmount, needsAmount, isFree, isRunning, deductibleMonthly, summarise, overlappingDuplicates,
 } from "../lib/subscriptions";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -7717,9 +7717,15 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                       </select>
                     </td>
                     <td data-label="Amount" style={{ padding: "6px 8px" }}>
-                      <input type="number" min="0" step="0.01" defaultValue={s.amount} onBlur={(e) => onUpdate(s.id, { amount: Number(e.target.value) })}
-                        placeholder="?"
-                        title={needsAmount(s) ? "No amount yet — this bill adds nothing to the totals until one is entered." : ""}
+                      {/* BLANK means nobody has found out what it costs; 0 means
+                          it is confirmed free. Clearing the box stores null, so
+                          the two never collapse into one number. */}
+                      <input type="number" min="0" step="0.01" defaultValue={s.amount ?? ""}
+                        onBlur={(e) => onUpdate(s.id, { amount: e.target.value === "" ? null : Number(e.target.value) })}
+                        placeholder="not known"
+                        title={needsAmount(s)
+                          ? "No amount yet — this bill adds nothing to the totals until one is entered."
+                          : isFree(s) ? "Confirmed free — this really does cost nothing." : ""}
                         style={{ width: 70, padding: "5px 6px", borderRadius: 5, border: `1px solid ${needsAmount(s) ? "#FFD479" : "rgba(203,108,230,0.3)"}` }} />
                     </td>
                     <td data-label="Cycle" style={{ padding: "6px 8px" }}>

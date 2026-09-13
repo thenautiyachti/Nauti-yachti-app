@@ -230,7 +230,15 @@ model Subscription {
   id           String   @id @default(cuid())
   name         String // e.g. "Boat storage", "design.com domain", "Claude subscription"
   category     String? // e.g. "Storage", "Hosting", "Software", "Utilities"
-  amount       Float
+
+  // NULL MEANS NOBODY HAS FOUND OUT WHAT IT COSTS. Zero means it is free.
+  //
+  // Those were the same value until 13 Sep 2026, when checking the platform
+  // accounts turned up services that genuinely cost nothing — Supabase is on the
+  // free plan and Vercel on a personal account — alongside several whose price
+  // is simply unknown. Showing both as "0" would have made a confirmed $0 look
+  // like an unanswered question and an unanswered question look like it was free.
+  amount       Float?
   billingCycle String // "monthly" | "yearly" | "weekly"
   nextDueDate  String? // "YYYY-MM-DD"
   vendor       String?
