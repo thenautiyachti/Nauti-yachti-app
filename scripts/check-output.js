@@ -327,8 +327,77 @@ async function fakeDates() {
   }
 }
 
+// EVERY ORIGIN IN THE BOOKS MUST BE SELECTABLE IN THE CONSOLE.
+//
+// This is a quiet failure of the worst kind: the dropdown renders, the row
+// renders, and the origin is simply not among the options — so the select falls
+// back to its first entry, and saving ANY other field on that row silently
+// rewrites what the money was filed under. Nothing errors and the total moves.
+//
+// It happened on 13 Sep 2026. Rebuilding the lists around payment methods
+// dropped Amazon, eBay, Lockaway Storage, Shein and T-Mobile: 38 real expense
+// rows, $4,818 between them, each one edit away from being refiled.
+//
+// A static check cannot catch this, because the data is half of it. That is why
+// it lives here and not in check-consistency.js.
+async function originsAreSelectable() {
+  const lists = require(path.join(APP, "lib", "channels"));
+  const METHOD = [...new Set(
+    lists.PAYMENT_METHODS.filter((m) => m !== "Unpaid").map((m) => lists.LEDGER_ORIGIN[m]).filter(Boolean)
+  )];
+  // Mirrors components/AdminView.js. Restated here on purpose: the point is to
+  // notice when the two DISAGREE, so importing the component's copy would make
+  // the check unable to fail.
+  const INCOME = [...METHOD, "Other"];
+  const EXPENSE = [...METHOD, "Wells Fargo Statement", "Woodforest Statement", "Gmail Statement",
+    "T-Mobile Statement", "Amazon", "eBay", "Lockaway Storage", "Shein Statement", "Other"];
+
+  const rows = await prisma.ledgerEntry.groupBy({
+    by: ["type", "origin"],
+    _count: { _all: true },
+    _sum: { amount: true },
+  });
+  for (const r of rows) {
+    if (!r.origin) continue; // no origin at all is a separate, visible gap
+    const allowed = r.type === "income" ? INCOME : EXPENSE;
+    if (allowed.includes(r.origin)) continue;
+    fail(2, "ledger",
+      '"' + r.origin + '" is filed on ' + r._count._all + " " + r.type + " row(s) but is not in the console's list",
+      "$" + (r._sum.amount || 0).toFixed(2) + " — the dropdown cannot display it, so editing any other "
+      + "field on one of those rows silently refiles it as \"" + allowed[0] + "\". Add it to "
+      + (r.type === "income" ? "RESERVATION_ORIGINS" : "STATEMENT_ORIGINS") + " in components/AdminView.js, "
+      + "or correct the rows.");
+  }
+
+  // The same thing spelled two ways is two things to every total.
+  //
+  // The trailing word "Statement" is dropped as well as case and punctuation,
+  // because that is where the real duplicates were: "Gmail" / "Gmail Statement"
+  // and "T-Mobile" / "Tmobile Statement" split four totals between them for
+  // months. Folding only case and spaces — which is what this check did when
+  // first written — matched neither pair and reported all clear, a check that
+  // could not fail for the exact fault it was built for.
+  //
+  // "Cash" and "Cash App Statement" still differ, which is correct: they are
+  // genuinely two ways of being paid, not two spellings of one.
+  const normalise = (s) => String(s).toLowerCase().replace(/[\s\-_.]+/g, "").replace(/statements?$/, "");
+  const seen = new Map();
+  for (const r of rows) {
+    if (!r.origin) continue;
+    const key = normalise(r.origin);
+    if (!seen.has(key)) seen.set(key, new Set());
+    seen.get(key).add(r.origin);
+  }
+  for (const [, spellings] of seen) {
+    if (spellings.size < 2) continue;
+    fail(2, "ledger", "one origin spelled " + spellings.size + " ways: " + [...spellings].map((s) => '"' + s + '"').join(" and "),
+      "Every total splits between them, and neither figure is the real one. Pick one spelling and merge.");
+  }
+}
+
 (async () => {
   await paidButSilent();
+  await originsAreSelectable();
   await datesNotHeld();
   await fakeDates();
   await addOnPricing();

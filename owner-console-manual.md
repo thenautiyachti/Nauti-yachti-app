@@ -220,6 +220,20 @@ Boatsetter payout. The booking's *How paid* holds the principal method and each
 actual payment is its own ledger row, so the books can still say how every
 dollar arrived.
 
+**One thing spelled two ways is two things.** The expense side carried
+"Gmail" and "Gmail Statement" for the same email receipts, and "T-Mobile"
+and "Tmobile Statement" for the same phone bill — four totals split in half,
+with neither figure the real one. Merged 13 September 2026; the totals did not
+move, because renaming money never should.
+
+Two origins were carrying a *detail* rather than a method — which bank a Venmo
+came out of, who the cash went to. Those moved into the note, where they are
+still readable, instead of splitting a total.
+
+The morning check now watches for both faults: an origin the console cannot
+display (which would silently refile a row the next time you edited it) and the
+same origin spelled more than one way.
+
 ### When somebody tries to pay and it does not work
 
 Sarah Griffith tried to pay $100 for two glow seats at **10:47pm on 12

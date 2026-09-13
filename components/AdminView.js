@@ -73,13 +73,29 @@ const METHOD_ORIGINS = [
 // Income: only how it arrived.
 const RESERVATION_ORIGINS = [...METHOD_ORIGINS, "Other"];
 
-// Expenses: the same methods, plus the statements a cost can land on that no
-// charter ever pays us through.
+// Expenses: the same methods, plus the documents a cost can be reconciled from
+// that no charter ever pays us through.
+//
+// EVERY ONE OF THESE IS IN USE. The first version of this list held four
+// statements and dropped Amazon, eBay, Lockaway Storage, Shein and T-Mobile --
+// 38 real expense rows whose origin the dropdown could then not display, so
+// editing any other field on one would have silently rewritten its origin to
+// whatever sat first in the list. A dropdown that cannot show the data it is
+// editing is worse than no dropdown.
+//
+// "Woodforest Statement" is spelled the way the bank spells it and the way all
+// 98 of its rows already do. This list said "WoodForest" for months; the code was
+// the thing that was wrong, not the books.
 const STATEMENT_ORIGINS = [
   ...METHOD_ORIGINS,
-  "Gmail Statement",
   "Wells Fargo Statement",
-  "WoodForest Statement",
+  "Woodforest Statement",
+  "Gmail Statement",
+  "T-Mobile Statement",
+  "Amazon",
+  "eBay",
+  "Lockaway Storage",
+  "Shein Statement",
   "Other",
 ];
 
