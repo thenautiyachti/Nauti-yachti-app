@@ -8,7 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { owedCharters, owedMessage, windowFor } from "../lib/owedCharters";
-import { bookingLinkMessage, reminderMessage, payLink } from "../lib/guestTexts";
+import { bookingLinkMessage, paymentFailedMessage, reminderMessage, payLink } from "../lib/guestTexts";
 import { bookingPhones } from "../lib/bookingPhones";
 import { isLinked, earnedIncome, unearnedTotal } from "../lib/ledgerLinks";
 import { hoursByVessel, fleetHours as fleetHoursOf, currentHours, isMetered } from "../lib/engineHours";
@@ -1006,6 +1006,25 @@ function guestTextFor(r) {
   // because they already normalise name/date across the two models.
   const g = { ...(r.raw || {}), ...r };
   const link = payLink(g);
+
+  // THEY ALREADY TRIED. A guest whose card was declined does not need "here's
+  // the link to lock it in" — she needs to know her seats are still there.
+  // Sarah Griffith was declined at 10:47pm on 12 Sep 2026 and the only button on
+  // her row offered the ordinary lead text, which reads as though nobody noticed.
+  //
+  // Checked before the inquiry branch because a declined guest IS an inquiry;
+  // the failure is the more specific fact and wins.
+  if (g.paymentFailedAt && g.paymentStatus !== "paid") {
+    return {
+      body: paymentFailedMessage(g),
+      label: "Text about the declined card",
+      color: "#FF8A8A",
+      title: (g.paymentFailedError || "Their payment did not go through")
+        + " — this text says the spot is still held and gives the link again."
+        + " It does NOT say why the card failed.",
+      noneLabel: "declined · no number",
+    };
+  }
 
   if (r.statusBucket === "inquiry") {
     return {
