@@ -948,6 +948,17 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     addOnIds: [], agreeTerms: false,
   });
   const [sent, setSent] = useState(false);
+  // WHAT SHE SENT, kept so the confirmation can repeat it back to her.
+  //
+  // A toast said "Inquiry sent" for 2.6 seconds, the form blanked itself, and
+  // the page then looked exactly as it had before she started. On 13 Sep 2026 a
+  // guest submitted the same glow-night inquiry twice, three minutes apart —
+  // which is what anyone does when a form gives them nothing to hold on to.
+  // Two rows for one guest, and two acknowledgement emails to her.
+  //
+  // Null until an inquiry succeeds. The pay-now path never sets it: that
+  // redirects to Stripe and there is no page left to confirm anything on.
+  const [confirmed, setConfirmed] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const selectedPkg = packages.find((p) => p.id === form.packageId);
 
@@ -1008,7 +1019,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
   }
   const fullWidth = { gridColumn: "1 / -1" };
 
-  async function runSubmit(handler) {
+  async function runSubmit(handler, isInquiry) {
     const pkg = packages.find((p) => p.id === form.packageId);
 
     // A package that runs on NO boat of ours must not record one.
@@ -1057,6 +1068,20 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     // to show a stuck button on.
     if (ok) {
       setSent(true);
+      // The inquiry path stays on the page, so it gets a confirmation that does
+      // not time out. Snapshot BEFORE the reset below, or there is nothing left
+      // to show her.
+      if (isInquiry) {
+        setConfirmed({
+          name: String(form.name || "").trim().split(/\s+/)[0],
+          email: form.email,
+          packageName: pkg?.name || null,
+          vesselName: vessel?.name || null,
+          date: form.date || null,
+          partySize: form.partySize || null,
+          priceQuoted,
+        });
+      }
       setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 1, couponCode: "", addOnIds: [], agreeTerms: false });
       setTimeout(() => setSent(false), 3500);
     } else {
@@ -1073,7 +1098,64 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     // type="button" skips native required-field validation, so check it
     // manually — same experience as clicking the submit button would give.
     if (!e.currentTarget.form.reportValidity()) return;
-    runSubmit(onSubmitInquire);
+    runSubmit(onSubmitInquire, true);
+  }
+
+  // CONFIRMATION THAT DOES NOT TIME OUT.
+  //
+  // It replaces the form rather than sitting above it, because a blank form
+  // under a success message still reads as "it lost my details" — which is the
+  // thing that made a guest send the same inquiry twice. It repeats what she
+  // asked for so she can see the system captured it correctly, and names the
+  // address the email is going to so she knows where to look.
+  if (confirmed) {
+    const lines = [
+      ["Charter", confirmed.packageName],
+      ["Boat", confirmed.vesselName],
+      // formatGlowDate is not glow-specific, it just lives in that module: any
+      // YYYY-MM-DD in, "Saturday, September 19, 2026" out. The raw ISO string is
+      // what the form holds, and it is not what a guest should be reading back.
+      ["Date", confirmed.date ? formatGlowDate(confirmed.date) : null],
+      ["Guests", confirmed.partySize],
+      ["Quoted", confirmed.priceQuoted != null ? currency(confirmed.priceQuoted) : null],
+    ].filter(([, v]) => v !== null && v !== undefined && v !== "");
+    return (
+      <div style={{ background: "var(--card)", border: "1px solid var(--purple)", borderRadius: 12, padding: 24, boxShadow: "0 4px 24px rgba(0,0,0,0.35)" }}>
+        <div className="mono" style={{ color: "var(--purple)", fontSize: 12.5, letterSpacing: "0.15em", marginBottom: 10 }}>
+          INQUIRY RECEIVED
+        </div>
+        <h3 className="display" style={{ margin: "0 0 10px", fontSize: 26, color: "var(--text)", lineHeight: 1.15 }}>
+          {confirmed.name ? `Got it, ${confirmed.name}.` : "Got it."}
+        </h3>
+        <p style={{ margin: "0 0 18px", fontSize: 14.5, lineHeight: 1.65, color: "var(--text)", opacity: 0.9 }}>
+          This is on our screen now &mdash; there is nothing else you need to do, and
+          <strong> no need to send it again</strong>. We come back to people personally,
+          usually the same day.
+        </p>
+        <div style={{ background: "var(--paper-12)", borderRadius: 10, padding: "14px 16px", marginBottom: 18 }}>
+          {lines.map(([label, value]) => (
+            <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "6px 0", fontSize: 13.5 }}>
+              <span style={{ color: "var(--muted)" }}>{label}</span>
+              <span style={{ color: "var(--text)", fontWeight: 600, textAlign: "right" }}>{value}</span>
+            </div>
+          ))}
+        </div>
+        {confirmed.email && (
+          <p style={{ margin: "0 0 14px", fontSize: 13.5, lineHeight: 1.6, color: "var(--text)", opacity: 0.9 }}>
+            A confirmation is on its way to <strong>{confirmed.email}</strong>. If it is not
+            there in a few minutes, check the junk folder &mdash; then tell us and we will
+            fix it.
+          </p>
+        )}
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--text)", opacity: 0.9 }}>
+          In a hurry? Text <strong>(832) 948-2912</strong> &mdash; we answer texts fastest.
+        </p>
+        <button type="button" onClick={() => setConfirmed(null)}
+          style={{ marginTop: 18, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          Send another inquiry
+        </button>
+      </div>
+    );
   }
 
   return (
