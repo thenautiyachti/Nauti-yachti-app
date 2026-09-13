@@ -713,6 +713,38 @@ input::placeholder, textarea::placeholder {
     text-align: right;
   }
   .maint-table td[data-label="Status"], .stack-table td[data-label="Status"] { flex-wrap: wrap; }
+
+  /* SELECTS NEEDED THE SAME TREATMENT AS INPUTS AND NEVER GOT IT.
+   *
+   * The rule above sizes `input` only. That was fine while the stacked tables
+   * held numbers and dates — until Subscriptions gained Where, Business % and
+   * Ended on 13 Sep 2026 and went from seven columns to ten, three of them
+   * dropdowns.
+   *
+   * A <select> carries its widest option's width, and the widest here is
+   * "Home office — current (Conroe)". With the desktop inline maxWidth still
+   * applying, it pushed past the edge of a 375px card and took the row's layout
+   * with it. The owner saw it before any check did: "I can't see subscription
+   * and bills via mobile correctly."
+   *
+   * max-width has to be overridden explicitly — the inline style on the element
+   * beats a plain stylesheet rule, which is the same reason the input widths
+   * above carry !important. */
+  .maint-table td select, .stack-table td select {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0;
+    flex: 0 1 58%;
+    padding: 10px 8px !important;
+    font-size: 16px !important; /* 16px stops iOS zooming the page on focus */
+    text-overflow: ellipsis;
+  }
+  /* A button sits beside its label rather than stretching across the card. */
+  .maint-table td button, .stack-table td button { flex: 0 0 auto; }
+  /* The row's own name is its heading, the same way Item is for maintenance. */
+  .stack-table td[data-label="Name"] { font-size: 14.5px; padding-bottom: 4px !important; }
+  .stack-table td[data-label="Name"]::before { display: none; }
+  .stack-table td[data-label="Name"] input { flex: 1 1 auto; text-align: left; }
 }
 
 /* Two-column panels on a phone.
