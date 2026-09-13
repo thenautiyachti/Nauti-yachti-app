@@ -196,6 +196,47 @@ try {
   }
 }
 
+// --- 8c. duplicate-inquiry detection must stay wired in ---------------------
+//
+// Both halves of the 12 Sep 2026 double-submit fix are invisible when they stop
+// working: the confirmation panel just stops appearing, and the dedupe just
+// starts writing the second row again. Nothing errors, and the only symptom is
+// a duplicate somebody notices days later — which is how it was found the first
+// time.
+//
+// Checked as "the route still calls it" rather than "the file exists", because
+// the file existing is not the part that failed before. The media guard drifted
+// exactly this way: the module was fine and a caller had quietly stopped asking.
+{
+  const MODULE = "duplicateInquiry";
+  const route = read(path.join(APP, "app", "api", "inquiries", "route.js")) || "";
+  if (!route) {
+    fail("duplicate inquiries", "the inquiries route is missing entirely");
+  } else {
+    if (!route.includes(MODULE)) {
+      fail("duplicate inquiries", "the inquiries route no longer requires lib/" + MODULE
+        + ".js — the same inquiry sent twice would write two rows again, silently");
+    }
+    // The lookup has to happen BEFORE the create, or it is decoration.
+    const iFind = route.indexOf("findDuplicate");
+    const iCreate = route.indexOf("inquiry.create");
+    if (iFind >= 0 && iCreate >= 0 && iFind > iCreate) {
+      fail("duplicate inquiries", "findDuplicate runs after inquiry.create — the row is"
+        + " already written by then, so the check cannot prevent anything");
+    }
+  }
+  if (!read(path.join(APP, "lib", MODULE + ".js"))) {
+    fail("duplicate inquiries", "lib/" + MODULE + ".js is missing");
+  }
+  // The guest-facing half. Without the panel there is nothing on screen after a
+  // submission, which is the REASON people send it twice.
+  const site = read(path.join(APP, "components", "SiteView.js")) || "";
+  if (site && !/INQUIRY RECEIVED|Inquiry received/i.test(site)) {
+    fail("duplicate inquiries", "the inquiry form no longer shows a confirmation panel"
+      + " — a guest gets a blank form back and no way to tell it worked");
+  }
+}
+
 // --- 9. the two board parsers must agree ------------------------------------
 //
 // The app ranks the board and the crew script writes to it. If their owner-

@@ -4,6 +4,12 @@ const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 const { sendInquiryEmail, sendInquiryAckEmail } = require("../../../lib/email");
 const { generateBookingId } = require("../../../lib/bookingId");
 const { clean: cleanSource } = require("../../../lib/referralSource");
+const {
+  DUPLICATE_WINDOW_MINUTES,
+  UNTOUCHED_STATUS,
+  findDuplicate,
+  corrections,
+} = require("../../../lib/duplicateInquiry");
 
 // Admin-only: view all inquiries.
 async function GET() {
@@ -23,6 +29,65 @@ async function POST(req) {
     if (!body[field]) {
       return NextResponse.json({ error: `Missing field: ${field}` }, { status: 400 });
     }
+  }
+
+  // THE SAME CHARTER ASKED FOR TWICE.
+  //
+  // Cheap to check and it runs before anything is written: the window is short,
+  // the query is one indexed-ish lookup on an email, and the alternative is a
+  // duplicate row plus a second acknowledgement email that makes a guest think
+  // they have two bookings. See lib/duplicateInquiry.js for what counts.
+  //
+  // Narrowed in the query to this email and this status so a busy day does not
+  // pull the whole table back to throw it away in JS.
+  const recent = await prisma.inquiry.findMany({
+    where: {
+      // Case-insensitive to match what findDuplicate does in JS. Without this
+      // the normalisation there is dead code for the only case that needs it:
+      // somebody who typed Sarah@… the first time and sarah@… the second is one
+      // person, and Postgres would call those two different rows.
+      email: { equals: body.email, mode: "insensitive" },
+      status: UNTOUCHED_STATUS,
+      submittedAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MINUTES * 60 * 1000) },
+    },
+    orderBy: { submittedAt: "desc" },
+    take: 20,
+  });
+  const existing = findDuplicate(recent, body);
+
+  if (existing) {
+    const { data, changed } = corrections(existing, body);
+
+    // Updated only when they actually said something new. An identical resubmit
+    // leaves the row exactly as it was, including submittedAt — the charter was
+    // asked for at the first time of asking, not the last.
+    const inquiry = Object.keys(data).length
+      ? await prisma.inquiry.update({ where: { id: existing.id }, data })
+      : existing;
+
+    // The owner hears about it ONLY if something changed, because only then is
+    // the email he already has wrong. He is not told about a double-click.
+    //
+    // The guest gets no second acknowledgement either way: they are looking at
+    // the confirmation panel, their original email is already in their inbox,
+    // and a second one for one charter is the thing that causes the phone call
+    // this whole change exists to prevent.
+    let email = { sent: false, reason: "duplicate-no-change" };
+    if (changed.length) {
+      const res = await Promise.allSettled([sendInquiryEmail(inquiry, { resubmission: changed })]);
+      email = res[0].status === "fulfilled" ? res[0].value : { sent: false, reason: "threw" };
+    }
+
+    // Reported as a success, because from the guest's side it is one: the
+    // charter they asked for is on our screen. `duplicateOf` is here for the
+    // logs and for anyone debugging a "missing" inquiry later.
+    return NextResponse.json({
+      inquiry,
+      duplicateOf: existing.id,
+      changed,
+      email,
+      guestEmail: { sent: false, reason: "duplicate" },
+    });
   }
 
   const bookingId = await generateBookingId(body.date || null);

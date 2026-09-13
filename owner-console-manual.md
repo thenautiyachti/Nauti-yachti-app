@@ -121,6 +121,61 @@ Either record completing writes the income row, by the same rule as above. That
 was worth being careful about: without it, which screen you happened to use would
 have decided whether a charter's money got recorded.
 
+### The same inquiry sent twice
+
+Sarah Griffith sent the same glow-night inquiry **three minutes apart** on
+12 September. Nothing was wrong with the first one. The form simply reset itself
+and flashed a message for two and a half seconds, so thirty seconds later her
+screen looked exactly like a form she had never filled in — and she filled it in
+again. You got two rows and she got two acknowledgement emails for one charter.
+
+Two separate things now stop that.
+
+**The website confirms it on screen and leaves it there.** The form is replaced
+by a panel that reads back what she asked for — charter, boat, date, guests,
+quoted price — says where her confirmation email is going, and says plainly that
+there is nothing else to do and no need to send it again. It does not time out.
+There is a *Send another inquiry* button for anyone who genuinely wants a second.
+
+**And the site refuses to write the duplicate anyway.** The panel only helps
+somebody whose browser still has the page; a second tab, a phone after a laptop,
+or a form reloaded later never sees it. So a submission that matches an inquiry
+already sitting in the console is folded into that one instead of making a new row.
+
+| | |
+|---|---|
+| Counts as the same inquiry | same email address, same requested date, same package |
+| Within | 30 minutes of the first one |
+| Only if | you have not touched the first one yet — it is still **new** |
+
+Party size, phone number and message are deliberately **not** part of that test,
+because those are exactly what somebody corrects on a second try, and a
+correction is still the same charter. The date and the package are what make a
+charter that charter.
+
+The 30 minutes is not a guess at how fast people double-click — it is how long
+"I am trying to book this one charter" lasts as a single sitting. Someone who
+fills the form, goes to check a date with a friend and comes back twenty minutes
+later is on the same errand. It is deliberately not a whole day: two inquiries
+for the same date a week apart are worth seeing separately, because by then
+something has changed.
+
+**What you get told.** Nothing, if they changed nothing — a double-click is not
+news, and the email you already have is still correct. If they *did* change
+something, the row is updated to the newer details and you get one email whose
+subject begins **"Updated inquiry"** and whose first line says
+*NOT A NEW INQUIRY* and names what changed. The guest gets no second
+acknowledgement either way: a second email about one charter is what causes the
+"do I have two bookings?" phone call this exists to prevent.
+
+**Three things it will not do.** It will not merge two inquiries from the same
+person for *different* dates or *different* packages. It will not touch an
+inquiry you have already booked, lapsed or cancelled — if somebody asks again
+after a cancellation, that is new intent and gets its own row. And an inquiry
+with **no date** is never deduplicated, because there is nothing to identify it
+by, and wrongly merging two "someday" inquiries loses a real lead — which is
+much worse than a duplicate you delete.
+
 ## A charter that was paid for and never happened
 
 Weather, a breakdown, a guest who cannot make it. They have paid, the day is gone,
