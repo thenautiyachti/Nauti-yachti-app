@@ -48,6 +48,10 @@ async function POST(req) {
       // person, and Postgres would call those two different rows.
       email: { equals: body.email, mode: "insensitive" },
       status: UNTOUCHED_STATUS,
+      // Narrowed here too, not just in findDuplicate, so a group booking two
+      // boats for the same day does not even come back as a candidate.
+      packageId: body.packageId,
+      date: body.date,
       submittedAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MINUTES * 60 * 1000) },
     },
     orderBy: { submittedAt: "desc" },

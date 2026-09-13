@@ -144,14 +144,23 @@ already sitting in the console is folded into that one instead of making a new r
 
 | | |
 |---|---|
-| Counts as the same inquiry | same email address, same requested date, same package |
+| Counts as the same inquiry | same email address, same requested date, same package, **same boat** |
 | Within | 30 minutes of the first one |
 | Only if | you have not touched the first one yet — it is still **new** |
 
 Party size, phone number and message are deliberately **not** part of that test,
 because those are exactly what somebody corrects on a second try, and a
-correction is still the same charter. The date and the package are what make a
-charter that charter.
+correction is still the same charter.
+
+**The boat is part of it, though, and that is the interesting one.** A group too
+big for one deck books *two* — same person, same date, same package, two
+vessels, very plausibly half an hour apart while they count heads. Leaving the
+boat out of the test meant the second inquiry was folded into the first and the
+different vessel filed as a "corrected boat": not a duplicate prevented, half a
+booking gone. Including it costs the opposite case — somebody who changes their
+mind about the boat and resubmits gets a second row, which is the old behaviour
+and one click to delete. Those two are not comparable, so the tie goes to never
+losing the booking.
 
 The 30 minutes is not a guess at how fast people double-click — it is how long
 "I am trying to book this one charter" lasts as a single sitting. Someone who
@@ -169,7 +178,7 @@ acknowledgement either way: a second email about one charter is what causes the
 "do I have two bookings?" phone call this exists to prevent.
 
 **Three things it will not do.** It will not merge two inquiries from the same
-person for *different* dates or *different* packages. It will not touch an
+person for *different* dates, *different* packages or *different* boats. It will not touch an
 inquiry you have already booked, lapsed or cancelled — if somebody asks again
 after a cancellation, that is new intent and gets its own row. And an inquiry
 with **no date** is never deduplicated, because there is nothing to identify it
