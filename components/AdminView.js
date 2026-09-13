@@ -29,6 +29,10 @@ import {
 } from "../lib/bookingStatus";
 import { formatBody } from "../lib/boardText";
 import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS, LEDGER_ORIGIN } from "../lib/channels";
+import {
+  PREMISES, SUBSCRIPTION_CATEGORIES, BILLING_CYCLES,
+  monthlyAmount, needsAmount, isRunning, deductibleMonthly, summarise, overlappingDuplicates,
+} from "../lib/subscriptions";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
@@ -7403,16 +7407,9 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
 
 // ---- Subscriptions tab --------------------------------------------
 
-const SUBSCRIPTION_CATEGORIES = ["Storage", "Hosting", "Software", "Utilities", "Other"];
-const BILLING_CYCLES = ["monthly", "yearly", "weekly"];
-
-// Normalizes any billing cycle to an equivalent monthly figure so subscriptions
-// on different cadences can be summed into one "per month" total.
-function monthlyAmount(sub) {
-  if (sub.billingCycle === "yearly") return sub.amount / 12;
-  if (sub.billingCycle === "weekly") return sub.amount * 4.33;
-  return sub.amount;
-}
+// Moved to lib/subscriptions.js on 13 Sep 2026, when the household utilities
+// arrived and "what does this cost" stopped being the same question as "how much
+// of it is the business's". The rules live with the data now, not in the view.
 
 // Gift certificates.
 //
@@ -7586,15 +7583,51 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
     setForm(emptyForm);
   }
 
-  const active = subscriptions.filter((s) => s.active);
-  const totalMonthly = active.reduce((sum, s) => sum + monthlyAmount(s), 0);
+  const s = summarise(subscriptions);
+  const dupes = overlappingDuplicates(subscriptions);
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, maxWidth: 480 }}>
-        <StatCard label="Total monthly recurring cost" value={currency(totalMonthly)} color="var(--purple)" />
-        <StatCard label="Active subscriptions" value={String(active.length)} color="#E8934A" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, maxWidth: 720 }}>
+        <StatCard label="Running bills, per month" value={currency(s.monthlyCost)} color="var(--purple)" />
+        {/* THE BUSINESS'S SHARE, NOT THE WHOLE BILL. The office is at home, so
+            most of these utilities belong to the business only in part. This
+            figure counts ONLY the ones whose share has been set, which is why it
+            can be much smaller than the one beside it. */}
+        <StatCard label="Of that, the business's share" value={currency(s.monthlyDeductible)} color="#7FE0B8" />
+        <StatCard label="Running bills" value={String(s.running.length)} color="#E8934A" />
+        {s.ended.length > 0 && <StatCard label="Closed accounts" value={String(s.ended.length)} color="var(--muted)" />}
       </div>
+
+      {/* WHAT IS NOT KNOWN, said out loud rather than absorbed into a total.
+          A blank share and a blank amount are both questions, and a tab that
+          quietly treated them as zero would read as complete while being
+          neither. */}
+      {(s.unsetShare.length > 0 || s.unknownAmount.length > 0 || dupes.length > 0) && (
+        <div style={{ background: "var(--paper-12)", borderRadius: 10, padding: "12px 14px", fontSize: 12.5, color: "var(--text)", display: "grid", gap: 8 }}>
+          {s.unsetShare.length > 0 && (
+            <div>
+              <strong style={{ color: "#FFD479" }}>{s.unsetShare.length} bill{s.unsetShare.length === 1 ? "" : "s"} with no business share set</strong>
+              {" — "}the office is at home, so these count only in the proportion the business actually uses.
+              Until that is filled in they are left out of the share above rather than guessed at.
+              <div style={{ color: "var(--muted)", marginTop: 3 }}>{s.unsetShare.map((x) => x.name).join(" · ")}</div>
+            </div>
+          )}
+          {s.unknownAmount.length > 0 && (
+            <div>
+              <strong style={{ color: "#FFD479" }}>{s.unknownAmount.length} with no amount yet</strong>
+              {" — "}the service is known, the price is not. They add nothing to the totals above.
+              <div style={{ color: "var(--muted)", marginTop: 3 }}>{s.unknownAmount.map((x) => x.name).join(" · ")}</div>
+            </div>
+          )}
+          {dupes.map((g, i) => (
+            <div key={i}>
+              <strong style={{ color: "#FF8A8A" }}>Two running accounts with {g[0].vendor || g[0].name}</strong>
+              {" — "}after a move that usually means the old one was never closed, and it is doubling the monthly total.
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="panel-split" style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
         <form onSubmit={submit} style={{ background: "var(--paper-12)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
@@ -7649,16 +7682,19 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 11 }}>
                   <th style={{ padding: "4px 8px" }}>Name</th>
                   <th style={{ padding: "4px 8px" }}>Category</th>
+                  <th style={{ padding: "4px 8px" }}>Where</th>
                   <th style={{ padding: "4px 8px" }}>Amount</th>
                   <th style={{ padding: "4px 8px" }}>Cycle</th>
+                  <th style={{ padding: "4px 8px" }}>Business %</th>
                   <th style={{ padding: "4px 8px" }}>Next due</th>
+                  <th style={{ padding: "4px 8px" }}>Ended</th>
                   <th style={{ padding: "4px 8px" }}>Active</th>
                   <th style={{ padding: "4px 8px" }}></th>
                 </tr>
               </thead>
               <tbody>
                 {subscriptions.length === 0 && (
-                  <tr><td colSpan={7} style={{ padding: "8px", color: "var(--muted)" }}>No subscriptions yet.</td></tr>
+                  <tr><td colSpan={10} style={{ padding: "8px", color: "var(--muted)" }}>No subscriptions yet.</td></tr>
                 )}
                 {subscriptions.map((s) => (
                   <tr key={s.id} style={{ background: "var(--card)" }}>
@@ -7672,9 +7708,19 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                         {SUBSCRIPTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
+                    <td data-label="Where" style={{ padding: "6px 8px" }}>
+                      <select defaultValue={s.premises || ""} onChange={(e) => onUpdate(s.id, { premises: e.target.value || null })}
+                        title="Which address this bill belongs to. The move in April 2026 means most services have one of each."
+                        style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", maxWidth: 160, fontSize: 11 }}>
+                        <option value="">—</option>
+                        {PREMISES.map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </td>
                     <td data-label="Amount" style={{ padding: "6px 8px" }}>
                       <input type="number" min="0" step="0.01" defaultValue={s.amount} onBlur={(e) => onUpdate(s.id, { amount: Number(e.target.value) })}
-                        style={{ width: 70, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                        placeholder="?"
+                        title={needsAmount(s) ? "No amount yet — this bill adds nothing to the totals until one is entered." : ""}
+                        style={{ width: 70, padding: "5px 6px", borderRadius: 5, border: `1px solid ${needsAmount(s) ? "#FFD479" : "rgba(203,108,230,0.3)"}` }} />
                     </td>
                     <td data-label="Cycle" style={{ padding: "6px 8px" }}>
                       <select defaultValue={s.billingCycle} onChange={(e) => onUpdate(s.id, { billingCycle: e.target.value })}
@@ -7682,8 +7728,28 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                         {BILLING_CYCLES.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
+                    {/* THE SHARE THE BUSINESS ACTUALLY BEARS. Blank is a real
+                        state and means nobody has decided — it is not zero, and
+                        it keeps the bill out of the deductible total rather than
+                        letting a household figure drift into one. */}
+                    <td data-label="Business %" style={{ padding: "6px 8px" }}>
+                      <input type="number" min="0" max="100" step="1" defaultValue={s.businessUsePct ?? ""}
+                        placeholder="not set"
+                        onBlur={(e) => onUpdate(s.id, { businessUsePct: e.target.value === "" ? null : Number(e.target.value) })}
+                        title="How much of this bill is the business's. Boat storage and software are 100%. A household utility is a share you set with your accountant — leave blank until then."
+                        style={{ width: 66, padding: "5px 6px", borderRadius: 5, border: `1px solid ${s.businessUsePct == null ? "#FFD479" : "rgba(203,108,230,0.3)"}` }} />
+                    </td>
                     <td data-label="Next due" style={{ padding: "6px 8px" }}>
                       <input type="date" defaultValue={s.nextDueDate || ""} onBlur={(e) => onUpdate(s.id, { nextDueDate: e.target.value || null })}
+                        style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
+                    </td>
+                    {/* Setting an end date is what closes an account. `active`
+                        follows it, so the two can never disagree and leave a
+                        closed bill counting toward the monthly total. */}
+                    <td data-label="Ended" style={{ padding: "6px 8px" }}>
+                      <input type="date" defaultValue={s.endedOn || ""}
+                        onBlur={(e) => onUpdate(s.id, { endedOn: e.target.value || null, active: !e.target.value })}
+                        title="When this account closed. Leave blank while it is still being billed."
                         style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                     </td>
                     <td data-label="Active" style={{ padding: "6px 8px" }}>

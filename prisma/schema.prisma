@@ -237,6 +237,38 @@ model Subscription {
   note         String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
+
+  // WHICH ADDRESS THIS BILL BELONGS TO.
+  //
+  // The business moved in April 2026, so for most of the tax year there are TWO
+  // of everything: two water accounts, two electricity suppliers, two internet
+  // providers, two storage sites. Without this, a year's bills read as one
+  // continuous run of duplicated services and nothing says which address was
+  // live when.
+  premises String?
+
+  // When the account opened and closed. endedOn is the fact; `active` is the
+  // flag the console filters on, and the two must agree -- an account with an end
+  // date that still counts as active goes on inflating the monthly total forever.
+  startedOn String? // "YYYY-MM-DD"
+  endedOn   String? // "YYYY-MM-DD" — null means still running
+
+  // HOW MUCH OF THIS IS ACTUALLY THE BUSINESS'S.
+  //
+  // The office is at home, so the household utilities are deductible only in the
+  // proportion the business uses -- not in full. Boat storage is the opposite:
+  // it is 100% business and nothing about it is a home-office question.
+  //
+  // NULL MEANS NOBODY HAS DECIDED YET, and that is deliberately different from
+  // zero. The Tax Report used to annualise every subscription at its full amount,
+  // which for a household water bill is a claim the business never had. An unset
+  // share is excluded from the deductible total and counted as unanswered, so it
+  // shows up as a question rather than quietly becoming a number.
+  businessUsePct Float?
+
+  // Account or reference number, so a statement can be matched to the right one
+  // of two accounts with the same vendor at different addresses.
+  accountRef String?
 }
 
 model ExternalBooking {
