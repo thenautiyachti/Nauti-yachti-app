@@ -28,7 +28,7 @@ import {
   isOwed,
 } from "../lib/bookingStatus";
 import { formatBody } from "../lib/boardText";
-import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS } from "../lib/channels";
+import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS, LEDGER_ORIGIN } from "../lib/channels";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
@@ -48,8 +48,40 @@ const INCOME_CATEGORIES = [
   "Reservation", "Add-On (+1 Hour)", "Add-On (+2 Hour)", "Add-On (+3 Hour)", "Add-On (+4 Hour)",
   "Womens Apparel", "Mens Apparel", "Other",
 ];
-const RESERVATION_ORIGINS = ["Boatsetter", "GetmyBoat", "Facebook", "Instagram", "Website", "Friends", "Other"];
-const STATEMENT_ORIGINS = ["Cash", "CashApp Statement", "Gmail Statement", "Paypal Statement", "Wells Fargo Statement", "WoodForest Statement", "Other"];
+// A LEDGER ORIGIN SAYS HOW THE MONEY MOVED. NOTHING ELSE.
+//
+// Owner's ruling, 13 Sep 2026: "Where they came from and how they paid are
+// different means. They could go to our website and pay via stripe, or pay in
+// person with cash. Boatsetter & GetMyBoat should always payout the same and go
+// directly to the bank. Socials can pay many different ways."
+//
+// The income list used to be ["Boatsetter", "GetmyBoat", "Facebook",
+// "Instagram", "Website", "Friends", "Other"] -- every option a SOURCE and not
+// one of them a way of paying. There was literally no way to record that a
+// charter was paid in cash, so $775 from an Instagram guest was filed as
+// "Instagram" and $928.06 paid by PayPal as "Friends". Where the guest came from
+// belongs on the booking's lead source, which has its own list in lib/channels.js.
+//
+// Derived from LEDGER_ORIGIN rather than retyped, so a new payment method cannot
+// exist in the booking dropdown and be unselectable here -- which is how "Cash
+// App" nearly arrived. Order follows PAYMENT_METHODS; "Unpaid" is dropped
+// because an unpaid charter has no ledger row to give an origin to.
+const METHOD_ORIGINS = [
+  ...new Set(PAYMENT_METHODS.filter((m) => m !== "Unpaid").map((m) => LEDGER_ORIGIN[m]).filter(Boolean)),
+];
+
+// Income: only how it arrived.
+const RESERVATION_ORIGINS = [...METHOD_ORIGINS, "Other"];
+
+// Expenses: the same methods, plus the statements a cost can land on that no
+// charter ever pays us through.
+const STATEMENT_ORIGINS = [
+  ...METHOD_ORIGINS,
+  "Gmail Statement",
+  "Wells Fargo Statement",
+  "WoodForest Statement",
+  "Other",
+];
 
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
@@ -1851,6 +1883,24 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                       <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: BOOKING_STATUS_COLOR[r.statusBucket], textTransform: "uppercase", letterSpacing: "0.03em" }}>
                         {BOOKING_STATUS_LABEL[r.statusBucket] || r.status}
                       </span>
+                      {/* THEY TRIED TO PAY AND IT DID NOT WORK.
+                          Sarah Griffith's card was declined at 10:47pm on
+                          12 Sep 2026 and this cell said "INQUIRY" -- the same
+                          thing it says for somebody who never opened the link.
+                          Those two need opposite messages, so the row has to be
+                          able to tell them apart at a glance.
+                          Hidden once paid: the webhook clears both columns on a
+                          successful payment, so a paid booking never wears a
+                          stale decline. */}
+                      {r.raw?.paymentFailedAt && r.raw?.paymentStatus !== "paid" && (
+                        <div
+                          title={(r.raw.paymentFailedError || "Payment failed")
+                            + " — tried " + new Date(r.raw.paymentFailedAt).toLocaleString("en-US")
+                            + ". Nothing was cancelled; their checkout link may still work."}
+                          style={{ marginTop: 3, fontSize: 10, fontWeight: 700, color: "#FF8A8A", textTransform: "uppercase", letterSpacing: "0.03em", whiteSpace: "normal", maxWidth: 150 }}>
+                          ⚠ tried to pay — declined
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: "6px 8px", borderRadius: "0 6px 6px 0" }}>
                       {r.kind === "external" ? (

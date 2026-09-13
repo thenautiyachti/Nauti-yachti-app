@@ -237,6 +237,57 @@ try {
   }
 }
 
+// --- 8d. a failed payment must still be recorded ----------------------------
+//
+// The webhook listened only for success until 13 Sep 2026, so a declined card
+// existed nowhere but Stripe's dashboard. Sarah Griffith's $100 was declined at
+// 10:47pm on 12 Sep and her inquiry went on reading "new / unpaid" -- identical
+// to somebody who never opened the link, and those two need opposite replies.
+//
+// This checks the three parts that have to agree, because losing any one of them
+// is silent: the handler, the clear-on-success, and the column the console reads.
+{
+  const hook = read(path.join(APP, "app", "api", "webhooks", "stripe", "route.js")) || "";
+  if (!hook) {
+    fail("failed payments", "the Stripe webhook route is missing");
+  } else {
+    if (!hook.includes("payment_intent.payment_failed")) {
+      fail("failed payments", "the webhook no longer handles payment_intent.payment_failed"
+        + " — a declined card would be invisible outside Stripe again");
+    }
+    // A success that does not clear the flag leaves a paid booking wearing a
+    // decline, which is worse than not recording it: it is actively wrong.
+    const successes = (hook.match(/paymentStatus: "paid"/g) || []).length;
+    const clears = (hook.match(/CLEAR_FAILURE/g) || []).length - 1; // minus the definition
+    if (successes > 0 && clears < successes) {
+      fail("failed payments", "there are " + successes + " places that mark a payment paid but only "
+        + clears + " that clear the failure — a paid booking could still show as declined");
+    }
+    // The origin written for a gift certificate is the one place left that could
+    // put a SOURCE back into the ledger's origin column. See lib/channels.js.
+    if (/origin: "Website"/.test(hook)) {
+      fail("failed payments", 'the webhook writes a ledger origin of "Website", which is a'
+        + " source, not a payment method — see the 13 Sep 2026 ruling in lib/channels.js");
+    }
+  }
+  if (!read(path.join(APP, "lib", "paymentFailure.js"))) {
+    fail("failed payments", "lib/paymentFailure.js is missing — nothing turns a decline code into words");
+  }
+  // The console half. A recorded failure nobody can see is the same bug again.
+  const admin = read(path.join(APP, "components", "AdminView.js")) || "";
+  if (admin && !/paymentFailedAt/.test(admin)) {
+    fail("failed payments", "the console no longer shows paymentFailedAt — a declined guest"
+      + " would look the same as one who never tried");
+  }
+  // And the schema must actually have somewhere to put it, on BOTH payable rows.
+  const schema = read(path.join(APP, "prisma", "schema.prisma")) || "";
+  const cols = (schema.match(/paymentFailedAt/g) || []).length;
+  if (schema && cols < 2) {
+    fail("failed payments", "paymentFailedAt appears on " + cols + " model(s); Inquiry and"
+      + " ExternalBooking both take payments and both need it");
+  }
+}
+
 // --- 9. the two board parsers must agree ------------------------------------
 //
 // The app ranks the board and the crew script writes to it. If their owner-

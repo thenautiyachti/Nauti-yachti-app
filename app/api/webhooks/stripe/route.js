@@ -1,7 +1,13 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { redeem: redeemGiftCertificate, generateUniqueCode: generateGiftCode } = require("../../../../lib/giftCertificates");
-const { sendGiftCertificateEmail, sendGiftCertificateOwnerEmail, sendBookingConfirmationEmail } = require("../../../../lib/email");
+const { sendGiftCertificateEmail, sendGiftCertificateOwnerEmail, sendBookingConfirmationEmail, sendPaymentFailedEmail } = require("../../../../lib/email");
+const { describeFailure } = require("../../../../lib/paymentFailure");
+
+// A payment that succeeds AFTER one that failed must not leave the decline
+// behind. Every success path sets these alongside paymentStatus, so "paid" and
+// "declined" can never both be true on one row.
+const CLEAR_FAILURE = { paymentFailedAt: null, paymentFailedError: null };
 
 // Stripe signature verification needs the exact raw request body — reading
 // req.text() (not req.json()) preserves that. Must run on the Node.js
@@ -33,6 +39,86 @@ async function POST(req) {
   } catch (err) {
     console.error("[webhooks/stripe] Signature verification failed:", err.message);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // SOMEBODY TRIED TO PAY AND IT DID NOT WORK.
+  //
+  // Until 13 Sep 2026 this webhook listened for success and nothing else, so a
+  // declined card was invisible everywhere except Stripe's own dashboard. Sarah
+  // Griffith's $100 for two glow seats was declined for insufficient funds at
+  // 10:47pm on 12 Sep and her inquiry went on reading "new / unpaid", which is
+  // exactly what it read before she ever opened the link.
+  //
+  // Recorded, not acted on: the seats are NOT released, the status is NOT
+  // changed. A failed payment is a guest who wants to come and could not pay
+  // yet, and a Checkout session stays open for 24 hours — so the same link she
+  // already has still works. Cancelling anything here would turn a retryable
+  // moment into a lost booking.
+  if (event.type === "payment_intent.payment_failed") {
+    const pi = event.data.object;
+    try {
+      const failure = describeFailure(pi.last_payment_error);
+
+      // THE PAYMENT INTENT DOES NOT CARRY OUR METADATA -- only the Checkout
+      // Session does, and Sarah's intent had `metadata: {}`. So the session has
+      // to be found first. Asked of Stripe rather than read off
+      // payment_details.order_reference, which happens to hold the session id but
+      // is not what that field is for.
+      let session = null;
+      try {
+        const found = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 });
+        session = (found && found.data && found.data[0]) || null;
+      } catch (listErr) {
+        console.error("[webhooks/stripe] could not look up the session for " + pi.id + ":", listErr.message);
+      }
+
+      const meta = (session && session.metadata) || {};
+      const data = { paymentFailedAt: new Date(), paymentFailedError: failure.summary };
+      let hit = null;
+
+      if (meta.externalBookingId) {
+        hit = await prisma.externalBooking.update({ where: { id: meta.externalBookingId }, data }).catch(() => null);
+      } else if (meta.inquiryId) {
+        hit = await prisma.inquiry.update({ where: { id: meta.inquiryId }, data }).catch(() => null);
+      } else if (session && session.id) {
+        // Fallback: both tables store the session id when the checkout is
+        // created, so the row is findable even with no metadata at all.
+        hit = await prisma.inquiry.findFirst({ where: { stripeSessionId: session.id } });
+        if (hit) await prisma.inquiry.update({ where: { id: hit.id }, data });
+        else {
+          hit = await prisma.externalBooking.findFirst({ where: { stripeSessionId: session.id } });
+          if (hit) await prisma.externalBooking.update({ where: { id: hit.id }, data });
+        }
+      }
+
+      if (!hit) {
+        // Worth shouting about: a real person could not pay and we cannot say
+        // who. Better a loud log than a silent shrug, which is the bug being
+        // fixed here in the first place.
+        console.error("[webhooks/stripe] PAYMENT FAILED and no booking matched it — intent "
+          + pi.id + ", " + ((pi.amount || 0) / 100) + " USD, " + failure.summary);
+      }
+
+      // Tell the owner, because the entire point is that he should not have to
+      // go and look. Not awaited and not allowed to throw -- Stripe retries any
+      // webhook that does not return 200, and a mail outage must not make it
+      // redeliver a failure forever.
+      sendPaymentFailedEmail({
+        name: hit ? (hit.name || hit.guestName) : null,
+        email: hit ? hit.email : (session && session.customer_details && session.customer_details.email) || null,
+        phone: hit ? hit.phone : null,
+        bookingId: hit ? hit.bookingId : null,
+        date: hit ? hit.date : null,
+        packageName: hit ? (hit.packageName || null) : null,
+        amount: (pi.amount || 0) / 100,
+        failure,
+        sessionUrl: session && session.url,
+        sessionExpiresAt: session && session.expires_at,
+      }).catch((e) => console.error("[webhooks/stripe] failure notice threw:", e.message));
+    } catch (err) {
+      console.error("[webhooks/stripe] Failed to record a failed payment:", err);
+    }
+    return NextResponse.json({ received: true });
   }
 
   if (event.type === "checkout.session.completed") {
@@ -85,7 +171,12 @@ async function POST(req) {
                   note: "Gift certificate " + code + " sold"
                     + (cert.purchaserName ? " to " + cert.purchaserName : "")
                     + " — a charter is owed against this until it is redeemed",
-                  origin: "Website",
+                  // Stripe, not "Website": a ledger origin says HOW the money
+                  // moved, and the website is where they bought it, not how they
+                  // paid. Corrected 13 Sep 2026 along with the rest of the
+                  // origins -- this line was the one place still able to write a
+                  // source into that column.
+                  origin: "Stripe",
                   date: new Date().toISOString().slice(0, 10),
                 },
               });
@@ -120,7 +211,7 @@ async function POST(req) {
       try {
         // Stripe paying IS the assertion -- the one payment method this
         // system can know without being told. See lib/channels.js.
-        const data = { paymentStatus: "paid", status: "booked", paymentMethod: "Stripe (card)" };
+        const data = { paymentStatus: "paid", status: "booked", paymentMethod: "Stripe (card)", ...CLEAR_FAILURE };
         // Stripe verifies these, so they beat whatever we had -- but only
         // overwrite when it actually returned one, so a blank never clobbers a
         // good number or address already on the record.
@@ -166,6 +257,8 @@ async function POST(req) {
       const data = {
         paymentStatus: "paid",
         status: "booked",
+        // A retry that works wipes the decline from the attempt before it.
+        ...CLEAR_FAILURE,
         // Stripe paying IS the assertion. Everything else about how money
         // arrived has to be said by the owner -- see lib/channels.js.
         paymentMethod: "Stripe (card)",

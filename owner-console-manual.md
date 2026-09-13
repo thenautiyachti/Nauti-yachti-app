@@ -185,6 +185,75 @@ with **no date** is never deduplicated, because there is nothing to identify it
 by, and wrongly merging two "someday" inquiries loses a real lead — which is
 much worse than a duplicate you delete.
 
+## Where they came from, and how they paid
+
+**These are two different questions and the books used to answer them in one
+column.** A guest can find you on Instagram and hand you cash. They can come
+through the website and pay by Venmo. Boatsetter and GetMyBoat always pay the
+same way — a payout straight to the bank — but everything else is free to
+combine however it likes.
+
+| | Says | Lives on |
+|---|---|---|
+| **Lead source** | where the guest came from | the booking |
+| **How paid** | how the money arrived | the booking |
+| **Ledger origin** | how the money arrived | each income or expense row |
+
+The ledger's origin had been doing both jobs, so income was filed under
+**Instagram** ($775), **Friends** ($928.06), **Yolo Lake Conroe** ($2,400) and
+**Website** — none of which is a way of paying. Worse, the income dropdown
+offered only sources, so there was *literally no way* to record that a charter
+was paid in cash. Both dropdowns are now built from the payment-method list, so
+one cannot gain an option the other lacks.
+
+Corrected 13 September 2026, across 24 rows. Totals did not move — this changed
+what the money is filed under, never how much of it there is.
+
+**Cash App is not Cash.** It leaves a statement that can be reconciled and can
+charge a fee; cash in a hand does neither, and the whole point of the field is
+telling those apart. It files to the ledger as *Cash App Statement*, the
+spelling your expense rows already used.
+
+**One charter can be paid two ways.** Rheya Palmer bought two hours by card and
+topped up to three by Venmo; Nagdy's extra hour came by Zelle on top of a
+Boatsetter payout. The booking's *How paid* holds the principal method and each
+actual payment is its own ledger row, so the books can still say how every
+dollar arrived.
+
+### When somebody tries to pay and it does not work
+
+Sarah Griffith tried to pay $100 for two glow seats at **10:47pm on 12
+September** and her bank declined it for insufficient funds. Her row read
+**new / unpaid** — true, and exactly what it read before she ever opened the
+link. The webhook only listened for success, so the attempt existed nowhere but
+in Stripe's own dashboard. It was found because you went and looked.
+
+A guest who tried and was stopped by her bank needs *"your seats are still
+there, try another card"*. A guest who never opened the link needs a nudge.
+Those are opposite messages, and until now both looked the same on screen.
+
+So a declined payment is now recorded on the booking and shows in the Bookings
+list as **⚠ TRIED TO PAY — DECLINED**, with the reason and the time on hover.
+You also get one email naming what to say. The guest gets nothing: Stripe
+already told them on the spot, in their bank's own words, and a second message
+from us an hour later only causes the phone call.
+
+**Nothing is cancelled and no seat is released.** A Stripe checkout link stays
+open for 24 hours, so most of the time the link they already have still works —
+the email tells you whether it does, by its real expiry rather than by
+assumption. Cancelling on a decline would turn a retryable moment into a lost
+booking.
+
+**It says when the fault is ours.** An expired API key or an amount Stripe will
+not take is not something a guest can retry their way out of, and that email
+arrives as **PAYMENT BROKEN OUR END** instead. An unrecognised decline code is
+passed through in Stripe's own words and flagged as not understood rather than
+being softened into "their card didn't work" — which could otherwise hide a
+fault of ours while somebody sits there unable to pay.
+
+The badge clears itself the moment a payment succeeds, so a paid booking never
+wears an old decline.
+
 ## A charter that was paid for and never happened
 
 Weather, a breakdown, a guest who cannot make it. They have paid, the day is gone,

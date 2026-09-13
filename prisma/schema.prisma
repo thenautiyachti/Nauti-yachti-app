@@ -128,6 +128,23 @@ model Inquiry {
   stripeSessionId       String?
   stripePaymentIntentId String?
 
+  // A PAYMENT THAT WAS TRIED AND DID NOT WORK.
+  //
+  // Sarah Griffith tried to pay for two glow seats at 10:47pm on 12 Sep 2026 and
+  // her bank declined it for insufficient funds. This row read "new / unpaid" —
+  // true, and identical to somebody who never opened the link. The webhook only
+  // ever listened for success, so the attempt existed nowhere but in Stripe, and
+  // the owner found it by going and looking himself.
+  //
+  // A guest who tried and was stopped by her bank needs "your seats are still
+  // there, try another card". A guest who never tried needs a nudge. Without
+  // these two columns they are the same row.
+  //
+  // CLEARED when a payment finally succeeds: a paid booking must never still be
+  // wearing the decline from the attempt before it.
+  paymentFailedAt    DateTime?
+  paymentFailedError String? // plain English — see lib/paymentFailure.js
+
   // Only meaningful when status is "cancelled" — how a confirmed booking's
   // payment was resolved on cancellation. Independent of paymentStatus
   // (which is the raw Stripe-driven unpaid/paid/refunded signal); this
@@ -257,6 +274,12 @@ model ExternalBooking {
   // Mirrors Inquiry so the webhook and the pay page can treat both the same.
   paymentStatus   String  @default("unpaid") // "unpaid" | "paid" | "refunded"
   stripeSessionId String?
+
+  // Mirrors Inquiry's pair — see the long note there. A /pay link can be
+  // declined exactly the same way, and a platform booking awaiting a card is
+  // just as invisible when it is.
+  paymentFailedAt    DateTime?
+  paymentFailedError String?
 
   // HOW THE MONEY ARRIVED. See lib/channels.js for the vocabulary.
   //
