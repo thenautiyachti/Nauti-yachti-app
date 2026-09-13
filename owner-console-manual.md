@@ -69,7 +69,7 @@ now answers them separately, and they are genuinely different questions:
 |---|---|---|
 | **Lead source** | Where did the enquiry come from? | Website · Text / WhatsApp · Phone · Walk-up · Instagram · Facebook · Repeat guest · Referral from a friend · Boatsetter · GetMyBoat · AI search (ChatGPT) · Other |
 | **Booking channel** | Who took and processed it? | Boatsetter · GetMyBoat · Website · Direct |
-| **How paid** | How did the money actually arrive? | Unpaid · Stripe (card) · Cash · Zelle · Venmo · PayPal · Boatsetter payout · GetMyBoat payout · Gift certificate |
+| **How paid** | How did the money actually arrive? | Unpaid · Stripe (card) · Cash · Cash App · Zelle · Venmo · PayPal · Boatsetter payout · GetMyBoat payout · Gift certificate |
 
 A GetMyBoat booking can come from a guest who found us on Instagram. That is the
 interesting fact, and until now there was nowhere to put it.
