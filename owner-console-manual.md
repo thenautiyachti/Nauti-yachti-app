@@ -515,10 +515,58 @@ records that the 100% is your account of how the line is used and is not
 something the bill itself establishes — which is exactly what an accountant will
 ask about first.
 
+### Personal subscriptions, and why they are here at all
+
+Netflix, Hulu, Spotify, Xbox Game Pass, the car note, renters insurance. You
+wanted one place to see everything you pay for monthly so duplicates and waste
+could be found across the lot — and the very first look found two identical
+Google One subscriptions on two different Google accounts.
+
+**They are counted nowhere near the business.** Not at 0%, which would still put
+Netflix inside the monthly cost and merely leave it out of the deductible half.
+The split happens before any arithmetic: personal rows have their own line with
+their own total, they never enter the business figures, and they are stripped out
+of the subscriptions CSV that the Tax Report exports for a bookkeeper.
+
+The **Side** button on each row moves a bill between the two. It is a button
+rather than a fixed property because the answer can genuinely change — Meta One
+Advanced looked personal until its billing screen showed it subscribed to The
+Nauti Yachti page, at which point it was a marketing cost.
+
+### Grouped, and folded shut
+
+Thirty-odd rows in one run is a wall, not a list. Bills sit under their category
+— Utilities, Storage, Software, Hosting, Other, then Personal last — and every
+heading carries that group's own count, monthly total, business share, how many
+have no amount yet and how many are closed.
+
+**Groups start closed.** Click a heading to open it. Inside a group the biggest
+bill sorts first, because that is the one worth arguing about, and anything
+unpriced sinks to the bottom where it reads as a question rather than as a cheap
+item.
+
+### The calendar
+
+A total says how much. It does not say how much *this week*, which is the
+question you actually ask when deciding whether something can be paid now. The
+calendar draws the month, with each bill on the day it lands.
+
+**It will not pretend.** Only the bills whose due date came off a receipt are on
+it; the rest are named underneath as bills it cannot place. An empty Tuesday has
+to mean nothing is due on Tuesday, not that nobody has looked. A monthly bill
+repeats on its day and is drawn every month; a yearly one appears only in the
+month it actually falls, because spreading Peacock across twelve squares would
+turn one $79.99 charge into an imagined $960.
+
+It earns its place immediately: Blotato, Claude Max and ElevenLabs all fall due
+on the 28th — $159.53 in one morning, which no list sorted by name would show
+you.
+
 ### On a phone
 
 The table stacks into one card per bill, each row labelled by the column it
-lost. Nothing scrolls sideways.
+lost. Nothing scrolls sideways, and the calendar scrolls inside its own box
+rather than widening the page.
 
 ---
 
