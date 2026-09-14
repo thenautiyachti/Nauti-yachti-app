@@ -703,6 +703,51 @@ Coral now proposes a date for each of these in her daily status, and raises one
 as a board item if it has been waiting more than three days. The Overview also
 flags them under **Needs attention**. Set the date with **Reschedule**.
 
+## Comments
+
+The queue of comments nobody has answered, from Facebook and Instagram.
+
+It exists because of one day. On 6 September 2026 a Boatz & Glowz post drew four
+comments challenging the operation — liability, life jackets, drink-driving,
+litter on the shoreline — and the first sat **twenty-three hours** before anyone
+saw it. The people reading a thread like that are the ones who never comment, and
+an unanswered accusation reads as conceded.
+
+A thread is colour-coded by how long it has waited: **fresh** under six hours,
+**waiting** past six, **overdue** past twenty-four.
+
+**Nothing here posts on its own.** Siren writes a suggested reply and it sits in
+the box; you can send it, edit it, or empty the box and write your own. A reply
+is public, immediate and attributed to the business — every other agent in this
+system proposes and you decide, and a comment thread composed in response to
+something hostile is the last place to break that.
+
+**TikTok comments are not here**, because the publishing API does not expose
+them. They remain a manual job in the TikTok app. Saying otherwise would leave
+you believing a channel was covered while nothing was watching it.
+
+---
+
+## Messages
+
+The direct-message inbox, from Facebook and Instagram.
+
+**Nothing read these before it existed.** There was a comments tab and no
+messages tab, and not one of the scheduled crew had DMs in their brief — so a
+message arrived, sat there, and there was no point at which anybody found out.
+
+The first look at the real data found two unread messages from 7 September, a
+day and a half old, from the man who had posted publicly about litter on the
+shoreline. He was offering two of his own boats to help clean up after the glow
+party.
+
+It is built to the same shape as Comments on purpose. They answer the same
+question on different channels, and two panels that disagreed about what
+"waiting" means would be worse than one. As with Comments, nothing sends until
+you send it.
+
+---
+
 ## Asking for Google reviews
 
 The panel at the top of **Testimonials** lists everyone who could be asked, with
@@ -754,6 +799,23 @@ by hand — a guest with no number is a review that never gets asked for.
 **Text it** opens your phone's messaging app with the message already written and
 ticks the charter off. **It does nothing on a desktop** — this has to be done from
 a phone.
+
+---
+
+## Photo Requests
+
+Guests who asked for their photos and have not been sent them. The badge counts
+what is still **owed**, not the total, so once the queue is clear it says
+nothing.
+
+**Longest wait first, deliberately not newest first.** The guest at the top is
+the one most likely to have given up on us. The days-waiting figure beside each
+name is counted in whole days from the day they asked.
+
+**The link cannot be filled in from here.** The files are on your machine, not in
+this database, so the button opens the message with the greeting already written
+and leaves you to paste the album link — the whole job reduced to one tap and one
+paste. Marking it sent is what clears it from the queue.
 
 ---
 
