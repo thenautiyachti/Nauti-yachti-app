@@ -31,7 +31,7 @@ import { formatBody } from "../lib/boardText";
 import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS, LEDGER_ORIGIN } from "../lib/channels";
 import {
   PREMISES, SUBSCRIPTION_CATEGORIES, BILLING_CYCLES,
-  monthlyAmount, needsAmount, isFree, isRunning, deductibleMonthly, summarise, overlappingDuplicates,
+  monthlyAmount, needsAmount, isFree, isRunning, deductibleMonthly, summarise, overlappingDuplicates, isPersonal,
 } from "../lib/subscriptions";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -7320,10 +7320,16 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
     downloadCsv(`nauti-yachti-tax-report-${year}.csv`, rows);
   }
 
+  // BUSINESS ROWS ONLY. This file is exported from the Tax Report and is handed
+  // to a bookkeeper — it is the last place personal spending should be able to
+  // reach, and a CSV gives no hint about where a row came from once it has been
+  // opened in a spreadsheet. The filter belongs here and not only in the totals.
   function exportSubscriptionsCsv() {
     const rows = [
-      ["Name", "Category", "Amount", "Billing cycle", "Annualized cost", "Vendor", "Active"],
-      ...subscriptions.map((s) => [s.name, s.category || "", s.amount, s.billingCycle, (monthlyAmount(s) * 12).toFixed(2), s.vendor || "", s.active ? "yes" : "no"]),
+      ["Name", "Category", "Amount", "Billing cycle", "Annualized cost", "Business use %", "Vendor", "Active"],
+      ...subscriptions.filter((s) => !isPersonal(s)).map((s) => [
+        s.name, s.category || "", s.amount, s.billingCycle, (monthlyAmount(s) * 12).toFixed(2),
+        s.businessUsePct == null ? "" : s.businessUsePct, s.vendor || "", s.active ? "yes" : "no"]),
     ];
     downloadCsv(`nauti-yachti-subscriptions-${year}.csv`, rows);
   }
@@ -7609,6 +7615,15 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
   const s = summarise(subscriptions);
   const dupes = overlappingDuplicates(subscriptions);
 
+  // Business first, personal after, each keeping the order it came in. The two
+  // are never interleaved: a list that mixed Netflix into the utilities would
+  // undo in the reading what the totals are careful to keep apart.
+  const ordered = [
+    ...(subscriptions || []).filter((x) => !isPersonal(x)),
+    ...(subscriptions || []).filter(isPersonal),
+  ];
+  const firstPersonalId = (ordered.find(isPersonal) || {}).id;
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, maxWidth: 720 }}>
@@ -7621,6 +7636,23 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
         <StatCard label="Running bills" value={String(s.running.length)} color="#E8934A" />
         {s.ended.length > 0 && <StatCard label="Closed accounts" value={String(s.ended.length)} color="var(--muted)" />}
       </div>
+
+      {/* PERSONAL, ON ITS OWN LINE AND OUT OF EVERY FIGURE ABOVE.
+          Tracked here because the owner wanted one place to see everything he
+          pays for monthly, so duplicates and waste can be found across the lot.
+          It is kept visually apart for the same reason it is kept out of the
+          arithmetic: nothing on this line has anything to do with the
+          business's accounts, and the moment the two are read together
+          somebody will add them up. */}
+      {s.personal.running.length > 0 && (
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap",
+          background: "var(--paper-4)", borderRadius: 10, padding: "10px 14px", maxWidth: 720 }}>
+          <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Personal — not the business&apos;s</span>
+          <span style={{ fontSize: 17, fontWeight: 800, color: "#C9A7F5" }}>{currency(s.personal.monthlyCost)}</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>a month · {currency(s.personal.annualCost)} a year · {s.personal.running.length} subscription{s.personal.running.length === 1 ? "" : "s"}</span>
+          <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Counted nowhere above, and never in the Tax Report.</span>
+        </div>
+      )}
 
       {/* WHAT IS NOT KNOWN, said out loud rather than absorbed into a total.
           A blank share and a blank amount are both questions, and a tab that
@@ -7711,16 +7743,23 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                   <th style={{ padding: "4px 8px" }}>Business %</th>
                   <th style={{ padding: "4px 8px" }}>Next due</th>
                   <th style={{ padding: "4px 8px" }}>Ended</th>
+                  <th style={{ padding: "4px 8px" }}>Side</th>
                   <th style={{ padding: "4px 8px" }}>Active</th>
                   <th style={{ padding: "4px 8px" }}></th>
                 </tr>
               </thead>
               <tbody>
                 {subscriptions.length === 0 && (
-                  <tr><td colSpan={10} style={{ padding: "8px", color: "var(--muted)" }}>No subscriptions yet.</td></tr>
+                  <tr><td colSpan={11} style={{ padding: "8px", color: "var(--muted)" }}>No subscriptions yet.</td></tr>
                 )}
-                {subscriptions.map((s) => (
-                  <tr key={s.id} style={{ background: "var(--card)" }}>
+                {ordered.map((s) => (
+                  <Fragment key={s.id}>
+                  {s.id === firstPersonalId && (
+                    <tr><td colSpan={11} style={{ padding: "14px 8px 6px", color: "#C9A7F5", fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      Personal — below this line nothing counts toward the business
+                    </td></tr>
+                  )}
+                  <tr style={{ background: "var(--card)" }}>
                     <td data-label="Name" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>
                       <input defaultValue={s.name} onBlur={(e) => onUpdate(s.id, { name: e.target.value })}
                         style={{ width: 130, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--text)" }} />
@@ -7781,6 +7820,23 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                         title="When this account closed. Leave blank while it is still being billed."
                         style={{ padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(203,108,230,0.3)" }} />
                     </td>
+                    {/* Which set of totals this row belongs to. A toggle rather
+                        than a fixed property because the answer can genuinely
+                        change: a subscription bought personally can turn out to
+                        be something the business runs on, and the honest move
+                        then is to reclassify it rather than leave it counted in
+                        the wrong half. */}
+                    <td data-label="Side" style={{ padding: "6px 8px" }}>
+                      <button type="button" onClick={() => onUpdate(s.id, { personal: !s.personal })}
+                        title={s.personal
+                          ? "Personal. Counted only on the personal line, never in the business totals or the Tax Report. Click to move it to the business."
+                          : "The business's. Counted in the monthly cost and, at its business share, in the deductible figure. Click to mark it personal."}
+                        style={{ background: "transparent", color: s.personal ? "#C9A7F5" : "var(--purple)",
+                          border: `1px solid ${s.personal ? "#C9A7F5" : "var(--purple)"}`, borderRadius: 6,
+                          padding: "4px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                        {s.personal ? "Personal" : "Business"}
+                      </button>
+                    </td>
                     <td data-label="Active" style={{ padding: "6px 8px" }}>
                       <button type="button" onClick={() => onUpdate(s.id, { active: !s.active })}
                         style={{ background: "transparent", color: s.active ? "var(--purple)" : "var(--muted)", border: `1px solid ${s.active ? "var(--purple)" : "var(--muted)"}`, borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600 }}>
@@ -7801,6 +7857,7 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                       </button>
                     </td>
                   </tr>
+                  </Fragment>
                 ))}
               </tbody>
             </table>

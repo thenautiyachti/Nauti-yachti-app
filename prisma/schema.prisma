@@ -246,6 +246,22 @@ model Subscription {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
+  // PERSONAL, NOT THE BUSINESS'S — kept here on purpose and counted nowhere
+  // near it.
+  //
+  // The owner wanted one place to see every subscription he pays for, personal
+  // ones included, so duplicates and waste can be found across the lot. The
+  // hazard is obvious and is the one his own bookkeeping rule already names:
+  // personal spending that drifts into business deductions. Netflix has no
+  // business share to argue about — it is simply not the business's, and a
+  // percentage is the wrong instrument for saying so.
+  //
+  // So this is a hard partition rather than a label or a 0%. A personal row is
+  // excluded from the monthly cost, the deductible figure, the tax report and
+  // the unanswered-question warnings; it appears only in its own section with
+  // its own totals. Nothing that reaches an accountant can see it.
+  personal     Boolean  @default(false)
+
   // WHICH ADDRESS THIS BILL BELONGS TO.
   //
   // The business moved in April 2026, so for most of the tax year there are TWO
