@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@500;700;900&display=swap">
+  <style>
+    /* An artboard is a FIXED-SIZE frame, so content-box is the wrong default
+       here: a root of width 1280 plus padding 46 measures 1372 and silently
+       overflows the frame it is meant to fill. The Reaction thumbnail did
+       exactly that — 1372x812 inside a 1280x720 frame — which an export would
+       have cropped. Border-box also makes the editor's drag-and-resize behave
+       the way somebody moving a box expects. */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: #b6ff3a; } a:hover { color: #d6ff8a; }
+    .display { font-family: "Bungee", "Arial Black", Impact, sans-serif; }
+    .support { font-family: "Archivo", "Helvetica Neue", sans-serif; }
+    /* THE OUTLINE IS THE WHOLE TRICK. A thumbnail is judged at about 210px
+       wide in a feed and as little as 120px on a phone. White text on a busy
+       game screenshot disappears at that size; a heavy dark stroke plus one
+       hard drop shadow keeps every letter legible whatever is behind it.
+       paint-order puts the stroke UNDER the fill so it thickens the letter
+       outward instead of eating into it. */
+    .punch {
+      color: #ffffff;
+      -webkit-text-stroke: 13px #05070d;
+      paint-order: stroke fill;
+      text-shadow: 0 10px 0 rgba(5, 7, 13, .95);
+      letter-spacing: -.01em;
+    }
+    .shot {
+      border: 6px dashed rgba(255,255,255,.35);
+      border-radius: 18px;
+      background: repeating-linear-gradient(135deg, #161c2e 0 22px, #1b2238 22px 44px);
+      display: grid; place-items: center; text-align: center;
+    }
+    .shot span {
+      font-family: "Archivo", "Helvetica Neue", sans-serif;
+      font-size: 26px; font-weight: 900; letter-spacing: .14em; color: rgba(255,255,255,.58);
+      padding: 0 20px; line-height: 1.5;
+    }
+  </style>
+</helmet>
+
+<!-- LAYOUT 4 — SERIES. For anything numbered. A visible episode number is
+     what turns a pile of uploads into something a viewer follows, and the
+     badge is the one element that must NEVER move between episodes — that
+     consistency is the whole point of the layout. -->
+<div class="support" style="position: relative; width: 1280px; height: 720px; overflow: hidden; background: #0b0e17;">
+  <div class="shot" style="position: absolute; inset: 0; border: none; border-radius: 0; opacity: .45;; place-items: start end; padding: 38px 54px"><span style="font-size: 30px;">FULL-BLEED SCREENSHOT BEHIND</span></div>
+  <div style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,14,23,.96) 0 46%, rgba(11,14,23,.22) 100%);"></div>
+
+  <div style="position: absolute; left: 46px; top: 46px; bottom: 46px; width: 680px;
+              display: flex; flex-direction: column; justify-content: center; gap: 20px;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div style="width: 104px; height: 104px; border-radius: 20px; background: {{accent}};
+           box-shadow: 0 0 0 7px #05070d; display: grid; place-items: center;">
+        <span class="display" style="font-size: 58px; line-height: 1; color: #08120c;">07</span>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <span class="support" style="font-size: 21px; font-weight: 900; letter-spacing: .2em; color: {{accent}};">EPISODE</span>
+        <span class="support" style="font-size: 27px; font-weight: 700; letter-spacing: .04em; color: rgba(255,255,255,.78);">SECRET BASE</span>
+      </div>
+    </div>
+    <!-- 88px: "THEY FOUND" plus its stroke has to clear the 680px column, or
+         the browser breaks it again and the deliberate two-line shape is lost. -->
+    <div class="display punch" style="font-size: 88px; line-height: .92;">THEY FOUND<br>THE DOOR</div>
+  </div>
+  <sc-if value="{{showGuides}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; inset: 0; pointer-events: none;">
+      <!-- YouTube paints the duration chip over this corner on every
+           thumbnail. Anything put here is covered up. -->
+      <div style="position: absolute; right: 22px; bottom: 22px; width: 150px; height: 54px;
+                  border: 3px dashed #ff3d9a; border-radius: 8px; display: grid; place-items: center;">
+        <span class="support" style="font-size: 15px; font-weight: 900; letter-spacing: .1em; color: #ff3d9a;">DURATION</span>
+      </div>
+      <div style="position: absolute; inset: 32px; border: 2px dashed rgba(53,224,255,.55);"></div>
+      <div class="support" style="position: absolute; left: 36px; top: 8px; font-size: 15px; font-weight: 900; letter-spacing: .1em; color: rgba(53,224,255,.8);">SAFE MARGIN</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script data-dc-script data-props='{
+  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ff3d9a", "#35e0ff", "#ffb02e"], "section": "Look"},
+  "showGuides": {"editor": "boolean", "default": true, "section": "Look"},
+  "$preview": {"width": 1280, "height": 720}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      accent: this.props.accent ?? '#b6ff3a',
+      showGuides: this.props.showGuides ?? true,
+    };
+  }
+}
+</script>
+</body>
+</html>

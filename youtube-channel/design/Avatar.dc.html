@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@700;900&display=swap">
+  <style>
+    /* An artboard is a FIXED-SIZE frame, so content-box is the wrong default
+       here: a root of width 1280 plus padding 46 measures 1372 and silently
+       overflows the frame it is meant to fill. The Reaction thumbnail did
+       exactly that — 1372x812 inside a 1280x720 frame — which an export would
+       have cropped. Border-box also makes the editor's drag-and-resize behave
+       the way somebody moving a box expects. */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: #b6ff3a; } a:hover { color: #d6ff8a; }
+    .display { font-family: "Bungee", "Arial Black", Impact, sans-serif; }
+    .support { font-family: "Archivo", "Helvetica Neue", sans-serif; }
+  </style>
+</helmet>
+
+<!-- 800x800, which is what YouTube asks for, but it is ALWAYS shown as a
+     circle and often at 48px across — beside a comment, in a subscription
+     list. So: one mark, no words, and nothing within ~60px of the edge, since
+     the circle crop eats the corners. Two initials is the most that survives
+     at 48px; a whole channel name does not. -->
+<div style="position: relative; width: 800px; height: 800px; overflow: hidden; background: #0b0e17;">
+  <div style="position: absolute; inset: 0; background:
+    radial-gradient(560px 560px at 50% 42%, rgba(182,255,58,.20), transparent 70%),
+    radial-gradient(420px 420px at 78% 82%, rgba(255,61,154,.18), transparent 70%);"></div>
+
+  <!-- The circle the platform will actually crop to. -->
+  <div style="position: absolute; left: 40px; top: 40px; width: 720px; height: 720px; border-radius: 50%;
+              background: linear-gradient(148deg, #18203a 0%, #0d1220 100%);
+              display: grid; place-items: center;">
+    <svg width="430" height="430" viewBox="0 0 240 240" aria-hidden="true">
+      <!-- One chunky cube, drawn big enough to read as a silhouette when the
+           whole thing is 48px wide. -->
+      <g transform="translate(30 44)">
+        <polygon points="0,45 90,0 180,45 90,90" fill="{{accent}}"/>
+        <polygon points="0,45 90,90 90,186 0,141" fill="#7fbd21"/>
+        <polygon points="180,45 90,90 90,186 180,141" fill="#4e7b13"/>
+        <polygon points="0,45 90,0 180,45 90,90" fill="none" stroke="#05070d" stroke-width="7" stroke-linejoin="round"/>
+        <polygon points="0,45 90,90 90,186 0,141" fill="none" stroke="#05070d" stroke-width="7" stroke-linejoin="round"/>
+        <polygon points="180,45 90,90 90,186 180,141" fill="none" stroke="#05070d" stroke-width="7" stroke-linejoin="round"/>
+      </g>
+    </svg>
+    <div class="display" style="position: absolute; left: 0; right: 0; bottom: 132px; text-align: center;
+         font-size: 104px; line-height: 1; color: #ffffff; text-shadow: 0 6px 0 #05070d;">BS</div>
+  </div>
+
+  <sc-if value="{{showGuides}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; left: 40px; top: 40px; width: 720px; height: 720px; border-radius: 50%;
+                border: 3px dashed #ff3d9a; pointer-events: none;"></div>
+    <div class="support" style="position: absolute; left: 0; right: 0; bottom: 12px; text-align: center;
+         font-size: 19px; font-weight: 900; letter-spacing: .1em; color: #ff3d9a;">EVERYTHING OUTSIDE THIS CIRCLE IS CROPPED OFF</div>
+  </sc-if>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ff3d9a", "#35e0ff", "#ffb02e"], "section": "Look"},
+  "showGuides": {"editor": "boolean", "default": true, "section": "Look"},
+  "$preview": {"width": 800, "height": 800}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      accent: this.props.accent ?? '#b6ff3a',
+      showGuides: this.props.showGuides ?? true,
+    };
+  }
+}
+</script>
+</body>
+</html>

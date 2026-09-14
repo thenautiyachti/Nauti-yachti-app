@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@500;700;900&display=swap">
+  <style>
+    /* An artboard is a FIXED-SIZE frame, so content-box is the wrong default
+       here: a root of width 1280 plus padding 46 measures 1372 and silently
+       overflows the frame it is meant to fill. The Reaction thumbnail did
+       exactly that — 1372x812 inside a 1280x720 frame — which an export would
+       have cropped. Border-box also makes the editor's drag-and-resize behave
+       the way somebody moving a box expects. */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: #b6ff3a; } a:hover { color: #d6ff8a; }
+    /* Bungee is the character of this set. PNG export cannot embed a Google
+       font yet, so every display line falls back to Arial Black / Impact —
+       chosen because they are the closest heavy faces present on both Windows
+       and macOS, so an exported banner degrades in weight rather than in
+       layout. */
+    .display { font-family: "Bungee", "Arial Black", Impact, sans-serif; }
+    .support { font-family: "Archivo", "Helvetica Neue", sans-serif; }
+  </style>
+</helmet>
+
+<div class="support" style="position: relative; width: 2560px; height: 1440px; overflow: hidden; background: #0b0e17; color: #ffffff;">
+
+  <!-- Ground: a soft lift behind the middle so the safe area reads as the
+       subject, plus a faint grid for depth. Both are non-essential decoration
+       and sit entirely outside the text. -->
+  <div style="position: absolute; inset: 0; background:
+    radial-gradient(1400px 760px at 50% 46%, rgba(182, 255, 58, .13), transparent 70%),
+    radial-gradient(1100px 620px at 12% 84%, rgba(255, 61, 154, .12), transparent 72%),
+    radial-gradient(1000px 560px at 88% 14%, rgba(53, 224, 255, .10), transparent 72%);"></div>
+  <div style="position: absolute; inset: 0; opacity: .30; background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 80px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 80px);"></div>
+
+  <!-- Blocks. Original isometric geometry, not any game's trademarked art. -->
+  <svg viewBox="0 0 2560 1440" style="position: absolute; inset: 0; width: 100%; height: 100%;" aria-hidden="true">
+    <g opacity=".92">
+      <g transform="translate(150 430) scale(2.1)">
+        <polygon points="0,30 60,0 120,30 60,60" fill="#b6ff3a"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#7fbd21"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#5d8f17"/>
+      </g>
+      <g transform="translate(2140 300) scale(1.5)">
+        <polygon points="0,30 60,0 120,30 60,60" fill="#ff3d9a"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#c42c74"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#8f1f54"/>
+      </g>
+      <g transform="translate(2270 900) scale(1.9)">
+        <polygon points="0,30 60,0 120,30 60,60" fill="#35e0ff"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#22a3ba"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#177787"/>
+      </g>
+      <g transform="translate(400 1040) scale(1.2)" opacity=".75">
+        <polygon points="0,30 60,0 120,30 60,60" fill="#35e0ff"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#22a3ba"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#177787"/>
+      </g>
+      <g transform="translate(1980 1080) scale(1.0)" opacity=".7">
+        <polygon points="0,30 60,0 120,30 60,60" fill="#b6ff3a"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#7fbd21"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#5d8f17"/>
+      </g>
+    </g>
+  </svg>
+
+  <!-- THE ONLY PART THAT IS ALWAYS SEEN. YouTube crops this image differently
+       on every device; 1546x423 dead centre is the piece that survives all of
+       them, so every word lives in here and nothing else does. -->
+  <div style="position: absolute; left: 507px; top: 509px; width: 1546px; height: 423px;
+              display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; text-align: center;">
+    <div class="support" style="display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 700; letter-spacing: .34em; color: {{accent}};">
+      <span style="display: block; width: 46px; height: 4px; background: {{accent}};"></span>
+      ROBLOX WITH MY FRIENDS
+      <span style="display: block; width: 46px; height: 4px; background: {{accent}};"></span>
+    </div>
+
+    <h1 class="display" style="margin: 0; font-size: 168px; line-height: .92; letter-spacing: -.01em; color: #ffffff;
+        text-shadow: 0 10px 0 #05070d, 0 22px 46px rgba(0,0,0,.6);">BLOCK SQUAD</h1>
+
+    <p class="support" style="margin: 0; font-size: 34px; font-weight: 500; color: #aeb8d4;">New videos most weeks</p>
+
+    <div style="display: flex; gap: 16px; margin-top: 6px;">
+      <span class="support" style="padding: 13px 30px; border-radius: 999px; font-size: 24px; font-weight: 900; letter-spacing: .06em;
+            background: {{accent}}; color: #08120c;">OBBIES</span>
+      <span class="support" style="padding: 13px 30px; border-radius: 999px; font-size: 24px; font-weight: 700; letter-spacing: .06em;
+            border: 3px solid rgba(255,255,255,.28); color: #ffffff;">TOWER OF HELL</span>
+      <span class="support" style="padding: 13px 30px; border-radius: 999px; font-size: 24px; font-weight: 700; letter-spacing: .06em;
+            border: 3px solid rgba(255,255,255,.28); color: #ffffff;">BROOKHAVEN</span>
+    </div>
+  </div>
+
+  <!-- Guides, off before export. -->
+  <sc-if value="{{showGuides}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; inset: 0; pointer-events: none;">
+      <div style="position: absolute; left: 0; top: 509px; width: 2560px; height: 423px; border-top: 2px dashed rgba(53,224,255,.75); border-bottom: 2px dashed rgba(53,224,255,.75);"></div>
+      <div style="position: absolute; left: 507px; top: 509px; width: 1546px; height: 423px; border: 3px dashed #ff3d9a;"></div>
+      <div class="support" style="position: absolute; left: 507px; top: 452px; font-size: 24px; font-weight: 900; letter-spacing: .12em; color: #ff3d9a;">SAFE ON EVERY DEVICE · 1546 × 423 — KEEP ALL WORDS INSIDE</div>
+      <div class="support" style="position: absolute; left: 24px; top: 946px; font-size: 22px; font-weight: 700; letter-spacing: .12em; color: #35e0ff;">TV ONLY · 2560 × 423</div>
+      <div class="support" style="position: absolute; left: 24px; top: 24px; font-size: 22px; font-weight: 700; letter-spacing: .12em; color: rgba(255,255,255,.45);">DESKTOP CROP · EDGES ARE DECORATION ONLY</div>
+      <div class="support" style="position: absolute; right: 24px; bottom: 24px; font-size: 22px; font-weight: 900; letter-spacing: .1em; color: #b6ff3a;">TURN GUIDES OFF BEFORE EXPORTING ↑</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ff3d9a", "#35e0ff", "#ffb02e"], "section": "Look"},
+  "showGuides": {"editor": "boolean", "default": true, "section": "Look"},
+  "$preview": {"width": 2560, "height": 1440}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      accent: this.props.accent ?? '#b6ff3a',
+      showGuides: this.props.showGuides ?? true,
+    };
+  }
+}
+</script>
+</body>
+</html>

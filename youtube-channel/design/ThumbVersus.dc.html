@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@500;700;900&display=swap">
+  <style>
+    /* An artboard is a FIXED-SIZE frame, so content-box is the wrong default
+       here: a root of width 1280 plus padding 46 measures 1372 and silently
+       overflows the frame it is meant to fill. The Reaction thumbnail did
+       exactly that — 1372x812 inside a 1280x720 frame — which an export would
+       have cropped. Border-box also makes the editor's drag-and-resize behave
+       the way somebody moving a box expects. */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: #b6ff3a; } a:hover { color: #d6ff8a; }
+    .display { font-family: "Bungee", "Arial Black", Impact, sans-serif; }
+    .support { font-family: "Archivo", "Helvetica Neue", sans-serif; }
+    /* THE OUTLINE IS THE WHOLE TRICK. A thumbnail is judged at about 210px
+       wide in a feed and as little as 120px on a phone. White text on a busy
+       game screenshot disappears at that size; a heavy dark stroke plus one
+       hard drop shadow keeps every letter legible whatever is behind it.
+       paint-order puts the stroke UNDER the fill so it thickens the letter
+       outward instead of eating into it. */
+    .punch {
+      color: #ffffff;
+      -webkit-text-stroke: 13px #05070d;
+      paint-order: stroke fill;
+      text-shadow: 0 10px 0 rgba(5, 7, 13, .95);
+      letter-spacing: -.01em;
+    }
+    .shot {
+      border: 6px dashed rgba(255,255,255,.35);
+      border-radius: 18px;
+      background: repeating-linear-gradient(135deg, #161c2e 0 22px, #1b2238 22px 44px);
+      display: grid; place-items: center; text-align: center;
+    }
+    .shot span {
+      font-family: "Archivo", "Helvetica Neue", sans-serif;
+      font-size: 26px; font-weight: 900; letter-spacing: .14em; color: rgba(255,255,255,.58);
+      padding: 0 20px; line-height: 1.5;
+    }
+  </style>
+</helmet>
+
+<!-- LAYOUT 2 — VERSUS. Two things set against each other. The diagonal seam
+     does the work: it reads as a split at any size, where a straight vertical
+     line just looks like two unrelated pictures side by side. -->
+<div class="support" style="position: relative; width: 1280px; height: 720px; overflow: hidden; background: #0b0e17;">
+  <div style="position: absolute; inset: 0; background: linear-gradient(120deg, #17233f 0 50%, #2a1230 50% 100%);"></div>
+  <div style="position: absolute; left: 0; top: 0; width: 66%; height: 100%;
+       clip-path: polygon(0 0, 100% 0, 72% 100%, 0 100%); background:
+       radial-gradient(620px 520px at 40% 50%, rgba(53,224,255,.30), transparent 72%);"></div>
+  <div style="position: absolute; right: 0; top: 0; width: 66%; height: 100%;
+       clip-path: polygon(28% 0, 100% 0, 100% 100%, 0 100%); background:
+       radial-gradient(620px 520px at 60% 50%, rgba(255,61,154,.30), transparent 72%);"></div>
+  <!-- The seam itself, in the accent, so the split is unmissable at 120px. -->
+  <div style="position: absolute; left: 50%; top: -60px; width: 22px; height: 840px;
+       background: {{accent}}; transform: translateX(-50%) rotate(11deg); box-shadow: 0 0 0 8px #05070d;"></div>
+
+  <div style="position: absolute; inset: 46px; display: flex; align-items: center; justify-content: space-between; gap: 30px;">
+    <div class="shot" style="flex: 0 0 400px; height: 470px; margin-top: -20px;"><span>SCREENSHOT A</span></div>
+    <div class="shot" style="flex: 0 0 400px; height: 470px; margin-top: 20px;"><span>SCREENSHOT B</span></div>
+  </div>
+
+  <div class="display punch" style="position: absolute; left: 0; right: 0; top: 44px; text-align: center; font-size: 104px; line-height: .9;">NOOB <span style="color: {{accent}};">VS</span> PRO</div>
+  <div class="support" style="position: absolute; left: 0; right: 0; bottom: 40px; text-align: center;
+       font-size: 30px; font-weight: 900; letter-spacing: .18em; color: rgba(255,255,255,.72);">WHO WINS?</div>
+  <sc-if value="{{showGuides}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; inset: 0; pointer-events: none;">
+      <!-- YouTube paints the duration chip over this corner on every
+           thumbnail. Anything put here is covered up. -->
+      <div style="position: absolute; right: 22px; bottom: 22px; width: 150px; height: 54px;
+                  border: 3px dashed #ff3d9a; border-radius: 8px; display: grid; place-items: center;">
+        <span class="support" style="font-size: 15px; font-weight: 900; letter-spacing: .1em; color: #ff3d9a;">DURATION</span>
+      </div>
+      <div style="position: absolute; inset: 32px; border: 2px dashed rgba(53,224,255,.55);"></div>
+      <div class="support" style="position: absolute; left: 36px; top: 8px; font-size: 15px; font-weight: 900; letter-spacing: .1em; color: rgba(53,224,255,.8);">SAFE MARGIN</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script data-dc-script data-props='{
+  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ff3d9a", "#35e0ff", "#ffb02e"], "section": "Look"},
+  "showGuides": {"editor": "boolean", "default": true, "section": "Look"},
+  "$preview": {"width": 1280, "height": 720}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      accent: this.props.accent ?? '#b6ff3a',
+      showGuides: this.props.showGuides ?? true,
+    };
+  }
+}
+</script>
+</body>
+</html>

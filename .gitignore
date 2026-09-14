@@ -27,3 +27,6 @@ desktop.ini
 # scripts/make-distributable.js -- never committed, because a stale copy in the
 # repository is exactly the fork this design exists to avoid.
 /../distributable/
+
+# Generated design canvas — re-seeded from youtube-channel/design/*.dc.html
+youtube-channel/design/roblox-channel-art.html

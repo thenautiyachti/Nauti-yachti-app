@@ -1,0 +1,33 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",           "title": "Channel banner · 2560 × 1440", "x": 0,    "y": 0,    "w": 2560, "h": 1440 },
+    { "file": "Avatar.dc.html",         "title": "Avatar · 800 × 800",           "x": 0,    "y": 1560, "w": 800,  "h": 800 },
+    { "file": "ThumbReaction.dc.html",  "title": "1 · Reaction",                 "x": 0,    "y": 2480, "w": 1280, "h": 720 },
+    { "file": "ThumbVersus.dc.html",    "title": "2 · Versus",                   "x": 1360, "y": 2480, "w": 1280, "h": 720 },
+    { "file": "ThumbChallenge.dc.html", "title": "3 · Challenge",                "x": 2720, "y": 2480, "w": 1280, "h": 720 },
+    { "file": "ThumbSeries.dc.html",    "title": "4 · Series",                   "x": 4080, "y": 2480, "w": 1280, "h": 720 }
+  ],
+  "annotations": [
+    {
+      "id": "how-to-export",
+      "x": 2700, "y": 0, "w": 300,
+      "text": "Every frame here exports as a PNG at exactly the size YouTube wants.\n\nTurn GUIDES OFF first — the dashed boxes are for you, not for the upload."
+    },
+    {
+      "id": "squint-test",
+      "x": 2700, "y": 340, "w": 300,
+      "text": "The squint test:\n\nZoom the canvas out until a thumbnail is the size of a postage stamp. If you cannot read it, nobody scrolling can either.\n\nThat is the only test that matters."
+    },
+    {
+      "id": "three-words",
+      "x": 2700, "y": 720, "w": 300,
+      "text": "Three words. Four at the very most.\n\nThe title bar under the video carries the sentence. The thumbnail carries the hook."
+    },
+    {
+      "id": "keep-the-badge",
+      "x": 5440, "y": 2480, "w": 300,
+      "text": "On the Series layout the number badge must stay in exactly this spot every episode.\n\nThat repetition is what makes a viewer recognise the next one."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
