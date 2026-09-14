@@ -1,76 +1,60 @@
-# The short version, for texting
+# The text to send
 
-Copy whichever fits. Both deliberately leave his age out of it — that's a
-separate conversation and not one that belongs in the first message.
+**Audience:** she proposed the channel, knows about the accounts, and is on
+board. So no case to make and nothing to explain back to her — the only useful
+thing is *how she can help*. Keep it short and keep it concrete.
 
-**On mentioning that the account exists.** The version below says so in the
-second line, and pairs it immediately with *nothing posted, he hasn't been
-told*. That ordering is deliberate: "I've set it up" on its own can read as a
-decision already taken. If that's a live risk in your situation, cut the whole
-paragraph — the message works without it and the account can come up once
-she's said yes in principle.
+Send with `thumbnail-templates.png`, and the banner if you want a second image.
 
 ---
 
-## One message
+## The message
 
-> Hey — [NAME] has been asking about starting a YouTube channel, Roblox stuff
-> with his friends. Didn't want to give him an answer without talking to you
-> first.
+> Hey — got [NAME]'s channel stuff ready. Few ways you could actually help, if
+> you're up for it:
 >
-> I've got the account side ready so we're not stuck on logistics if we say yes
-> — it's on my Google account, not his, and I'll send you the login so either of
-> us can see everything or take anything down. Nothing's been posted and I
-> haven't told him anything either way.
+> **Be in some of them.** Kid-vs-parent is a real format on these channels, and
+> you losing badly at Roblox would honestly be the best thing on there. No
+> camera needed — it's just your voice and your Roblox character.
 >
-> Two things that surprised me when I looked into it: videos aimed at kids get
-> comments turned off automatically, which honestly sold me on it more than
-> anything — no strangers talking to him under his videos. And it won't make
-> money, so it's a hobby, not a job.
+> **Record at yours too.** The tablet does the whole thing: swipe down,
+> long-press the record button, turn the **mic ON** (easy to miss, and without
+> it the video's useless). Landscape. Just play a normal session and send me the
+> file, I'll cut it into clips.
 >
-> What I'd suggest: no face on camera, a nickname instead of his real name,
-> nothing that shows where we live or his school, and we ask his friends'
-> parents before those kids are in anything. Nobody posts anything a parent
-> hasn't watched first.
+> **The one trick that makes these work:** before he starts, pick a daft rule.
+> He's blindfolded and you tell him where to go. Nobody's allowed to talk. You
+> both have to stay touching. That's the whole video — the two of you arguing.
+> Apparently it does much better than just filming normal gameplay, and it
+> takes ten seconds to decide.
 >
-> Want your read on it — especially how much time a week is reasonable. No rush,
-> and I'm fine with no if that's where you land.
-
----
-
-## If she wants the detail
-
-> Longer version if you want it — I put the whole thing in a doc, happy to send
-> it over. Short answer to the obvious questions:
->
-> **Who controls it?** Both of us. It's on my Google account rather than his —
-> a parent-run channel is the normal setup for this — and you'll have the login,
-> so either of us can take anything down without needing the other.
->
-> **Comments?** Off. Content marked as being for kids has comments and DMs
-> disabled by YouTube automatically. That's the main reason I'm comfortable.
->
-> **Is he identifiable?** Not if we do it the way I'd suggest. No face, nickname
-> only, no school, no town. His Roblox character is what's on screen — the
-> format doesn't need a camera at all.
->
-> **His friends?** Their voices are in it, so their parents get asked first,
-> properly, and told it's public. If any of them says no, that kid isn't in it.
->
-> **Money?** Realistically none. Ads don't start until 1,000 subscribers plus
-> 4,000 watch hours, and that bar doubles in February. Not the point.
->
-> **What's he actually making?** Him and a mate playing Roblox with a daft rule
-> added — one of them blindfolded and the other giving directions, that sort of
-> thing. It's them laughing at each other. No camera, no script.
->
-> Things I genuinely don't have a view on and want yours: how many hours a week,
-> whether no-face is right or over-cautious, and what would make us stop.
+> Made him a banner and some thumbnail templates so it looks like a real
+> channel from day one 👇
 
 ---
 
-## Worth saying out loud at some point
+## If she asks what else would help
 
-Whatever you both land on, tell him together and give him the actual reason.
-If it's no, he should hear why rather than just no. If it's yes, he should
-understand the rules aren't the two of you being difficult.
+Pick from these rather than sending all of them — the message above is doing
+the main job.
+
+- **Help him with titles.** They need the game's name, the word "Roblox", and
+  one or two words in caps. `First Time Playing Grow a Garden Roblox` gets
+  found; `Gameplay #4` doesn't.
+- **Be the second pair of eyes.** Somebody watches everything before it's
+  public — mostly to catch the accidental, like a friend using his real name.
+- **The friends' parents.** They need asking before their kid's voice is in
+  anything. If she knows any of them better than you do, that's a much easier
+  conversation coming from her.
+- **Hold the schedule.** One session a week is the realistic target. The
+  failure mode is four videos in a week and then nothing for a month.
+
+---
+
+## Also in this folder
+
+`youtube-channel-briefing.pdf` is a longer, more formal write-up — it was
+written before we knew she'd proposed the idea herself, so it argues a case
+she doesn't need made. **Don't send it as is.** The parts still worth reusing
+are the ground rules (identity, friends, supervision) and the note that this
+realistically earns nothing, if either ever needs setting out properly.
