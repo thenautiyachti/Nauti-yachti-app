@@ -760,3 +760,31 @@ input::placeholder, textarea::placeholder {
   /* Side-by-side halves inside a panel — two summary blocks, a pair of charts. */
   .pair-split { grid-template-columns: 1fr !important; }
 }
+
+/* WHY THE WHOLE TAB WAS WIDER THAN THE PHONE.
+ *
+ * A grid item's default min-width is `auto`, not 0 — it refuses to be sized
+ * below its content's min-content width. That refusal does not stay local: it
+ * becomes the floor of the track it sits in, the track widens the grid, and
+ * every SIBLING stretches to the same width. So one stubborn item drags the
+ * entire tab off the side of the screen, and the thing that LOOKS broken is
+ * never the thing that caused it.
+ *
+ * On Subscriptions the culprit was the row of stat cards. Measured at 375px:
+ * `repeat(auto-fit, minmax(124px, 1fr))` with four cards reports a min-content
+ * width of 526px — four full 124px columns plus gaps — because auto-fit only
+ * drops columns when it is given a definite width to measure against, and in
+ * the min-content pass it is not. The tab's column went to 526px and the
+ * summary banner, the add-form and the subscriptions table were all stretched
+ * to match and clipped at the edge. Every one of them was laid out correctly;
+ * they were just being held open from above. The owner: "from the mobile phone,
+ * it's still hard to see."
+ *
+ * Two rules close it. The grids themselves carry minWidth: 0 inline (see
+ * AdminView.js, every repeat(auto-…) grid), and the two-column panels release
+ * their children here. This is NOT inside the media query on purpose: the floor
+ * exists at every width, and on a narrow desktop window the right answer is for
+ * the wide table to scroll inside its own overflow-x wrapper — which is what
+ * that wrapper was put there to do — rather than for the page to grow. */
+.panel-split > *,
+.pair-split > * { min-width: 0; }

@@ -664,7 +664,7 @@ export default function AdminView({
                 )}
 
                 {p.pricingType === "tiered-by-guests" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
+                  <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
                     {p.tiers.map((t, idx) => (
                       <label key={idx} style={{ fontSize: 12, color: "var(--muted)" }}>
                         {t.max == null ? `${(p.tiers[idx - 1]?.max || 0) + 1}+` : idx === 0 ? `≤${t.max}` : `${p.tiers[idx - 1].max + 1}–${t.max}`} guests
@@ -1534,7 +1534,7 @@ function GuestContactsPanel({ externalBookings, onUpdateExternalBooking }) {
       </button>
       {open && (
         <div style={{ display: "grid", gap: 14, marginBottom: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
+          <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
             <StatCard label="Bookings with a phone" value={`${withPhone.length} / ${externalBookings.length}`} color={withPhone.length ? "var(--purple)" : "#F0559C"} />
             <StatCard label="Completed charters, no phone" value={String(completedMissing.length)} color="#F0559C" />
             <StatCard label="Bookings with an email" value={`${withEmail.length} / ${externalBookings.length}`} color={withEmail.length ? "var(--purple)" : "var(--muted)"} />
@@ -2265,7 +2265,7 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
   return (
     <div className="panel-split" style={{ display: "grid", gridTemplateColumns: "minmax(280px,360px) 1fr", gap: 24 }}>
       <div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, marginBottom: 16 }}>
           <StatCard label="Income" value={currency(totals.income)} color="var(--purple)" />
           <StatCard label="Expenses" value={currency(totals.expense)} color="var(--pink)" />
           <StatCard label="Net" value={currency(totals.net)} color="#E8934A" />
@@ -2815,7 +2815,7 @@ function ReconciliationTab({ externalBookings, ledger, onUpdateExternalBooking }
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
         <StatCard label="Completed charters" value={String(completed.length)} color="var(--purple)" />
         <StatCard label="Revenue on the books" value={currency(accountedRevenue)} color="#7FE0B8" />
         <StatCard label="Revenue missing from ledger" value={currency(missingRevenue)} color="#F0559C" />
@@ -3065,7 +3065,7 @@ function MaintenanceTab({ vessels, maintenanceItems, engineHours, fuelLogs, onUp
   return (
     <div style={{ display: "grid", gap: 24 }}>
       <div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, marginBottom: 10 }}>
+        <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, marginBottom: 10 }}>
           {/* The card shows the boat's TOTAL, not the last row. On an unmetered
               boat those are different numbers and only the total is the answer
               to "how much has this engine run". The label says which kind it is
@@ -3731,7 +3731,7 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
   const postedDrafts = past.filter((d) => d.status === "posted");
   const deniedOrPast = past.filter((d) => d.status !== "posted");
 
-  const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
+  const GRID = { display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
   const cardProps = { onUpdateStatus, onDelete, onAttachMedia };
 
   // Bucket the upcoming posts by the day they go out. `upcoming` is already in
@@ -6256,7 +6256,7 @@ function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem, onUpdateGaller
 
           {/* A grid, not a stack. One tile per row left most of the screen empty
               and made a category of seven look far longer than it is. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
+          <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
             {items.map((g, i) => (
               <div key={g.id} style={{ background: "var(--card)", borderRadius: 8, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 <img src={g.image} alt="" style={{ width: "100%", height: 128, objectFit: "cover", objectPosition: imageFocus(g.image), display: "block" }} />
@@ -6283,7 +6283,7 @@ function GalleryTab({ gallery, onUpdateCaption, onAddGalleryItem, onUpdateGaller
 
 function DraftDayGroup({ day, items, cardProps }) {
   // Sized so three fit across a day box; they wrap on a narrow screen.
-  const DAY_GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))", gap: 10 };
+  const DAY_GRID = { display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))", gap: 10 };
   const [open, setOpen] = useState(true);
   const platforms = [...new Set(items.map((d) => d.platform).filter(Boolean))];
   const label =
@@ -6997,7 +6997,7 @@ function TestimonialsTab({ testimonials, inquiries, externalBookings, onUpdateSt
           ))}
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+      <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
         {visible.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No testimonials found.</div>}
         {visible.map((t) => (
           <div key={t.id} style={{
@@ -7139,7 +7139,7 @@ function PhotoRequestsTab({ photoRequests, onMarkSent, onDelete }) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
+      <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
         {queue.map((r) => {
           const days = daysWaiting(r);
           const w = photoWait(days);
@@ -7202,7 +7202,7 @@ function PhotoRequestsTab({ photoRequests, onMarkSent, onDelete }) {
             {showSent ? "▾" : "▸"} Already sent ({sent.length})
           </button>
           {showSent && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, marginTop: 12 }}>
+            <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, marginTop: 12 }}>
               {sent.map((r) => (
                 <div key={r.id} style={{ background: "var(--card)", borderRadius: 8, padding: 12, color: "var(--text)", opacity: 0.85 }}>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{r.name}</div>
@@ -7344,7 +7344,7 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
         <StatCard label={`${year} total income`} value={currency(totalIncome)} color="var(--purple)" />
         <StatCard label={`${year} total expenses`} value={currency(totalExpense)} color="var(--pink)" />
         <StatCard label={`${year} net profit`} value={currency(net)} color="#E8934A" />
@@ -7376,7 +7376,7 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
       {/* Per charter and per hour are the two numbers that actually inform a
           pricing decision, and neither existed anywhere before. */}
       {charterCount > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
           <StatCard label={`${year} completed charters`} value={String(charterCount)} color="var(--purple)" />
           <StatCard label="Average per charter" value={currency(perCharter)} color="#7FE0B8" />
           <StatCard label="Average per hour" value={totalHours ? currency(perHour) : "—"} color="#4ff3ff" />
@@ -7384,7 +7384,7 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
         <BreakdownPanel title={`${year} expenses by category`} rows={expenseBreakdown} color="#F0559C" />
         <BreakdownPanel title={`${year} income by vessel`} rows={incomeByVessel} color="#7FE0B8" />
         <BreakdownPanel title={`${year} income by origin`} rows={incomeByOrigin} color="#00d9ff" />
@@ -7509,7 +7509,7 @@ function GiftCertificatesTab({ certificates = [], liability = 0, onIssue, onRede
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
         <StatCard label="Outstanding balance" value={currency(liability)} color="#E8934A" />
         <StatCard label="Active certificates" value={String(active.length)} color="var(--purple)" />
         <StatCard label="Fully used" value={String(spent.length)} color="var(--muted)" />
@@ -7607,7 +7607,7 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, maxWidth: 720 }}>
+      <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, maxWidth: 720 }}>
         <StatCard label="Running bills, per month" value={currency(s.monthlyCost)} color="var(--purple)" />
         {/* THE BUSINESS'S SHARE, NOT THE WHOLE BILL. The office is at home, so
             most of these utilities belong to the business only in part. This
