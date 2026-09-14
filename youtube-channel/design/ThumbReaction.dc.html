@@ -58,7 +58,7 @@
 
   <div style="position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
     <span style="align-self: flex-start; padding: 9px 22px; border-radius: 8px; font-size: 26px; font-weight: 900;
-          letter-spacing: .12em; background: {{accent}}; color: #08120c;">TOWER OF HELL</span>
+          letter-spacing: .12em; background: {{accent}}; color: #08120c;">STEAL A BRAINROT</span>
     <!-- 104px, not 132. At 132 the intended break ("WE NEARLY / DID IT") does
          not fit the column and the browser wraps it to three lines, stranding
          "WE" on a line of its own. Sized so the longest word plus its 13px
@@ -69,6 +69,20 @@
   <div class="shot" style="position: relative; flex: 0 0 390px; height: 560px;">
     <span>DROP A SCREENSHOT<br>OR HIS FACE HERE</span>
   </div>
+
+  <!-- AN ARROW POINTING AT THE SUBJECT. Not decoration — it is a standing
+       convention of this niche (a character, an arrow, and two or three
+       words), and it does a real job: it tells a viewer who is scrolling
+       where to look before they have read anything. Drawn twice, a fat dark
+       pass under a thinner accent pass, so it keeps its outline over a busy
+       screenshot exactly as the lettering does. -->
+  <svg style="position: absolute; left: 566px; top: 446px; width: 236px; height: 156px; overflow: visible;"
+       viewBox="0 0 236 156" aria-hidden="true">
+    <path d="M 14 138 C 74 136, 124 116, 162 58" fill="none" stroke="#05070d" stroke-width="34" stroke-linecap="round"/>
+    <g transform="translate(172 50) rotate(-38)"><polygon points="-16,-34 44,0 -16,34" fill="#05070d"/></g>
+    <path d="M 14 138 C 74 136, 124 116, 162 58" fill="none" stroke="{{accent}}" stroke-width="17" stroke-linecap="round"/>
+    <g transform="translate(170 52) rotate(-38)"><polygon points="-9,-23 30,0 -9,23" fill="{{accent}}"/></g>
+  </svg>
   <sc-if value="{{showGuides}}" hint-placeholder-val="{{ true }}">
     <div style="position: absolute; inset: 0; pointer-events: none;">
       <!-- YouTube paints the duration chip over this corner on every
@@ -84,7 +98,7 @@
 </div>
 </x-dc>
 <script data-dc-script data-props='{
-  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ff3d9a", "#35e0ff", "#ffb02e"], "section": "Look"},
+  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ffd21e", "#ff2d2d", "#35e0ff"], "section": "Look"},
   "showGuides": {"editor": "boolean", "default": true, "section": "Look"},
   "$preview": {"width": 1280, "height": 720}
 }'>

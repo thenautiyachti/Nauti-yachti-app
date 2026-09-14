@@ -440,7 +440,8 @@ for (let s = EDGE; s + TARGET <= src.seconds - EDGE; s += STEP) {
 
   let score = m, l = null;
   if (lScale) {
-    const lv = loud.filter((r) => r.t >= s && r.t < e).map((r) => r.v);
+    const lw = loud.filter((r) => r.t >= s && r.t < e);
+    const lv = lw.map((r) => r.v);
     if (lv.length) {
       // Peak loudness, not mean: the shout is an instant and averaging it over
       // thirty seconds is exactly how it gets lost.
@@ -449,6 +450,19 @@ for (let s = EDGE; s + TARGET <= src.seconds - EDGE; s += STEP) {
       // reason — the two signals fail in opposite directions. Busy and silent
       // is grinding; loud and still is a lobby chat. A Short needs both.
       //
+      // AND FRONT-LOADED. Scoring a window purely on what it CONTAINS treats a
+      // clip whose best second is at 0:02 and one whose best second is at 0:27
+      // as equally good, and they are not remotely: half to sixty percent of
+      // the people who leave a Short leave inside the first three seconds, so
+      // a payoff at the end is a payoff most of the audience never reaches.
+      //
+      // A peak anywhere in the first quarter costs nothing; past that the
+      // score tapers to 0.7 at the very end. A penalty rather than a veto,
+      // because a genuinely better moment late still beats a weak one early.
+      const peak = lw.reduce((a, b) => (b.v > a.v ? b : a));
+      const where = Math.max(0, Math.min(1, ((peak.t - s) / TARGET - 0.25) / 0.75));
+      const front = 1 - 0.30 * where;
+
       // WITH A TIEBREAK, which the charter script does not need and this does.
       // There it scores one window per clip, twenty times. Here it ranks every
       // second of a ninety-minute session against every other, and a bare
@@ -460,7 +474,7 @@ for (let s = EDGE; s + TARGET <= src.seconds - EDGE; s += STEP) {
       //
       // 85/15 against the mean keeps "it must be BOTH loud and busy" as the
       // decision and lets the average separate the ties underneath it.
-      score = 0.85 * Math.min(m, l) + 0.15 * ((m + l) / 2);
+      score = (0.85 * Math.min(m, l) + 0.15 * ((m + l) / 2)) * front;
     }
   }
   windows.push({ start: s, m, l, score });
@@ -487,6 +501,8 @@ if (!windows.length) {
 // better, because two adjacent near-identical moments are worth less to a
 // channel than two separated ones even when they score the same.
 const GAP = TARGET;
+// Seconds of setup before the moment itself. See the note on `start` below.
+const LEAD = 1.5;
 const chosen = [];
 const forced = args("at").map((s) => {
   const p = String(s).split(":").map(Number);
@@ -502,9 +518,17 @@ for (const at of forced) {
     console.log(`    !  --at ${at}s is outside a ${Math.round(src.seconds)}s recording — skipped`);
     continue;
   }
-  // Centre the clip on the moment he named rather than starting there: people
-  // remember when a thing HAPPENED, not when the run-up to it began.
-  const start = Math.max(0, Math.min(src.seconds - TARGET, at - TARGET * 0.35));
+  // A SHORT RUN-UP, NOT A CENTRED ONE. This used to start the clip 35% of its
+  // length before the named moment, on the reasoning that people remember when
+  // a thing HAPPENED rather than when the run-up began. That reasoning is fine
+  // and the number was badly wrong: on a 30-second clip it buried the moment
+  // 10.5 seconds in, and roughly half to sixty percent of the people who leave
+  // a Short leave inside the first THREE seconds. Most of the audience was
+  // being shown run-up and nothing else.
+  //
+  // LEAD is a second and a half — enough to see the setup, short enough that
+  // the moment lands while almost everyone is still watching.
+  const start = Math.max(0, Math.min(src.seconds - TARGET, at - LEAD));
   chosen.push({ start, m: null, l: null, score: null, mine: true });
 }
 

@@ -34,11 +34,18 @@ Marked Made for Kids, YouTube switches **off**:
 - community posts
 - personalised ads (so, much lower revenue)
 
-That is most of the standard growth toolkit. It is not a reason to mislabel
-the videos — the designation follows the audience, and getting it wrong is
-the one mistake here with legal weight behind it. It *is* the reason the plan
-below leans entirely on **thumbnails, titles, and volume of Shorts**, which
-keep working when the community features are gone.
+...along with live chat, the notification bell, save-to-playlist, channel
+memberships, the branding watermark and donations. That is most of the
+standard growth toolkit.
+
+It is not a reason to mislabel the videos, and the legal weight here is real
+and sits on you rather than on YouTube: under the FTC settlement that followed
+YouTube's $170m COPPA fine, individual **channels** are treated as sites
+responsible for their own COPPA compliance. The designation follows the
+audience, and the liability for getting it wrong follows the channel owner.
+
+It *is* the reason the plan below leans entirely on **thumbnails, titles, and
+volume of Shorts**, which keep working when the community features are gone.
 
 **Keep out of the videos and off the page:** his full name, his school, the
 town, the lake, the house, anything with an address on it. A Roblox channel is
@@ -92,7 +99,8 @@ folder next to the recording. Useful flags:
 
 `--at` is the important one. Every signal in that script is a proxy for
 "something happened" and **he was there** — if he remembers a moment, naming it
-beats anything the scoring will find. The first run over a session is a few
+beats anything the scoring will find. Name the second the thing *happened*; the
+clip starts 1.5 seconds before it, not on it. The first run over a session is a few
 minutes of decoding; every later run on the same file is instant.
 
 What it prints, per clip:
@@ -159,25 +167,68 @@ once a week.
 
 ## What actually grows a Roblox channel
 
-Roughly in order of how much they matter, and none of them is "post more often
-and hope":
+Checked against current write-ups rather than written from memory, because this
+niche moves fast. Sources at the bottom.
 
-1. **Thumbnail and title.** On a Made for Kids channel these are very nearly the
-   only levers left. A thumbnail is read at the size of a postage stamp: one
-   face or one object, big, with three or four words at most. The template set
-   is a separate deliverable.
-2. **The first three seconds.** Shorts are scrolled past, not chosen. The moment
-   has to be visibly under way immediately — which is why the cutter centres a
-   `--at` pick slightly *before* the moment rather than starting on it.
-3. **Volume, across three platforms.** One session, three or four clips, three
-   platforms.
-4. **One game at a time.** A channel that is all Tower of Hell for a month gets
-   recommended alongside Tower of Hell videos. One that is a different game
-   every upload gets recommended alongside nothing.
-5. **Consistency he can actually keep up.** One video a week for a year beats
-   four in a week and then nothing. He is a kid; the schedule should survive
-   school, and it is better to promise fortnightly and hold it.
+1. **The title is a search query, not a sentence.** This is the one with a
+   formula, and it is the thing most new channels get wrong. Put the **game
+   name**, the word **Roblox**, and a **hook** in it:
 
-And the honest part: most channels stay small, including good ones. The thing
-worth optimising for is that he enjoys making them and learns to edit, because
-that pays off whether or not the numbers ever do.
+   > ✅ `ALL NEW CODES in Blox Fruits Update 24 (Roblox)`
+   > ✅ `1v5 clutch in Arsenal that no one expected`
+   > ❌ `I Played Blox Fruits Today`
+
+   The first two get found by people searching for the game. The third is
+   findable by nobody. Hook words that reportedly carry: *insane*, *this is
+   broken*, *how is this real*.
+
+2. **Thumbnail: a character, an arrow, and two or three words.** That specific
+   combination is the convention, and high-contrast versions of it beat busy or
+   text-heavy ones. Saturated **yellow, red and cyan** cut through the feed
+   best — they are the swatches on every artboard in the kit. Keep the layout
+   recognisably the same every time so a returning viewer spots him without
+   reading.
+
+3. **The first three seconds decide it.** Between **half and sixty percent** of
+   everyone who leaves a Short leaves inside the first three seconds. That is
+   why the cutter puts a named `--at` moment **1.5 seconds** into the clip, and
+   why it now scores a window down when its loudest instant lands late: a
+   payoff at 0:27 is a payoff most of the audience never reached.
+
+4. **Planned beats random.** The uncomfortable one, because it is a limit on
+   the cutter: scripted moments reportedly outperform raw gameplay on Shorts.
+   The cutter solves the *editing* bottleneck, and it cannot invent a reason to
+   watch. Deciding one thing to attempt before recording — one bit, one
+   challenge, one target — is worth more than any amount of clever cutting
+   afterwards.
+
+5. **One to three games, not ten.** Channels that stay on a small number of
+   games build an audience that returns. A different game every upload gets
+   recommended alongside nothing. As of now the big ones are **Brookhaven**,
+   **Steal a Brainrot**, **Blox Fruits** and **Grow a Garden** — but the right
+   answer is whichever of them he actually plays and can talk over.
+
+6. **Frequency, honestly.** The fastest-growing Roblox channels reportedly
+   upload **4–7 times a week**. That is a real number and it is also not a
+   realistic ask of a kid with school. Both things are true, so decide with
+   your eyes open: high frequency is genuinely what drives it, and a schedule
+   he abandons in three weeks drives nothing at all. One a week he actually
+   keeps is the floor worth defending — and cross-posting each Short to TikTok
+   and Reels multiplies reach without multiplying work.
+
+And the honest part: most channels stay small, including good ones, and this
+niche is widely described as saturated. The thing worth optimising for is that
+he enjoys making them and learns to edit, because that pays off whether or not
+the numbers ever do.
+
+## Where these numbers came from
+
+- [How Roblox creators grow on YouTube and TikTok](https://rolearn.dev/insights/roblox-content-creator-growth-youtube-tiktok/) and [Starting a Roblox YouTube channel](https://rolearn.dev/guidance/starting-roblox-youtube-channel-guide/) — title formulas, thumbnail convention, frequency
+- [Roblox YouTube Shorts strategy](https://blog.eklipse.gg/beginner-guide-2/roblox-youtube-shorts-strategy.html) — hook timing
+- [Ideal Shorts length and format for retention](https://www.opus.pro/blog/ideal-youtube-shorts-length-format-retention) and [Shorts hook formulas](https://www.opus.pro/blog/youtube-shorts-hook-formulas) — the three-second drop-off
+- [Set your channel or video's audience](https://support.google.com/youtube/answer/9527654) and [How ads work on made-for-kids content](https://support.google.com/youtube/answer/9713557) — what the designation switches off
+- [Better protecting kids' privacy on YouTube](https://blog.youtube/news-and-events/better-protecting-kids-privacy-on-youtube/) and [YouTube's policy on kids, for creators](https://www.superawesome.com/blog/everything-brands-and-creators-need-to-know-about-youtubes-new-policy-on-kids/) — COPPA liability
+- [Most popular Roblox games](https://www.statista.com/statistics/1220905/roblox-most-visited-games) — the current line-up
+
+None of this is from watching a video: I cannot. It is what creators and
+YouTube's own documentation have written down.
