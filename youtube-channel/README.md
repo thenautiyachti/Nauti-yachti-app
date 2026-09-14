@@ -4,9 +4,11 @@ Three things, none of which touch the charter site:
 
 | | what it is |
 |---|---|
+| [`content-ideas.md`](content-ideas.md) | **what he should actually make** — formats, real title patterns, a first month |
 | `scripts/roblox-shorts.js` | finds the good moments in a long recording and cuts them into Shorts |
 | `youtube-channel/index.html` | a one-page link hub — one URL for his bio |
 | `channel.json` | everything the page shows; the only file that normally gets edited |
+| `design/` | source for the banner, avatar and four thumbnail layouts |
 
 **This is deliberately not part of thenautiyachti.com.** No route was added to
 `app/`, nothing imports from `lib/`, and the page is plain static HTML that
@@ -200,7 +202,9 @@ niche moves fast. Sources at the bottom.
    The cutter solves the *editing* bottleneck, and it cannot invent a reason to
    watch. Deciding one thing to attempt before recording — one bit, one
    challenge, one target — is worth more than any amount of clever cutting
-   afterwards.
+   afterwards. In this niche "scripted" turns out to mean **one added rule**
+   (blindfolded, no talking, can't let go), which costs ten seconds to decide:
+   see [content-ideas.md](content-ideas.md).
 
 5. **One to three games, not ten.** Channels that stay on a small number of
    games build an audience that returns. A different game every upload gets
