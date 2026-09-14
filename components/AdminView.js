@@ -31,7 +31,7 @@ import { formatBody } from "../lib/boardText";
 import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS, LEDGER_ORIGIN } from "../lib/channels";
 import {
   PREMISES, SUBSCRIPTION_CATEGORIES, BILLING_CYCLES,
-  monthlyAmount, needsAmount, isFree, isRunning, deductibleMonthly, summarise, overlappingDuplicates, isPersonal,
+  monthlyAmount, needsAmount, isFree, isRunning, deductibleMonthly, summarise, overlappingDuplicates, isPersonal, money,
 } from "../lib/subscriptions";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
@@ -7662,12 +7662,12 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10, maxWidth: 720 }}>
-        <StatCard label="Running bills, per month" value={currency(s.monthlyCost)} color="var(--purple)" />
+        <StatCard label="Running bills, per month" value={money(s.monthlyCost)} color="var(--purple)" />
         {/* THE BUSINESS'S SHARE, NOT THE WHOLE BILL. The office is at home, so
             most of these utilities belong to the business only in part. This
             figure counts ONLY the ones whose share has been set, which is why it
             can be much smaller than the one beside it. */}
-        <StatCard label="Of that, the business's share" value={currency(s.monthlyDeductible)} color="#7FE0B8" />
+        <StatCard label="Of that, the business's share" value={money(s.monthlyDeductible)} color="#7FE0B8" />
         <StatCard label="Running bills" value={String(s.running.length)} color="#E8934A" />
         {s.ended.length > 0 && <StatCard label="Closed accounts" value={String(s.ended.length)} color="var(--muted)" />}
       </div>
@@ -7683,8 +7683,8 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap",
           background: "var(--paper-4)", borderRadius: 10, padding: "10px 14px", maxWidth: 720 }}>
           <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Personal — not the business&apos;s</span>
-          <span style={{ fontSize: 17, fontWeight: 800, color: "#C9A7F5" }}>{currency(s.personal.monthlyCost)}</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>a month · {currency(s.personal.annualCost)} a year · {s.personal.running.length} subscription{s.personal.running.length === 1 ? "" : "s"}</span>
+          <span style={{ fontSize: 17, fontWeight: 800, color: "#C9A7F5" }}>{money(s.personal.monthlyCost)}</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>a month · {money(s.personal.annualCost)} a year · {s.personal.running.length} subscription{s.personal.running.length === 1 ? "" : "s"}</span>
           <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Counted nowhere above, and never in the Tax Report.</span>
         </div>
       )}
@@ -7718,6 +7718,8 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
           ))}
         </div>
       )}
+
+      <BillsCalendar subscriptions={subscriptions} />
 
       <div className="panel-split" style={{ display: "grid", gridTemplateColumns: "minmax(280px,340px) 1fr", gap: 24 }}>
         <form onSubmit={submit} style={{ background: "var(--paper-12)", borderRadius: 10, padding: 14, alignSelf: "start" }}>
@@ -7792,7 +7794,7 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                   const isFirstOfGroup = i === 0 || groupOf(ordered[i - 1]) !== gk;
                   const g = groupTotals[gk] || { count: 0, monthly: 0, deductible: 0, unknown: 0, ended: 0 };
                   const personalGroup = gk === "Personal";
-                  const folded = !!foldedGroups[gk];
+                  const folded = foldedGroups[gk] === undefined ? true : foldedGroups[gk];
                   return (
                   <Fragment key={s.id}>
                   {isFirstOfGroup && (
@@ -7808,8 +7810,8 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                           {folded ? "▸" : "▾"} {personalGroup ? "Personal" : gk}
                         </span>
                         <span style={{ color: "var(--muted)", fontSize: 11.5, marginLeft: 10 }}>
-                          {g.count} {g.count === 1 ? "bill" : "bills"} · {currency(g.monthly)}/mo
-                          {!personalGroup && g.deductible > 0 && <> · {currency(g.deductible)} of it the business&apos;s</>}
+                          {g.count} {g.count === 1 ? "bill" : "bills"} · {money(g.monthly)}/mo
+                          {!personalGroup && g.deductible > 0 && <> · {money(g.deductible)} of it the business&apos;s</>}
                           {g.unknown > 0 && <span style={{ color: "#FFD479" }}> · {g.unknown} with no amount</span>}
                           {g.ended > 0 && <> · {g.ended} closed</>}
                         </span>
@@ -7929,6 +7931,123 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// WHEN EACH BILL LANDS.
+//
+// A running total answers "how much"; it does not answer "how much this week",
+// which is the question somebody asks when deciding whether a thing can be paid
+// now. This draws the month.
+//
+// WHAT IT WILL NOT DO IS PRETEND. Only 21 of the 32 running bills have a due
+// date that came off a receipt; the rest have none, and rather than spread them
+// evenly or guess a 1st-of-the-month, the calendar names them underneath as
+// bills it cannot place. An empty Tuesday should mean nothing is due on
+// Tuesday, not that nobody has looked.
+//
+// A monthly bill repeats on its day, so it is drawn in every month. A yearly
+// one appears only in the month it actually falls — projecting Peacock into
+// twelve squares would turn one $79.99 charge into an imagined $960.
+function BillsCalendar({ subscriptions }) {
+  const [offset, setOffset] = useState(0);
+  const today = new Date();
+  const view = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const year = view.getFullYear(), month = view.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const leading = view.getDay();
+  const todayKey = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+
+  const running = (subscriptions || []).filter((x) => isRunning(x));
+  const undated = running.filter((x) => !x.nextDueDate);
+
+  // day-of-month -> bills landing that day in the month being shown
+  const byDay = {};
+  let monthTotal = 0;
+  for (const sub of running) {
+    if (!sub.nextDueDate) continue;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(sub.nextDueDate);
+    if (!m) continue;
+    const dy = Number(m[1]), dm = Number(m[2]) - 1, dd = Number(m[3]);
+    let day = null;
+    if (sub.billingCycle === "monthly") {
+      // The stored date is the NEXT occurrence; the billing day is what
+      // repeats. A 31st lands on the last day of a short month.
+      day = Math.min(dd, daysInMonth);
+    } else if (dy === year && dm === month) {
+      day = dd;
+    }
+    if (day == null) continue;
+    (byDay[day] || (byDay[day] = [])).push(sub);
+    monthTotal += Number(sub.amount) || 0;
+  }
+
+  const cells = [];
+  for (let i = 0; i < leading; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const monthName = view.toLocaleString("en-US", { month: "long", year: "numeric" });
+  const btn = { background: "transparent", border: "1px solid rgba(203,108,230,0.35)", color: "var(--text)", borderRadius: 6, padding: "3px 9px", fontSize: 12, cursor: "pointer" };
+
+  return (
+    <div style={{ background: "var(--paper-12)", borderRadius: 10, padding: "12px 14px", minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+        <span style={{ fontWeight: 700, color: "var(--text)" }}>{monthName}</span>
+        <button type="button" style={btn} onClick={() => setOffset(offset - 1)}>‹ prev</button>
+        <button type="button" style={btn} onClick={() => setOffset(0)}>this month</button>
+        <button type="button" style={btn} onClick={() => setOffset(offset + 1)}>next ›</button>
+        <span style={{ color: "var(--muted)", fontSize: 12 }}>
+          {monthTotal > 0 ? money(monthTotal) + " falls due this month" : "nothing dated this month"}
+        </span>
+      </div>
+
+      {/* Same treatment as the tables: the grid scrolls inside its own box
+          rather than widening the tab on a phone. */}
+      <div style={{ overflowX: "auto" }}>
+        <div style={{ minWidth: 640 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+              <div key={d} style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4, padding: "0 4px" }}>{d}</div>
+            ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+            {cells.map((d, i) => {
+              if (d == null) return <div key={"pad" + i} />;
+              const key = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+              const due = byDay[d] || [];
+              const isToday = key === todayKey;
+              return (
+                <div key={key} style={{
+                  minHeight: 62, padding: "4px 5px", borderRadius: 7,
+                  background: due.length ? "var(--card)" : "transparent",
+                  border: isToday ? "1px solid var(--purple)" : "1px solid rgba(203,108,230,0.12)",
+                }}>
+                  <div style={{ fontSize: 10.5, color: isToday ? "var(--purple)" : "var(--muted)", fontWeight: isToday ? 700 : 400 }}>{d}</div>
+                  {due.map((sub) => (
+                    <div key={sub.id} title={sub.name + (sub.amount == null ? " — amount not known" : " — " + money(sub.amount))}
+                      style={{ fontSize: 10, marginTop: 2, lineHeight: 1.25, color: isPersonal(sub) ? "#C9A7F5" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {sub.name.split(" (")[0].slice(0, 16)}
+                      <span style={{ color: "var(--muted)" }}> {sub.amount == null ? "?" : money(sub.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--muted)" }}>
+        Purple is personal. A monthly bill repeats on its day, so it is drawn every month; a yearly one shows only in the month it actually falls.
+      </div>
+      {undated.length > 0 && (
+        <div style={{ marginTop: 6, fontSize: 11.5 }}>
+          <strong style={{ color: "#FFD479" }}>{undated.length} running {undated.length === 1 ? "bill has" : "bills have"} no due date on record</strong>
+          {" — "}so {undated.length === 1 ? "it is" : "they are"} not on this calendar at all. An empty day here means nothing is due, not that nobody has checked.
+          <div style={{ color: "var(--muted)", marginTop: 3 }}>{undated.map((x) => x.name.split(" (")[0]).join(" · ")}</div>
+        </div>
+      )}
     </div>
   );
 }
