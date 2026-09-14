@@ -3,6 +3,13 @@
 Copy whichever fits. Both deliberately leave his age out of it — that's a
 separate conversation and not one that belongs in the first message.
 
+**On mentioning that the account exists.** The version below says so in the
+second line, and pairs it immediately with *nothing posted, he hasn't been
+told*. That ordering is deliberate: "I've set it up" on its own can read as a
+decision already taken. If that's a live risk in your situation, cut the whole
+paragraph — the message works without it and the account can come up once
+she's said yes in principle.
+
 ---
 
 ## One message
@@ -11,11 +18,15 @@ separate conversation and not one that belongs in the first message.
 > with his friends. Didn't want to give him an answer without talking to you
 > first.
 >
-> I looked into it properly. Three things that surprised me: it'd run on one of
-> our accounts rather than his, and I'd want us both to have the login. Videos
-> aimed at kids get comments turned off automatically, which honestly sold me
-> on it more than anything — no strangers talking to him under his videos. And
-> it won't make money, so it's a hobby, not a job.
+> I've got the account side ready so we're not stuck on logistics if we say yes
+> — it's on my Google account, not his, and I'll send you the login so either of
+> us can see everything or take anything down. Nothing's been posted and I
+> haven't told him anything either way.
+>
+> Two things that surprised me when I looked into it: videos aimed at kids get
+> comments turned off automatically, which honestly sold me on it more than
+> anything — no strangers talking to him under his videos. And it won't make
+> money, so it's a hobby, not a job.
 >
 > What I'd suggest: no face on camera, a nickname instead of his real name,
 > nothing that shows where we live or his school, and we ask his friends'
@@ -32,8 +43,9 @@ separate conversation and not one that belongs in the first message.
 > Longer version if you want it — I put the whole thing in a doc, happy to send
 > it over. Short answer to the obvious questions:
 >
-> **Who controls it?** One of us. It sits on an adult account, we both have the
-> login, either of us can take anything down without the other.
+> **Who controls it?** Both of us. It's on my Google account rather than his —
+> a parent-run channel is the normal setup for this — and you'll have the login,
+> so either of us can take anything down without needing the other.
 >
 > **Comments?** Off. Content marked as being for kids has comments and DMs
 > disabled by YouTube automatically. That's the main reason I'm comfortable.
