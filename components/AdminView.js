@@ -566,7 +566,7 @@ export default function AdminView({
           the condition is on the count rather than the id so it stays true if
           Overview ever gains a sibling. */}
       {activeGroup.tabs.length > 1 && (
-      <div style={{ display: "flex", gap: 6, padding: "10px 24px 0", flexWrap: "nowrap", overflowX: "auto", whiteSpace: "nowrap" }}>
+      <div className="tab-strip" style={{ display: "flex", gap: 6, padding: "10px 24px 0", flexWrap: "nowrap", overflowX: "auto", whiteSpace: "nowrap" }}>
         {activeGroup.tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             background: tab === t.id ? "rgba(203,108,230,0.22)" : "transparent",
@@ -1790,7 +1790,20 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
             {" "}({rows.length}{filterStatus !== "all" ? ` of ${allRows.length}` : ""})
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", gap: 4 }}>
+            {/* WRAPS, BECAUSE THE LAST TWO FILTERS WERE UNREACHABLE.
+                This row is eight chips and it had neither wrap nor a scroll
+                container, so on a phone everything past "Owed" was simply
+                clipped off the side — Completed and Cancelled could not be
+                reached at all. Not a scrolling annoyance: the two filters that
+                cover 41 of 79 bookings were invisible.
+                Wrapping rather than scrolling on purpose. A strip made
+                entirely of buttons is the worst case for horizontal scroll,
+                because a thumb drag that starts on a button does not scroll
+                the container it sits in — the same fault that made the
+                maintenance and subscriptions tables unusable. There is nothing
+                here to grab. Wrapped, every filter is on screen and none of it
+                depends on a gesture that does not work. */}
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", minWidth: 0 }}>
               {["active", "all", ...UNIFIED_STATUS_BUCKETS].map((s) => (
                 <button key={s} type="button" onClick={() => setFilterStatus(s)}
                   style={{

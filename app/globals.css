@@ -759,6 +759,24 @@ input::placeholder, textarea::placeholder {
   .panel-split { grid-template-columns: 1fr !important; }
   /* Side-by-side halves inside a panel — two summary blocks, a pair of charts. */
   .pair-split { grid-template-columns: 1fr !important; }
+
+  /* THE SUB-TAB STRIP WRAPS RATHER THAN SCROLLS.
+   *
+   * On a wide screen it is one nowrap row that scrolls if it ever needs to. On
+   * a phone it needed to, and scrolling was the wrong answer: the strip is made
+   * entirely of buttons, and a thumb drag that starts on a button does not
+   * scroll the container it sits in. That is the same fault that made the
+   * maintenance and subscriptions tables unusable — there is nothing in the row
+   * to grab.
+   *
+   * The owner hit it on Bookings, where "Availability" sat half off the edge
+   * with no way to reach it. Wrapped, every sub-tab is on screen and reaching
+   * one costs a tap instead of a gesture that does not work. */
+  .tab-strip {
+    flex-wrap: wrap !important;
+    white-space: normal !important;
+    overflow-x: visible !important;
+  }
 }
 
 /* WHY THE WHOLE TAB WAS WIDER THAN THE PHONE.
