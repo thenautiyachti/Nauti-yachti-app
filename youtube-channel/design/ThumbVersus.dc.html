@@ -17,7 +17,7 @@
        the way somebody moving a box expects. */
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; }
-    a { color: #b6ff3a; } a:hover { color: #d6ff8a; }
+    a { color: #ff2d2d; } a:hover { color: #ff7a7a; }
     .display { font-family: "Bungee", "Arial Black", Impact, sans-serif; }
     .support { font-family: "Archivo", "Helvetica Neue", sans-serif; }
     /* THE OUTLINE IS THE WHOLE TRICK. A thumbnail is judged at about 210px
@@ -51,13 +51,13 @@
      does the work: it reads as a split at any size, where a straight vertical
      line just looks like two unrelated pictures side by side. -->
 <div class="support" style="position: relative; width: 1280px; height: 720px; overflow: hidden; background: #0b0e17;">
-  <div style="position: absolute; inset: 0; background: linear-gradient(120deg, #17233f 0 50%, #2a1230 50% 100%);"></div>
+  <div style="position: absolute; inset: 0; background: linear-gradient(120deg, #17233f 0 50%, #331419 50% 100%);"></div>
   <div style="position: absolute; left: 0; top: 0; width: 66%; height: 100%;
        clip-path: polygon(0 0, 100% 0, 72% 100%, 0 100%); background:
        radial-gradient(620px 520px at 40% 50%, rgba(53,224,255,.30), transparent 72%);"></div>
   <div style="position: absolute; right: 0; top: 0; width: 66%; height: 100%;
        clip-path: polygon(28% 0, 100% 0, 100% 100%, 0 100%); background:
-       radial-gradient(620px 520px at 60% 50%, rgba(255,61,154,.30), transparent 72%);"></div>
+       radial-gradient(620px 520px at 60% 50%, rgba(255,45,45,.28), transparent 72%);"></div>
   <!-- The seam itself, in the accent, so the split is unmissable at 120px. -->
   <!-- The seam starts BELOW the headline. Running it the full height put the
        bar straight through the word "VS" — the text sits on top of it, so it
@@ -90,14 +90,14 @@
 </div>
 </x-dc>
 <script data-dc-script data-props='{
-  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ffd21e", "#ff2d2d", "#35e0ff"], "section": "Look"},
+  "accent": {"editor": "color", "default": "#ff2d2d", "options": ["#ff2d2d", "#ffd21e", "#3fa34d", "#35e0ff"], "section": "Look"},
   "showGuides": {"editor": "boolean", "default": true, "section": "Look"},
   "$preview": {"width": 1280, "height": 720}
 }'>
 class Component extends DCLogic {
   renderVals() {
     return {
-      accent: this.props.accent ?? '#b6ff3a',
+      accent: this.props.accent ?? '#ff2d2d',
       showGuides: this.props.showGuides ?? true,
     };
   }

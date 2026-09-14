@@ -19,8 +19,15 @@ at exactly the size YouTube wants:
 cropped (the banner's safe area, the avatar's circle, the corner YouTube covers
 with the duration chip). They are for you, not for the upload.
 
-**The name is a placeholder.** `BLOCK SQUAD` and the `BS` monogram are stand-ins
-— replace them everywhere, including the `<title>`.
+**The name is his Roblox display name**, `Cake Pancake`, with a `CP` monogram.
+That is deliberately the pseudonym rather than his real name, and his Roblox
+*username* appears nowhere in the art.
+
+**The palette is his character.** His avatar is crimson throughout — beanie,
+hoodie, sweatpants — with a green rose and a cream shirt, so the art is red
+with green and cream accents rather than a generic gaming palette. Red also
+happens to be one of the three colours that carry best in a feed, so matching
+him costs nothing.
 
 ## Rebuilding the canvas
 

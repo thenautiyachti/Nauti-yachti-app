@@ -17,7 +17,7 @@
        the way somebody moving a box expects. */
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; }
-    a { color: #b6ff3a; } a:hover { color: #d6ff8a; }
+    a { color: #ff2d2d; } a:hover { color: #ff7a7a; }
     .display { font-family: "Bungee", "Arial Black", Impact, sans-serif; }
     .support { font-family: "Archivo", "Helvetica Neue", sans-serif; }
     /* THE OUTLINE IS THE WHOLE TRICK. A thumbnail is judged at about 210px
@@ -86,14 +86,14 @@
 </div>
 </x-dc>
 <script data-dc-script data-props='{
-  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ffd21e", "#ff2d2d", "#35e0ff"], "section": "Look"},
+  "accent": {"editor": "color", "default": "#ff2d2d", "options": ["#ff2d2d", "#ffd21e", "#3fa34d", "#35e0ff"], "section": "Look"},
   "showGuides": {"editor": "boolean", "default": true, "section": "Look"},
   "$preview": {"width": 1280, "height": 720}
 }'>
 class Component extends DCLogic {
   renderVals() {
     return {
-      accent: this.props.accent ?? '#b6ff3a',
+      accent: this.props.accent ?? '#ff2d2d',
       showGuides: this.props.showGuides ?? true,
     };
   }

@@ -17,7 +17,7 @@
        the way somebody moving a box expects. */
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; }
-    a { color: #b6ff3a; } a:hover { color: #d6ff8a; }
+    a { color: #ff2d2d; } a:hover { color: #ff7a7a; }
     /* Bungee is the character of this set. PNG export cannot embed a Google
        font yet, so every display line falls back to Arial Black / Impact —
        chosen because they are the closest heavy faces present on both Windows
@@ -34,8 +34,8 @@
        subject, plus a faint grid for depth. Both are non-essential decoration
        and sit entirely outside the text. -->
   <div style="position: absolute; inset: 0; background:
-    radial-gradient(1400px 760px at 50% 46%, rgba(182, 255, 58, .13), transparent 70%),
-    radial-gradient(1100px 620px at 12% 84%, rgba(255, 61, 154, .12), transparent 72%),
+    radial-gradient(1400px 760px at 50% 46%, rgba(255, 45, 45, .16), transparent 70%),
+    radial-gradient(1100px 620px at 12% 84%, rgba(63, 163, 77, .12), transparent 72%),
     radial-gradient(1000px 560px at 88% 14%, rgba(53, 224, 255, .10), transparent 72%);"></div>
   <div style="position: absolute; inset: 0; opacity: .30; background-image:
     repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 80px),
@@ -45,19 +45,19 @@
   <svg viewBox="0 0 2560 1440" style="position: absolute; inset: 0; width: 100%; height: 100%;" aria-hidden="true">
     <g opacity=".92">
       <g transform="translate(150 430) scale(2.1)">
-        <polygon points="0,30 60,0 120,30 60,60" fill="#b6ff3a"/>
-        <polygon points="0,30 60,60 60,125 0,95" fill="#7fbd21"/>
-        <polygon points="120,30 60,60 60,125 120,95" fill="#5d8f17"/>
+        <polygon points="0,30 60,0 120,30 60,60" fill="#ff2d2d"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#c41f1f"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#8f1414"/>
       </g>
       <g transform="translate(2140 300) scale(1.5)">
-        <polygon points="0,30 60,0 120,30 60,60" fill="#ff3d9a"/>
-        <polygon points="0,30 60,60 60,125 0,95" fill="#c42c74"/>
-        <polygon points="120,30 60,60 60,125 120,95" fill="#8f1f54"/>
+        <polygon points="0,30 60,0 120,30 60,60" fill="#f2e8d5"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#cfc2a8"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#a89b83"/>
       </g>
       <g transform="translate(2270 900) scale(1.9)">
-        <polygon points="0,30 60,0 120,30 60,60" fill="#35e0ff"/>
-        <polygon points="0,30 60,60 60,125 0,95" fill="#22a3ba"/>
-        <polygon points="120,30 60,60 60,125 120,95" fill="#177787"/>
+        <polygon points="0,30 60,0 120,30 60,60" fill="#3fa34d"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#2d7a38"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#1f5626"/>
       </g>
       <g transform="translate(400 1040) scale(1.2)" opacity=".75">
         <polygon points="0,30 60,0 120,30 60,60" fill="#35e0ff"/>
@@ -65,9 +65,9 @@
         <polygon points="120,30 60,60 60,125 120,95" fill="#177787"/>
       </g>
       <g transform="translate(1980 1080) scale(1.0)" opacity=".7">
-        <polygon points="0,30 60,0 120,30 60,60" fill="#b6ff3a"/>
-        <polygon points="0,30 60,60 60,125 0,95" fill="#7fbd21"/>
-        <polygon points="120,30 60,60 60,125 120,95" fill="#5d8f17"/>
+        <polygon points="0,30 60,0 120,30 60,60" fill="#ff2d2d"/>
+        <polygon points="0,30 60,60 60,125 0,95" fill="#c41f1f"/>
+        <polygon points="120,30 60,60 60,125 120,95" fill="#8f1414"/>
       </g>
     </g>
   </svg>
@@ -83,8 +83,8 @@
       <span style="display: block; width: 46px; height: 4px; background: {{accent}};"></span>
     </div>
 
-    <h1 class="display" style="margin: 0; font-size: 168px; line-height: .92; letter-spacing: -.01em; color: #ffffff;
-        text-shadow: 0 10px 0 #05070d, 0 22px 46px rgba(0,0,0,.6);">BLOCK SQUAD</h1>
+    <h1 class="display" style="margin: 0; font-size: 132px; line-height: .94; letter-spacing: -.01em; color: #ffffff;
+        text-shadow: 0 10px 0 #05070d, 0 22px 46px rgba(0,0,0,.6);">CAKE PANCAKE</h1>
 
     <p class="support" style="margin: 0; font-size: 34px; font-weight: 500; color: #aeb8d4;">New videos most weeks</p>
 
@@ -113,14 +113,14 @@
 </x-dc>
 
 <script data-dc-script data-props='{
-  "accent": {"editor": "color", "default": "#b6ff3a", "options": ["#b6ff3a", "#ffd21e", "#ff2d2d", "#35e0ff"], "section": "Look"},
+  "accent": {"editor": "color", "default": "#ff2d2d", "options": ["#ff2d2d", "#ffd21e", "#3fa34d", "#35e0ff"], "section": "Look"},
   "showGuides": {"editor": "boolean", "default": true, "section": "Look"},
   "$preview": {"width": 2560, "height": 1440}
 }'>
 class Component extends DCLogic {
   renderVals() {
     return {
-      accent: this.props.accent ?? '#b6ff3a',
+      accent: this.props.accent ?? '#ff2d2d',
       showGuides: this.props.showGuides ?? true,
     };
   }
