@@ -129,8 +129,8 @@ the last of which is repeatedly described as suitable for about ages 5+, which
 makes it an easy one to say yes to.
 
 But pick from what **he already plays and can talk over**. Enthusiasm is
-audible and cannot be faked by a nine-year-old, and a channel about a game he
-does not care about dies in three weeks. Stay on one to three games.
+audible and a kid cannot fake it, and a channel about a game he does not care
+about dies in three weeks. Stay on one to three games.
 
 ---
 
