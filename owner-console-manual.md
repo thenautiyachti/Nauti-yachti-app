@@ -15,7 +15,7 @@ Six groups run along the top. Clicking a group reveals its tabs underneath.
 |---|---|
 | **Overview** | The day at a glance, the board, and the crew |
 | **Bookings** | Contacts · Bookings · Availability |
-| **Money** | Income & expenses · Reconciliation · Tax Report · Subscriptions |
+| **Money** | Income & expenses · Reconciliation · Tax Report · Gift certificates · Subscriptions & bills |
 | **Marketing** | Media · Media Drafts · Testimonials |
 | **Setup** | Packages & pricing · Add-ons · Coupons |
 | **Boat** | Maintenance |
@@ -248,9 +248,22 @@ Those are opposite messages, and until now both looked the same on screen.
 
 So a declined payment is now recorded on the booking and shows in the Bookings
 list as **⚠ TRIED TO PAY — DECLINED**, with the reason and the time on hover.
-You also get one email naming what to say. The guest gets nothing: Stripe
-already told them on the spot, in their bank's own words, and a second message
-from us an hour later only causes the phone call.
+You also get one email naming what to say.
+
+**Nothing is sent to the guest automatically.** Stripe already told them on the
+spot, in their bank's own words, and an automatic second message from us an hour
+later only causes the phone call. What you get instead is a **Text** button on
+the row, which opens your own messaging app with the words already written — you
+send it, from your phone, when you choose to.
+
+That text leads with *your spot is still held* and **never says why the card was
+declined**. We know the reason and the guest does not need it from us; "your
+bank said insufficient funds" is a humiliating thing to receive from a boat
+company, and it is their bank's business, not ours.
+
+Every guest text now ends by saying a real person is on the other end and they
+can reply — because they can, and a number that looks automated gets no answer
+when you actually need one.
 
 **Nothing is cancelled and no seat is released.** A Stripe checkout link stays
 open for 24 hours, so most of the time the link they already have still works —
@@ -450,10 +463,62 @@ redemptions leave the remainder on the certificate.
 so an old certificate is still owed unless you decide otherwise — and that is a
 decision to make deliberately, not to discover when someone turns up with it.
 
-## Subscriptions
+## Subscriptions & bills
 
-Recurring costs, normalised to a monthly figure so weekly, monthly and yearly
-items can be summed.
+Every recurring cost the business carries, normalised to a monthly figure so
+weekly, monthly and yearly items can be summed.
+
+It used to hold software and boat storage only. On 13 September 2026 the
+household accounts moved in beside them — electricity, gas, water, sewer, trash,
+phone, internet, storage — because the office is at home and a bill you never
+recorded is a deduction you never claimed. Bringing them in recovered
+**$2,451.56** of payments that had been made and never entered anywhere.
+
+### The four columns that decide what a bill is worth
+
+**Where** — which address it belongs to. The move in April 2026 means most
+services have one account at each, and several of the old ones ran on for
+months afterwards. Two live accounts with the same supplier usually means the
+old one was never closed, and the tab says so out loud when it sees one.
+
+**Amount** — and **blank is not zero**. Blank means nobody has found out what it
+costs yet; `0` means it is confirmed free. The two look identical in a total and
+mean opposite things, so they are stored differently and shown differently: a
+blank amount is listed by name under the totals as an open question, and adds
+nothing until somebody answers it. Supabase and Vercel really are free. Microsoft
+and ElevenLabs simply have not been looked up.
+
+**Business %** — how much of that bill is the business's, and **blank means
+nobody has decided**. It is not zero. A bill with no share set stays out of the
+deductible total entirely rather than being guessed at in either direction.
+
+**Ended** — the date the account closed. Setting it is what closes an account;
+`Active` follows it automatically, so a closed bill can never keep counting
+toward the monthly total because two fields disagreed.
+
+### The two totals, and why they differ
+
+The first is what leaves the bank every month. The second is **the business's
+share of it** — the only figure that belongs on a tax return.
+
+Boat storage and software are 100%. Whole-home utilities are a proportion: the
+office is a 10 × 10 room in a 1,900 sq ft home, which by floor area is **5.26%**.
+You chose to claim **10%**. Both numbers are written into every bill's note on
+purpose, because a percentage in a tax record is only worth the basis somebody
+can point at a year later, and an accountant should see the measurement as well
+as the figure claimed.
+
+Three bills are not apportioned by floor area, because floor area is the wrong
+test for them: T-Mobile (a business account in the LLC's name, 13 lines),
+Optimum and AT&T. Those are set to 100% on your instruction. The note on each
+records that the 100% is your account of how the line is used and is not
+something the bill itself establishes — which is exactly what an accountant will
+ask about first.
+
+### On a phone
+
+The table stacks into one card per bill, each row labelled by the column it
+lost. Nothing scrolls sideways.
 
 ---
 
