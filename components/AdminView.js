@@ -430,7 +430,11 @@ export default function AdminView({
         { id: "reconcile", label: "Reconciliation" },
         { id: "taxReport", label: "Tax Report" },
         { id: "giftCertificates", label: "Gift certificates" },
-        { id: "subscriptions", label: "Subscriptions" },
+        // The id stays "subscriptions" on purpose — it is the routing key the
+        // alerts deep-link to, and renaming it would break them. Only the label
+        // changed, because the tab stopped being just subscriptions on 13 Sep
+        // 2026 when the household bills moved in.
+        { id: "subscriptions", label: "Subscriptions & bills" },
       ],
     },
     {
@@ -5390,7 +5394,7 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
     soonPosts.length && { k: "media", t: `${soonPosts.length} ${soonPosts.length === 1 ? "post goes" : "posts go"} out in the next 3 days`, w: "Marketing → Media Drafts", go: "mediaDrafts" },
     neverAsked.length && { k: "reviews", t: `${neverAsked.length} guests never asked for a review`, w: "Marketing → Testimonials, from your phone", go: "testimonials" },
     looseIncome.length && { k: "money", t: `${looseIncome.length} income ${looseIncome.length === 1 ? "row is" : "rows are"} not tied to a charter`, w: "Money → Reconciliation", go: "reconcile" },
-    subsDueSoon.length && { k: "money", t: `${subsDueSoon.length} subscription${subsDueSoon.length === 1 ? "" : "s"} due in the next 14 days`, w: "Money → Subscriptions · " + subsDueSoon.map((x) => x.name).slice(0, 3).join(", "), go: "subscriptions" },
+    subsDueSoon.length && { k: "money", t: `${subsDueSoon.length} subscription${subsDueSoon.length === 1 ? "" : "s"} due in the next 14 days`, w: "Money → Subscriptions & bills · " + subsDueSoon.map((x) => x.name).slice(0, 3).join(", "), go: "subscriptions" },
     noPhone.length && { k: "guests", t: `${noPhone.length} past guests have no phone number`, w: "they cannot be asked for anything", go: "bookings" },
   ].filter(Boolean);
 
@@ -7370,7 +7374,7 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
       )}
 
       <p style={{ fontSize: 12.5, color: "var(--muted)", maxWidth: 640 }}>
-        This isn't a filed tax form — it's a plain summary of everything logged in the Income &amp; expenses and Subscriptions tabs for the selected year, exportable as CSV to hand to a bookkeeper or drop into tax software. Categories below mirror the expense categories used when logging entries.
+        This isn't a filed tax form — it's a plain summary of everything logged in the Income &amp; expenses and Subscriptions &amp; bills tabs for the selected year, exportable as CSV to hand to a bookkeeper or drop into tax software. Categories below mirror the expense categories used when logging entries.
       </p>
 
       {/* Per charter and per hour are the two numbers that actually inform a
@@ -7686,7 +7690,7 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
         </form>
 
         <div>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Subscriptions ({subscriptions.length})</div>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>Subscriptions &amp; bills ({subscriptions.length})</div>
           <div style={{ overflowX: "auto" }}>
             {/* stack-table: below the breakpoint this stops being a table and
                 becomes one card per subscription, each row labelled by the
