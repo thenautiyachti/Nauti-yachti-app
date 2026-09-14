@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLOCK SQUAD</title>
+<meta name="description" content="Roblox videos.">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="BLOCK SQUAD">
+<meta property="og:description" content="Roblox videos.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F3AE;</text></svg>">
+<style>
+  /* ONE COMMITTED LOOK, dark, rather than following the visitor's theme.
+     This page is a bio link opened from a phone, usually inside the YouTube or
+     TikTok in-app browser, and a gaming channel that flips to white because
+     somebody's phone is in light mode reads as a broken page rather than a
+     considerate one. */
+  :root {
+    --bg: #0f1119;
+    --panel: #171a26;
+    --panel-lift: #1e2231;
+    --line: #2a3044;
+    --ink: #f2f4f9;
+    --ink-dim: #9aa3bd;
+    --accent: #4ade80;
+    --accent-ink: #08120c;
+    --red: #ff3b30;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    /* A single side gutter set once, so nothing inside has to remember it. */
+    padding: 0 18px 64px;
+    /* Sits behind everything and never scrolls into a seam. */
+    background-image:
+      radial-gradient(900px 500px at 50% -240px, rgba(74, 222, 128, .16), transparent 70%),
+      radial-gradient(700px 420px at 12% 8%, rgba(96, 165, 250, .10), transparent 70%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+
+  /* ---- header ---------------------------------------------------------- */
+  header { text-align: center; padding: 52px 0 34px; }
+  .avatar {
+    width: 104px; height: 104px; margin: 0 auto 20px;
+    display: grid; place-items: center;
+    font-size: 52px; line-height: 1;
+    border-radius: 50%;
+    background: var(--panel-lift);
+    border: 2px solid var(--line);
+    overflow: hidden;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  h1 {
+    margin: 0 0 10px;
+    font-size: clamp(30px, 8vw, 50px);
+    line-height: 1.06;
+    letter-spacing: -.02em;
+    font-weight: 800;
+  }
+  .tagline { margin: 0 auto 26px; max-width: 34rem; color: var(--ink-dim); font-size: 17px; }
+
+  .sub {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--red); color: #fff;
+    font-weight: 700; font-size: 17px;
+    padding: 14px 28px; border-radius: 999px;
+    text-decoration: none;
+    /* 48px min touch target — this is a phone page first. */
+    min-height: 48px;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .sub:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .sub:active { transform: translateY(0); }
+  .sub svg { width: 22px; height: 22px; fill: currentColor; }
+
+  /* ---- sections -------------------------------------------------------- */
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--ink-dim); font-weight: 700;
+    margin: 42px 0 16px;
+  }
+
+  .grid {
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .card {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    transition: transform .14s ease, border-color .14s ease;
+  }
+  .card:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .thumb {
+    position: relative;
+    aspect-ratio: 16 / 9; width: 100%; max-width: 100%;
+    background: var(--panel-lift);
+    display: block;
+  }
+  /* WHAT IS UNDER THE THUMBNAIL, for when there isn't one.
+     A YouTube thumbnail can fail for ordinary reasons — the video was deleted
+     or made private, the id has a typo in it, the visitor's network dropped one
+     request — and the browser's default for a broken <img> is a torn-page icon
+     in the corner of an empty box. That reads as a broken site. This sits
+     behind every thumbnail and only becomes visible if the image is removed. */
+  .thumb::before {
+    content: "▶";
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-size: 30px; color: var(--line);
+  }
+  .thumb img {
+    position: relative;
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    background: var(--panel-lift);
+  }
+  .play {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: rgba(8, 10, 16, .25); opacity: 0; transition: opacity .14s ease;
+  }
+  .card:hover .play { opacity: 1; }
+  .play span {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--red); display: grid; place-items: center;
+  }
+  .play svg { width: 22px; height: 22px; fill: #fff; margin-left: 3px; }
+  .card h3 { margin: 0; padding: 14px 16px 16px; font-size: 15.5px; line-height: 1.35; font-weight: 600; }
+
+  .links { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    display: inline-flex; align-items: center; min-height: 44px;
+    padding: 10px 18px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line);
+    color: var(--ink); text-decoration: none; font-weight: 600; font-size: 15px;
+    transition: border-color .14s ease, background .14s ease;
+  }
+  .chip:hover { border-color: var(--accent); background: var(--panel-lift); }
+
+  /* ---- the empty / broken states, which are the ones that actually show
+     up first, before there is a single video ----------------------------- */
+  .note {
+    background: var(--panel); border: 1px dashed var(--line);
+    border-radius: var(--radius); padding: 22px 24px; color: var(--ink-dim);
+  }
+  .note strong { color: var(--ink); }
+  .note code {
+    background: var(--panel-lift); border: 1px solid var(--line);
+    padding: 1px 7px; border-radius: 6px;
+    font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--ink);
+  }
+
+  footer { margin-top: 56px; text-align: center; color: var(--ink-dim); font-size: 13.5px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="avatar" id="avatar">🎮</div>
+    <h1 id="name">…</h1>
+    <p class="tagline" id="tagline"></p>
+    <a class="sub" id="sub" href="#" rel="noopener">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31.3 31.3 0 0 0 24 12a31.3 31.3 0 0 0-.5-5.8ZM9.5 15.6V8.4l6.3 3.6Z"/></svg>
+      Subscribe on YouTube
+    </a>
+  </header>
+
+  <main>
+    <section id="videos-section" hidden>
+      <h2>Latest videos</h2>
+      <div class="grid" id="videos"></div>
+    </section>
+
+    <section id="links-section" hidden>
+      <h2>Elsewhere</h2>
+      <div class="links" id="links"></div>
+    </section>
+
+    <div id="setup" class="note" hidden></div>
+  </main>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+// Everything on this page comes from channel.json, on purpose.
+//
+// WHY NOT THE YOUTUBE API. Pulling the latest uploads automatically needs a
+// Data API key, and a key in a page anybody can View Source on is a key anybody
+// can spend — the quota is per key, not per visitor. The alternatives are a
+// server to hide it behind (this page deliberately has no server) or the
+// channel's RSS feed (which browsers cannot read cross-origin). So: a list of
+// video ids, edited by hand.
+//
+// That is a real cost — adding a video means editing a file — and it is the
+// right trade for a page that changes weekly and has no secrets in it.
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// Only ever an 11-character YouTube id. Anything else is a typo — most likely a
+// whole URL pasted into the id field — and is skipped loudly rather than
+// building a dead thumbnail link that looks fine until somebody clicks it.
+const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
+
+function showSetup(html) {
+  $("setup").innerHTML = html;
+  $("setup").hidden = false;
+}
+
+function render(cfg) {
+  const name = cfg.name || "My channel";
+  document.title = name;
+  $("name").textContent = name;
+
+  if (cfg.tagline) $("tagline").textContent = cfg.tagline;
+
+  // An emoji, or a path to an image file sitting next to this page.
+  const av = cfg.avatar || "🎮";
+  $("avatar").innerHTML = /[./]/.test(av)
+    ? `<img src="${esc(av)}" alt="">`
+    : esc(av);
+
+  const handle = String(cfg.handle || "").replace(/^@/, "").trim();
+  if (handle) {
+    // ?sub_confirmation=1 opens YouTube's own subscribe dialog instead of just
+    // landing on the channel page. It is the single highest-value string on
+    // this page: the same click, one step shorter.
+    $("sub").href = `https://www.youtube.com/@${encodeURIComponent(handle)}?sub_confirmation=1`;
+  } else {
+    $("sub").remove();
+  }
+
+  const videos = (cfg.videos || []).filter((v) => {
+    if (VIDEO_ID.test(String(v && v.id || ""))) return true;
+    console.warn("Skipping a video whose id is not an 11-character YouTube id:", v);
+    return false;
+  });
+
+  if (videos.length) {
+    $("videos").innerHTML = videos.map((v) => `
+      <a class="card" href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener">
+        <div class="thumb">
+          <img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy" width="480" height="360" onerror="this.remove()">
+          <div class="play"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span></div>
+        </div>
+        <h3>${esc(v.title || "Watch")}</h3>
+      </a>`).join("");
+    $("videos-section").hidden = false;
+  }
+
+  const links = (cfg.links || []).filter((l) => l && l.url && l.label);
+  if (links.length) {
+    $("links").innerHTML = links.map((l) =>
+      `<a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("");
+    $("links-section").hidden = false;
+  }
+
+  $("footer").textContent = `© ${new Date().getFullYear()} ${name}`;
+
+  if (!handle || !videos.length) {
+    showSetup(`
+      <p><strong>Not finished yet.</strong> Open <code>channel.json</code> and fill in:</p>
+      <p>${handle ? "✅" : "▫️"} <code>handle</code> — the YouTube handle without the @, which the Subscribe button needs.<br>
+      ${videos.length ? "✅" : "▫️"} <code>videos</code> — one entry per video, newest first.</p>
+      <p>This box disappears on its own once both are done. Nobody else sees it before then, but they do see the rest of the page, so put this up when it is ready.</p>`);
+  }
+}
+
+fetch("channel.json", { cache: "no-store" })
+  .then((r) => { if (!r.ok) throw new Error(`channel.json returned ${r.status}`); return r.json(); })
+  .then(render)
+  .catch((err) => {
+    $("name").textContent = "Channel";
+    // The overwhelmingly likely cause, and the one with the least obvious fix.
+    showSetup(`
+      <p><strong>Could not load channel.json.</strong> (${esc(err.message)})</p>
+      <p>If you opened this file by double-clicking it, that is why: a page loaded
+      from <code>file://</code> is not allowed to read a file next to it. Run a
+      tiny local server from this folder instead —</p>
+      <p><code>npx serve .</code> &nbsp;or&nbsp; <code>python3 -m http.server</code></p>
+      <p>— and open the address it prints. Once this folder is actually hosted
+      somewhere, it just works.</p>`);
+  });
+</script>
+</body>
+</html>
