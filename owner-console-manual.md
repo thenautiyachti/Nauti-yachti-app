@@ -16,7 +16,7 @@ Six groups run along the top. Clicking a group reveals its tabs underneath.
 | **Overview** | The day at a glance, the board, and the crew |
 | **Bookings** | Contacts · Bookings · Availability |
 | **Money** | Income & expenses · Reconciliation · Tax Report · Gift certificates · Subscriptions & bills |
-| **Marketing** | Media · Media Drafts · Testimonials |
+| **Marketing** | Media · Media Drafts · Comments · Messages · Testimonials · Photo Requests |
 | **Setup** | Packages & pricing · Add-ons · Coupons |
 | **Boat** | Maintenance |
 
@@ -905,6 +905,19 @@ moved, and the history is the entire point.
 A revision draws a line under a batch of work, and only you know where the batch
 ends. The rule is to finish the work, say what changed, say what size it looks
 like, and **ask** — because it was broken twice on the day it was written.
+
+**This manual is re-read at every release.** Two checks stand behind that. One
+compares the tab names in it against the tabs the console actually has, so a
+rename can't quietly leave this document describing a screen that no longer
+exists. The other records which version the manual was last read against, and
+complains as soon as the code moves past it.
+
+The second one exists because the first cannot do everything. On 13 September
+this manual said *"The guest gets nothing"* about a declined payment. That was
+true when it was written at one in the morning and false by six that evening,
+when the Text button arrived — and no checker reads English for truth. A
+sentence that quietly stops being true is caught by a person re-reading it, and
+the release is the moment anyone reliably does.
 
 ## What you actually get
 

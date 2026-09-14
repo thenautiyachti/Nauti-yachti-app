@@ -513,6 +513,135 @@ try {
   }
 }
 
+// --- 13. the manual must name the console's actual tabs ---------------------
+//
+// WHY THIS EXISTS. On 13 Sep 2026 the Subscriptions tab was renamed to
+// "Subscriptions & bills" and the manual went on calling it Subscriptions.
+// check-manual-fresh.js said "ok" the whole time, and was right to: it compares
+// the PDF to the markdown, and those matched. Nothing compared the markdown to
+// the console.
+//
+// The same blind spot had already let three tabs go undocumented — Comments,
+// Messages and Photo Requests existed in Marketing for days while the manual's
+// layout table listed three tabs where the console had six.
+//
+// THIS CANNOT CATCH EVERYTHING, and it is worth being honest about what it
+// misses. The manual said "The guest gets nothing" about a declined payment,
+// which stayed true for seventeen hours and then became false when the Text
+// button landed. No checker reads English for truth. What CAN be checked
+// mechanically is the structure — the names of the things — and a rename is by
+// far the most common way this manual goes wrong, because renaming is cheap and
+// remembering every place a name appears is not.
+//
+// Labels are not all plain strings: several carry a live count, either as a
+// template literal or via tabLabel(). The leading words are what is stable
+// across a render, so that is what is compared.
+try {
+  const adminSrc = read(path.join(APP, "components/AdminView.js")) || "";
+
+  const stableName = (expr) => {
+    let m, raw = null;
+    if ((m = expr.match(/^"([^"]+)"/))) raw = m[1];
+    else if ((m = expr.match(/^tabLabel\(\s*"([^"]+)"/))) raw = m[1];
+    else if ((m = expr.match(/^`([^`${]*)/))) raw = m[1];
+    if (raw === null) return null;
+    // `Contacts (${count})` leaves a dangling bracket once the interpolation is
+    // cut away. Trim the opening punctuation the count was about to sit in.
+    return raw.replace(/[\s([{]+$/, "").trim() || null;
+  };
+
+  const start = adminSrc.indexOf("const TAB_GROUPS = [");
+  const groups = [];
+  if (start >= 0) {
+    const block = adminSrc.slice(start, adminSrc.indexOf("\n  ];", start));
+    const re = /id:\s*"([a-zA-Z]+)",\s*label:\s*"([^"]+)",[\s\S]*?tabs:\s*\[([\s\S]*?)\n\s{6}\],/g;
+    let g;
+    while ((g = re.exec(block))) {
+      const tabs = [];
+      for (const line of g[3].split(/\r?\n/)) {
+        const t = line.match(/^\s*\{\s*id:\s*"([^"]+)",\s*label:\s*(.+?)\s*\},?\s*$/);
+        if (!t) continue;
+        const name = stableName(t[2]);
+        if (name) tabs.push(name);
+      }
+      if (tabs.length) groups.push({ label: g[2], tabs });
+    }
+  }
+
+  // The manual's layout table, read by group name.
+  const rows = {};
+  const secAt = manual.indexOf("## How the console is laid out");
+  if (secAt >= 0) {
+    for (const line of manual.slice(secAt).split(/\r?\n/)) {
+      const m = line.match(/^\|\s*\*\*([^*]+)\*\*\s*\|\s*(.+?)\s*\|\s*$/);
+      if (m) rows[m[1].trim()] = m[2].trim();
+    }
+  }
+
+  // Only run if both sides parsed. A silently-empty checker that reports
+  // "consistent" is worse than one that is obviously broken.
+  if (!groups.length) {
+    fail("manual", "could not read TAB_GROUPS from AdminView.js — the tab check did not run");
+  } else if (!Object.keys(rows).length) {
+    fail("manual", 'could not find the "How the console is laid out" table — the tab check did not run');
+  } else {
+    for (const grp of groups) {
+      const row = rows[grp.label];
+      if (row === undefined) {
+        fail("manual", `has no row for the ${grp.label} group, which exists in the console`);
+        continue;
+      }
+      const listed = row.split("·").map((s) => s.trim()).filter(Boolean);
+      // A row is a tab list if it names several things, or one thing that IS a
+      // tab. Anything else is prose describing the group — Overview is written
+      // that way deliberately — and prose is not a list to be checked.
+      const isList = listed.length > 1 || (listed.length === 1 && grp.tabs.includes(listed[0]));
+      if (!isList) continue;
+      const missing = grp.tabs.filter((t) => !listed.includes(t));
+      const gone = listed.filter((l) => !grp.tabs.includes(l));
+      if (missing.length) {
+        fail("manual", `the ${grp.label} row omits ${missing.map((x) => `"${x}"`).join(", ")}` +
+          `,\n        ${missing.length === 1 ? "a tab that exists" : "tabs that exist"} in the console`);
+      }
+      if (gone.length) {
+        fail("manual", `the ${grp.label} row names ${gone.map((x) => `"${x}"`).join(", ")}` +
+          `,\n        which the console no longer has — most likely a rename nobody carried across`);
+      }
+    }
+  }
+} catch { /* a shape change here must not take the whole checker down */ }
+
+// --- 14. the manual must have been reviewed at the current version ----------
+//
+// The structural check above catches renames. Nothing can catch a sentence that
+// quietly stopped being true — "The guest gets nothing" was accurate when it was
+// written and false by the same evening. The only thing that catches that is a
+// person reading it, and the only moment anyone reliably will is when a release
+// is being cut.
+//
+// So this does not try to be clever. It records the version the manual was last
+// read against, and says so when the code has moved past it. Clearing it is one
+// line, and the point is that clearing it requires opening the manual.
+//
+// It is deliberately tied to the VERSION and not to file timestamps or commit
+// counts: a check that fired on every edit to AdminView.js would fire several
+// times a day, and a checker that cries wolf gets ignored.
+try {
+  const REVIEWED = path.join(APP, "owner-console-manual.reviewed");
+  const pkg = JSON.parse(read(path.join(APP, "package.json")) || "{}");
+  const at = (read(REVIEWED) || "").trim();
+  if (!pkg.version) {
+    // nothing to compare against; the version checks elsewhere will say so
+  } else if (!at) {
+    fail("manual", "has no review stamp — nobody has recorded reading it against any version.\n" +
+      "        Read it, then: echo " + pkg.version + " > owner-console-manual.reviewed");
+  } else if (at !== pkg.version) {
+    fail("manual", "was last read against v" + at + "; the code is now v" + pkg.version + ".\n" +
+      "        Something in it may have quietly stopped being true. Read it, then:\n" +
+      "        echo " + pkg.version + " > owner-console-manual.reviewed");
+  }
+} catch { /* stamp unreadable; not worth failing the whole run over */ }
+
 // --- report -----------------------------------------------------------------
 if (!problems.length) {
   console.log(`  consistent — ${liveTasks.length} tasks, manual, protocol and roster all agree.`);
