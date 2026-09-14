@@ -1,10 +1,10 @@
 {
   "_comment": "Everything the page shows comes from this file. Edit it, save, reload. No build step, no rebuild, no deploy needed if you are opening index.html directly.",
   "name": "Cake Pancake",
-  "handle": "REPLACE-WITH-YOUTUBE-HANDLE",
+  "handle": "chandenhefty",
   "tagline": "Roblox with my friends. New videos most weeks.",
   "avatar": "🥞",
-  "_handle_note": "Your YouTube handle WITHOUT the @ — this is NOT the Roblox username. Find it at youtube.com/account_advanced. The Subscribe button uses it, so nothing works until this is right.",
+  "_handle_note": "The YouTube handle, without the @ and without the ?si= share tracker. This is separate from the channel's display name (Cake Pancake) and from the Roblox username. The Subscribe button is built from it, so a typo here sends everyone to a dead page. Changeable only once every 14 days.",
   "_videos_note": "The id is the part of a YouTube URL after watch?v= . For youtube.com/watch?v=dQw4w9WgXcQ the id is dQw4w9WgXcQ. Newest first. Delete these three examples once there are real ones.",
   "videos": [],
   "_links_note": "Anything else he is on. Delete the ones that do not apply — an empty list hides the whole section.",

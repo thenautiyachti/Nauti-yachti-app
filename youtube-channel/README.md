@@ -138,7 +138,11 @@ first.**
 
 One page, one link, for the bio of every platform.
 
-1. Open `channel.json`, set `name`, `handle` (no `@`), `tagline`, `avatar`.
+1. `name`, `handle`, `tagline` and `avatar` are already filled in — **Cake
+   Pancake**, handle `chandenhefty`. Three separate names are in play and it is
+   worth keeping them straight: the **channel name** is what people read, the
+   **handle** is what the URL uses, and the **Roblox username** is a fourth
+   thing that appears nowhere here.
 2. Add videos newest-first. The `id` is the part of the URL after `watch?v=` —
    for `youtube.com/watch?v=dQw4w9WgXcQ` it is `dQw4w9WgXcQ`. Not the whole URL.
 3. Reload.
