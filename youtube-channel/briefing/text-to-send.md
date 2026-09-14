@@ -33,6 +33,23 @@ Send with `thumbnail-templates.png`, and the banner if you want a second image.
 
 ---
 
+## The follow-up: how it'll run
+
+Send with `how-this-works-1.png` and `how-this-works-2.png`.
+
+> Wrote up how this would actually run so we're on the same page — it's not
+> complicated, basically one afternoon a week.
+>
+> Two bits: the weekly loop, and who does what. Shout if any of it looks wrong,
+> especially the rules — those I'd rather we both agreed on than me just
+> deciding.
+>
+> One thing I'm fixing: YouTube auto-assigned the handle off the account name
+> when the channel was made, so his name is sitting in the URL. Changing it to
+> @cakepancake so it matches the channel and isn't broadcasting him.
+
+---
+
 ## If she asks what else would help
 
 Pick from these rather than sending all of them — the message above is doing

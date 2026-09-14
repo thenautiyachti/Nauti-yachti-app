@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cake Pancake — how it'll work</title>
+<style>
+  /* SIZED TO BE READ ON A PHONE WITHOUT PINCHING. Rendered at 1080 wide and
+     viewed at roughly 390 CSS px, everything shrinks about 2.7x — so body type
+     is 34px here to land near 13px on her screen, and nothing is smaller than
+     26px. That constraint is why this is a tall card and not a page. */
+  :root {
+    --bg: #0b0e17;
+    --card: #151a26;
+    --line: #262d3f;
+    --ink: #ffffff;
+    --dim: #99a3bb;
+    --red: #ff2d2d;
+    --cream: #f2e8d5;
+    --green: #3fa34d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); }
+  .card {
+    width: 1080px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 34px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background-image:
+      radial-gradient(700px 460px at 50% -100px, rgba(255,45,45,.18), transparent 70%),
+      radial-gradient(620px 400px at 100% 55%, rgba(63,163,77,.08), transparent 70%);
+    background-repeat: no-repeat;
+    padding: 64px 56px 56px;
+  }
+  /* Card two carries its own header so it stands alone if only one is sent. */
+  .card + .card { margin-top: 40px; }
+
+  header { text-align: center; margin-bottom: 56px; }
+  .eyebrow {
+    font-size: 28px; font-weight: 800; letter-spacing: .22em;
+    color: var(--red); margin-bottom: 16px;
+  }
+  h1 { margin: 0; font-size: 76px; line-height: 1.05; font-weight: 800; letter-spacing: -.02em; }
+  .sub { margin: 18px 0 0; font-size: 34px; color: var(--dim); }
+
+  h2 {
+    font-size: 30px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--dim); margin: 0 0 24px;
+    padding-bottom: 14px; border-bottom: 3px solid var(--line);
+  }
+  section { margin-bottom: 54px; }
+
+  /* the weekly loop */
+  .step { display: flex; gap: 26px; align-items: flex-start; margin-bottom: 26px; }
+  .n {
+    flex: 0 0 68px; height: 68px; border-radius: 18px;
+    background: var(--red); color: #2a0505;
+    font-size: 36px; font-weight: 800;
+    display: grid; place-items: center;
+  }
+  .step-b { flex: 1 1 auto; padding-top: 4px; }
+  .step-b b { font-size: 38px; font-weight: 700; display: block; margin-bottom: 4px; }
+  .step-b span { color: var(--dim); font-size: 31px; line-height: 1.45; display: block; }
+
+  /* who does what */
+  .who {
+    background: var(--card); border: 2px solid var(--line); border-radius: 22px;
+    padding: 30px 34px; margin-bottom: 20px;
+  }
+  .who h3 { margin: 0 0 10px; font-size: 36px; font-weight: 800; }
+  .who h3 .tag {
+    font-size: 25px; font-weight: 700; letter-spacing: .14em;
+    padding: 6px 16px; border-radius: 999px; margin-left: 14px;
+    vertical-align: middle;
+  }
+  .who ul { margin: 0; padding-left: 34px; color: var(--dim); font-size: 31px; line-height: 1.5; }
+  .who li { margin-bottom: 8px; }
+  .who li:last-child { margin-bottom: 0; }
+
+  .rules { background: var(--card); border-left: 8px solid var(--red); border-radius: 0 18px 18px 0; padding: 30px 34px; }
+  .rules ul { margin: 0; padding-left: 32px; font-size: 32px; line-height: 1.5; }
+  .rules li { margin-bottom: 12px; }
+  .rules li:last-child { margin-bottom: 0; }
+  .rules b { color: var(--cream); }
+
+  footer {
+    margin-top: 12px; padding-top: 30px; border-top: 3px solid var(--line);
+    color: var(--dim); font-size: 30px; line-height: 1.5;
+  }
+  footer b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="card">
+<header>
+  <div class="eyebrow">CAKE PANCAKE</div>
+  <h1>How this will work</h1>
+  <p class="sub">One afternoon a week. That's the whole commitment.</p>
+</header>
+
+<section>
+  <h2>Every week</h2>
+
+  <div class="step">
+    <div class="n">1</div>
+    <div class="step-b"><b>He records one session</b>
+      <span>Tablet screen recorder, landscape, mic ON. He picks one daft rule before he starts — blindfolded, or nobody can talk. That rule <em>is</em> the video.</span></div>
+  </div>
+
+  <div class="step">
+    <div class="n">2</div>
+    <div class="step-b"><b>I cut it down</b>
+      <span>Software finds the loudest, busiest moments so nobody sits through two hours of footage. One longer video plus three short clips, from the same recording.</span></div>
+  </div>
+
+  <div class="step">
+    <div class="n">3</div>
+    <div class="step-b"><b>A parent watches it — all of it</b>
+      <span>Before anything is public. Mostly catching the accidental: a friend using his real name, something in the background.</span></div>
+  </div>
+
+  <div class="step">
+    <div class="n">4</div>
+    <div class="step-b"><b>It goes up</b>
+      <span>YouTube, then the same short clips on TikTok and Reels. Four posts a week from one afternoon — that's the trick, not working four times as hard.</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>The rules we're holding</h2>
+  <div class="rules">
+    <ul>
+      <li><b>No face on camera.</b> His Roblox character is the character.</li>
+      <li><b>Cake Pancake, not his real name.</b> No school, no town, no street.</li>
+      <li><b>Friends' parents get asked first</b> — their kid's voice, their call.</li>
+      <li><b>Nothing posts unwatched.</b> No exceptions, including the short clips.</li>
+      <li><b>Comments are off.</b> YouTube does that automatically for kids' content — it's the bit that makes me comfortable with this at all.</li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<div class="card">
+<header>
+  <div class="eyebrow">CAKE PANCAKE</div>
+  <h1>Who does what</h1>
+  <p class="sub">None of it lands on one person.</p>
+</header>
+
+<section>
+
+  <div class="who">
+    <h3>Him <span class="tag" style="background:#ff2d2d;color:#2a0505;">THE FUN BIT</span></h3>
+    <ul>
+      <li>Plays, talks, picks the rule</li>
+      <li>Says what the video should be called</li>
+      <li>Decides which clips he likes</li>
+    </ul>
+  </div>
+
+  <div class="who">
+    <h3>You <span class="tag" style="background:#3fa34d;color:#08140a;">WHENEVER</span></h3>
+    <ul>
+      <li>Be in some — you losing at Roblox is genuinely the best video on there</li>
+      <li>Record at yours too, so it's not only my weekends</li>
+      <li>Second pair of eyes before things go up</li>
+      <li>The friends' parents, if you know them better than I do</li>
+    </ul>
+  </div>
+
+  <div class="who">
+    <h3>Me <span class="tag" style="background:#f2e8d5;color:#2a2115;">THE BORING BIT</span></h3>
+    <ul>
+      <li>Cutting, uploading, thumbnails</li>
+      <li>Keeping the account and the settings right</li>
+      <li>Making sure it stays one afternoon a week</li>
+    </ul>
+  </div>
+</section>
+
+
+<footer>
+  <b>What to expect:</b> almost certainly not much, and that's fine — most channels stay small. What he actually gets out of it is learning to make something and finish it.
+  <br><br>
+  <b>Let's look at it properly in three months</b> and be honest about whether it's still fun. Stopping is a completely fine outcome.
+</footer>
+</div>
+
+</body>
+</html>
