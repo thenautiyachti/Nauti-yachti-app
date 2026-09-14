@@ -7615,14 +7615,49 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
   const s = summarise(subscriptions);
   const dupes = overlappingDuplicates(subscriptions);
 
-  // Business first, personal after, each keeping the order it came in. The two
-  // are never interleaved: a list that mixed Netflix into the utilities would
-  // undo in the reading what the totals are careful to keep apart.
-  const ordered = [
-    ...(subscriptions || []).filter((x) => !isPersonal(x)),
-    ...(subscriptions || []).filter(isPersonal),
-  ];
-  const firstPersonalId = (ordered.find(isPersonal) || {}).id;
+  // GROUPED, BECAUSE THIRTY-FOUR ROWS IN ONE RUN IS NOT A LIST, IT IS A WALL.
+  //
+  // The tab started at four rows. It now holds the household utilities, the
+  // storage yards, the software, the financing and the owner's personal
+  // subscriptions, and read end to end none of that answers the question people
+  // actually arrive with — "what am I paying for X". So the rows sit under
+  // their category with the group's own monthly total on the heading, and any
+  // group can be folded away.
+  //
+  // Business first, personal last, never interleaved: a list that mixed Netflix
+  // into the utilities would undo in the reading what the totals are careful to
+  // keep apart.
+  const GROUP_ORDER = ["Utilities", "Storage", "Software", "Hosting", "Other"];
+  const groupOf = (x) => (isPersonal(x) ? "Personal" : (x.category || "Other"));
+  const rank = (x) => {
+    if (isPersonal(x)) return 99;
+    const i = GROUP_ORDER.indexOf(groupOf(x));
+    return i < 0 ? GROUP_ORDER.length : i;
+  };
+  const ordered = [...(subscriptions || [])].sort((a, b) =>
+    rank(a) - rank(b)
+    || String(groupOf(a)).localeCompare(String(groupOf(b)))
+    // Inside a group, the biggest bill first — that is the one worth arguing
+    // about, and an unpriced row sinks to the bottom where it reads as a
+    // question rather than as a cheap item.
+    || (monthlyAmount(b) - monthlyAmount(a))
+    || String(a.name || "").localeCompare(String(b.name || "")));
+
+  // Each group's own numbers, so a heading answers "what does this cost"
+  // without anybody adding up a column by eye.
+  const groupTotals = {};
+  for (const x of ordered) {
+    const k = groupOf(x);
+    const g = groupTotals[k] || (groupTotals[k] = { count: 0, monthly: 0, deductible: 0, unknown: 0, ended: 0 });
+    g.count += 1;
+    if (!isRunning(x)) { g.ended += 1; continue; }
+    g.monthly += monthlyAmount(x);
+    if (needsAmount(x)) g.unknown += 1;
+    const d = deductibleMonthly(x);
+    if (d !== null) g.deductible += d;
+  }
+  const [foldedGroups, setFoldedGroups] = useState({});
+  const toggleGroup = (k) => setFoldedGroups((p) => ({ ...p, [k]: !p[k] }));
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -7752,13 +7787,41 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                 {subscriptions.length === 0 && (
                   <tr><td colSpan={11} style={{ padding: "8px", color: "var(--muted)" }}>No subscriptions yet.</td></tr>
                 )}
-                {ordered.map((s) => (
+                {ordered.map((s, i) => {
+                  const gk = groupOf(s);
+                  const isFirstOfGroup = i === 0 || groupOf(ordered[i - 1]) !== gk;
+                  const g = groupTotals[gk] || { count: 0, monthly: 0, deductible: 0, unknown: 0, ended: 0 };
+                  const personalGroup = gk === "Personal";
+                  const folded = !!foldedGroups[gk];
+                  return (
                   <Fragment key={s.id}>
-                  {s.id === firstPersonalId && (
-                    <tr><td colSpan={11} style={{ padding: "14px 8px 6px", color: "#C9A7F5", fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      Personal — below this line nothing counts toward the business
-                    </td></tr>
+                  {isFirstOfGroup && (
+                    /* The heading carries the group's own total. Clicking it
+                       folds the group away — the point of the fold is to let
+                       somebody look at one thing without the other thirty
+                       arguing for attention. */
+                    <tr>
+                      <td colSpan={11} onClick={() => toggleGroup(gk)}
+                        title={folded ? "Show these" : "Hide these"}
+                        style={{ padding: "16px 8px 6px", cursor: "pointer", userSelect: "none" }}>
+                        <span style={{ color: personalGroup ? "#C9A7F5" : "var(--purple)", fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                          {folded ? "▸" : "▾"} {personalGroup ? "Personal" : gk}
+                        </span>
+                        <span style={{ color: "var(--muted)", fontSize: 11.5, marginLeft: 10 }}>
+                          {g.count} {g.count === 1 ? "bill" : "bills"} · {currency(g.monthly)}/mo
+                          {!personalGroup && g.deductible > 0 && <> · {currency(g.deductible)} of it the business&apos;s</>}
+                          {g.unknown > 0 && <span style={{ color: "#FFD479" }}> · {g.unknown} with no amount</span>}
+                          {g.ended > 0 && <> · {g.ended} closed</>}
+                        </span>
+                        {personalGroup && (
+                          <span style={{ color: "var(--muted)", fontSize: 11, marginLeft: 10 }}>
+                            — counted nowhere in the business totals, and never in the Tax Report
+                          </span>
+                        )}
+                      </td>
+                    </tr>
                   )}
+                  {!folded && (
                   <tr style={{ background: "var(--card)" }}>
                     <td data-label="Name" style={{ padding: "6px 8px", borderRadius: "6px 0 0 6px", fontWeight: 600 }}>
                       <input defaultValue={s.name} onBlur={(e) => onUpdate(s.id, { name: e.target.value })}
@@ -7857,8 +7920,10 @@ function SubscriptionsTab({ subscriptions, onAdd, onUpdate, onDelete }) {
                       </button>
                     </td>
                   </tr>
+                  )}
                   </Fragment>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
