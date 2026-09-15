@@ -734,6 +734,61 @@ business for a night costs more than the annual fee.
 
 ---
 
+## 14. What the site already has, and what Storm Shield should cost
+
+Assembled through search indexes rather than by loading the site — synergyrs.net and
+facebook.com are both blocked by this session's egress policy. Everything below is
+verified from indexed page content; the gaps at the end are genuinely not public.
+
+### Site inventory
+
+Pages: `/services-residential`, `/new-construction`, `/services-commercial`,
+`/storm-damage`, `/services-maintenance`, `/christmas-light-installation`,
+`/financing`, `/reviews`, `/team`, `/sms-terms`, `/privacy-policy`, plus per-area
+landing pages at `/areas/houston`, `/areas/spring`, `/areas/league-city`.
+
+Three things on it matter to the build:
+
+1. **"Drone-assisted assessment with full photo documentation. Zero charge, zero
+   pressure."** Photo documentation is already the promise on the free inspection, not
+   just on the membership. The capture discipline in §6 of the spec is therefore not a
+   new behaviour to introduce — it is an existing promise to systematize.
+2. **`/sms-terms` already exists**, covering opt-in, opt-out via STOP, HELP, and message
+   frequency. So some consent plumbing is in place. What §6 of this document requires
+   beyond it is the *one-to-one, per-brand, timestamped and geotagged* capture at the
+   door, and revocation matched on phone number across every channel rather than
+   per-campaign.
+3. **Storm-damage page promises "same-day emergency inspections when possible" and
+   priority scheduling after approval.** Both are dispatch commitments, which is the
+   §5 escalation problem wearing a marketing hat.
+
+### A price anchor for Storm Shield
+
+Storm Shield's own pricing is not published. Two Texas comparables are:
+
+| Program | Price |
+|---|---|
+| Schulte Roofing "Roof Shield" (TX) — 17-point inspection | **$329/yr**; $592.20 for two years; $838.95 for three |
+| Rise Roofing Houston — typical annual maintenance visit | $200–$400 |
+
+So the residential band is roughly **$200–350 a year**, with multi-year prepay
+discounts as the established shape. Useful for two reasons: it sizes the revenue a
+portal has to justify, and it confirms the membership model is already normal in Texas
+roofing rather than something Synergy has to teach the market.
+
+Commercial runs on a different basis — roughly $600–800 per visit for a 20,000 sq ft
+roof, biannual being standard — which supports §13's suggestion that the restaurant
+line may be the better annuity.
+
+### Still not public, and only they can answer
+
+- Storm Shield's price, tiers, enrollment count, and **the written member promise**.
+  That document is the portal's specification and nothing else substitutes for it.
+- What powers the **Storm Tracker** in the site navigation.
+- Whether the drone inspections emit structured output or only image files.
+
+---
+
 ## Sources
 
 - [SubcontractorHub — best roofing canvassing software 2026](https://www.subcontractorhub.com/blog/best-roofing-canvassing-software)
