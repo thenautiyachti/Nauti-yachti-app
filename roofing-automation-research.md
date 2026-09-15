@@ -433,15 +433,120 @@ no fresh swath to canvass at all. Two consequences:
 - If targeting does get built, it should key on **wind events, roof age and permit
   history** — not hail size. A hail-swath-first design would idle most of the year.
 
-### Still unknown, and it resizes Phase 1
+### Crew size — resolved
 
-How many people actually work this business — and whether it operates independently or
-under the Hillco Building Service banner that appears in its posts. The dispatch ladder
-in the Phase 1 spec (§5 of `roofing-phase-1-spec.md`) assumes a bench of reps to
-escalate across. For a one- or two-person operation that module is over-engineering:
-the need shrinks to never missing a window, which is a calendar-and-escalation problem
-for a single person, and the packet and supplement work stays exactly as valuable.
-Answer that before building §5.
+Answered: **Synergy Roof Systems LLC**, Pearland HQ (Greater Houston, with a Spring
+service area), GAF certified and CertainTeed ShingleMaster, six service lines —
+residential, new construction, commercial TPO/EPDM, storm damage, maintenance, and
+Christmas lights. Dayne Krejci is Sr. Project Manager. They already run drone-assisted
+inspections with photo documentation, and they are actively recruiting **1099
+residential sales representatives across Greater Houston on uncapped commission**.
+
+So the dispatch ladder in §5 of `roofing-phase-1-spec.md` is warranted after all —
+there is a rep bench to escalate across, and it is being grown. Two caveats that come
+with a 1099 bench: they churn, so onboarding has to be same-day and self-serve; and
+how hard a process can be *mandated* for independent contractors without muddying the
+classification is a question for their attorney, not for us. It bears directly on
+whether the photo gate can be enforced or only encouraged.
+
+## 11. Storm Shield changes the recommendation
+
+Synergy is selling a recurring membership called **Storm Shield**: comprehensive roof
+inspection, preventative maintenance, **digital roof history**, and a storm readiness
+review. Member benefits include priority scheduling before and after major storms,
+preferred pricing on future repairs, an annual roof health report, and "digital roof
+documentation, always accessible."
+
+This is the most important thing found in the whole research, and it sharpens §4.
+
+### They have already sold a software product they don't have
+
+Item 03 of the membership promises "a complete digital record of your roof's condition
+and the services performed — **accessible anytime you need it**." That is a
+customer-facing portal with an inspection archive behind a login. Today it is almost
+certainly a PDF emailed once a year, if that.
+
+Every membership sold increases that debt. It is the most concrete, most urgent
+software need on the table, and unlike everything else in this document it is not a
+proposal — it is an obligation already in market.
+
+### Storm Shield is a pre-loss evidence machine, and nobody monetizes that
+
+The hardest denial to beat on a Texas wind or hail claim is **wear and tear /
+pre-existing damage**. It is the carrier's cheapest argument and it kills jobs.
+
+A dated, geotagged photo set showing that roof in sound condition eight months before
+the date of loss destroys it. §6 of the Phase 1 spec already calls for exactly that
+capture discipline — Storm Shield just runs it *before* the storm instead of after.
+
+That closes a loop nobody in the storm-restoration market can close:
+
+```
+   membership revenue  ──▶  funds the annual inspection
+                                    │
+                                    ▼
+          the inspection  ──▶  produces dated pre-loss evidence
+                                    │
+                                    ▼
+               the storm  ──▶  packet assembles from a record that
+                               already existed before the date of loss
+                                    │
+                                    ▼
+        the claim lands  ──▶  the re-roof, sold to someone whose roof
+                               you have already photographed twice
+```
+
+A storm chaser only ever has post-loss photos, and spends the adjuster meeting arguing
+about what the roof looked like beforehand. A Storm Shield member's file answers that
+question before it is asked. **This is a structural advantage over every canvassing
+competitor in Houston, and it is worth more than any door-knocking optimization in §4B.**
+
+It also means the knock list matters less than first thought — not because targeting
+is bad, but because servicing a book of members beats cold-knocking strangers, and
+§10 already showed Houston lacks the hail volume to sustain a canvassing blitz.
+
+### The compliance posture stops being a constraint and becomes the pitch
+
+Retail maintenance work carries no §4102 exposure at all. And the documentation-not-
+negotiation posture the Texas statute forces on the claim side is *the same product*
+as the membership's digital roof history. Storm Shield is the commercially attractive
+wrapper for the legally required stance. We were going to have to build it either way.
+
+### One thing to get right before the first invoice
+
+**"Preferred pricing on future repairs" must not touch insurance-funded work.** On a
+retail repair a member discount is ordinary. Applied to an insurance job, a discount
+that has the effect of offsetting the homeowner's deductible runs into the Texas
+prohibition in §10 on waiving, rebating or absorbing a deductible. The software must
+not auto-apply member pricing to insurance-funded line items — at minimum it flags,
+preferably it refuses. Cheap now, ugly later.
+
+### What this does to the build order
+
+Phase 1 becomes **the Storm Shield platform**, and the adjuster machinery falls out of
+it as the claim-time mode of the same data — same `Photo ↔ ScopeItem` spine, same
+capture checklist, same packet generator, pointed at a record that already exists.
+
+1. **Member roof record + homeowner portal.** Delivers what has already been sold.
+2. **Inspection capture** on the same gated checklist as §6 — this is what makes the
+   record worth having.
+3. **Annual roof health report**, generated rather than written.
+4. **Claim mode**: a member files, and the adjuster packet assembles itself, opening
+   with the pre-loss baseline.
+5. **Then** the carrier-notice ingestion and dispatch ladder from the Phase 1 spec.
+
+Steps 1–3 are a maintenance product with no legal exposure and immediate revenue
+justification. Steps 4–5 are the original thesis, arriving on top of a dataset that
+makes them work better than they would standing alone.
+
+### Still to confirm
+
+- The site navigation already shows a **Storm Tracker** — what powers it, and is it
+  live data or a marketing page?
+- What does Storm Shield cost, how many members are enrolled, and what was promised to
+  them in writing?
+- Who currently produces the annual report, and in what?
+- Do the drone inspections already produce structured output, or just image files?
 
 ---
 
