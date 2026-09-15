@@ -428,13 +428,16 @@ derecho did $1.2B of damage at 78–100 mph gusts — and by ordinary age-driven
 and replacement, far more than by post-hail canvassing blitzes.
 ([2024 Houston derecho](https://en.wikipedia.org/wiki/2024_Houston_derecho))
 
-So the knock-list generator in §4B has much less to chew on here; frequently there is
-no fresh swath to canvass at all. Two consequences:
+So a knock-list generator aimed at *Houston* has little to chew on; frequently there is
+no fresh local swath at all. Two consequences:
 
 - The adjuster and claim modules carry **even more** of the total value than §4
   assumed. Leading with them was right, and the margin is wider in this market.
-- If targeting does get built, it should key on **wind events, roof age and permit
-  history** — not hail size. A hail-swath-first design would idle most of the year.
+- Targeting built for the home market should key on **wind events, roof age and permit
+  history** — not hail size. A hail-swath-first local design would idle most of the year.
+
+**Corrected in §13:** this conclusion held only until it turned out they *travel* to
+the hail. They do. Read §13 before acting on the paragraph above.
 
 ### Crew size — resolved
 
@@ -504,9 +507,9 @@ about what the roof looked like beforehand. A Storm Shield member's file answers
 question before it is asked. **This is a structural advantage over every canvassing
 competitor in Houston, and it is worth more than any door-knocking optimization in §4B.**
 
-It also means the knock list matters less than first thought — not because targeting
-is bad, but because servicing a book of members beats cold-knocking strangers, and
-§10 already showed Houston lacks the hail volume to sustain a canvassing blitz.
+It also reframes the knock list: servicing a book of members beats cold-knocking
+strangers at home. But §13 shows targeting matters enormously the moment they leave
+Houston, which they do.
 
 ### The compliance posture stops being a constraint and becomes the pitch
 
@@ -658,6 +661,76 @@ the trades generally.
 What none of them have tied it to is the **claim evidence chain** — capture bound to
 scope items, assembled into an adjuster packet, resting on a pre-loss Storm Shield
 baseline. Hands-free capture is becoming a commodity. Capture that wins claims is not.
+
+---
+
+## 13. They travel to the hail — which puts targeting back on the board
+
+An April 30 post reads: *"Fort Worth homeowners — if your home was hit by the recent
+storm, Synergy Roof Systems is here to help."* The video caption is *"Ben's up on a
+roof right now taking care of a homeowner,"* over **(936) 689-5603 — Dayne's number.**
+
+Fort Worth is 260 miles from Pearland. This is out-of-market storm deployment, and
+Dayne is the point of contact for it.
+
+### What that corrects
+
+§10 concluded that Houston's thin hail record demoted the knock list. That reasoning
+was sound and the conclusion was wrong, because it assumed the market comes to them.
+It doesn't — they go to the market. DFW *is* hail alley; this spring produced
+softball-sized hail in Fort Worth, Grand Prairie and Round Rock.
+
+So §4B is back on, reframed. Not "which streets near us," but **deployment**: which
+market is worth driving to, which swath inside it, how long the work holds up, and
+where to stage.
+
+### Targeting is worth *more* away from home, not less
+
+Local knowledge substitutes for a targeting tool in Pearland. In Fort Worth there is no
+local knowledge to substitute — which inverts the usual argument. A ranked list of
+addresses is most valuable precisely where the crew has never driven the streets and
+has perhaps a week before the market is picked over.
+
+Out-of-market work also multiplies the compliance surface that §6 treats as routine:
+
+- **Solicitation permits are per-jurisdiction.** A rep deployed to Tarrant County needs
+  Fort Worth's registration, badge, permitted hours and do-not-knock registry — not
+  Houston's. Getting this wrong in an unfamiliar city is how a crew gets cited on day
+  one of a deployment.
+- **Building codes differ by jurisdiction**, and code citations are exactly what §6's
+  packet leans on to force line items. A code table keyed to the home market produces
+  confidently wrong citations 260 miles away.
+
+Both are per-jurisdiction tables the product has to carry anyway. Deployment work just
+means they get exercised constantly instead of once.
+
+### The three-touchpoint annuity
+
+The Facebook photo grid shows the shape of the business beyond storm work:
+
+| Touchpoint | Season | What it is |
+|---|---|---|
+| Storm Shield inspection | Annual | The §11 membership |
+| **Christmas lights** | Nov–Jan | Install and removal, promoted free with a full roof replacement |
+| **Commercial maintenance** | Recurring | "Attention Restaurant Owners & Operators" — HVAC exhaust discharge, foot traffic, rooftop units, ponding |
+
+Three separate reasons to be on the same roof every year, two of them in the season
+when roofing slows. A crew hanging Christmas lights in December is standing on a roof
+with a ladder already up — that is a free inspection, and it lands in the same digital
+roof history the membership promises.
+
+The commercial line may be the better Storm Shield analogue, incidentally: restaurants
+have maintenance budgets, predictable failure modes, and a leak that closes the
+business for a night costs more than the annual fee.
+
+### Two small operational notes
+
+- **`quotes@synergyrs.net` already exists.** They route inbound to a shared address, so
+  the carrier-notice ingestion in the Phase 1 spec has a natural home rather than
+  needing a new mailbox and a habit change.
+- **Dayne's personal number fronts the company's storm response.** That reinforces §11:
+  he is the storm point of contact, so the single-rep tool and the company's storm
+  workflow are closer to the same thing than the two-buyer table implies.
 
 ---
 
