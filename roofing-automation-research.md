@@ -399,11 +399,14 @@ Two consequences for the build, beyond the §8 rules already specified:
    texts, landing pages. The prohibition covers advertising, not only conduct, so the
    marketing surface has to be as clean as the claim documents.
 
-That second point is worth raising with their own attorney about copy that already
-exists. Phrasing along the lines of *"let me help you get what you deserve"* is
-ordinary contractor marketing and extremely common — but it is also the shape of
-language the advertising clause is pointed at, and in Texas that is a cheap thing to
-rewrite and an expensive thing to defend.
+That second point is narrower than it first looked, which makes it easier to act on.
+The standing page bio — *"installations, repairs, and maintenance"* — is clean, with no
+claim language in it at all. What drifts is **ad-hoc post copy**: a line like *"let me
+help you get what you deserve"* is ordinary contractor marketing and extremely common,
+but it is also the shape of language the advertising clause is pointed at. So the fix
+is post-level copy discipline, not a rebrand — and it is a good argument for having the
+software generate the social and follow-up copy rather than leaving it freehand at the
+end of a long day.
 
 ### Deductibles are a separate Texas trap
 
@@ -539,14 +542,48 @@ Steps 1–3 are a maintenance product with no legal exposure and immediate reven
 justification. Steps 4–5 are the original thesis, arriving on top of a dataset that
 makes them work better than they would standing alone.
 
+### Two possible buyers, and the smaller one is the way in
+
+Dayne runs a **personal brand page** — Daynetheroofer, 515 followers, Spring TX, five
+years in the trade, Synergy cover art — while working as Synergy's Sr. Project Manager.
+That is the normal and smart pattern in roofing: an individual producer building a book
+under a company umbrella. It also means there are two different customers here, with
+different needs and very different sales cycles.
+
+| | **Synergy, the company** | **Dayne, the individual producer** |
+|---|---|---|
+| Wants | Storm Shield platform, member portal, rep oversight, the whole §11 build | His own jobs not falling through the cracks |
+| Scope | Months | Weeks |
+| Decision | A committee, a budget, a season | Him, tomorrow |
+| Proof needed | Someone else's working system | None |
+
+**Build for Dayne first.** Three reasons, and the third is the one that matters:
+
+1. He can adopt it immediately without anyone's approval.
+2. A single-rep tool is weeks of work, so the feedback loop is real rather than
+   theoretical.
+3. Synergy's bench is **1099 contractors**. In a 1099 org the tool that wins is the one
+   reps *choose*, not the one management mandates — which is the same finding from §2
+   in different clothes: rep buy-in is the documented number one reason these products
+   die. A tool proven by one rep's own numbers sells into the company from the inside,
+   in the only direction that actually works.
+
+The §11 build order survives intact; this just says whose roof it runs on first.
+
+### A note on the name
+
+His tagline is **"the proof is in the roof."** The product is a proof engine — dated
+evidence of what a roof looked like before the storm, and what was owed after. Worth
+considering as the working name; it is his own line, and it describes the thing
+exactly.
+
 ### Still to confirm
 
-- The site navigation already shows a **Storm Tracker** — what powers it, and is it
-  live data or a marketing page?
-- What does Storm Shield cost, how many members are enrolled, and what was promised to
-  them in writing?
-- Who currently produces the annual report, and in what?
-- Do the drone inspections already produce structured output, or just image files?
+- Storm Shield's price, tiers, enrollment count, and **what members were promised in
+  writing** — that document is the portal's spec.
+- The **Storm Tracker** in the site navigation: live data, or a marketing page?
+- Do the drone inspections produce structured output, or just image files?
+- Who writes the annual roof health report today, and in what?
 
 ---
 
