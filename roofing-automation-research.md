@@ -587,6 +587,80 @@ exactly.
 
 ---
 
+## 12. The glasses solve the hardest problem in the build
+
+Brian on the crew is already shooting inspections with **Meta Ray-Ban glasses** —
+"first video with the Meta glasses, this homeowner has two active leaks." Nobody has
+to be sold on the hardware; they bought it themselves. That matters more than it
+sounds, because it dissolves the riskiest part of the Phase 1 spec.
+
+### Why the photo gate was the weak point
+
+§6 of `roofing-phase-1-spec.md` requires a photo bound to every line item, and that
+requirement is the whole economic engine — an undocumented item is an unpaid one. It is
+also the part most likely to fail in the field. A rep on a roof has both hands
+occupied: ladder, shingle tabs to lift, chalk, a scale reference to hold. Asking them
+to pull out a phone forty times is precisely the friction that produces the §2 finding
+— *"for them, it's a checkbox"* — and gets the app abandoned in week two.
+
+### What hands-free capture changes
+
+The rep walks the slope narrating: *"north slope, test square, three hail hits, about
+an inch, and the pipe boot is cracked."* Behind that:
+
+- frames captured continuously, hands free
+- narration transcribed
+- frames bound to scope items from what was said
+- the structured evidence set assembled with **zero taps**
+
+That is the `Photo ↔ ScopeItem` spine populated as a byproduct of a rep doing their job
+out loud. The gate stops being an obstacle the rep complies with and becomes an
+artifact of the walk they were doing anyway. POV video is also better *context*
+evidence than stills — continuous, unedited, and it shows where on the roof you are.
+
+### The integration path is real, with one gate
+
+Meta shipped the **Wearables Device Access Toolkit** to public developer preview in
+December 2025. Native iOS and Android SDKs give a third-party mobile app access to the
+glasses' POV camera, video streaming, photo capture and microphone, with processing
+done in the app.
+([Meta](https://developers.meta.com/blog/introducing-meta-wearables-device-access-toolkit/),
+[Road to VR](https://roadtovr.com/meta-ray-ban-smart-glasses-third-party-app-sdk-device-access-toolkit/))
+
+**The gate:** public publishing is still limited to select partners, with broader
+availability expected later in 2026. So a shipped app may need partner access. Until
+then the fallback is camera-roll ingestion — footage syncs to the phone, our app picks
+it up and processes it — which works today, needs no approval, and loses only the
+live-capture niceties. Build the ingestion path first regardless; it is the one that
+survives if partner access never comes.
+
+### Three honest caveats
+
+1. **Glasses do not replace stills for line-item proof.** A 1″ hail bruise needs a
+   close, well-lit frame with a scale reference beside it, and POV video may not
+   resolve that. The split is: **glasses for coverage, context and narration; stills
+   for the money shots.** Designing for "both" from the start is much cheaper than
+   discovering it after an adjuster rejects a blurry frame.
+2. **Recording policy.** This is video at someone's home. Texas is one-party consent
+   for audio, so a rep narrating is fine, but homeowner conversations and neighbours in
+   frame need a written policy — more so because this footage becomes *both* claim
+   evidence and marketing content.
+3. **Battery and storage** across a full day of roofs is a real operational limit, not
+   a detail.
+
+### The field is moving, and the opening is still there
+
+Roofing Insights has covered it, there are active r/RoofingSales threads, and Zuper
+Glass is selling voice-controlled hands-free capture with AI note transcription into
+the trades generally.
+([Roofing Contractor](https://www.roofingcontractor.com/articles/101551-can-ai-smart-glasses-make-roof-inspections-safer-faster))
+
+What none of them have tied it to is the **claim evidence chain** — capture bound to
+scope items, assembled into an adjuster packet, resting on a pre-loss Storm Shield
+baseline. Hands-free capture is becoming a commodity. Capture that wins claims is not.
+
+---
+
 ## Sources
 
 - [SubcontractorHub — best roofing canvassing software 2026](https://www.subcontractorhub.com/blog/best-roofing-canvassing-software)

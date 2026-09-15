@@ -213,6 +213,14 @@ An appointment **cannot be marked COMPLETE** until the required set exists and e
 `ScopeItem` has at least one bound photo. This is the one place the app is deliberately
 obstinate, and it is the entire reason it pays for itself.
 
+**Capture should be hands-free where it can be.** The crew is already using Meta
+Ray-Ban glasses on inspections, and §12 of the research explains why that matters: a
+rep on a roof has no spare hand for a phone, and the tap burden is what kills the gate.
+Target POV capture plus narration, transcribed and bound to scope items automatically,
+with phone stills retained for close-up line-item proof. Build camera-roll ingestion
+first — it works today and needs nobody's approval; the live SDK path is a later
+upgrade, not a dependency.
+
 **Offline-first is non-negotiable.** Reps are on roofs, in storm-damaged
 neighborhoods, holding a phone with one bar. Capture writes to local storage and syncs
 opportunistically; nothing in the capture flow may block on the network. Getting this
