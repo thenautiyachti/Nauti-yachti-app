@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lead pipeline</title>
+<style>
+  :root {
+    --bg:#f4f5f7; --card:#fff; --ink:#15181d; --dim:#636b78; --line:#dde0e6;
+    --hot:#c22f4a; --warm:#b4690e; --mild:#4a6fa5; --cold:#8a919e;
+    --ok:#1d7a4c; --stop:#a33; --accent:#1f4b8f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14161a; --card:#1d2027; --ink:#e7e9ee; --dim:#98a0ad; --line:#2e323b;
+            --hot:#ff7089; --warm:#e8a33c; --mild:#7fa8e0; --cold:#79808c;
+            --ok:#4ec98a; --stop:#ff8a8a; --accent:#8ab4f8; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:60rem;margin:0 auto;padding:0 14px 60px}
+  header{padding:18px 0 12px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  h1{font-size:1.15rem;margin:0 0 3px;letter-spacing:-.01em}
+  .sub{color:var(--dim);font-size:.85rem}
+  .stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:.82rem;color:var(--dim)}
+  .stats b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);
+         color:var(--ink);border-radius:7px;padding:6px 11px}
+  button:hover{border-color:var(--dim)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button[disabled]{opacity:.45;cursor:not-allowed}
+  .lead{display:grid;grid-template-columns:4px 1fr;gap:0 12px;background:var(--card);
+        border:1px solid var(--line);border-radius:9px;margin-bottom:8px;overflow:hidden;cursor:pointer}
+  .stripe{background:var(--cold)}
+  .lead[data-t=hot] .stripe{background:var(--hot)}
+  .lead[data-t=warm] .stripe{background:var(--warm)}
+  .lead[data-t=mild] .stripe{background:var(--mild)}
+  .body{padding:11px 12px 12px}
+  .row1{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .temp{font-size:.7rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--cold)}
+  .lead[data-t=hot] .temp{color:var(--hot)} .lead[data-t=warm] .temp{color:var(--warm)}
+  .lead[data-t=mild] .temp{color:var(--mild)}
+  .tag{font-size:.7rem;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .tag.consent-opted_in{color:var(--ok);border-color:var(--ok)}
+  .tag.consent-public_thread_only{color:var(--warm);border-color:var(--warm)}
+  .tag.consent-none{color:var(--stop);border-color:var(--stop)}
+  .nums{margin-left:auto;font-size:.76rem;color:var(--dim);font-variant-numeric:tabular-nums}
+  .text{font-size:.9rem}
+  .meta{margin-top:6px;font-size:.76rem;color:var(--dim)}
+  dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);
+         max-width:38rem;width:calc(100% - 28px);padding:0}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  .dlg{padding:18px}
+  .dlg h2{margin:0 0 4px;font-size:1rem}
+  .box{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;font-size:.87rem}
+  .box h3{margin:0 0 5px;font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:700}
+  ul{margin:0;padding-left:1.1rem} li{margin:2px 0}
+  .actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+  .gate{font-size:.8rem;color:var(--warm);margin-top:8px;padding-left:9px;border-left:2px solid var(--warm)}
+  .gate.stop{color:var(--stop);border-color:var(--stop)}
+  select,input,textarea{font:inherit;background:var(--card);color:var(--ink);
+    border:1px solid var(--line);border-radius:7px;padding:6px 8px;width:100%}
+  label{display:block;font-size:.76rem;color:var(--dim);margin:8px 0 3px}
+  .sig{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:11px 12px;margin-bottom:8px}
+  .sig code{font-size:.78rem;color:var(--dim);word-break:break-word}
+  .empty{color:var(--dim);text-align:center;padding:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lead pipeline</h1>
+    <div class="sub">Signals in, scored leads out. Consent decides what you can do with each one.</div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="bar" id="filters"></div>
+  <div class="bar">
+    <button id="scoreBtn">Score unscored</button>
+    <button id="addBtn">Add lead</button>
+    <button id="sigBtn">Signals</button>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<dialog id="detail"><div class="dlg" id="detailBody"></div></dialog>
+<dialog id="addDlg"><div class="dlg">
+  <h2>Add a lead by hand</h2>
+  <label for="a_text">What they said</label><textarea id="a_text" rows="3"></textarea>
+  <label for="a_name">Name</label><input id="a_name">
+  <label for="a_phone">Phone</label><input id="a_phone">
+  <label for="a_loc">Location</label><input id="a_loc">
+  <label for="a_consent">Contact permission</label>
+  <select id="a_consent">
+    <option value="none">None recorded — cannot contact</option>
+    <option value="opted_in">They asked to be contacted</option>
+    <option value="public_thread_only">Public post only</option>
+  </select>
+  <div class="actions">
+    <button class="primary" id="a_save">Save and score</button>
+    <button onclick="addDlg.close()">Cancel</button>
+  </div>
+</div></dialog>
+<dialog id="sigDlg"><div class="dlg" id="sigBody"></div></dialog>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const api = async (path, opts) => {
+  const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.json();
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const parse = (s) => { try { return JSON.parse(s) || []; } catch { return []; } };
+const ago = (iso) => {
+  if (!iso) return '';
+  const h = (Date.now() - new Date(iso)) / 3.6e6;
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))}m ago`;
+  if (h < 48) return `${Math.round(h)}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+};
+const CONSENT_LABEL = {
+  opted_in: 'opted in',
+  public_thread_only: 'public post only',
+  none: 'no permission',
+};
+
+let filter = {};
+
+async function refresh() {
+  const [stats, leads] = await Promise.all([api('/api/stats'), api('/api/leads?' + new URLSearchParams(filter))]);
+  $('#stats').innerHTML =
+    `<span><b>${stats.total}</b> leads</span><span><b>${stats.hot}</b> hot</span>` +
+    `<span><b>${stats.warm}</b> warm</span><span><b>${stats.new}</b> unworked</span>` +
+    `<span><b>${stats.appts}</b> appointments</span>`;
+
+  $('#filters').innerHTML =
+    ['', 'hot', 'warm', 'mild', 'cold'].map((t) =>
+      `<button data-f="${t}" class="${(filter.temperature || '') === t ? 'on' : ''}">${t || 'All'}</button>`).join('');
+
+  $('#list').innerHTML = leads.length ? leads.map((l) => `
+    <div class="lead" data-t="${esc(l.temperature || 'cold')}" data-id="${l.id}" tabindex="0" role="button">
+      <div class="stripe"></div>
+      <div class="body">
+        <div class="row1">
+          <span class="temp">${esc(l.temperature || 'unscored')}</span>
+          <span class="tag">${esc(l.source)}</span>
+          <span class="tag consent-${esc(l.consent)}">${CONSENT_LABEL[l.consent] || l.consent}</span>
+          <span class="nums">intent ${l.intent ?? '–'} · urgency ${l.urgency ?? '–'}</span>
+        </div>
+        <div class="text">${esc((l.raw_text || '').slice(0, 165))}${(l.raw_text || '').length > 165 ? '…' : ''}</div>
+        <div class="meta">${esc(l.name || l.author || 'unknown')} · ${esc(l.location_text || '')} · ${ago(l.posted_at)} · <b>${esc(l.status)}</b></div>
+      </div>
+    </div>`).join('') : '<div class="empty">Nothing here. Run a signal or add one by hand.</div>';
+}
+
+// Consent decides which contact actions exist at all. This is the rule the whole
+// prototype is built around: a public post is not permission to text someone.
+function actionsFor(l) {
+  if (l.consent === 'opted_in') {
+    const tel = l.phone ? `<a href="tel:${esc(l.phone)}"><button class="primary">Call</button></a>
+      <a href="sms:${esc(l.phone)}"><button>Text</button></a>` : '';
+    return { html: tel, note: '' };
+  }
+  if (l.consent === 'public_thread_only') {
+    return {
+      html: l.source_ref ? `<a href="${esc(l.source_ref)}" target="_blank" rel="noopener">
+        <button class="primary">Open thread to reply</button></a>` : '',
+      note: `<div class="gate">They posted in public — that is not permission to call or text.
+        Reply in the thread as yourself. If they hand over a number there, change the
+        permission on this lead and the call and text buttons appear.</div>`,
+    };
+  }
+  return { html: '', note: '<div class="gate stop">No contact permission recorded, so no contact actions are offered.</div>' };
+}
+
+async function openLead(id) {
+  const l = await api('/api/leads/' + id);
+  const signals = parse(l.signals), concerns = parse(l.concerns);
+  const act = actionsFor(l);
+  $('#detailBody').innerHTML = `
+    <h2>${esc(l.name || l.author || 'Lead #' + l.id)}</h2>
+    <div class="sub" style="font-size:.8rem;color:var(--dim)">
+      ${esc(l.source)} · ${esc(l.location_text || 'no location')} · ${ago(l.posted_at)}
+      · scored by ${esc(l.scored_by || 'nothing yet')}</div>
+
+    <div class="box"><h3>What they said</h3>${esc(l.raw_text)}</div>
+
+    <div class="box"><h3>${esc(l.temperature || 'unscored')} · intent ${l.intent ?? '–'} · urgency ${l.urgency ?? '–'}</h3>
+      ${esc(l.reasoning || 'Not scored yet.')}
+      ${signals.length ? `<div style="margin-top:7px"><b>Signals</b><ul>${signals.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div>` : ''}
+      ${concerns.length ? `<div style="margin-top:7px"><b>Concerns</b><ul>${concerns.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div>` : ''}
+    </div>
+
+    <div class="box"><h3>Contact permission — ${CONSENT_LABEL[l.consent] || esc(l.consent)}</h3>
+      ${esc(l.consent_note || 'Nothing recorded.')}</div>
+
+    <label for="st">Status</label>
+    <select id="st">${['new','reviewing','contacted','appointment','inspected','quoted','won','lost','disqualified']
+      .map((s) => `<option ${s === l.status ? 'selected' : ''}>${s}</option>`).join('')}</select>
+
+    <label for="nt">Note</label><textarea id="nt" rows="2" placeholder="What happened"></textarea>
+
+    <div class="actions">
+      ${act.html}
+      <button id="save">Save</button>
+      <button id="rescore">Re-score</button>
+      <button onclick="detail.close()">Close</button>
+    </div>
+    ${act.note}
+
+    <div class="box" style="margin-top:14px"><h3>History</h3>
+      <ul>${l.events.map((e) => `<li>${esc(e.kind)} — ${esc(e.detail || '')} <span style="color:var(--dim)">${ago(e.at)}</span></li>`).join('')}</ul></div>`;
+
+  $('#save').onclick = async () => {
+    const body = { status: $('#st').value };
+    if ($('#nt').value.trim()) body.notes = $('#nt').value.trim();
+    await api('/api/leads/' + id, { method: 'PATCH', body: JSON.stringify(body) });
+    detail.close(); refresh();
+  };
+  $('#rescore').onclick = async () => {
+    $('#rescore').disabled = true;
+    await api(`/api/leads/${id}/score`, { method: 'POST' });
+    openLead(id); refresh();
+  };
+  detail.showModal();
+}
+
+async function openSignals() {
+  const sigs = await api('/api/signals');
+  $('#sigBody').innerHTML = `
+    <h2>Signals</h2>
+    <div class="sub" style="font-size:.8rem;color:var(--dim)">
+      A saved search against a public source. Reddit is implemented because it has an
+      official read API and no login wall — see the README on why Facebook groups are not here.</div>
+    ${sigs.map((s) => `
+      <div class="sig">
+        <b>${esc(s.title)}</b>
+        <div style="margin:5px 0"><code>${esc(s.platform)} · ${esc(s.subreddits || 'all')} · ${esc(s.window)}</code></div>
+        <div><code>${esc(s.keywords)}</code></div>
+        <div style="margin-top:6px;font-size:.78rem;color:var(--dim)">
+          ${s.last_run_at ? `Last run ${ago(s.last_run_at)} — ${esc(s.last_result || '')}` : 'Never run'}</div>
+        <div class="actions"><button data-run="${s.id}">Run now</button></div>
+      </div>`).join('') || '<div class="empty">No signals yet.</div>'}
+    <div class="actions"><button onclick="sigDlg.close()">Close</button></div>`;
+
+  $('#sigBody').querySelectorAll('[data-run]').forEach((b) => {
+    b.onclick = async () => {
+      b.disabled = true; b.textContent = 'Running…';
+      try {
+        const r = await api(`/api/signals/${b.dataset.run}/run`, { method: 'POST' });
+        b.textContent = r.result;
+        refresh();
+      } catch (e) {
+        b.textContent = 'Failed';
+        b.insertAdjacentHTML('afterend', `<div class="gate stop">${esc(e.message)}</div>`);
+      }
+    };
+  });
+  sigDlg.showModal();
+}
+
+$('#list').addEventListener('click', (e) => {
+  const row = e.target.closest('.lead'); if (row) openLead(row.dataset.id);
+});
+$('#list').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest('.lead'); if (row) { e.preventDefault(); openLead(row.dataset.id); }
+});
+$('#filters').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-f]'); if (!b) return;
+  filter = b.dataset.f ? { temperature: b.dataset.f } : {};
+  refresh();
+});
+$('#scoreBtn').onclick = async () => {
+  const b = $('#scoreBtn'); b.disabled = true; b.textContent = 'Scoring…';
+  const r = await api('/api/score', { method: 'POST' });
+  b.textContent = r.scored ? `Scored ${r.scored}` : 'Nothing to score';
+  setTimeout(() => { b.disabled = false; b.textContent = 'Score unscored'; }, 2200);
+  refresh();
+};
+$('#addBtn').onclick = () => addDlg.showModal();
+$('#sigBtn').onclick = openSignals;
+$('#a_save').onclick = async () => {
+  await api('/api/leads', { method: 'POST', body: JSON.stringify({
+    raw_text: $('#a_text').value, name: $('#a_name').value, phone: $('#a_phone').value,
+    location_text: $('#a_loc').value, consent: $('#a_consent').value,
+    consent_note: $('#a_consent').value === 'opted_in' ? 'Entered by hand — they asked to be contacted.' : null,
+  }) });
+  addDlg.close(); $('#a_text').value = ''; refresh();
+};
+
+refresh();
+</script>
+</body>
+</html>

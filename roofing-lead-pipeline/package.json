@@ -1,0 +1,16 @@
+{
+  "name": "roofing-lead-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prototype: intent signals in, scored leads out, consent gating which contact actions exist.",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "zod": "^3.25.0"
+  },
+  "engines": { "node": ">=22.5.0" }
+}
