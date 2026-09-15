@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import * as store from './lib/db.js';
 import { scoreLead } from './lib/score.js';
 import { fetchReddit } from './lib/sources/reddit.js';
+import { draftReply } from './lib/reply.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4317);
@@ -78,7 +79,7 @@ const routes = {
     const id = Number(params.id);
     if (!store.getLead(id)) return json(res, 404, { error: 'not found' });
     const allowed = ['status', 'notes', 'assigned_to', 'name', 'phone', 'email',
-                     'consent', 'consent_note'];
+                     'consent', 'consent_note', 'draft_reply'];
     const fields = Object.fromEntries(
       Object.entries(body).filter(([k]) => allowed.includes(k)));
     if (Object.keys(fields).length) {
@@ -101,6 +102,15 @@ const routes = {
     const lead = store.getLead(Number(params.id));
     if (!lead) return json(res, 404, { error: 'not found' });
     json(res, 200, await scoreAndSave(lead, defaultGeo()));
+  },
+
+  // Drafts only. Nothing here posts to Reddit — see lib/reply.js for why.
+  'POST /api/leads/:id/reply': async (_req, res, { params }) => {
+    const lead = store.getLead(Number(params.id));
+    if (!lead) return json(res, 404, { error: 'not found' });
+    const draft = await draftReply(lead);
+    store.saveDraft(lead.id, draft);
+    json(res, 200, draft);
   },
 
   'GET /api/signals': async (_req, res) => json(res, 200, store.listSignals()),

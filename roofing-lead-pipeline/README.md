@@ -49,6 +49,30 @@ So the rule lives in the data model, where a rushed afternoon cannot route aroun
 If they hand over a number in the thread, you change the permission on the lead and
 the call button appears — deliberately a decision someone makes, not a default.
 
+## Suggested replies — it drafts, it does not post
+
+On a scored public post that is worth answering, **Draft a reply** writes a short
+comment, shows it in an editable box, and gives you a Copy button. That is the whole
+feature. Nothing in this codebase posts to Reddit.
+
+That limit is deliberate, for two reasons, and the second is the expensive one:
+
+1. **Subreddit moderators remove promotional comments** and ban the accounts posting
+   them at volume. An occasional genuinely useful reply from a person survives; an
+   automated pipeline does not.
+2. **Texas § 4102.163 bars a roofing contractor from advertising that they will act
+   as a public adjuster.** A generated reply promising to "get your insurance to pay"
+   is exactly the advertising the statute prohibits — published under his name, at
+   scale, with a timestamp on it.
+
+So the drafting rubric in `lib/reply.js` forbids claim language outright: no offer to
+handle, file, negotiate or fight a claim, no mention of deductibles, no prices. He may
+say he documents the damage and hands over the photos and measurements.
+
+The rubric also puts **answering their actual question first**, ahead of any offer,
+because a reply that helps is the only kind a subreddit tolerates. The button doesn't
+appear on cold leads — drafting a pitch at a renter is wasted effort.
+
 ## Why Reddit and not Facebook
 
 Reddit is implemented because it is the one public intent source with an **official,
@@ -69,7 +93,7 @@ volume actually is.
 
 ## What is real and what is stubbed
 
-**Real** — SQLite persistence; the Reddit adapter including OAuth, pagination-free
+**Real** — SQLite persistence; reply drafting; the Reddit adapter including OAuth, pagination-free
 search, and dedupe by permalink; Claude scoring with structured output and a keyword
 fallback; the scoring rubric; consent gating; status pipeline; audit trail.
 

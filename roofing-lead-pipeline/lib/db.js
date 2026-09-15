@@ -72,6 +72,14 @@ CREATE INDEX IF NOT EXISTS lead_temp     ON lead(temperature);
 CREATE INDEX IF NOT EXISTS event_lead    ON event(lead_id);
 `);
 
+// Added after the first seeded databases existed, so widen in place rather than
+// making anyone delete their data.
+for (const [col, type] of [['draft_reply', 'TEXT'], ['draft_caution', 'TEXT'],
+                           ['draft_at', 'TEXT'], ['drafted_by', 'TEXT']]) {
+  const present = db.prepare('PRAGMA table_info(lead)').all().some((c) => c.name === col);
+  if (!present) db.exec(`ALTER TABLE lead ADD COLUMN ${col} ${type}`);
+}
+
 const now = () => new Date().toISOString();
 
 export function logEvent(leadId, kind, detail = null) {
@@ -109,6 +117,12 @@ export function saveScore(id, s) {
     .run(s.temperature, s.intent, s.urgency, JSON.stringify(s.signals ?? []),
          JSON.stringify(s.concerns ?? []), s.reasoning ?? '', s.scored_by, now(), id);
   logEvent(id, 'scored', `${s.temperature} · intent ${s.intent} · by ${s.scored_by}`);
+}
+
+export function saveDraft(id, d) {
+  db.prepare('UPDATE lead SET draft_reply=?, draft_caution=?, draft_at=?, drafted_by=? WHERE id=?')
+    .run(d.reply, d.caution || '', now(), d.drafted_by, id);
+  logEvent(id, 'draft', `reply drafted by ${d.drafted_by}`);
 }
 
 export function listLeads({ status, temperature, source } = {}) {

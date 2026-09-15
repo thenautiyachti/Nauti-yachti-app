@@ -66,6 +66,15 @@
   .sig{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:11px 12px;margin-bottom:8px}
   .sig code{font-size:.78rem;color:var(--dim);word-break:break-word}
   .empty{color:var(--dim);text-align:center;padding:40px 0}
+  .draft{margin-top:12px;border:1px solid var(--accent);border-radius:9px;overflow:hidden}
+  .draft header{display:flex;align-items:center;gap:8px;padding:8px 11px;background:var(--bg);
+    border:0;border-bottom:1px solid var(--line);margin:0;font-size:.7rem;font-weight:700;
+    letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+  .draft header .by{margin-left:auto;letter-spacing:0;text-transform:none;font-weight:400}
+  .draft textarea{border:0;border-radius:0;min-height:120px;resize:vertical}
+  .draft textarea:focus{outline:2px solid var(--accent);outline-offset:-2px}
+  .caution{font-size:.82rem;color:var(--warm);padding:9px 11px;border-top:1px solid var(--line);
+    background:var(--bg)}
 </style>
 </head>
 <body>
@@ -166,15 +175,30 @@ function actionsFor(l) {
     return { html: tel, note: '' };
   }
   if (l.consent === 'public_thread_only') {
+    // Drafting a reply to a renter or a rival contractor is wasted effort, so the
+    // button only appears where there is a lead worth answering.
+    const worth = l.temperature && l.temperature !== 'cold';
     return {
-      html: l.source_ref ? `<a href="${esc(l.source_ref)}" target="_blank" rel="noopener">
-        <button class="primary">Open thread to reply</button></a>` : '',
+      html: (l.source_ref ? `<a href="${esc(l.source_ref)}" target="_blank" rel="noopener">
+        <button class="primary">Open thread to reply</button></a>` : '')
+        + (worth ? `<button id="draftBtn">${l.draft_reply ? 'Re-draft reply' : 'Draft a reply'}</button>` : ''),
       note: `<div class="gate">They posted in public — that is not permission to call or text.
         Reply in the thread as yourself. If they hand over a number there, change the
         permission on this lead and the call and text buttons appear.</div>`,
     };
   }
   return { html: '', note: '<div class="gate stop">No contact permission recorded, so no contact actions are offered.</div>' };
+}
+
+function draftPanel(l) {
+  return `<div class="draft">
+    <header>Suggested reply <span class="by">drafted by ${esc(l.drafted_by || '?')} — edit before sending</span></header>
+    <textarea id="draftText" rows="5">${esc(l.draft_reply)}</textarea>
+    ${l.draft_caution ? `<div class="caution">${esc(l.draft_caution)}</div>` : ''}
+    <div class="caution" style="color:var(--dim)">Nothing here posts anything. Copy it,
+      read it once more, and send it yourself from your own account.</div>
+  </div>
+  <div class="actions"><button id="copyBtn">Copy</button><button id="saveDraft">Save edits</button></div>`;
 }
 
 async function openLead(id) {
@@ -197,6 +221,8 @@ async function openLead(id) {
 
     <div class="box"><h3>Contact permission — ${CONSENT_LABEL[l.consent] || esc(l.consent)}</h3>
       ${esc(l.consent_note || 'Nothing recorded.')}</div>
+
+    <div id="draftSlot">${l.draft_reply ? draftPanel(l) : ''}</div>
 
     <label for="st">Status</label>
     <select id="st">${['new','reviewing','contacted','appointment','inspected','quoted','won','lost','disqualified']
@@ -221,6 +247,38 @@ async function openLead(id) {
     await api('/api/leads/' + id, { method: 'PATCH', body: JSON.stringify(body) });
     detail.close(); refresh();
   };
+  const wireDraft = () => {
+    const copy = $('#copyBtn'), saveD = $('#saveDraft');
+    if (copy) copy.onclick = async () => {
+      const text = $('#draftText').value;
+      try { await navigator.clipboard.writeText(text); copy.textContent = 'Copied'; }
+      catch { $('#draftText').select(); copy.textContent = 'Select + copy'; }
+      setTimeout(() => { copy.textContent = 'Copy'; }, 1800);
+    };
+    if (saveD) saveD.onclick = async () => {
+      await api('/api/leads/' + id, { method: 'PATCH',
+        body: JSON.stringify({ draft_reply: $('#draftText').value }) });
+      saveD.textContent = 'Saved';
+      setTimeout(() => { saveD.textContent = 'Save edits'; }, 1800);
+    };
+  };
+  wireDraft();
+
+  const draftBtn = $('#draftBtn');
+  if (draftBtn) draftBtn.onclick = async () => {
+    draftBtn.disabled = true; draftBtn.textContent = 'Drafting…';
+    try {
+      const d = await api(`/api/leads/${id}/reply`, { method: 'POST' });
+      $('#draftSlot').innerHTML = draftPanel({
+        draft_reply: d.reply, draft_caution: d.caution, drafted_by: d.drafted_by });
+      wireDraft();
+      draftBtn.textContent = 'Re-draft reply';
+    } catch (e) {
+      draftBtn.textContent = 'Failed — ' + e.message;
+    }
+    draftBtn.disabled = false;
+  };
+
   $('#rescore').onclick = async () => {
     $('#rescore').disabled = true;
     await api(`/api/leads/${id}/score`, { method: 'POST' });
