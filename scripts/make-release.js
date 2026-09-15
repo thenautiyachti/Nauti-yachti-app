@@ -34,6 +34,7 @@ const { execSync } = require("child_process");
 const APP = path.join(__dirname, "..");
 const LLC = path.resolve(APP, "..");
 const TASKS = "C:/Users/immex/.claude/scheduled-tasks";
+const SKILLS = "C:/Users/immex/.claude/skills";
 const SHARED = "C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI";
 const SETTINGS = "C:/Users/immex/.claude/settings.json";
 
@@ -106,6 +107,25 @@ console.log("  building v" + version + "\n");
 // --- 1. the crew ------------------------------------------------------------
 copyTree(TASKS, path.join(OUT, "crew"), "crew");
 console.log("  crew briefs and protocol");
+
+// --- 1b. the hand-written skills -------------------------------------------
+// Added 14 Sep 2026. These sit in .claude\skills, which is a different tree
+// from .claude\scheduled-tasks and was never captured -- so /watch, the skill
+// that turns a video into timestamped frames and a transcript, would have been
+// lost on a cold restore despite being the thing the whole media pipeline is
+// built on. Skills synced from claude.ai are somebody else's copy and are
+// skipped; only what was written here is ours to keep.
+if (fs.existsSync(SKILLS)) {
+  let kept = 0;
+  for (const f of fs.readdirSync(SKILLS)) {
+    if (f === "synced" || f === ".trash" || f.startsWith(".")) continue;
+    copyTree(path.join(SKILLS, f), path.join(OUT, "skills", f), "skills");
+    kept++;
+  }
+  console.log("  skills (" + kept + ")");
+} else {
+  console.log("  skills SKIPPED: no " + SKILLS);
+}
 
 // --- 2. the shared scripts every agent runs ---------------------------------
 fs.mkdirSync(path.join(OUT, "shared-scripts"), { recursive: true });

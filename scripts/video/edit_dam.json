@@ -1,0 +1,80 @@
+{
+  "out": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/2026-09-14_theme_the-dam_9x16.mp4",
+  "w": 1080,
+  "h": 1920,
+  "fps": 30,
+  "segments": [
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/_originals/20260612_162852_1d235586.mp4",
+      "start": 8.0,
+      "dur": 7.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "THE OPENER. The sand spit running out into the water with people walking it and the far shore behind. Nothing else in the library looks like this - it is the one stop that reads as open lake rather than a raft-up, which is the reason the Dam is on the stop list at all."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/_originals/20260612_162852_1d235586.mp4",
+      "start": 32.0,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Paddleboarder and pontoons under a full Texas cloudscape. Same clip, 24s later - the sandbar sequence runs clean from 8s to 36s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/_originals/2026-07-12_the-dam.mp4",
+      "start": 78.5,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Boats along the bar with people wading between them. Verified at 82s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/_originals/2026-07-12_the-dam.mp4",
+      "start": 121.0,
+      "dur": 4.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "A football caught mid-air against the clouds. The only action beat at this stop and the only frame in 143 seconds where something is thrown - worth the interruption. Spot-checked at source: the catch is at 122.8s exactly, so the window starts 1.8s before it rather than 3.3s - a one-second event should not arrive two thirds of the way into its own shot."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/_originals/20260621_162423_8d081b5b.mp4",
+      "start": 18.0,
+      "dur": 5.5,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Boats rafted with a beach umbrella up, an orange float out and people standing between the hulls. Moved off 24s after a spot check: 24-32s is a run of close-ups of two guests, and the wide is at 18-23s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/_originals/20260704_171417_ad014940.mp4",
+      "start": 0.5,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "FOURTH OF JULY. A stage and banners set up on the sandbar with the crowd standing in the water watching. This is a real event at this stop and it is the strongest argument the Dam has."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/_originals/20260704_171417_ad014940.mp4",
+      "start": 24.0,
+      "dur": 5.5,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Same stage, later, with the crowd and boats filling the frame. Verified at 25.9s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/The Dam/_originals/20260712_152623_27dcd189.mp4",
+      "start": 31.5,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "THE CLOSE. Open water, boats spread out, people standing in the shallows - back to the wide the cut opened on."
+    }
+  ]
+}

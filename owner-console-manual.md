@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 2 September 2026.
+Last updated 14 September 2026.
 
 ---
 
@@ -589,6 +589,18 @@ ever lapses, those images disappear, which is why new ones go in our own folder.
 Every post Coral has drafted, laid out as cards and boxed by the day it goes
 out. Two days side by side, soonest first.
 
+### On a card
+
+- The photo or clip it goes out with, or **No media attached** with a link to
+  add one. Instagram and TikTok refuse a post without one, so a scheduled card
+  showing that warning will fail on the day.
+- The caption in full, so you are approving the words against the picture.
+- The platform and when it goes out.
+- **I posted it myself** · **Don't post**
+
+Posted, denied and past drafts sit in a collapsed group above the days —
+a record, not a to-do list.
+
 ### What goes out on its own, and what does not
 
 **A post marked SCHEDULED will publish by itself.** Siren runs each morning and
@@ -824,18 +836,6 @@ Two rows say **extra contact** instead of a charter reference. Those are people
 who sailed on somebody else's booking and whose number you kept — see *Extra
 guest contacts* under Bookings. They can be asked like anyone else.
 
-### On a card
-
-- The photo or clip it goes out with, or **No media attached** with a link to
-  add one. Instagram and TikTok refuse a post without one, so a scheduled card
-  showing that warning will fail on the day.
-- The caption in full, so you are approving the words against the picture.
-- The platform and when it goes out.
-- **Mark posted** · **Don't post**
-
-Posted, denied and past drafts sit in a collapsed group above the days —
-a record, not a to-do list.
-
 ## Testimonials
 
 Reviews shown on the public site, plus the panel for **asking past guests for a
@@ -1032,10 +1032,18 @@ the release is the moment anyone reliably does.
 ## What you actually get
 
 One `.zip` in `AI & Website/releases/`, and only ever the newest one: the crew
-briefs, the protocol, the schedules, the permission rules and the shared
-scripts — everything git does not version. Older *release folders* are deleted;
-**every git tag is kept forever**, so the code for each version is still on
-GitHub.
+briefs, the protocol, the schedules, the permission rules, the hand-written
+skills and the shared scripts — everything git does not version. Older *release
+folders* are deleted; **every git tag is kept forever**, so the code for each
+version is still on GitHub.
+
+The skills were added on 14 September 2026 and had been missing the whole time.
+They live in `.claude\skills`, a different folder from the crew's
+`.claude\scheduled-tasks`, so nothing was picking them up — which meant
+**`/watch`**, the tool that turns a video into timestamped frames and a
+transcript, would simply not have existed after a restore, despite the whole
+media pipeline being built on it. Skills synced down from claude.ai are skipped:
+those are somebody else's copy and come back on their own.
 
 `CHANGELOG.md` carries one entry per version, written to be read on a bad day.
 If an entry cannot tell you whether to restore that version, it was not written
@@ -1136,8 +1144,9 @@ because an email you cannot see fail is not a notification.
 The Jarvis tab was retired on 3 September 2026. Six of its seven panels had
 become worse copies of what the Overview already showed; the seventh was the
 media pipeline, which moved to **Marketing -> Media Drafts** where it belonged.
-Speaking aloud moved to the **Enable Pearl** button in the top bar. Pearl is the
-one you talk to now.
+Speaking aloud moved to the top bar, where her last message appears with a
+speaker on it. Pearl is the one you talk to now. (There was briefly an
+**Enable Pearl** button; it is gone — see the top bar above.)
 
 Nothing you can see says Jarvis any more. Four things under the floor still do,
 and they were left alone deliberately:
@@ -1155,11 +1164,10 @@ leftover anyone forgot.
 
 ## Why the routines are named as they are
 
-Six of the nine routines now carry their crew member's name in the sidebar —
-`nauti-pearl`, `nauti-joy`, `nauti-reef`, `nauti-shelly`, `nauti-nova` and
-`crew-standup`.
-
-One deliberately does not: `nauti-siren`, which is Siren.
+All eight now carry their crew member's name — `nauti-pearl`, `nauti-coral`,
+`nauti-siren`, `nauti-joy`, `nauti-penny`, `nauti-reef`, `nauti-shelly` and
+`nauti-nova`, alongside `crew-standup`. The renaming is finished; what follows is
+why it had to be done carefully, and it still applies to any future one.
 
 A task ID cannot be renamed — only deleted and recreated — and connector
 approvals are stored **on the task**. Siren publishes through Blotato, so
@@ -1167,8 +1175,8 @@ recreating her throws that approval away and her next run stops, waiting for a
 permission nobody is there to give. She is the one agent whose silence is
 invisible until an event has already gone unannounced.
 
-So she is renamed only just after a publish run, when nothing is due and a
-**Run now** to bank the approval is a harmless no-op. Renaming her before one
+So she was renamed only just after a publish run, when nothing was due and a
+**Run now** to bank the approval was a harmless no-op. Renaming her before one
 either loses that morning's posts to a prompt, or fires them at whatever hour
 you pressed the button.
 
@@ -1176,12 +1184,9 @@ Coral and Penny were renamed this way on 4 Sep 2026 — rename, **Run now**,
 approve once. Their approvals are Blotato and Gmail respectively. **If a routine
 ever starts skipping, a missing approval is the first thing to check.**
 
-
-Two task folders are still named for their old cadence — `nauti-penny`
-runs daily and `nauti-shelly` runs weekly. The names are historical and
-were left alone on purpose: renaming a scheduled task means deleting and
-recreating it, which loses its saved tool approvals. **The schedule above is
-what is true.**
+A folder name never tells you a cadence. `nauti-penny` runs daily and
+`nauti-shelly` runs weekly, and nothing in either name says so. **The schedule
+table above is what is true.**
 
 ## Who checks whom
 
@@ -1314,6 +1319,15 @@ there, it is not a rule.
   and shot at midday. Trust the timestamp inside the file, not the name.
 - **The Lake Bryan charters of 6 and 13 June 2026 are under NDA.** No media from
   those may be posted, ever.
+- **`Party Cove / 2025-09-27` is footage from The Dam.** Mis-filed. The theme
+  folder is the only thing that says where a clip was shot — the filenames are
+  bare timestamps — so until it is moved, treat that date as The Dam. It had
+  already become the opener and closer of a Party Cove compilation before you
+  spotted it.
+- **One glow clip is withdrawn for nudity:** `Boatz and Glowz / 2025-09-20 First
+  run - promo event / 20250920_211850_303ad61a.mp4`. The whole clip, not just the
+  part that was used, because it cannot be reviewed reliably at any size that
+  makes screening practical.
 - **"Don't post" does not delete.** It moves the draft to Rejected, and *Back to
   review* brings it back. Deleting is a separate button behind a confirm.
 - **Six hashtags is a failed post, not a style note.** The publisher rejects it

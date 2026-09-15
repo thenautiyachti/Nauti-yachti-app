@@ -1,0 +1,80 @@
+{
+  "out": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/2026-09-14_theme_party-cove_9x16.mp4",
+  "w": 1080,
+  "h": 1920,
+  "fps": 30,
+  "segments": [
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/_originals/2025-05-24_foam-party.mp4",
+      "start": 0.5,
+      "dur": 8.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "THE OPENER, and it is actually Party Cove. Wide down a long line of rafted boats with foam across the water and the crowd standing in it, 24 May 2025. REPLACES a shot pulled on 14 Sep 2026: the previous opener and closer both came from Party Cove/2025-09-27, which the owner identified as mis-filed - that whole folder is footage from The Dam. They were 15.5 of 49 seconds and the two bookends."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/_originals/20250906_175519_cc40cf40.mp4",
+      "start": 4.5,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Boats nose to nose with people in the water between them and a float pad alongside. Held window verified 1.5-11s. Output sheet showed the first two seconds thin - open water and three distant heads - so the window starts at 4.5s where the boats fill the frame."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/_originals/20260627_144925_f820f7a2.mp4",
+      "start": 8.0,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "The blue float pad with people on it and a woman in a ring float. Window 6-24s is continuous; after 30s the pad fills the frame and the shot dies."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/_originals/20260627_152340_d54afcd2.mp4",
+      "start": 15.5,
+      "dur": 5.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "THE DOG on the float. Nothing else in the library has it, and a detail nobody expects is worth more than another wide. Verified at 17.4 and again at 42.7."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/_originals/20260627_152827_ef95a551.mp4",
+      "start": 40.0,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Groups standing chest-deep, talking, drinks in hand - the sandbar as a social place rather than a boat park. Verified 34-46s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/_originals/20260627_165802_3ba608d6.mp4",
+      "start": 50.5,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "The white canopy pitched in the shallows, the flag, boats behind. Late in the clip is the good half: the first 40s is mostly a straw hat at arm's length. Moved off 49.0s: the output sheet caught a close-up of one guest still on screen there. The canopy is clear from 50.5s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/_originals/20260627_142805_c3fea732.mp4",
+      "start": 26.5,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Boats strung out along the treeline with people wading between them. Verified 25.8-34.3s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Party Cove/_originals/2025-05-24_foam-party.mp4",
+      "start": 36.5,
+      "dur": 7.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "THE CLOSE. Same day, later: the crowd out in the water with floats and umbrellas along the shore. Ends wide, on the crowd, the way it opened."
+    }
+  ]
+}

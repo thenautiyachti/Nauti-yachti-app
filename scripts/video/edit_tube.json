@@ -1,0 +1,80 @@
+{
+  "out": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/2026-09-14_theme_tubing-and-wakeboarding_9x16.mp4",
+  "w": 720,
+  "h": 1280,
+  "fps": 30,
+  "segments": [
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/_undated Snapchat/Messenger_creation_55f5fb27-bb37-4cb4-ab30-df21f971eba3.mp4",
+      "start": 0.8,
+      "dur": 4.5,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "OPEN ON ACTION. Orange tube two-up, close, spray across the frame. Level camera, rider in frame at every sample 0.5-8.5s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/2025-08-03/VID_20250803_125226_194.mp4",
+      "start": 2.2,
+      "dur": 4.5,
+      "zoom": 1.0,
+      "cx": 0.45,
+      "cy": 0.5,
+      "note": "Blue/red tube, three up, the closest framing in the library. 3:4 source so the 9:16 crop loses width, centred slightly left where the tube sits."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/2025-08-08/VID_20250808_162703.mp4",
+      "start": 4.6,
+      "dur": 3.4,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "LAYERED, but held only as long as it stays clean. Tube behind the boat with a guest's shoulder in the foreground. Verified on the output sheet: past 8s of source the guest's head fills the right half, so the window ends before that rather than paying for the idea with a blocked frame."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/2025-07-20/VID_20250720_112831.mp4",
+      "start": 33.5,
+      "dur": 6.0,
+      "zoom": 1.3,
+      "cx": 0.44,
+      "cy": 0.36,
+      "note": "Wakeboarder carving, spray off the edge. Dense sampling every 2s shows her in frame CONTINUOUSLY from 30s to the end of the clip."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/2025-07-20/VID_20250720_112831.mp4",
+      "start": 55.0,
+      "dur": 5.5,
+      "zoom": 1.3,
+      "cx": 0.45,
+      "cy": 0.34,
+      "note": "Same rider on glass, wake flattened out. Punch-in 1.30x because she is about a twelfth of frame height at source."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/2025-08-08/VID_20250808_162812.mp4",
+      "start": 2.4,
+      "dur": 4.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Blue/red tube close, second day. Window chosen at 2.4-6.3s; after 8s the tube falls away to a speck."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-09-06 Oscar RoblesGil R/20260906_134447_85fd51aa.mp4",
+      "start": 48.0,
+      "dur": 7.0,
+      "zoom": 1.12,
+      "cx": 0.46,
+      "cy": 0.44,
+      "note": "FROM A CHARTER FOLDER, not the theme folder - his ask said 'using tags from charter folders AND the wakeboarding tubing folder', and the best-framed wakeboarding he owns was never copied across. Oscar RoblesGil R, 6 Sep 2026: rider behind the wake with the rope taut and a guest clapping him past at 51s. He said himself the angles on this charter were his best, and the frame count agrees - the rider is in frame in 15 of 20 samples here against 4 of 20 on the Nagdy equivalent. Source is 1360x1824, so at 720x1280 this DOWNSCALES and the 1.12x punch-in is free."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/2025-07-20/VID_20250720_112831.mp4",
+      "start": 77.0,
+      "dur": 8.5,
+      "zoom": 1.25,
+      "cx": 0.45,
+      "cy": 0.38,
+      "note": "THE CLOSE, given the longest hold in the cut. Golden hour - rider dark against the sun path, treeline behind. Dense sampling shows gold light from 74s to the end, so this runs 8.5s: eight reference videos in a row held their best shot instead of cutting away from it."
+    }
+  ]
+}

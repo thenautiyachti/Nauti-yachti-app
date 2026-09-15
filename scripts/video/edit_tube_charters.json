@@ -1,0 +1,71 @@
+{
+  "out": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Tubing and Wakeboarding/2026-09-14_theme_tubing-best-of-charters_9x16.mp4",
+  "w": 720,
+  "h": 1280,
+  "fps": 30,
+  "segments": [
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-05-16 Sheena/20260516_154921_fc0d10f0.mp4",
+      "start": 0.5,
+      "dur": 4.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "SHEENA, 16 May 2026. OPENS ON THE GUESTS, not the rider - two of them up at the rail with phones out, filming the tube. It says this is a charter before it says this is a watersport, which is the difference between a sports clip and an advert for a boat you can hire."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-05-23 Sara Kuykendall/Snapchat-486502988~2.mp4",
+      "start": 3.0,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.52,
+      "cy": 0.5,
+      "note": "SARA KUYKENDALL, 23 May 2026. Red tube, two up, in frame at every sample from 3s to the end. LANDSCAPE SOURCE - 1920x1080 with no rotation flag, so the 9:16 crop keeps only 607px of the 1920 and the centre has to be right. Checked on the output."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-05-23 Sara Kuykendall/Snapchat-87743597~2.mp4",
+      "start": 7.0,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "SARA KUYKENDALL again, second angle the same day. Verified in frame 6-18s; the first few seconds have a hand across the lens."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-06-09 Nagdy/20260609_171736_bbfca000.mp4",
+      "start": 14.0,
+      "dur": 4.5,
+      "zoom": 1.15,
+      "cx": 0.44,
+      "cy": 0.4,
+      "note": "NAGDY, 9 June 2026. The tube window found by dense sampling for his own charter montage - in frame 14-20s and absent either side, because these are glasses and the tube is only there when he happened to look at it. Cut from 6s to 4.5s on verification: a red safety flag swings across the whole lens at about 19.5s and the old window ran straight into it."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-08-12 Anna/20260812_125156_89b550f9.mp4",
+      "start": 0.5,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "ANNA, 12 August 2026. A rider up on the wake with a guest watching from the bench in the foreground - the layered shot again, and the only one of these charters where it happened naturally."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-09-06 Oscar RoblesGil R/20260906_134447_85fd51aa.mp4",
+      "start": 48.0,
+      "dur": 7.0,
+      "zoom": 1.3,
+      "cx": 0.46,
+      "cy": 0.53,
+      "note": "OSCAR ROBLESGIL R, 6 September 2026. Rider behind the wake, rope taut, a guest clapping him past at 51s. The best-framed towing footage in the library: rider in frame in 15 of 20 samples against 4 of 20 on the Nagdy equivalent. Punched to 1.30x to drop the tow ropes out of the top third."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-06-09 Nagdy/20260609_200803_a42ec301.mp4",
+      "start": 21.0,
+      "dur": 8.0,
+      "zoom": 1.3,
+      "cx": 0.58,
+      "cy": 0.52,
+      "note": "THE CLOSE. NAGDY, sunset, tube clear on the water with a guest watching. 2128x2832 source, so a 1.30x punch-in still DOWNSCALES to 720 wide and costs nothing. Longest hold in the cut, because eight reference videos held their best shot rather than cutting away from it. Crop centre moved right and down after verification: at cx 0.52 the tower and board rack sat across the left of every frame. The sunset and the tube are centre-right, so the crop follows them - the tower-dominates-the-frame trap, caught on the output rather than in the source."
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "out": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Boatz and Glowz/2026-09-14_theme_boatz-and-glowz_9x16.mp4",
+  "w": 1080,
+  "h": 1920,
+  "fps": 30,
+  "segments": [
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Boatz and Glowz/2025-09-20 First run - promo event/20250920_184502_9c3ff96c.mp4",
+      "start": 24.5,
+      "dur": 5.5,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "THE OPENER, and the only daylight in the cut. Sun going down over the raft-up with people still wading. A glow reel that starts in the dark never says where it is; this one does, then the light goes. Window moved off 21.0s: the output sheet caught a thumb across the lens at about 23s, which a triage frame at 20.8s could not show."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Boatz and Glowz/2025-09-20 First run - promo event/20250920_202923_f3be857b.mp4",
+      "start": 12.0,
+      "dur": 3.5,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "The fleet coming on. Verified at 12.6 and 16.6s. Window deliberately avoids the first 10s, where a guest holds a lit phone screen up to the lens and blows out the exposure. Shortened again - the lit phone screen is still in shot at 15.5s, so the window closes before it. Cut to 3.5s on the second verification: the lit phone screen is at the frame edge for the whole usable window, so this works as a transition beat between daylight and dark, not as a shot in its own right."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Boatz and Glowz/2025-09-20 First run - promo event/20250920_211728_04713720.mp4",
+      "start": 0.5,
+      "dur": 5.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "The crowd on deck under purple and green, glow sticks everywhere. Verified at 0.5s."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Boatz and Glowz/2025-09-20 First run - promo event/20250920_225934_6d6358c0.mp4",
+      "start": 8.0,
+      "dur": 6.0,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "The LED captain hat, given a second longer now the foam shot is gone. It is the one prop that is ours and reads instantly, and it is the most legible thing shot that night."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Boatz and Glowz/2025-09-20 First run - promo event/20250920_211728_04713720.mp4",
+      "start": 56.0,
+      "dur": 4.5,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "A short foam beat - lit crowd with foam going up behind them. This is what is left of the foam after the clip that carried it was withdrawn, and it is deliberately short: at 460px review size it is the only remaining foam frame that reads clearly."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Boatz and Glowz/2025-09-20 First run - promo event/20250920_232426_f8dff913.mp4",
+      "start": 51.5,
+      "dur": 6.5,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "Late night in the cabin under magenta with laser dots across everything. Extended to take some of the time the pulled shot was using."
+    },
+    {
+      "src": "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/Boatz and Glowz/2025-09-20 First run - promo event/20250920_235047_cd6cb70d.mp4",
+      "start": 0.5,
+      "dur": 5.5,
+      "zoom": 1.0,
+      "cx": 0.5,
+      "cy": 0.5,
+      "note": "THE CLOSE. Lit boats strung across black water - the daylight raft-up from the opener, now made only of light. Swapped in after verification: the previous closer resolved for barely one of its five seconds."
+    }
+  ]
+}
