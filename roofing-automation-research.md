@@ -368,6 +368,83 @@ Every one of these changes what gets built:
 
 ---
 
+## 10. Texas addendum — notes for a Spring, TX operator
+
+Added after identifying the business as working out of **Spring, TX** — north Houston
+metro, on the Harris/Montgomery county line, with a Montgomery County phone number,
+CertainTeed Landmark installs, and storm-damage restoration in the marketing. Three
+findings change the plan for this market specifically.
+
+### Texas is the strictest state on the §3 problem — and the statute reaches advertising
+
+**Tex. Ins. Code § 4102.163** bars a roofing contractor from acting as a public
+adjuster on any property where that contractor also provides roofing services, **and
+bars advertising that they will do so.** The Texas Department of Insurance publishes a
+consumer bulletin on exactly this point.
+([TDI](https://www.tdi.texas.gov/consumer/storms/roofing-and-insurance-know-the-law.html))
+
+The case contractors cite is the **Lon Smith Roofing** decision, where the contingency
+agreement itself was held unenforceable because the roofer had acted as an unlicensed
+public adjuster.
+([Raizner Law](https://www.raiznerlaw.com/insights/lon-smith-roofing-decision-texas-law-contractors-improperly-acting-public-adjusters/))
+Same shape as the Iowa finding in §3: the penalty lands on the contract, not just on a
+fine. You win the claim and lose the paper that entitles you to get paid for it.
+
+Two consequences for the build, beyond the §8 rules already specified:
+
+1. Generated documents state **observed conditions and scope of work**. Never a
+   settlement position, never a demand, never a number the carrier is being asked to
+   agree to.
+2. **The copy the product generates is in scope too** — quote requests, follow-up
+   texts, landing pages. The prohibition covers advertising, not only conduct, so the
+   marketing surface has to be as clean as the claim documents.
+
+That second point is worth raising with their own attorney about copy that already
+exists. Phrasing along the lines of *"let me help you get what you deserve"* is
+ordinary contractor marketing and extremely common — but it is also the shape of
+language the advertising clause is pointed at, and in Texas that is a cheap thing to
+rewrite and an expensive thing to defend.
+
+### Deductibles are a separate Texas trap
+
+Texas makes it illegal for a contractor to **waive, rebate, or absorb** a
+policyholder's deductible. Every estimate, invoice or payment schedule the software
+generates must show the deductible as owed by the homeowner and must never net it out
+or bury it in a discount line. Trivial to get right now; a data-migration problem to
+fix later.
+
+### This is not hail alley, and that demotes Phase 2
+
+Harris County logged **7 hail reports in 2025**, largest 1.25″. The most recent near
+Spring was 1.00″ in August 2026. Compare DFW, where softball-sized hail is a routine
+spring event.
+([Stormer](https://www.stormersite.com/hail_reports/harris_county_texas/2025))
+
+Gulf-coast roofing work is driven by **wind and hurricane** — the May 2024 Houston
+derecho did $1.2B of damage at 78–100 mph gusts — and by ordinary age-driven repair
+and replacement, far more than by post-hail canvassing blitzes.
+([2024 Houston derecho](https://en.wikipedia.org/wiki/2024_Houston_derecho))
+
+So the knock-list generator in §4B has much less to chew on here; frequently there is
+no fresh swath to canvass at all. Two consequences:
+
+- The adjuster and claim modules carry **even more** of the total value than §4
+  assumed. Leading with them was right, and the margin is wider in this market.
+- If targeting does get built, it should key on **wind events, roof age and permit
+  history** — not hail size. A hail-swath-first design would idle most of the year.
+
+### Still unknown, and it resizes Phase 1
+
+How many people actually work this business — and whether it operates independently or
+under the Hillco Building Service banner that appears in its posts. The dispatch ladder
+in the Phase 1 spec (§5 of `roofing-phase-1-spec.md`) assumes a bench of reps to
+escalate across. For a one- or two-person operation that module is over-engineering:
+the need shrinks to never missing a window, which is a calendar-and-escalation problem
+for a single person, and the packet and supplement work stays exactly as valuable.
+Answer that before building §5.
+
+---
+
 ## Sources
 
 - [SubcontractorHub — best roofing canvassing software 2026](https://www.subcontractorhub.com/blog/best-roofing-canvassing-software)
