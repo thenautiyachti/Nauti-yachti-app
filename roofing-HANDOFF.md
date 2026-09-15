@@ -25,16 +25,21 @@ build that.
 There is also a shareable summary published as an Artifact:
 <https://claude.ai/artifact/58krqn682QXffzsU2zoBww>
 
-## The thesis in four lines
+## The thesis in five lines
 
 1. Canvassing software is a commodity — $19/user/month, and it doesn't move close rates.
-2. The money leaks downstream: the adjuster meeting, and the 20–40% of job revenue lost
-   when a carrier's 30-minute first estimate goes uncontested.
-3. Synergy already sells **Storm Shield**, a membership promising a "digital roof
-   history, accessible anytime." That product doesn't exist yet. Building it is the
-   wedge — and its pre-loss photos are what kill the wear-and-tear denial later.
-4. In Texas, a contractor who negotiates a claim is adjusting without a licence, and
+2. **Dayne paid $208/lead for 12 bad leads.** Meta storm-triggered campaigns run
+   $10–22. That is the pain he actually feels, so it is the door in (§15).
+3. One capture feeds three things: the close-up that gets the line item paid, the same
+   footage cut 9:16 as the ad that brings the next lead, and the dated record that is
+   the Storm Shield baseline. Content stops being a separate job.
+4. The money still leaks downstream — 20–40% of job revenue when a carrier's 30-minute
+   estimate goes uncontested — but that pain is unfelt, so it attaches second.
+5. In Texas, a contractor who negotiates a claim is adjusting without a licence, and
    the penalty lands on the contract. **Nothing we build may negotiate. It documents.**
+
+**Positioning rule, in his words:** *"the leads generator guys are a dime a dozen in my
+industry."* This is never sold as leads. It is infrastructure he owns.
 
 ## What has been established
 
@@ -74,4 +79,5 @@ yacht app.
 3. Confirm the unauthorized-public-adjusting rules for every state Synergy works —
    research §3 and §10 cover Texas; deployment work means others apply too. Blocking
    item, not launch-week cleanup.
-4. Then build, in the order set out in research §11.
+4. Then build, in the order set out in research **§15** (Own Your Leads first), with
+   §11 as the phase behind it.

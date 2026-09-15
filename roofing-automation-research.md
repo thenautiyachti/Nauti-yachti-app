@@ -789,6 +789,160 @@ line may be the better annuity.
 
 ---
 
+## 15. What Dayne actually said — and what it costs him
+
+A text exchange with Dayne, September 2026. This is the first direct customer evidence
+in the whole document, and it outranks inference.
+
+> **"lotta ppl do it but they are always shit leads"**
+>
+> **"The issue with roofing leads is it's a numbers game for y'all. I've bought 12
+> leads for $2,500. Not one in a decent area and most even said they felt pressured to
+> schedule. So they didn't really have interest."**
+>
+> **"Now, if you're stating that you can find customers who are actually interested in
+> a roof replacement, then we're talking."**
+>
+> **"Just so you know, the leads generator guys are a dime a dozen in my industry."**
+>
+> On his own idea: *"short 30 second videos. You edit them with AI and then have them
+> sent to area codes on fb. So when ppl are watching stories a roofing reel will pop
+> up. Those have worked before and I liked em."*
+>
+> On owning his own funnel instead of buying leads: **"I'd be interested in that for
+> sure."**
+
+### The number
+
+**$2,500 ÷ 12 = $208 per lead**, none in a decent area, most feeling pressured.
+
+Against 2026 Meta benchmarks for roofing:
+
+| Channel | Cost per lead |
+|---|---|
+| What Dayne paid a lead vendor | **$208** |
+| Meta roofing ads, typical | $40–80 |
+| Meta **lead-form** ads | $34.10 |
+| Optimized accounts | $21.98 |
+| **Storm-response campaigns, 72-hour post-hail window** | **$10–22** |
+
+([AdManage](https://admanage.ai/blog/facebook-ads-cost-per-lead-benchmarks),
+[Web Tonic](https://www.webtonic.io/blog/roofing-facebook-ads-statistics),
+[AdsUploader](https://adsuploader.com/blog/facebook-lead-ads-cost-per-lead))
+
+That same $2,500, run as a storm-triggered geo campaign in the 72-hour window, buys
+**114 to 250 leads** instead of twelve. A ten-to-twenty-fold difference — on leads that
+are also higher intent, because the homeowner submitted their own information rather
+than being shopped around.
+
+### His creative instinct is correct, and the data backs it
+
+He suggested 30-second vertical video geo-targeted on Facebook. The benchmarks agree:
+
+- **Before/after Reels and 9:16 vertical outperform 16:9 by 2–4× on click-through**
+- **The first three seconds carry 80% of engagement**
+- The named top performers are drone before/after, **hail-damage close-ups — pitted
+  shingles, dented flashing** — and time-lapse installs
+- Winter CPM drops 40–60% versus summer, so the off-season is cheap to build audience in
+
+### The insight that ties this whole document together
+
+**They already shoot every one of those top-performing formats, as a byproduct of work
+they already do.** Drone-assisted inspections with full photo documentation are on
+their website. Brian is capturing POV inspection footage on Meta glasses (§12). The
+project gallery is full of before-and-afters.
+
+So one walk across one roof produces three assets:
+
+```
+        ONE CAPTURE
+             │
+    ┌────────┼────────────────┐
+    ▼        ▼                ▼
+ close-up   same footage    dated record
+ w/ scale   cut 9:16, 30s   of condition
+    │        │                │
+    ▼        ▼                ▼
+ the line   the ad that      the Storm Shield
+ item gets  brings the next  pre-loss baseline
+ paid       lead at $10–22   (§11)
+```
+
+The single highest-performing ad creative in roofing — a hail-damage close-up — **is
+the same shot the adjuster packet requires.** Roofers don't make content because it is
+a separate job on top of a long day. Here it isn't a separate job. It is the
+documentation they already have to take, routed twice more.
+
+### The compliance line on "scan local areas for people looking for a roofer"
+
+The original idea was to scan local posts and comments for homeowners asking for a
+trusted roofer, ranked by emotional heat. The intent signal is real — somebody posting
+*"my roof is leaking, who do I call"* is the highest-intent lead that exists. The
+collection method is the problem.
+
+- Meta's **Automated Data Collection Terms** comprehensively prohibit automated
+  collection without a recognized API or explicit permission.
+  ([Meta](https://www.facebook.com/legal/automated_data_collection_terms))
+- Courts have held that scraping public, logged-out data is not automatically a CFAA
+  crime, but it still **almost certainly breaches the terms** — exposure runs to
+  account bans, IP blocks, cease-and-desist letters and breach-of-contract claims.
+  ([Thunderbit](https://thunderbit.com/blog/is-scraping-facebook-legal))
+- Personal data triggers GDPR/CCPA obligations regardless of being "public."
+- Risk is highest **behind an authentication layer** — and local community groups are
+  exactly that: login required, often membership approval too. This is the worst case,
+  not the best.
+
+There is also a product reason, which matters more than the legal one. A homeowner who
+posts in a neighbourhood group and then receives a cold text from a company they never
+contacted is having **precisely the experience Dayne complained about** — pressured,
+contacted without asking. Harvesting reproduces the disease he is paying $208 a dose to
+avoid.
+
+**The compliant version of the same intent is cheaper and works better:**
+
+| Instead of | Do this |
+|---|---|
+| Scraping group posts | **Meta Lead Ads** — homeowner submits their own details, one-to-one consent captured at source, $34.10 CPL |
+| Cold-texting posters | **Storm-triggered geo campaigns** in the 72-hour window — $10–22 CPL, and the homeowner comes to you |
+| Automating group participation | Dayne replying in the thread **himself**, as a neighbour. Effective, free, and human — the software should not touch it |
+
+Consent-first and high-intent turn out to be the same path. The reason bought leads are
+bad is the same reason the January 2026 FCC rule made them unusable (§6): a lead shopped
+to five contractors was never interested in any of them.
+
+### What this does to the build order
+
+This is the correction that matters most in the document.
+
+**Lead flow is the pain he feels. The adjuster gap is the pain he doesn't.** The
+adjuster money is still bigger — 20–40% of every job against a $2,500 scar — but he has
+a scar, and scars are what get a tool adopted. He said *"I'd be interested in that for
+sure"* to owning his own lead flow, texting from his phone, and booking his own
+calendar. That is the door.
+
+So Phase 1 leads with **Own Your Leads**:
+
+1. **Storm-triggered campaigns.** NOAA/radar fires an event; a geo-fenced campaign
+   builds from their own footage and goes live inside the 72-hour window where leads
+   cost $10–22.
+2. **Content from capture.** Inspection footage auto-cut to 9:16, 30 seconds, hook in
+   the first three seconds. No separate content job.
+3. **Leads land in his pocket.** One pipeline, text from his own phone, book straight
+   to his calendar, speed-to-lead on every inbound.
+4. **Consent captured properly at the source** — per-brand, timestamped, revocation
+   matched on phone number across channels (§6).
+
+Then the claim machinery from the Phase 1 spec attaches, once he is already in the tool
+every day. The adjuster packet is a far easier sell to someone who is opening the app
+each morning to work his leads.
+
+**And a positioning rule, in his words:** *the leads generator guys are a dime a dozen.*
+This is never sold as leads. It is infrastructure he owns, feeding a pipeline he keeps,
+built out of footage he already shoots. The moment it looks like a lead vendor, it is
+one of a dime a dozen.
+
+---
+
 ## Sources
 
 - [SubcontractorHub — best roofing canvassing software 2026](https://www.subcontractorhub.com/blog/best-roofing-canvassing-software)
