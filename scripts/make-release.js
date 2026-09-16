@@ -32,7 +32,22 @@ const path = require("path");
 const { execSync } = require("child_process");
 
 const APP = path.join(__dirname, "..");
-const LLC = path.resolve(APP, "..");
+
+// WHERE THE RELEASES GO, and why it is no longer "one level up from the app".
+//
+// Until 15 Sep 2026 the app lived inside the business folder and this was
+// path.resolve(APP, ".."), which landed releases in "AI & Website/releases".
+// The app then moved OUT of the Google Drive mirror onto the local disk,
+// because Drive cannot sync a working tree -- it was choking on 1.5GB of .next
+// build output plus node_modules and flagging the whole folder with a red X.
+//
+// Relative would now put releases in C:/Users/immex/Documents, on the local
+// disk with no backup. That is exactly wrong for this file: a release zip is
+// the disaster-recovery artifact, so it is the ONE thing that must stay in
+// Drive. The owner chose that deliberately on 15 Sep 2026. Hence an explicit
+// path rather than a relative one, overridable for anyone else running this.
+const LLC = process.env.NAUTI_BUSINESS_DIR ||
+  "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website";
 const TASKS = "C:/Users/immex/.claude/scheduled-tasks";
 const SKILLS = "C:/Users/immex/.claude/skills";
 const SHARED = "C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI";
