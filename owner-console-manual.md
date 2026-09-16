@@ -1270,6 +1270,39 @@ A card reading **"Stopped mid-run"** means the run was killed partway, usually
 by a permission prompt nobody was there to answer. Open Routines and hit **Run
 now** to clear it.
 
+### When a card says an agent failed and she did not
+
+A card is a row in the activity log, and that row carries one of four values.
+Three are what you would expect. The fourth is not a state at all:
+
+| Value | Means |
+|---|---|
+| `running` | started and has not closed yet |
+| `completed` | finished |
+| `failed` | genuinely went wrong |
+| `status` | **not a lifecycle state** — the daily status card the standup files for each agent, even on days she does not run |
+
+`status` is why the table holds far more rows than there have been runs: eight
+agents filing one card a day. They are correct and should never be "cleaned up".
+
+**A card can report a failure that never happened.** On 14 September Nauti Joy's
+card read failed for a day over a run that had succeeded four minutes earlier.
+The cause was in how agents record themselves: the script read its arguments by
+position, and the closing command passes an empty `""` for the title. PowerShell
+silently drops an empty argument to a program, so every later value slid one
+slot left and the status word landed in the title column.
+
+Two things now stop it. The script refuses any status it does not recognise
+rather than writing a row it cannot vouch for, and closing a row uses named
+flags — `--status`, `--detail`, `--id` — so nothing has to survive being empty.
+
+**So if a card says failed, read its detail before believing it.** A real
+failure explains what went wrong. An artefact usually has a status word sitting
+where the task title belongs, or says outright that it was a duplicate. Four
+such rows existed and were repaired on 16 September 2026; one of them had also
+had a genuine accounts-payable report overwritten on top of it, which was
+recovered from the duplicate before that duplicate was deleted.
+
 ## The eight voices, and how each one writes
 
 Every agent has her own voice and her own register, so you can tell who is
