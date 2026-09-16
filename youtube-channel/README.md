@@ -1,5 +1,9 @@
 # The channel kit
 
+> **Picking this up cold, or on another machine? Read
+> [HANDOFF.md](HANDOFF.md) first** — current state, the one open item, and the
+> things not to rediscover.
+
 Three things, none of which touch the charter site:
 
 | | what it is |
