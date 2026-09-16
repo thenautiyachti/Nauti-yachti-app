@@ -642,6 +642,53 @@ try {
   }
 } catch { /* stamp unreadable; not worth failing the whole run over */ }
 
+// --- 15. nothing Google Drive cannot sync may live in the business folder ---
+//
+// THE RULE, set by the owner on 15 Sep 2026: business files live in
+// Documents/_MyFiles/_The Nauti Yachti LLC, which Drive mirrors and therefore
+// backs up. Anything git-backed or dependency-laden lives on the local disk at
+// Documents/Nauti-yachti-app, which Drive never sees.
+//
+// It exists because Drive had quietly stopped syncing the business folder and
+// marked it with a red X. The cause was 1.5GB of .next build output and 755MB
+// of node_modules sitting inside the mirror, belonging to an app that used to
+// live there. Nothing reported it. The folder simply stopped being backed up,
+// which is the worst way for a backup to fail: silently, while looking fine.
+//
+// It is deliberately about BACKUP COVERAGE rather than correctness. A stale
+// .git pointer in an old test build breaks nothing today, but it is the same
+// class of thing, and the folder holds 53GB of irreplaceable charter footage.
+try {
+  const BUSINESS = process.env.NAUTI_BUSINESS_ROOT ||
+    "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC";
+  const UNSYNCABLE = new Set([".git", "node_modules", ".next", ".turbo"]);
+  const found = [];
+  const walk = (dir, depth) => {
+    if (depth > 6 || found.length > 12) return;
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (UNSYNCABLE.has(e.name)) { found.push(full); continue; }
+      // Photos is 53GB of charter footage and holds none of these by nature.
+      // Skipping it keeps this check to about a second.
+      if (e.isDirectory() && e.name !== "Photos" && !e.name.startsWith(".tmp")) walk(full, depth + 1);
+    }
+  };
+  if (fs.existsSync(BUSINESS)) {
+    walk(BUSINESS, 0);
+    if (found.length) {
+      const list = found.slice(0, 8).map((f) => "          " + f.replace(BUSINESS, "...")).join("\n");
+      const more = found.length > 8 ? "\n          ... and " + (found.length - 8) + " more" : "";
+      fail("drive backup",
+        found.length + " item(s) Google Drive cannot sync are inside the business folder.\n" +
+        "        Drive gives up on a folder when it meets these, and stops backing it up.\n" +
+        list + more +
+        "\n        Move them to Documents/Nauti-yachti-app, or delete them if they are build output.");
+    }
+  }
+} catch { /* a check about backups must never be the thing that breaks a release */ }
+
 // --- report -----------------------------------------------------------------
 if (!problems.length) {
   console.log(`  consistent — ${liveTasks.length} tasks, manual, protocol and roster all agree.`);

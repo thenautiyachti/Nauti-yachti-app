@@ -1045,6 +1045,35 @@ transcript, would simply not have existed after a restore, despite the whole
 media pipeline being built on it. Skills synced down from claude.ai are skipped:
 those are somebody else's copy and come back on their own.
 
+## Where the files live, and why it is split
+
+Two places, and the split is about what Google Drive can back up.
+
+| | Where | Backed up by |
+|---|---|---|
+| **Business files** — Photos, Finance, Legal, releases, this manual | `Documents\_MyFiles\_The Nauti Yachti LLC` | **Google Drive**, which mirrors that folder |
+| **The app** — code, dependencies, build output | `Documents\Nauti-yachti-app` | **GitHub**, off-machine and stronger for code |
+
+**Drive cannot sync a working tree.** Until 15 September 2026 the app lived
+inside the mirrored folder, and Drive had quietly given up on the whole thing
+and marked it with a red X — 1.5 GB of build output and 755 MB of dependencies
+were more than it would take. Nothing announced it. The folder looked normal
+while nothing in it was being backed up, and it holds 53 GB of charter footage.
+
+So the app moved to the local disk. **This is not a gap in your backups.** The
+code is on GitHub, tagged at every version, which is better protection than
+Drive gives it. Drive still holds everything git does not version — the photo
+library, the finance records, the release zips, this manual.
+
+**A checker enforces it now.** `check-consistency.js` walks the business folder
+for `.git`, `node_modules`, `.next` and `.turbo`, and refuses to let a release
+through if it finds any. It is deliberately about backup coverage rather than
+correctness: the point is that nothing can drift back in unnoticed. It found
+three stale pointers in old distributable test builds the day it was written.
+
+One consequence worth knowing: a file that git ignores AND that lives on the
+local disk is in no backup at all. There is one — `conf\token.txt`, 57 bytes.
+
 `CHANGELOG.md` carries one entry per version, written to be read on a bad day.
 If an entry cannot tell you whether to restore that version, it was not written
 properly.
