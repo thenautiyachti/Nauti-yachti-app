@@ -133,7 +133,7 @@ const PACKAGES = [
     hourlyJson: JSON.stringify(TUBING_HOURLY_BY_VESSEL),
     unit: "Includes fuel, tube, wakeboards, ice chest with water & ice.",
     blurb:
-      "If you're just wanting to just cruise on the open water, seeking the thrill of tubing/wakeboarding, or having lunch on the lake with family or friends, this is your package! We will take you to some of the known hotspots on Lake Conroe such as: The Dam, The Island, Margaritaville, or even just tearing up the water and making some waves. The Nauti Yachti is available to lead Lake Conroe excursions for any type of fun planned on the water.",
+      "If you're just wanting to cruise on the open water, seeking the thrill of tubing/wakeboarding, or having lunch on the lake with family or friends, this is your package! We will take you to some of the known hotspots on Lake Conroe such as: The Dam, The Island, Margaritaville, or even just tearing up the water and making some waves. The Nauti Yachti is available to lead Lake Conroe excursions for any type of fun planned on the water.",
     vesselsJson: ALL_VESSEL_IDS,
     sortOrder: 1,
   },
@@ -145,7 +145,7 @@ const PACKAGES = [
     hourlyJson: JSON.stringify(TUBING_HOURLY_BY_VESSEL),
     unit: "Includes decorations, fuel, tube, wakeboards, ice chest with water & ice.",
     blurb:
-      "Celebrating a memorable moment for a birthday on the water? We have you setup with complementary party supplies & an amazing atmosphere that will have you wanting to turn up, no matter the age group! We will be happy to assist with any party setup /surprises necessary to make experience tailored to exactly what is needed. Let us go above and beyond for your birthday needs!",
+      "Celebrating a memorable moment for a birthday on the water? We have you setup with complimentary party supplies & an amazing atmosphere that will have you wanting to turn up, no matter the age group! We will be happy to assist with any party setup /surprises necessary to make the experience tailored to exactly what is needed. Let us go above and beyond for your birthday needs!",
     vesselsJson: ALL_VESSEL_IDS,
     sortOrder: 2,
   },
