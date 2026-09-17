@@ -40,8 +40,21 @@ export default function SocialMessagesTab() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  // What is actually in the box. `drafts` holds only what the owner has TYPED,
+  // so an untouched box falls back to the suggestion — while a box he has
+  // deliberately emptied stays empty instead of refilling itself. Same rule the
+  // comments tab follows, for the same reason.
+  function draftOf(thread) {
+    const typed = drafts[thread.id];
+    if (typed !== undefined) return typed;
+    // A suggestion written before they wrote again does not pre-fill. He can
+    // still put it in the box with "restore suggestion", having been told.
+    if (thread.suggestion && !thread.suggestionStale) return thread.suggestion;
+    return "";
+  }
+
   async function send(thread) {
-    const text = String(drafts[thread.id] || "").trim();
+    const text = String(draftOf(thread) || "").trim();
     if (!text) return;
     if (!window.confirm(
       "Send this as The Nauti Yachti?\n\n" + text +
@@ -62,6 +75,15 @@ export default function SocialMessagesTab() {
       const body = await res.json();
       if (!res.ok || body.error) throw new Error(body.error || "failed");
       setDrafts((d) => ({ ...d, [thread.id]: "" }));
+      // Retire the suggestion so it does not reappear in the box under the
+      // reply he just sent.
+      if (thread.suggestion) {
+        fetch("/api/message-suggestions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversationId: thread.id }),
+        }).catch(() => {});
+      }
       // It comes back queued and becomes delivered a moment later, so re-read
       // rather than claiming success from the response.
       setTimeout(load, 2500);
@@ -142,8 +164,52 @@ export default function SocialMessagesTab() {
                 ))}
               </div>
 
+              {/* A MACHINE ANSWERED SOMETHING IT SHOULD NOT HAVE.
+                  The Blotato automation matches keywords and knows nothing
+                  else, so "your prices are a scam, I want a refund" hits
+                  `price` and gets the packages link. This is the one real
+                  exposure in the whole arrangement, so it is the loudest thing
+                  on the card. */}
+              {t.autoAnsweredButShouldNotHaveBeen && (
+                <div style={{
+                  marginBottom: 8, padding: "7px 9px", borderRadius: 5, fontSize: 11.5, lineHeight: 1.45,
+                  background: "rgba(226,104,95,0.12)", border: "1px solid rgba(226,104,95,0.45)", color: "#E2685F",
+                }}>
+                  <strong>Answered automatically, and should not have been</strong> — {t.triageReason}. Read what
+                  went out above before you reply.
+                </div>
+              )}
+
+              {/* Why this one is his to answer. Not a warning — most threads
+                  are held, and the reason is the useful part. */}
+              {t.triage === "hold" && !t.autoAnsweredButShouldNotHaveBeen && (
+                <div style={{ marginBottom: 7, fontSize: 11, color: "var(--muted)" }}>
+                  Yours to answer — {t.triageReason}.
+                </div>
+              )}
+
+              {t.suggestion && (
+                <div style={{ marginBottom: 6, fontSize: 11, color: t.suggestionStale ? "#E8934A" : "var(--muted)" }}>
+                  {t.suggestionStale
+                    ? "⚠ " + (t.suggestionAuthor || "Siren") + " drafted this before they wrote again — read it before you send it"
+                    : (t.suggestionAuthor || "Siren") + " suggested this. Type over it if you'd rather."}
+                  {draftOf(t) !== t.suggestion && (
+                    <button
+                      type="button"
+                      onClick={() => setDrafts((d) => ({ ...d, [t.id]: t.suggestion }))}
+                      style={{
+                        marginLeft: 7, background: "none", border: "none", padding: 0,
+                        color: "var(--purple)", fontSize: 11, textDecoration: "underline", cursor: "pointer",
+                      }}
+                    >
+                      restore suggestion
+                    </button>
+                  )}
+                </div>
+              )}
+
               <textarea
-                value={drafts[t.id] || ""}
+                value={draftOf(t)}
                 onChange={(e) => setDrafts((d) => ({ ...d, [t.id]: e.target.value }))}
                 placeholder="Write a reply…"
                 rows={2}
@@ -155,17 +221,17 @@ export default function SocialMessagesTab() {
                 }}
               />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 7 }}>
-                <span style={{ fontSize: 11, color: (drafts[t.id] || "").length > 1000 ? "#ff4d5e" : "var(--muted)" }}>
-                  {(drafts[t.id] || "").length}/1000
+                <span style={{ fontSize: 11, color: (draftOf(t) || "").length > 1000 ? "#ff4d5e" : "var(--muted)" }}>
+                  {(draftOf(t) || "").length}/1000
                 </span>
                 <button
                   type="button"
-                  disabled={sending === t.id || !(drafts[t.id] || "").trim() || (drafts[t.id] || "").length > 1000}
+                  disabled={sending === t.id || !(draftOf(t) || "").trim() || (draftOf(t) || "").length > 1000}
                   onClick={() => send(t)}
                   style={{
                     padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700,
                     border: "none", background: "var(--purple)", color: "#0A0612",
-                    opacity: sending === t.id || !(drafts[t.id] || "").trim() ? 0.45 : 1,
+                    opacity: sending === t.id || !(draftOf(t) || "").trim() ? 0.45 : 1,
                   }}
                 >
                   {sending === t.id ? "Sending…" : "Send reply"}

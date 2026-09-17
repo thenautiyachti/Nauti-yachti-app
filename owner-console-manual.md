@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 16 September 2026.
+Last updated 17 September 2026.
 
 ---
 
@@ -854,10 +854,88 @@ party.
 
 It is built to the same shape as Comments on purpose. They answer the same
 question on different channels, and two panels that disagreed about what
-"waiting" means would be worse than one. As with Comments, nothing sends until
-you send it.
+"waiting" means would be worse than one.
+
+**This is no longer true of sending, and that changed on 17 September 2026.**
+Nothing YOU see here sends on its own — but most DMs are answered by an
+automatic reply seconds after they arrive, before this tab is ever opened. See
+*Messages answer themselves* below.
 
 ---
+
+### Messages answer themselves. Comments do not.
+
+Your decision, 17 September 2026, and it is the one place in this system where
+something goes out without you reading it first — so it is worth knowing exactly
+how far that goes.
+
+**The difference is the size of the audience.** A comment is published under the
+business's name to everyone reading the thread. A DM goes to one person and can
+be corrected in the next sentence. Speed is worth more in an inbox; caution is
+worth more in a thread.
+
+**No agent sends any of it.** The automatic reply is a Blotato automation, which
+is a platform feature rather than a crew member. Nothing Siren or anyone else
+runs sends a message to a person — that rule is intact.
+
+**What actually goes out.** Within seconds of a DM arriving, on any platform, at
+any hour:
+
+> Thanks for the message 🤙
+>
+> Easiest way to get you sorted is a text — drop your number here and we'll send
+> you dates, prices and a link to lock it in.
+>
+> Or have a look at the site below. A real person reads these, so ask away.
+>
+> — The Nauti Yachti
+
+It asks for the number because a number turns a DM into a text thread, and the
+pay link goes by text. It is a fixed string: **it never quotes a price, a date
+or a seat count**, because it cannot know any of them.
+
+**It fires on keywords, and the list was nearly useless.** It held thirteen
+words — book, booking, price, prices, pricing, cost, available, availability,
+rent, rental, glow, tube, tubing. On 17 September a guest wrote *"Hey bub, you
+got any seats open for Saturday?"* and matched **none of them**: the single most
+common question this business gets, missed by one word. He sat for two hours and
+was found by eye, not by the system. It now holds forty, including seat, spot,
+room, space, open, the days of the week, "how much" and "what time".
+
+**The hazard, and what watches it.** A keyword match is blind. *"Your prices are
+a scam and I want a refund"* contains `price`, so the machine sends that person
+the packages link. Nothing stops it — the automation cannot read.
+
+So every waiting thread is now checked against a set of rules after the fact,
+and the Messages tab flags any the machine answered that it should not have, in
+red: **"Answered automatically, and should not have been"**, with the reason.
+Read what went out before you reply to one of those.
+
+**What is never the machine's to answer** — these always come to you, and they
+are the reasons you will see on a card:
+
+| Held because | Meaning |
+|---|---|
+| **safety** | someone may have been hurt, or something was damaged |
+| **legal** | lawyers, insurance, liability, a refund or a chargeback |
+| **complaint** | it reads as a grievance |
+| **money already moved** | it asks to change, refund or reschedule something paid for |
+| **solicitation** | a pitch, not a guest |
+| **NDA** | it touches the Lake Bryan charters |
+| **photographs** | somebody's picture, or a request to take one down |
+
+Plus three structural ones: anything over 320 characters, anything asking more
+than two questions, and anything matching nothing the system can answer from its
+own data. That last is the important default — **an unrecognised message is not
+a safe message, it is a message nobody has understood.**
+
+A price question wrapped in a complaint is treated as a complaint.
+
+**Siren drafts the held ones.** Her reply appears in the box the same way it
+does on Comments, with her name on it, and you send it or type over it. If they
+write again before you get to it, the draft is marked stale and will not
+pre-fill — an answer to a question that has been overtaken is worse than an
+empty box.
 
 ## Asking for Google reviews
 
@@ -1169,7 +1247,7 @@ summarises:
 |---|---|---|
 | Daily 8:19 | **Nauti Penny** · Accounts Receivable | Money in. Payouts against the ledger, and anything paid for that never ran. |
 | Daily 8:38 | **Nauti Coral** · Content Producer | Drafts a post from real fleet photos, audits the queue, and checks what Siren actually published. |
-| Daily 9:04 | **Nauti Siren** · Publishing & Brand Safety | The last gate before anything is public, then publishes what passes. |
+| Daily 9:04 | **Nauti Siren** · Publishing & Brand Safety | The last gate before anything is public, then publishes what passes. Drafts replies for unanswered comments and for the DMs the auto-reply held back. |
 | Mon 9:26 | **Nauti Joy** · Guest Relations | Who to ask for a review, and who was left hanging without one. |
 | Mon 9:41 | **Nauti Reef** · Revenue Growth | Money the business is not collecting. |
 | Mon 10:04 | **Nauti Shelly** · Accounts Payable | What is being paid for against what is actually used. |
@@ -1392,7 +1470,8 @@ Every brief forbids the same things, and the shared protocol overrides any
 brief that disagrees:
 
 - No agent writes to any table except the todo board and its own activity log.
-- No agent contacts a guest.
+- No agent contacts a guest. (The automatic DM reply is a Blotato platform
+  feature, not a crew member — see *Messages answer themselves*.)
 - No agent spends, refunds or changes a price.
 - No agent publishes except Siren, and only drafts you have already scheduled.
 
@@ -1455,6 +1534,10 @@ there, it is not a rule.
   her own and records the link.
 - **`bookings@thenautiyachti.com` cannot receive mail.** Fine to send *from*,
   never somewhere to expect a reply.
+- **A reply under a DM may not be yours.** Most are answered automatically
+  within seconds. Do not read one as a conversation you have had.
+- **A red flag on a message thread means a machine answered something it
+  should not have.** Read what went out before you reply.
 - **The bank balance is typed in, not fetched.** If it says `9d ago` in amber,
   nobody has looked in nine days and the figure is a guess with a date on it.
 - **A Wells Fargo warning does not stop you filing the row.** File it if it is

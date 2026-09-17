@@ -1,6 +1,8 @@
 const { NextResponse } = require("next/server");
+const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 const { threadsFrom, summarise } = require("../../../../lib/socialMessages");
+const { triage } = require("../../../../lib/messageTriage");
 
 // Direct messages on Facebook and Instagram, and replying to them.
 //
@@ -85,8 +87,64 @@ async function GET() {
       withMessages.push({ conversation: c, messages });
     }
 
+    const threads = threadsFrom(withMessages);
+
+    // SUGGESTED REPLIES, and WHY A THREAD IS THE OWNER'S TO ANSWER.
+    //
+    // Two different things, both attached here so the console never has to work
+    // either out for itself.
+    //
+    // Since 17 Sep 2026 most DMs are answered within seconds by a Blotato
+    // automation firing on message-received (protocol 3d-ii). That automation
+    // matches keywords and nothing else — it has no idea whether the message it
+    // just replied to was a complaint, a refund demand, or somebody telling us
+    // their child was hurt. So every waiting thread is run through the triage
+    // rules here, and a thread the rules would have HELD is marked, with the
+    // reason in the owner's own words.
+    //
+    // That is the one real exposure in the whole arrangement: a keyword match on
+    // a message that should never have been answered by a machine. This is what
+    // surfaces it.
+    let suggestions = [];
+    try {
+      suggestions = await prisma.messageReplyDraft.findMany({ where: { usedAt: null } });
+    } catch {
+      // A missing suggestion table must not take the inbox down with it. The
+      // messages are the point; the pre-fill is a convenience.
+    }
+    const byThread = new Map(suggestions.map((s) => [s.conversationId, s]));
+
+    for (const t of threads) {
+      const s = byThread.get(t.id);
+      if (s) {
+        t.suggestion = s.suggestion;
+        t.suggestionAuthor = s.author;
+        t.suggestionAt = s.createdAt;
+        // Stale when they have written again since it was drafted: the answer
+        // may be to a question that has been overtaken.
+        const lastIn = [...(t.messages || [])].reverse().find((m) => m.direction !== "outgoing");
+        t.suggestionStale = !!(s.messageId && lastIn && s.messageId !== lastIn.id);
+      }
+
+      // Only the last thing THEY said is worth triaging. Our own replies are
+      // not messages anybody has to decide about.
+      const lastIn = [...(t.messages || [])].reverse().find((m) => m.direction !== "outgoing");
+      if (!lastIn) continue;
+      const verdict = triage(lastIn.text, { dateResolved: true });
+      t.triage = verdict.action;
+      t.triageRule = verdict.rule;
+      t.triageReason = verdict.reason;
+      // Did a machine already answer this one? Anything outgoing after their
+      // last message, on a thread the rules say should have been held, is the
+      // case worth shouting about.
+      const answeredAfter = (t.messages || []).some(
+        (m) => m.direction === "outgoing" && new Date(m.createdAt) > new Date(lastIn.createdAt)
+      );
+      t.autoAnsweredButShouldNotHaveBeen = verdict.action === "hold" && answeredAfter;
+    }
+
     return NextResponse.json({
-      threads: threadsFrom(withMessages),
+      threads,
       summary: summarise(withMessages),
       platforms: PLATFORMS,
       fetchedAt: Date.now(),

@@ -748,3 +748,44 @@ model BankBalanceReading {
 
   @@index([account, asOf])
 }
+
+// A SUGGESTED REPLY WAITING IN A DM BOX.
+//
+// The sibling of CommentReplyDraft, and it exists because the Messages tab was
+// built to the same SHAPE as Comments but never got the same plumbing. Same
+// card, same textarea, same Send — and nothing that ever filled the box. On
+// 17 Sep 2026 a guest asked "Hey bub, you got any seats open for Saturday?"
+// two hours before the owner looked, and the box under it was empty, because no
+// crew brief had ever mentioned a DM.
+//
+// KEYED ON THE CONVERSATION, not on a message. The console's box is per thread
+// — SocialMessagesTab keys its drafts on thread.id — so one live suggestion per
+// thread is the shape that matches what a person sees. This is deliberately
+// simpler than the comment path, which keys on a comment id and has to walk the
+// reply chain to find the one being answered: a DM thread has exactly one place
+// to type.
+//
+// Upsert on conversationId, for the same reason Siren upserts a comment
+// suggestion: she runs every morning, and a thread she has read twice should
+// end with ONE suggestion reflecting her latest read rather than a pile the
+// console has to choose between.
+model MessageReplyDraft {
+  id             String @id @default(cuid())
+  conversationId String @unique
+  platform       String // "facebook" | "instagram"
+
+  // The incoming message this answers. Not decoration: if they write again
+  // after the draft was written, the suggestion may be answering a question
+  // that has been overtaken, and the console says so instead of pre-filling it
+  // silently. Same hazard the comment path hit when a comment was edited.
+  messageId   String?
+  messageText String?
+
+  suggestion String
+  author     String   @default("Nauti Siren")
+  createdAt  DateTime @default(now())
+
+  // Set when the owner sends, so a suggestion he has already acted on stops
+  // coming back into the box.
+  usedAt DateTime?
+}
