@@ -7,6 +7,8 @@ import {
   GLOW_EVENT_DATE,
   GLOW_START_TIME,
   GLOW_CHECK_IN_TIME,
+  GLOW_RETURN_TIME,
+  GLOW_END_NOTE,
   GLOW_MEETING_POINT,
   GLOW_INCLUDED,
   GLOW_BRING,
@@ -97,7 +99,9 @@ export default async function GlowPage() {
   const perGuest = pkg?.pricePerGuest ?? null;
   // The label when there is one, the number when there is not — a package
   // whose length varies cannot be an integer. See durationText.
-  const hours = durationText(pkg) || "4 hours";
+  // "5 hours" is 7pm to midnight. The old fallback said four, which is where
+  // "7-11pm" came from on every page that rendered before the package loaded.
+  const hours = durationText(pkg) || "5 hours";
 
   return (
     <div>
@@ -157,7 +161,7 @@ export default async function GlowPage() {
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px,1fr))", gap: 14 }}>
             <Stat label="When" value={formatGlowDate(eventDate)} sub={`Board at ${GLOW_CHECK_IN_TIME}, lines off at ${GLOW_START_TIME}`} />
-            <Stat label="How long" value={hours} sub="Out and back, all in" />
+            <Stat label="How long" value={hours} sub={`Back ${GLOW_RETURN_TIME}, ${GLOW_END_NOTE}`} />
             <Stat
               label="Price"
               value={perGuest != null ? `${currency(perGuest)} / guest` : "Ask us"}

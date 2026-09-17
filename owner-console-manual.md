@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 17 September 2026 (second revision).
+Last updated 17 September 2026 (third revision).
 
 ---
 
@@ -1567,6 +1567,10 @@ there, it is not a rule.
   never somewhere to expect a reply.
 - **A reply under a DM may not be yours.** Most are answered automatically
   within seconds. Do not read one as a conversation you have had.
+- **Boatz & Glowz runs to around midnight, not to eleven.** Five hours from
+  a 7pm departure. The wording everywhere is "back around midnight — or
+  whenever the boat decides it's had enough", and it comes from
+  `GLOW_RETURN_TIME` in `lib/glowEvent.js`. Change it there, not in the copy.
 - **The console cannot see a reply you sent from the Facebook app.** Press
   *I answered this elsewhere* or the thread keeps its red flag forever.
 - **A red flag on a message thread means a machine answered something it

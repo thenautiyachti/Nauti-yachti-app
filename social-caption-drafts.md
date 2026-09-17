@@ -384,7 +384,7 @@ Twelve touchpoints across 18 days — roughly one every other day, which is what
 > Twice a year we take the entire fleet out together, lit up, and park it in the middle of Party Cove after dark. This is the second and last one of 2026.
 >
 > Here's the whole thing:
-> 🌟 Board 6:30 PM, lines off at 7 — four hours on the water
+> 🌟 Board 6:30 PM, lines off at 7 — out until around midnight
 > 🌟 $50 per guest
 > 🌟 20 seats left, on the Nauti Yachti and the Islander
 > 🌟 Glow gear, sober captains, ice chest and a round-trip ride from Scott's Ridge — all included
@@ -546,7 +546,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > Next Saturday night the whole fleet goes out lit up, and Party Cove turns into something you have to see in person.
 >
-> September 19 · board 6:30, lines off at 7 · four hours · $50 a seat · 20 seats left
+> September 19 · board 6:30, lines off at 7 · back around midnight · $50 a seat · 20 seats left
 >
 > Glow gear, sober captains, ice chest, and a ride from Scott's Ridge and back — all included.
 >
@@ -557,7 +557,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 **Instagram** *(post natively)*
 > One week out. 🌟🛥️
 >
-> Boatz & Glowz — next Saturday, Sept 19. Board 6:30, lines off at 7. Four hours in Party Cove with the whole fleet lit up.
+> Boatz & Glowz — next Saturday, Sept 19. Board 6:30, lines off at 7. Party Cove until around midnight with the whole fleet lit up — or whenever the boat decides it's had enough.
 >
 > 20 seats left, and that's the whole night. Link in bio.
 >
@@ -622,7 +622,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > **6:30 PM** — meet us at Scott's Ridge. Park, walk down, and that's your last responsibility of the evening.
 > **7:00 PM** — lines off. We run you out to Party Cove.
-> **7:00–11:00 PM** — four hours anchored up in the middle of it. Glow gear comes out, music goes on, the whole fleet is lit up together.
+> **7:00 PM till around midnight** — anchored up in the middle of it. Glow gear comes out, music goes on, the whole fleet is lit up together.
 > **Then** — we bring you straight back to Scott's Ridge. Nobody drives who shouldn't.
 >
 > Bring: whatever you want to drink, a towel, a change of clothes (there's foam), and something white or neon.
@@ -639,7 +639,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 >
 > 6:30 — meet at Scott's Ridge
 > 7:00 — lines off
-> 7–11 — Party Cove, whole fleet lit up
+> 7 till around midnight — Party Cove, whole fleet lit up
 > After — we bring you back. Nobody drives.
 >
 > Bring a towel, something neon, and whatever you're drinking. We've got the rest.
@@ -696,7 +696,7 @@ The play: shoot what is happening, post it the same day exactly like the 1 Sep t
 **Facebook**
 > Tomorrow night. 🌟
 >
-> Last chance to get on a boat for Boatz & Glowz. Scott's Ridge, 6:30 PM, back before midnight.
+> Last chance to get on a boat for Boatz & Glowz. Scott's Ridge, 6:30 PM, back around midnight.
 >
 > [X seats left / Down to the last few seats]. Book at thenautiyachti.com/glow, or call or text 832-948-2912 — we'll answer tonight.
 >

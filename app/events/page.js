@@ -10,6 +10,7 @@ import {
   GLOW_EVENT_DATE,
   GLOW_START_TIME,
   GLOW_MEETING_POINT,
+  GLOW_RETURN_TIME,
   formatGlowDate,
 } from "../../lib/glowEvent";
 
@@ -108,11 +109,11 @@ async function FeaturedGlowEvent() {
   if (eventDate < todayKey) return null;
 
   const perGuest = pkgRow?.pricePerGuest ?? null;
-  const hours = durationText(pkgRow) || "4 hours";
+  const hours = durationText(pkgRow) || "5 hours";
 
   const facts = [
     ["When", `${formatGlowDate(eventDate)} · ${GLOW_START_TIME}`],
-    ["How long", hours],
+    ["How long", `${hours} — back ${GLOW_RETURN_TIME}`],
     ["Price", perGuest != null ? `${currency(perGuest)} per guest` : "Ask us"],
     ["Seats", "30 across all 3 boats"],
     ["Departs", GLOW_MEETING_POINT],
