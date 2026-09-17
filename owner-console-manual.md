@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 14 September 2026.
+Last updated 16 September 2026.
 
 ---
 
@@ -13,7 +13,7 @@ Six groups run along the top. Clicking a group reveals its tabs underneath.
 
 | Group | Tabs |
 |---|---|
-| **Overview** | The day at a glance, the board, and the crew |
+| **Overview** | The day at a glance, the bank balance, the board, and the crew |
 | **Bookings** | Contacts · Bookings · Availability |
 | **Money** | Income & expenses · Reconciliation · Tax Report · Gift certificates · Subscriptions & bills |
 | **Marketing** | Media · Media Drafts · Comments · Messages · Testimonials · Photo Requests |
@@ -407,6 +407,57 @@ entry to a booking makes it appear in that booking's profit.
 
 Below the list: breakdowns by category, profit per booking, and commission lost to
 the platforms.
+
+## What is actually in the bank
+
+The ledger answers *did we make money*. It does not answer *will Thursday's bill
+clear*, and those are genuinely different questions — on 31 August 2026 the
+season was in profit while the business account sat at **minus $11.36** with two
+rejected Optimum payments against it.
+
+So the Money card on the Overview now opens with the account balance.
+
+**It is a reading, not a live figure.** Nothing here is connected to Woodforest.
+Somebody reads the app and records what it said, with the date it said it. The
+age is shown beside the number for exactly that reason — `today`, `1d ago` — and
+past a week it turns amber, because a stale balance read as current is worse
+than no balance at all. The colour of the figure itself is the money: green,
+amber below $250, red if it is negative.
+
+**Readings are never edited.** A figure that was wrong is corrected by recording
+a newer one; the old reading stays. That is the whole reason for keeping
+readings rather than one number that gets overwritten — the 31 August overdraft
+is only visible because it was kept, and a balance history that begins at a
+healthy number hides the month that went wrong.
+
+Two are on file, both taken from the same screenshot on 16 September 2026:
+
+| As of | Balance | |
+|---|---|---|
+| 16 September 2026 | **$934.30** | after the $824.70 transfer in on the 14th, and the $45.32 Optimum payment out the same day |
+| 31 August 2026 | **−$11.36** | overdrawn. A $12.00 service charge took it under; the Optimum payment had been rejected twice, on 12 and 18 August, and did not clear until 14 September |
+
+### Wells Fargo is being retired
+
+Your decision, 16 September 2026: **the business pays from Woodforest now.**
+
+Filing an expense against *Wells Fargo Statement* dated on or after that day
+raises a warning under the origin dropdown. It does **not** stop you. If the
+money really did come out of Wells Fargo, file it truthfully — the warning's job
+is to remind you to go and move whatever is still charging that account.
+
+Rows dated before the cutover are ordinary history and say nothing. There are
+171 of them going back to June 2025 and every one is correct.
+
+**The morning check watches the same thing from the other side.** The warning
+only covers rows you file by hand. A statement import, an agent recording a
+cost, or an autopay you have forgotten is still pointed at the old account never
+touches that form — and those are the ones that matter, because nobody chose
+them. The check reports and does not block: moving direct debits takes weeks,
+and a checker that shouted about a cable bill would be turned off by Thursday.
+
+As of 16 September nothing has been paid from Wells Fargo since the decision.
+The newest row on it is 25 August.
 
 ## Reconciliation
 
@@ -1072,7 +1123,11 @@ correctness: the point is that nothing can drift back in unnoticed. It found
 three stale pointers in old distributable test builds the day it was written.
 
 One consequence worth knowing: a file that git ignores AND that lives on the
-local disk is in no backup at all. There is one — `conf\token.txt`, 57 bytes.
+local disk is in no backup at all. There is one — `conf\token.txt`. Its
+contents were exposed in a working session on 15 September 2026, and the file
+now holds a note saying so rather than a token. **That credential still needs
+rotating.** Nothing in the app or the crew scripts reads the file, so nothing
+is broken by it sitting there — which is exactly why it would be forgotten.
 
 `CHANGELOG.md` carries one entry per version, written to be read on a bad day.
 If an entry cannot tell you whether to restore that version, it was not written
@@ -1400,3 +1455,7 @@ there, it is not a rule.
   her own and records the link.
 - **`bookings@thenautiyachti.com` cannot receive mail.** Fine to send *from*,
   never somewhere to expect a reply.
+- **The bank balance is typed in, not fetched.** If it says `9d ago` in amber,
+  nobody has looked in nine days and the figure is a guess with a date on it.
+- **A Wells Fargo warning does not stop you filing the row.** File it if it is
+  true. The thing to act on is whatever is still charging that account.

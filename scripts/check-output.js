@@ -533,6 +533,52 @@ async function postedWithoutProof() {
   await originsAreSelectable();
   await deployedSchemaCanReadTheDatabase();
   await postedWithoutProof();
+
+// --- 10. nothing new should be paid from the account being retired ----------
+//
+// Owner's decision, 16 Sep 2026: "The only account paying stuff should be this
+// woodforest account no longer the Wells Fargo. I will try to keep that true."
+//
+// "I will try" is the whole reason this exists. The console form warns when he
+// files one by hand, and that covers the rows he chooses. It does not cover the
+// ones nobody chooses: a statement import, an agent filing a cost, or a direct
+// debit still pointed at the old account that will keep charging it every month
+// until somebody notices. Those arrive silently and look exactly like correct
+// rows, which is this file's signature — success that was not.
+//
+// TIER 2, never tier 1. Moving direct debits takes weeks, and nothing here is
+// wrong with a guest. A check that shouted about a cable bill would be ignored
+// by Thursday, and then it would not be there for something that mattered.
+//
+// Rows dated before the cutover are ordinary history. There are 171 Wells Fargo
+// rows going back to June 2025 and every one of them is correct.
+async function retiringAccount() {
+  const ch = require(path.join(APP, "lib", "channels.js"));
+  if (typeof ch.isRetiringOrigin !== "function") return;
+
+  const rows = await prisma.ledgerEntry.findMany({
+    where: { origin: { in: ch.RETIRING_ORIGINS } },
+    select: { id: true, date: true, amount: true, category: true, note: true, origin: true },
+    orderBy: { date: "desc" },
+  });
+
+  const since = rows.filter((r) => ch.isRetiringOrigin(r.origin, r.date));
+  if (!since.length) return;
+
+  const total = since.reduce((s, r) => s + (r.amount || 0), 0);
+  const oldest = since[since.length - 1];
+  const newest = since[0];
+
+  fail(2, "retiring account",
+    since.length + " row(s) paid from " + ch.RETIRING_ORIGINS.join(", ") + " since " + ch.RETIRING_FROM,
+    "$" + total.toFixed(2) + " across " + since.length + " row(s), " + oldest.date + " to " + newest.date +
+    ". The business is meant to pay from " + ch.PREFERRED_ORIGIN + " now. Each of these is either a " +
+    "mis-filed origin or something still charging the old account — a direct debit that has not been " +
+    "moved will keep appearing here every month. Newest: " +
+    (newest.category || "uncategorised") + " $" + Number(newest.amount || 0).toFixed(2) +
+    (newest.note ? " (" + String(newest.note).slice(0, 60) + ")" : ""));
+}
+
   await datesNotHeld();
   await fakeDates();
   await addOnPricing();
@@ -541,6 +587,7 @@ async function postedWithoutProof() {
   await chartersOwed();
   await moneyNotOnTheBooks();
   await silentVideos();
+  await retiringAccount();
 
   if (JSON_OUT) {
     console.log(JSON.stringify({ ok: findings.length === 0, findings }, null, 2));

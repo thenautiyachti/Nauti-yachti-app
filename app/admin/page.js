@@ -44,6 +44,10 @@ export default function AdminPage() {
   // look for the same information.
   const [todos, setTodos] = useState([]);
   const [agentActivity, setAgentActivity] = useState([]);
+  // What the bank actually said, as opposed to what the ledger adds up to. The
+  // two answer different questions: the ledger knows income and costs, and has
+  // never seen a transfer between accounts or a fee the bank took quietly.
+  const [bankBalances, setBankBalances] = useState([]);
   // Gift certificates: the model, purchase flow and validate endpoint have all
   // existed for a while, but nothing in the console ever showed them.
   const [giftCertificates, setGiftCertificates] = useState([]);
@@ -58,7 +62,7 @@ export default function AdminPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph, td, aa, gc, pr] = await Promise.all([
+    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph, td, aa, gc, pr, bb] = await Promise.all([
       api("/api/packages"),
       api("/api/vessels"),
       api("/api/gallery"),
@@ -80,11 +84,13 @@ export default function AdminPage() {
       api("/api/admin/agent-activity"),
       api("/api/gift-certificates"),
       api("/api/photo-requests"),
+      api("/api/admin/bank-balance"),
     ]);
     setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
     setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts); setPriceHistory(ph); setTodos(td); setAgentActivity(aa);
     setGiftCertificates(gc.certificates || []); setGiftLiability(gc.liability || 0); setGiftsLoading(false);
     setPhotoRequests(Array.isArray(pr) ? pr : []);
+    setBankBalances(Array.isArray(bb) ? bb : []);
     setLoading(false);
   }, []);
 
@@ -416,6 +422,7 @@ export default function AdminPage() {
       onRedeemGiftCertificate={redeemGiftCertificate}
       todos={todos}
       agentActivity={agentActivity}
+      bankBalances={bankBalances}
       onAddTodo={addTodo}
       onToggleTodo={toggleTodo}
       onDeleteTodo={deleteTodo}

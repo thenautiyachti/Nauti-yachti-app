@@ -709,3 +709,42 @@ model PhotoRequest {
   sentAt   DateTime?
   sentNote String? // how, and what was sent
 }
+
+// What the bank actually said, on the day somebody looked.
+//
+// The ledger can tell you what was earned and spent. It cannot tell you what is
+// IN the account, because it has never known about transfers between accounts,
+// the owner's own deposits, or a fee the bank took without telling anyone. On
+// 31 Aug 2026 this account sat at MINUS $11.36 and two Optimum payments had
+// bounced, and nothing in this system could have said so.
+//
+// ONE ROW PER READING, not one row per account. A single mutable balance would
+// answer "what is it now" and lose "what was it in August", and the August
+// answer is the one that explains the twelve-dollar service charge. The current
+// balance is simply the newest reading for that account.
+//
+// IT IS A READING, NOT A DERIVED FIGURE. Nothing recalculates it, and it does
+// not reconcile against LedgerEntry. That is the honest shape for something
+// typed in off a screenshot: it is only ever as true as the day it was taken,
+// so `asOf` is required and the console shows its age rather than presenting a
+// stale number as current.
+model BankBalanceReading {
+  id      String @id @default(cuid())
+  // "Woodforest Business Checking". Written out, because this is read aloud in
+  // status briefs and an abbreviation is not.
+  account String
+  // Last four only. Never the full number: this database is backed up, exported
+  // to a bookkeeper, and read by eight agents.
+  last4   String?
+  balance Float
+  asOf    String // "YYYY-MM-DD" — the date the balance was true, not the date it was typed
+
+  // Where the figure came from, so a screenshot reading is never mistaken for a
+  // reconciled statement: "screenshot" | "statement" | "manual".
+  source String @default("manual")
+  note   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([account, asOf])
+}

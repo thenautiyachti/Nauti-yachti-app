@@ -28,7 +28,7 @@ import {
   isOwed,
 } from "../lib/bookingStatus";
 import { formatBody } from "../lib/boardText";
-import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS, LEDGER_ORIGIN } from "../lib/channels";
+import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS, LEDGER_ORIGIN, isRetiringOrigin, retiringOriginWarning } from "../lib/channels";
 import {
   PREMISES, SUBSCRIPTION_CATEGORIES, BILLING_CYCLES,
   monthlyAmount, needsAmount, isFree, isRunning, deductibleMonthly, summarise, overlappingDuplicates, isPersonal, money,
@@ -106,7 +106,7 @@ const STATEMENT_ORIGINS = [
 export default function AdminView({
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
   maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials, priceHistory,
-  todos = [], agentActivity = [], onAddTodo, onToggleTodo, onDeleteTodo, onAddGalleryItem, onUpdateGalleryItem, onDeleteGalleryItem,
+  todos = [], agentActivity = [], bankBalances = [], onAddTodo, onToggleTodo, onDeleteTodo, onAddGalleryItem, onUpdateGalleryItem, onDeleteGalleryItem,
   giftCertificates = [], giftLiability = 0, giftsLoading = false, onIssueGiftCertificate, onRedeemGiftCertificate,
   onUpdatePrice, onUpdatePricePerGuest, onUpdateHourlyByVesselPrice, onUpdateTierPrice,
   onAddLedgerEntry, onToggleBlocked, onUpdateCaption, onMarkInquiry, onUpdateInquiry, onLogout,
@@ -714,7 +714,7 @@ export default function AdminView({
           <OverviewTab
             externalBookings={externalBookings} inquiries={inquiries} ledger={ledger}
             maintenanceItems={maintenanceItems} engineHours={engineHours} mediaDrafts={mediaDrafts}
-            todos={todos} agentActivity={agentActivity}
+            todos={todos} agentActivity={agentActivity} bankBalances={bankBalances}
             testimonials={testimonials} giftCertificates={giftCertificates} vessels={vessels}
             subscriptions={subscriptions}
             onAddTodo={onAddTodo} onToggleTodo={onToggleTodo} onDeleteTodo={onDeleteTodo}
@@ -2319,6 +2319,16 @@ function LedgerTab({ ledger, totals, onAdd, externalBookings = [], vessels = [],
               style={{ width: "100%", padding: "9px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)" }}>
               {originOptions.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
+            {/* The account being retired. A warning, never a block: an autopay
+                he has not moved yet will keep charging Wells Fargo whatever he
+                intends, and a row he cannot file is a row that goes unrecorded.
+                Seeing it is the point. */}
+            {isRetiringOrigin(form.origin, form.date) && (
+              <div style={{ marginTop: 5, padding: "6px 8px", borderRadius: 5, fontSize: 11.5, lineHeight: 1.45,
+                            background: "rgba(232,147,74,0.10)", border: "1px solid rgba(232,147,74,0.35)", color: "#E8934A" }}>
+                {retiringOriginWarning(form.origin)}
+              </div>
+            )}
           </label>
           <label style={{ display: "block", marginBottom: 8 }}>
             <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 3 }}>Charter this belongs to (optional)</div>
@@ -5221,7 +5231,7 @@ function PanelHead({ owners, children }) {
   );
 }
 
-function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, testimonials = [], giftCertificates = [], vessels = [], subscriptions = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
+function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItems = [], engineHours = [], mediaDrafts, todos, agentActivity, bankBalances = [], testimonials = [], giftCertificates = [], vessels = [], subscriptions = [], onAddTodo, onToggleTodo, onDeleteTodo, onGo }) {
   const [text, setText] = useState("");
   const [showDone, setShowDone] = useState(false);
   // Which priority bands are expanded. High open, Medium and Low closed --
@@ -5661,6 +5671,48 @@ function OverviewTab({ externalBookings, inquiries, ledger = [], maintenanceItem
       <div className="orbit-group ob-money">
         <div style={CARD}>
           <PanelHead owners={["Nauti Penny", "Nauti Shelly"]}><Go to="ledger">Money</Go></PanelHead>
+
+          {/* WHAT IS ACTUALLY IN THE BANK, above what the season earned.
+              The ledger answers "did we make money". This answers "can that
+              bill clear on Thursday", and they are not the same question — on
+              31 Aug 2026 the season was in profit while this account sat at
+              minus $11.36 with two bounced Optimum payments against it. */}
+          {bankBalances.length > 0 && (
+            <div style={{ marginBottom: 10, paddingBottom: 9, borderBottom: "1px solid rgba(203,108,230,0.12)", display: "grid", gap: 6, fontSize: 13 }}>
+              {bankBalances.map((b) => {
+                // A reading is only true for the day it was taken. Anything
+                // past a week is shown as ageing rather than presented as the
+                // balance, because a stale figure read as current is worse
+                // than no figure at all.
+                const stale = b.ageDays > 7;
+                const low = b.balance < 250;
+                return (
+                  <div key={b.account} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                          title={`${b.account}${b.last4 ? " ..." + b.last4 : ""} — read ${b.asOf}${b.source === "screenshot" ? ", from a screenshot" : ""}${b.note ? ". " + b.note : ""}`}>
+                      In the bank{b.last4 ? <span className="mono" style={{ opacity: 0.6 }}> ···{b.last4}</span> : null}
+                    </span>
+                    <span style={{ display: "flex", alignItems: "baseline", gap: 6, flexShrink: 0 }}>
+                      {/* money(), not currency(). currency() drops a trailing
+                          zero — $934.3 — which on a charter price reads as a
+                          price and on a bank balance reads as a bug, and it
+                          writes an overdraft as "$-11.36" with the sign inside
+                          the figure. The ledger already spells a negative
+                          "−$11.36"; a balance is the one number that has to
+                          match a bank statement character for character. */}
+                      <span className="mono" style={{ fontWeight: 700, color: b.balance < 0 ? "#E2685F" : low ? "#E8934A" : "#7FE0B8" }}>
+                        {b.balance < 0 ? "−" + money(Math.abs(b.balance)) : money(b.balance)}
+                      </span>
+                      <span style={{ fontSize: 11, color: stale ? "#E8934A" : "var(--muted)" }}
+                            title={stale ? "Nobody has checked this in over a week. Treat it as out of date." : "How old this reading is."}>
+                        {b.ageDays === 0 ? "today" : b.ageDays === 1 ? "1d ago" : `${b.ageDays}d ago`}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* The season first. A seasonal business does not live in calendar
               months, and on the 3rd a month view shows a month of bills against
