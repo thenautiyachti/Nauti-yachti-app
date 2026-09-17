@@ -1,7 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
-const { threadsFrom, summarise } = require("../../../../lib/socialMessages");
+const { threadsFrom, summarise, summariseThreads, applyAnswers } = require("../../../../lib/socialMessages");
 const { triage } = require("../../../../lib/messageTriage");
 
 // Direct messages on Facebook and Instagram, and replying to them.
@@ -89,6 +89,18 @@ async function GET() {
 
     const threads = threadsFrom(withMessages);
 
+    // Fold in the threads he answered from his phone, before anything else
+    // reads `waiting`. Order matters: the triage pass below and the summary
+    // both depend on this having happened.
+    let answers = [];
+    try {
+      answers = await prisma.messageThreadAnswer.findMany();
+    } catch {
+      // Missing table must not take the inbox down. Worst case every thread
+      // reads as waiting, which is where this started and is survivable.
+    }
+    applyAnswers(threads, new Map(answers.map((a) => [a.conversationId, a])));
+
     // SUGGESTED REPLIES, and WHY A THREAD IS THE OWNER'S TO ANSWER.
     //
     // Two different things, both attached here so the console never has to work
@@ -145,7 +157,9 @@ async function GET() {
 
     return NextResponse.json({
       threads,
-      summary: summarise(withMessages),
+      // summariseThreads, not summarise: the latter recomputes from the raw
+      // entries and would go on counting a thread the card shows as answered.
+      summary: summariseThreads(threads),
       platforms: PLATFORMS,
       fetchedAt: Date.now(),
     });
@@ -198,4 +212,54 @@ async function POST(req) {
   }
 }
 
-module.exports = { GET, POST };
+// PATCH -> "I answered this one somewhere else."
+//
+// Body: { conversationId, answeredMessageId?, answeredWhere?, answered? }
+// Set answered:false to undo.
+//
+// This records a fact the console cannot observe: he replied from the Facebook
+// app and Blotato never saw it. It writes nothing to any platform and sends
+// nothing to anybody — it is a note against a thread in our own database.
+//
+// IT DOES NOT TOUCH THE AUTO-REPLY. The Blotato automation fires on
+// message-received at the platform and never reads this table, so their next
+// message still gets an automatic reply. Nothing here can switch that off, by
+// accident or otherwise.
+async function PATCH(req) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
+
+  const conversationId = String(body.conversationId || "").trim();
+  if (!conversationId) {
+    return NextResponse.json({ error: "Which conversation?" }, { status: 400 });
+  }
+
+  // Undo. He marked the wrong thread, or wants it back in the queue.
+  if (body.answered === false) {
+    const gone = await prisma.messageThreadAnswer.deleteMany({ where: { conversationId } });
+    return NextResponse.json({ answered: false, cleared: gone.count });
+  }
+
+  const data = {
+    conversationId,
+    platform: body.platform ? String(body.platform).slice(0, 40) : null,
+    answeredMessageId: body.answeredMessageId ? String(body.answeredMessageId).slice(0, 200) : null,
+    // Now, not the time of their message: what is being recorded is when HE
+    // dealt with it, and everything newer than this re-opens the thread.
+    answeredAt: new Date(),
+    answeredWhere: body.answeredWhere ? String(body.answeredWhere).slice(0, 120) : null,
+    note: body.note ? String(body.note).slice(0, 500) : null,
+  };
+
+  const row = await prisma.messageThreadAnswer.upsert({
+    where: { conversationId },
+    update: data,
+    create: data,
+  });
+  return NextResponse.json(row);
+}
+
+module.exports = { GET, POST, PATCH };

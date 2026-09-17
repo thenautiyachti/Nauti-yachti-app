@@ -31,6 +31,7 @@ export default function SocialMessagesTab() {
   const [data, setData] = useState(null);
   const [drafts, setDrafts] = useState({});
   const [sending, setSending] = useState("");
+  const [marking, setMarking] = useState("");
 
   const load = useCallback(() => {
     fetch("/api/admin/social-messages")
@@ -94,6 +95,35 @@ export default function SocialMessagesTab() {
     }
   }
 
+  // "I answered this one from my phone."
+  //
+  // Blotato only sees what Blotato sent, so a reply typed in the Facebook app
+  // never comes back and the thread keeps its red flag. This is how the missing
+  // half gets supplied. It sends nothing to anybody.
+  async function markAnswered(thread, answered) {
+    setMarking(thread.id);
+    try {
+      const lastIn = [...(thread.messages || [])].reverse().find((m) => m.direction !== "outgoing");
+      const res = await fetch("/api/admin/social-messages", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: thread.id,
+          platform: thread.platform,
+          answeredMessageId: lastIn ? lastIn.id : null,
+          answeredWhere: answered ? "outside the console" : null,
+          answered,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "failed");
+      load();
+    } catch (e) {
+      window.alert("Could not update that.\n\n" + (e.message || e));
+    } finally {
+      setMarking("");
+    }
+  }
+
   if (!data) return <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading messages…</div>;
 
   const threads = data.threads || [];
@@ -136,7 +166,7 @@ export default function SocialMessagesTab() {
                   color: PLATFORM_COLOUR[t.platform] || "var(--muted)",
                 }}>
                   {t.platform}
-                  {t.neverAnswered ? " · never answered" : t.waiting ? " · waiting" : ""}
+                  {t.answeredElsewhere ? " · answered by you" : t.neverAnswered ? " · never answered" : t.waiting ? " · waiting" : ""}
                 </span>
                 <span style={{ fontSize: 11.5, color: t.waiting ? colour : "var(--muted)" }}>
                   {shortAge(t.ageHours)}
@@ -220,9 +250,48 @@ export default function SocialMessagesTab() {
                   padding: "8px 10px", fontSize: 13, fontFamily: "inherit", lineHeight: 1.5,
                 }}
               />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 7 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 7, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 11, color: (draftOf(t) || "").length > 1000 ? "#ff4d5e" : "var(--muted)" }}>
                   {(draftOf(t) || "").length}/1000
+                  {/* Blotato cannot see a reply typed in the Facebook app, so
+                      this is the only way a thread he handled on his phone
+                      stops wearing a red flag. It sends nothing — and it does
+                      not touch the auto-reply, which fires at the platform and
+                      never reads our database. */}
+                  {t.answeredElsewhere ? (
+                    <>
+                      {" · "}
+                      <span style={{ color: "#7FE0B8" }}>you answered this elsewhere</span>
+                      {" · "}
+                      <button
+                        type="button"
+                        disabled={marking === t.id}
+                        onClick={() => markAnswered(t, false)}
+                        style={{
+                          background: "none", border: "none", padding: 0, color: "var(--purple)",
+                          fontSize: 11, textDecoration: "underline", cursor: "pointer",
+                        }}
+                      >
+                        {marking === t.id ? "…" : "put it back"}
+                      </button>
+                    </>
+                  ) : t.waiting ? (
+                    <>
+                      {" · "}
+                      <button
+                        type="button"
+                        disabled={marking === t.id}
+                        onClick={() => markAnswered(t, true)}
+                        title="You replied from your phone. Blotato cannot see those, so tell the console yourself. If they write again, this re-opens on its own."
+                        style={{
+                          background: "none", border: "none", padding: 0, color: "var(--muted)",
+                          fontSize: 11, textDecoration: "underline", cursor: "pointer",
+                        }}
+                      >
+                        {marking === t.id ? "…" : "I answered this elsewhere"}
+                      </button>
+                    </>
+                  ) : null}
                 </span>
                 <button
                   type="button"

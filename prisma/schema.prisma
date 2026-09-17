@@ -789,3 +789,36 @@ model MessageReplyDraft {
   // coming back into the box.
   usedAt DateTime?
 }
+
+// A THREAD THE OWNER ANSWERED SOMEWHERE ELSE.
+//
+// Blotato only sees messages sent through Blotato. He answers most DMs from the
+// Facebook app on his phone, and those replies never sync back — so on
+// 17 Sep 2026 two threads he had personally answered still showed the red
+// NEVER ANSWERED flag, one of them for ten days. The console was not wrong
+// about its data; its data was missing half the conversation.
+//
+// This is the half a person supplies. It is a note in our own console and has
+// NOTHING to do with the Blotato automation: marking a thread answered does not
+// stop their next message getting an automatic reply, because that fires on
+// message-received at the platform and never looks here.
+//
+// KEYED ON THE CONVERSATION, TIMED ON THE ANSWER. The thread counts as answered
+// only while `answeredAt` is newer than the last thing they said. Write again
+// and it re-opens on its own, which is the behaviour the owner asked for and
+// the reason this stores a time rather than a boolean.
+model MessageThreadAnswer {
+  id             String  @id @default(cuid())
+  conversationId String  @unique
+  platform       String?
+
+  // The incoming message that had been answered, recorded for the audit trail.
+  // The comparison itself is on answeredAt, which survives a message id
+  // changing under us the way Blotato's trigger ids do on a republish.
+  answeredMessageId String?
+  answeredAt        DateTime @default(now())
+
+  // Where he answered it, when he says. "the Facebook app" is the usual one.
+  answeredWhere String?
+  note          String?
+}

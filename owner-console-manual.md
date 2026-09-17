@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 17 September 2026.
+Last updated 17 September 2026 (second revision).
 
 ---
 
@@ -863,6 +863,37 @@ automatic reply seconds after they arrive, before this tab is ever opened. See
 
 ---
 
+### "I answered this elsewhere"
+
+**The console cannot see a reply you typed in the Facebook app.** Blotato only
+knows about messages Blotato sent, so when you answer a DM from your phone —
+which is most of them — that reply never comes back to us. The thread keeps
+sitting there in red saying **never answered**, and it is wrong.
+
+It was wrong about two threads on 17 September 2026, one of them for ten days:
+the man offering two of his own boats for the shoreline cleanup had been
+answered the same week, and the console had no way to know.
+
+So each waiting thread carries a small **I answered this elsewhere** link under
+the reply box. Press it and the thread goes quiet: the red flag clears, the
+colour drops, and it stops counting toward the number on the Messages tab. The
+card then reads *answered by you*, with **put it back** if you pressed it on the
+wrong one.
+
+**It sends nothing.** It writes a note against that thread in our own database
+and touches no platform.
+
+**If they write again, it re-opens on its own.** The mark records *when* you
+dealt with it, not a permanent "done" — so anything they say afterwards puts the
+thread straight back in the queue with its flag. You never have to remember to
+un-mark it.
+
+**And it has no effect whatsoever on the automatic reply.** That fires inside
+Blotato the moment a message arrives and never reads our database, so their next
+question gets an instant answer whether or not you marked the thread. Nothing on
+this screen can switch that off — that switch is in Blotato, on automations 5989
+and 5988.
+
 ### Messages answer themselves. Comments do not.
 
 Your decision, 17 September 2026, and it is the one place in this system where
@@ -1536,6 +1567,8 @@ there, it is not a rule.
   never somewhere to expect a reply.
 - **A reply under a DM may not be yours.** Most are answered automatically
   within seconds. Do not read one as a conversation you have had.
+- **The console cannot see a reply you sent from the Facebook app.** Press
+  *I answered this elsewhere* or the thread keeps its red flag forever.
 - **A red flag on a message thread means a machine answered something it
   should not have.** Read what went out before you reply.
 - **The bank balance is typed in, not fetched.** If it says `9d ago` in amber,
