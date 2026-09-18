@@ -48,6 +48,7 @@ const { HOLDS_THE_DAY, OWED } = require(path.join(APP, "lib", "bookingStatus"));
 const { isOwedCharter } = require(path.join(APP, "lib", "owedCharters"));
 const { chartersMissingTheirMoney, diagnose } = require(path.join(APP, "lib", "ledgerLinks"));
 const { addOnTotal } = require(path.join(APP, "lib", "addOns"));
+const { findDuplicatePairs } = require(path.join(APP, "lib", "duplicateBooking"));
 const prisma = new PrismaClient();
 
 const JSON_OUT = process.argv.includes("--json");
@@ -605,6 +606,54 @@ async function postedWithoutProof() {
 // A price of zero is not a claim about money and is never flagged — the crew
 // riding free on 19 September are recorded as a booking so the seat count is
 // honest, and they are correctly marked paid at nothing.
+// --- two rows that look like one person -------------------------------------
+//
+// Most bookings are typed in by hand from a text or a Facebook message, and the
+// guest is then sent a checkout link. Using THAT link carries the booking's own
+// id and needs no guessing. The gap is the guest who books on the website
+// instead: a second row appears, and the same seat is counted twice by the
+// manifest, by the seats-left figure on the glow page, and by the money.
+//
+// NOTHING IS MERGED HERE, deliberately. Two bookings sharing a phone number are
+// just as likely to be two friends who booked from one handset -- Oscar's
+// charter carried a party member's number, not his own -- so this reports the
+// pair with its reason and leaves the decision to a person. See
+// lib/duplicateBooking.js, and scripts/merge-bookings.js for acting on it.
+async function duplicatePeople() {
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+
+  const inquiries = await prisma.inquiry.findMany({
+    where: { date: { gte: today } },
+    select: { id: true, bookingId: true, name: true, email: true, phone: true,
+              date: true, packageId: true, status: true, partySize: true },
+  });
+  const bookings = await prisma.externalBooking.findMany({
+    where: { date: { gte: today } },
+    select: { id: true, bookingId: true, guestName: true, email: true, phone: true,
+              date: true, packageId: true, status: true, partySize: true },
+  });
+
+  // One list, tagged, so a pair can straddle the two tables -- which is the
+  // shape the real case takes: a hand-typed booking and a website inquiry.
+  const rows = [
+    ...inquiries.map((r) => ({ ...r, table: "inquiry" })),
+    ...bookings.map((r) => ({ ...r, table: "booking" })),
+  ];
+
+  // Only charters still to come. A pair that sailed last month is history, and
+  // history is not a to-do.
+  for (const pair of findDuplicatePairs(rows)) {
+    const nameOf = (r) => r.name || r.guestName || "(no name)";
+    const refOf = (r) => (r.bookingId || r.table + " " + r.id.slice(0, 6));
+    fail(pair.confidence === "certain" ? 1 : 2, "possible duplicate",
+      refOf(pair.a) + " and " + refOf(pair.b) + " look like the same person on " + pair.a.date,
+      nameOf(pair.a) + " / " + nameOf(pair.b) + " \u2014 " + pair.reasons.join("; ")
+        + ". Two rows means the seat is counted twice, on the manifest and on the site. "
+        + "Check before merging: one phone can belong to two friends who booked separately. "
+        + "node scripts/merge-bookings.js " + refOf(pair.a) + " " + refOf(pair.b));
+  }
+}
+
 async function paidWithNoMoney() {
   const rows = await prisma.externalBooking.findMany({
     where: { paymentStatus: "paid" },
@@ -738,6 +787,7 @@ async function retiringAccount() {
   await moneyNotOnTheBooks();
   await silentVideos();
   await paidWithNoMoney();
+  await duplicatePeople();
   await retiringAccount();
 
   if (JSON_OUT) {

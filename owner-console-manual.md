@@ -150,6 +150,56 @@ A booking paid through the website checkout now appears here on its own, created
 from the Stripe webhook as **booked** (not completed — the trip has not happened
 yet).
 
+### When the same guest ends up on the list twice
+
+Most bookings are typed in by hand from a text or a Facebook message, and the
+guest is then sent a checkout link. **If they use that link there is nothing to
+guess** — the payment carries the booking's own number, Stripe comes back an
+exact match, and the email and phone from the checkout are written straight onto
+it. That is Jim's case, and it needs no attention.
+
+The gap is the guest who does something else: books on the website instead, so a
+second row appears beside the one already typed in for them. One person, two
+rows, **and the seat counted twice** — on the manifest, in the seats-left figure
+on the glow page, and in the money.
+
+The morning check now names those pairs and says why:
+
+> `NY-20260919-03 and NY-20260919-11 look like the same person on 2026-09-19`
+> `Jim / Jim Gonzalez — same phone (…8379); names fit. Two rows means the seat is counted twice.`
+
+**Nothing merges on its own, and that is the design.** Two bookings sharing a
+phone number are just as likely to be two friends who booked from one handset.
+Oscar's charter carried a party member's number rather than his own, and that is
+ordinary on a boat that seats fourteen. Merging automatically would delete a real
+guest's seat and nobody would find out until somebody was standing on the ramp.
+
+So a pair is only ever **proposed**, with its evidence, for you to judge. What
+gets it raised:
+
+| Reads | Means |
+|---|---|
+| **certain** | Same email, or the same ten digits of phone, on the same day |
+| **likely** | No contact detail in common, but one name fits inside the other and they bought the same thing on the same day |
+
+A repeat guest is never reported — the day has to match, or the best guest you
+have would be flagged as a duplicate of himself all season. Neither is an inquiry
+and the booking row written from it: they share a booking number on purpose.
+
+**To act on one**, run it past yourself first — it prints everything it would do
+and writes nothing until you add `--apply`:
+
+`node scripts/merge-bookings.js NY-20260919-03 NY-20260919-11`
+
+The row holding the money survives; the other is filled in from it where it was
+blank, then **cancelled rather than deleted**, with a note pointing at the
+survivor. The reason to doubt a merge always turns up afterwards, and a deleted
+row cannot be doubted.
+
+It **refuses outright** if both rows have money against them. That is not a
+duplicate to tidy away — it is either two real bookings or one guest charged
+twice, and merging would bury whichever it is along with somebody's refund.
+
 ### One charter, two rows — and they now stay in step
 
 A website checkout leaves **two** records for the same charter: the Inquiry the
