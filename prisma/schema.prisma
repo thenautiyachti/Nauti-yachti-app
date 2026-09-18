@@ -360,6 +360,20 @@ model ExternalBooking {
   platformRef       String? // the platform's own reservation number (Boatsetter/GetMyBoat) - shared key with LedgerEntry
   referralSource    String? // how the booking was won: "repeat guest", "word of mouth", "website", "walk-up" - distinct from `platform`, which is who processed it
   reviewRequestedAt DateTime? // when a Google review was asked for; null = not yet asked
+  // WHEN THE GUEST'S BOOKING CONFIRMATION ACTUALLY WENT OUT. Null means it did
+  // NOT, which is a different thing from "we think it probably did".
+  //
+  // Inquiry has carried this since 5 Sep 2026 and this table did not, so the
+  // morning check could only ever ask the question of website bookings. The
+  // bookings taken by text — which is most of them, and the entire reason this
+  // table exists — were the ones it could not see.
+  //
+  // That is not theoretical. Jim Gonzalez paid $100 for two glow seats, was
+  // never emailed anything at all, and sat paid-and-silent for a week without
+  // appearing on a single list. He was found by the owner asking, on the day
+  // before the charter.
+  confirmationSentAt DateTime?
+
   // When the gate code was texted for this charter; null = not yet sent.
   //
   // The dock page listed arriving guests with a "Text them the gate code"

@@ -1420,6 +1420,43 @@ exist there. The booking was right and the payment was right; the single fact
 the email exists to deliver was wrong. He was told by text, and the code was
 changed so it cannot happen to the next one.
 
+### A booking taken by text gets the same paperwork
+
+When a guest pays through a link you texted them, **Stripe's checkout collects
+their email and it is written onto the booking**, then the confirmation goes out
+and the send is recorded. You do not have to have their address to start; you
+have to have it by the time they pay, and the payment is what supplies it.
+
+That has been true for website bookings since 5 September and for texted-link
+bookings since the 11th. What was missing was any way to *see* whether it had
+happened.
+
+**`ExternalBooking` had no record of the send.** Every booking taken by text —
+most of them, and the whole reason that table exists — was invisible to the
+morning check, because the check can only ask a question the table can answer.
+Jim Gonzalez paid $100 for two glow seats, was emailed nothing at all, and sat
+paid-and-silent for a week without appearing on a single list. He was found
+because you asked.
+
+Both tables now carry the same column, and the morning check asks both. One
+charter written as two rows is counted once: a website booking's confirmation
+is sent and recorded against the inquiry, and its mirror is not reported as a
+forgotten guest.
+
+**If a payment and the console ever disagree**, *Re-read from Stripe* pulls the
+truth back: the email address, the phone number, whether it was really paid, and
+the terms acceptance. It now works for **both** kinds of booking. Until 18
+September it looked only at website inquiries — so the one tool built to recover
+a missed payment could not touch the channel most likely to need it.
+
+It also **sends the confirmation by default now**. It used to need asking, which
+meant a repair could put the money right and leave the guest exactly as
+uninformed as before. It will not send twice: a booking already recorded as told
+is left alone.
+
+It only ever copies *from* Stripe. It cannot mark something paid that Stripe
+does not say is paid.
+
 ### How they sign off
 
 Every one closes as **The Nauti Yachti LLC**, through a single setting, so the

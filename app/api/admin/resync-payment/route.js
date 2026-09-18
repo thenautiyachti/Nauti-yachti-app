@@ -17,10 +17,37 @@ const { sendBookingConfirmationEmail } = require("../../../../lib/email");
 // happens, and which otherwise has to be repaired by hand out of the Stripe
 // dashboard.
 //
+// IT READS BOTH TABLES, as of 18 Sep 2026. It used to look only in Inquiry,
+// which meant the one tool built to recover a missed payment could not touch a
+// booking taken by text — the channel that produces most of them, that rarely
+// arrives with an email address, and therefore the exact channel this repair is
+// for. Owner, 18 Sep 2026: "if anyone pays via stripe, we would capture their
+// email and apply it in our log for that guest so we can send them these
+// confirmation emails ... this would be for any manual entered inquiry or
+// booking."
+//
 // It only ever copies FROM Stripe. It cannot mark something paid that Stripe
 // does not say is paid.
 //
-// Body: { bookingId: "NY-20260906-01", sendEmail?: true }
+// Body: { bookingId: "NY-20260906-01", sendEmail?: boolean }
+
+// The two tables spell the same booking differently. One place decides how,
+// rather than every caller remembering that a guest is `name` here and
+// `guestName` there.
+function asEmailBooking(row, table) {
+  if (table === "inquiry") return row;
+  return {
+    name: row.guestName, email: row.email, phone: row.phone,
+    date: row.date, hours: row.hours, partySize: row.partySize,
+    startTime: row.startTime,
+    packageId: row.packageId, packageName: row.packageName,
+    vesselId: row.vesselId, vesselName: row.vesselName,
+    bookingId: row.bookingId,
+    // What they actually paid, not what they were quoted. A direct booking's
+    // quote is frequently edited after the fact; pricePaid is the money.
+    priceQuoted: row.pricePaid != null ? row.pricePaid : row.priceQuoted,
+  };
+}
 
 async function POST(req) {
   if (!(await isAdminAuthenticated())) {
@@ -31,7 +58,15 @@ async function POST(req) {
   const ref = typeof body.bookingId === "string" ? body.bookingId.trim() : "";
   if (!ref) return NextResponse.json({ error: "Missing bookingId" }, { status: 400 });
 
-  const booking = await prisma.inquiry.findFirst({ where: { bookingId: ref } });
+  // Inquiry first: when a booking exists in both tables it is a website
+  // checkout, and the Inquiry is the row that carries the payment columns and
+  // the confirmation stamp. The mirror is kept in step below.
+  let table = "inquiry";
+  let booking = await prisma.inquiry.findFirst({ where: { bookingId: ref } });
+  if (!booking) {
+    booking = await prisma.externalBooking.findFirst({ where: { bookingId: ref } });
+    table = "external";
+  }
   if (!booking) return NextResponse.json({ error: "No booking " + ref }, { status: 404 });
   if (!booking.stripeSessionId) {
     return NextResponse.json({ error: ref + " has no Stripe session to read" }, { status: 400 });
@@ -58,41 +93,70 @@ async function POST(req) {
   // return — a blank must not clobber a good address.
   if (email && email !== booking.email) changed.email = email;
   if (phone && phone !== booking.phone) changed.phone = phone;
-  if (session.consent?.terms_of_service === "accepted" && !booking.termsAcceptedAt) {
-    changed.termsAcceptedAt = new Date();
-  }
+
   if (session.payment_status === "paid") {
     if (booking.paymentStatus !== "paid") changed.paymentStatus = "paid";
     if (booking.status !== "booked" && booking.status !== "completed") changed.status = "booked";
-    if (!booking.stripePaymentIntentId && session.payment_intent) {
+    // Stripe paying IS the assertion — the one payment method this system can
+    // know without being told. See lib/channels.js.
+    if (!booking.paymentMethod) changed.paymentMethod = "Stripe (card)";
+    if (typeof session.amount_total === "number") {
+      const paidAmount = session.amount_total / 100;
+      if (table === "external" && booking.pricePaid !== paidAmount) changed.pricePaid = paidAmount;
+    }
+  }
+
+  // Columns only the Inquiry table has.
+  if (table === "inquiry") {
+    if (session.consent?.terms_of_service === "accepted" && !booking.termsAcceptedAt) {
+      changed.termsAcceptedAt = new Date();
+    }
+    if (session.payment_status === "paid"
+      && !booking.stripePaymentIntentId && session.payment_intent) {
       changed.stripePaymentIntentId = session.payment_intent;
     }
   }
 
+  const model = table === "inquiry" ? prisma.inquiry : prisma.externalBooking;
+
   let updated = booking;
   if (Object.keys(changed).length) {
-    updated = await prisma.inquiry.update({ where: { id: booking.id }, data: changed });
-    // Keep the booking row in step — it is what the Bookings tab and the
-    // calendar read, and a contact detail that exists on only one of the two is
-    // the kind of split that makes people distrust both.
-    const ext = await prisma.externalBooking.findFirst({ where: { bookingId: ref } });
-    if (ext) {
-      await prisma.externalBooking.update({
-        where: { id: ext.id },
-        data: {
-          ...(changed.email ? { email: changed.email } : {}),
-          ...(changed.phone ? { phone: changed.phone } : {}),
-        },
-      });
+    updated = await model.update({ where: { id: booking.id }, data: changed });
+    // Keep the other row in step — between them they are what the Bookings tab
+    // and the calendar read, and a contact detail that exists on only one of
+    // the two is the kind of split that makes people distrust both.
+    if (table === "inquiry") {
+      const ext = await prisma.externalBooking.findFirst({ where: { bookingId: ref } });
+      if (ext) {
+        await prisma.externalBooking.update({
+          where: { id: ext.id },
+          data: {
+            ...(changed.email ? { email: changed.email } : {}),
+            ...(changed.phone ? { phone: changed.phone } : {}),
+            ...(changed.paymentStatus ? { paymentStatus: changed.paymentStatus } : {}),
+          },
+        });
+      }
     }
   }
 
-  let emailResult = { sent: false, reason: "not-requested" };
-  if (body.sendEmail && updated.paymentStatus === "paid") {
-    emailResult = await sendBookingConfirmationEmail(updated);
+  // SENDING IS NOW THE DEFAULT, and it was not.
+  //
+  // `sendEmail` had to be passed, so a repair could put the money right and
+  // leave the guest exactly as uninformed as before — which is the failure this
+  // whole route exists to undo, reintroduced as an option nobody ticks. The
+  // guard against a duplicate is confirmationSentAt, which is the honest test:
+  // it is written only on a real send, so "already stamped" genuinely means
+  // they have already heard from us. Pass sendEmail: false to repair quietly.
+  const alreadyTold = Boolean(updated.confirmationSentAt);
+  const wants = body.sendEmail !== false;
+  let emailResult = { sent: false, reason: !wants ? "not-requested" : alreadyTold ? "already-sent" : "not-paid" };
+
+  if (wants && !alreadyTold && updated.paymentStatus === "paid") {
+    emailResult = await sendBookingConfirmationEmail(asEmailBooking(updated, table));
     // Same rule as the webhook: a send is only real once it is written down.
     if (emailResult && emailResult.sent) {
-      updated = await prisma.inquiry.update({
+      updated = await model.update({
         where: { id: updated.id },
         data: { confirmationSentAt: new Date() },
       });
@@ -102,12 +166,14 @@ async function POST(req) {
   return NextResponse.json({
     ok: true,
     bookingRef: ref,
+    takenVia: table === "inquiry" ? "website" : "direct",
     stripePaymentStatus: session.payment_status,
     stripeAmount: typeof session.amount_total === "number" ? session.amount_total / 100 : null,
     changed: Object.keys(changed),
     email: updated.email || null,
     phone: updated.phone || null,
     termsAcceptedAt: updated.termsAcceptedAt || null,
+    confirmationSentAt: updated.confirmationSentAt || null,
     confirmationEmail: emailResult,
   });
 }

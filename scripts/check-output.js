@@ -74,6 +74,52 @@ async function paidButSilent() {
       (b.bookingId || "a booking") + " is PAID but no confirmation was ever sent",
       (b.name || "guest") + (b.email ? " <" + b.email + ">" : " — and no email address on file"));
   }
+
+  // THE BOOKINGS TAKEN BY TEXT, which is most of them and the whole reason
+  // ExternalBooking exists. They were invisible to this check until 18 Sep 2026
+  // because the table had no confirmationSentAt column to ask about — so the one
+  // query that finds a forgotten guest could not see the channel most likely to
+  // forget one. Jim Gonzalez paid $100 and sat paid-and-silent for a week.
+  const direct = await prisma.externalBooking.findMany({
+    where: { paymentStatus: "paid" },
+    select: {
+      bookingId: true, guestName: true, email: true, date: true,
+      confirmationSentAt: true, createdAt: true, pricePaid: true,
+    },
+  });
+
+  // ONE CHARTER CAN BE TWO ROWS. A website checkout writes an Inquiry and a
+  // mirror ExternalBooking sharing a bookingId, and the confirmation is sent
+  // and stamped against the Inquiry. Without this the mirror would be reported
+  // as a forgotten guest every single morning, and a check that cries wolf
+  // daily is a check nobody reads.
+  const toldViaInquiry = new Set(
+    (await prisma.inquiry.findMany({
+      where: { confirmationSentAt: { not: null }, bookingId: { not: null } },
+      select: { bookingId: true },
+    })).map((r) => r.bookingId)
+  );
+
+  for (const b of direct) {
+    if (b.confirmationSentAt) continue;
+    if (b.bookingId && toldViaInquiry.has(b.bookingId)) continue;
+    // NO "PREDATES THE COLUMN" GUARD HERE, unlike the inquiry branch above.
+    // It would have to test createdAt, and a direct booking is created when the
+    // owner takes the enquiry and paid whenever the guest gets round to the
+    // link -- often weeks apart. A row made last week and paid next week would
+    // be waved through for the rest of its life. Every booking that predates
+    // the column is already skipped above for a reason that is actually true of
+    // it, so the guard bought nothing and cost exactly the case it was meant to
+    // catch.
+    // A booking at no charge is settled but was never a sale, and the crew
+    // riding free do not need a confirmation email.
+    if (!(Number(b.pricePaid) > 0)) continue;
+    fail(1, "confirmation",
+      (b.bookingId || "a booking") + " is PAID but no confirmation was ever sent",
+      (b.guestName || "guest")
+        + (b.email ? " <" + b.email + ">" : " — and no email address on file, so nothing can be sent")
+        + " — taken direct, not through the website");
+  }
 }
 
 // --- 2. a booking that is happening must hold its date ----------------------

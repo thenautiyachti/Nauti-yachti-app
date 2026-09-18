@@ -229,9 +229,9 @@ async function POST(req) {
 
         // Same courtesy the website checkout sends. Not awaited and not
         // allowed to throw: a mail outage must never make Stripe retry a
-        // payment. ExternalBooking has no confirmationSentAt column, so unlike
-        // the inquiry path this cannot stamp the send -- the result is logged
-        // instead of silently dropped.
+        // payment. The send is now STAMPED rather than only logged: a line in a
+        // server log is not a record anybody reads, which is how Jim Gonzalez
+        // stayed paid and silent for a week.
         sendBookingConfirmationEmail({
           name: paid.guestName, email: paid.email, phone: paid.phone,
           date: paid.date, hours: paid.hours, partySize: paid.partySize,
@@ -242,8 +242,16 @@ async function POST(req) {
           startTime: paid.startTime, vesselId: paid.vesselId, vesselName: paid.vesselName,
           bookingId: paid.bookingId, priceQuoted: paid.pricePaid,
         })
-          .then((r) => {
-            if (!r || !r.sent) {
+          .then(async (r) => {
+            if (r && r.sent) {
+              // Only on a real send. Stamping on a failure would turn the one
+              // query that finds a forgotten guest into a query that always
+              // says everything is fine.
+              await prisma.externalBooking.update({
+                where: { id: externalBookingId },
+                data: { confirmationSentAt: new Date() },
+              }).catch(() => {});
+            } else {
               console.error("[webhooks/stripe] No confirmation sent for "
                 + (paid.bookingId || externalBookingId) + ": " + (r && r.reason));
             }
