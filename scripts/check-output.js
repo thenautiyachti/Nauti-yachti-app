@@ -534,6 +534,70 @@ async function postedWithoutProof() {
   await deployedSchemaCanReadTheDatabase();
   await postedWithoutProof();
 
+
+// --- 11. a booking marked paid must have the money behind it ----------------
+//
+// Tyler Roxo's glow booking read "8 seats, $400, PAID, Cash" from 1 September
+// and had no ledger row against it for seventeen days. Nothing had gone wrong
+// with the money — it had simply never been collected, and the row had been
+// marked paid in anticipation.
+//
+// WHY THAT IS WORSE THAN AN ORDINARY MISTAKE. A booking marked paid drops off
+// every chase list there is. Penny reads money in and sees it settled. The
+// season total counts it. The guest arrives owing money nobody is expecting to
+// take. And on 17 Sep 2026 it made every seat count reported that evening say
+// "8 paid" for a night on which nothing had been paid at all — a wrong number
+// repeated all evening because it came from a field that looked authoritative.
+//
+// This is the reverse of check 8. That one asks whether money on the books can
+// be traced to a charter; this asks whether a charter claiming money has any.
+//
+// TIER 1. Unlike a mis-filed origin, this one has a guest in it: somebody turns
+// up believing they have paid, or is never asked for money they owe. Both end
+// at the dock.
+//
+// A price of zero is not a claim about money and is never flagged — the crew
+// riding free on 19 September are recorded as a booking so the seat count is
+// honest, and they are correctly marked paid at nothing.
+async function paidWithNoMoney() {
+  const rows = await prisma.externalBooking.findMany({
+    where: { paymentStatus: "paid" },
+    select: {
+      id: true, bookingId: true, guestName: true, date: true, phone: true,
+      pricePaid: true, priceQuoted: true, paymentMethod: true, partySize: true,
+    },
+    orderBy: { date: "desc" },
+  });
+
+  const bad = [];
+  for (const b of rows) {
+    const claimed = b.pricePaid != null ? b.pricePaid : b.priceQuoted;
+    if (!(claimed > 0)) continue; // free seats claim nothing
+    const led = await prisma.ledgerEntry.findMany({
+      where: { bookingId: b.id, type: "income" },
+      select: { amount: true },
+    });
+    if (led.length) continue;
+    bad.push({ ...b, claimed });
+  }
+  if (!bad.length) return;
+
+  const total = bad.reduce((s, b) => s + b.claimed, 0);
+  const worst = bad[0];
+
+  fail(1, "paid with no money",
+    bad.length + " booking(s) are marked paid with nothing in the ledger behind them",
+    "$" + total.toFixed(2) + " across " + bad.length + " booking(s). A booking marked paid " +
+    "drops off every chase list: it is counted in the season, it is not on anybody's " +
+    "to-collect list, and the guest arrives either believing they have paid or about to be " +
+    "asked for money nobody expected. Either the money was taken and never filed — write the " +
+    "ledger row — or it was never taken, and the booking is unpaid. Newest: " +
+    (worst.bookingId || worst.id) + " " + worst.guestName + ", " + worst.date + ", $" +
+    Number(worst.claimed).toFixed(2) +
+    (worst.paymentMethod ? " by " + worst.paymentMethod : " with no method recorded") +
+    (worst.phone ? " — " + worst.phone : ""));
+}
+
 // --- 10. nothing new should be paid from the account being retired ----------
 //
 // Owner's decision, 16 Sep 2026: "The only account paying stuff should be this
@@ -587,6 +651,7 @@ async function retiringAccount() {
   await chartersOwed();
   await moneyNotOnTheBooks();
   await silentVideos();
+  await paidWithNoMoney();
   await retiringAccount();
 
   if (JSON_OUT) {

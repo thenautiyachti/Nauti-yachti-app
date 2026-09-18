@@ -83,6 +83,26 @@ async function PATCH(req, { params }) {
   if ("platform" in body) data.platform = body.platform || null;
   if ("caption" in body && body.caption) data.caption = body.caption;
   if ("postUrl" in body) data.postUrl = body.postUrl || null;
+  // WHERE THE CLIP CAME FROM, and the delivery caveat under it.
+  //
+  // Both are printed on every draft card — photoHint under the camera icon is
+  // what Siren and the owner read to know a clip's provenance — and until
+  // 17 Sep 2026 NO route and no library file anywhere wrote either one. Every
+  // photoHint in the database was whatever seeded it, and no agent could ever
+  // correct one.
+  //
+  // That is not a cosmetic gap. patch-draft.js offers a --photo-hint flag and
+  // prints "updated photoHint"; Coral ran it three times against five drafts
+  // whose provenance was wrong, read the field back each time, and it had not
+  // moved. She then reported those drafts as corrected — twice — on the
+  // strength of a tool that told her it had worked. The record said one thing,
+  // the media was another, and the console was showing a source file that had
+  // been withdrawn for nudity against clips that were fine.
+  //
+  // A provenance line nobody can fix is worse than no provenance line, because
+  // it is believed.
+  if ("photoHint" in body) data.photoHint = body.photoHint || null;
+  if ("deliveryNote" in body) data.deliveryNote = body.deliveryNote || null;
   // Attaching the actual photo or clip. Campaign posts arrive as copy plus a
   // shot brief and nothing else, so until this could be set there was no way
   // to put the media against the words and see the finished post.

@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 17 September 2026 (third revision).
+Last updated 18 September 2026.
 
 ---
 
@@ -1460,6 +1460,15 @@ Two things now stop it. The script refuses any status it does not recognise
 rather than writing a row it cannot vouch for, and closing a row uses named
 flags — `--status`, `--detail`, `--id` — so nothing has to survive being empty.
 
+**A card can also say an agent is STOPPED MID-RUN when she is not.** On
+17 September both Siren and Penny were reported stopped. Siren had published
+all three of that evening's posts ten minutes earlier with a URL recorded
+against every one. Both rows were status cards whose arguments had slid, so
+the word `status` sat in the task-title column and the status column kept its
+default `running` — the row never closes, and the console reports a death
+that did not happen. The logger now detects the slide, shifts every argument
+back and writes the row correctly, with a warning in the run transcript.
+
 **So if a card says failed, read its detail before believing it.** A real
 failure explains what went wrong. An artefact usually has a status word sitting
 where the task title belongs, or says outright that it was a duplicate. Four
@@ -1567,10 +1576,17 @@ there, it is not a rule.
   never somewhere to expect a reply.
 - **A reply under a DM may not be yours.** Most are answered automatically
   within seconds. Do not read one as a conversation you have had.
-- **Boatz & Glowz runs to around midnight, not to eleven.** Five hours from
-  a 7pm departure. The wording everywhere is "back around midnight — or
-  whenever the boat decides it's had enough", and it comes from
-  `GLOW_RETURN_TIME` in `lib/glowEvent.js`. Change it there, not in the copy.
+- **Boatz & Glowz ropes off at 5, not 7, and runs to around midnight.**
+  Check-in 4:30, seven hours. It moved twice on 17 September — the finish
+  first, then the departure — and every time it moves, fourteen captions, two
+  DM automations, the package row, the public FAQ and the live bookings all
+  have to follow. **The times live in `lib/glowEvent.js`**: `GLOW_CHECK_IN_TIME`,
+  `GLOW_START_TIME`, `GLOW_RETURN_TIME`, and `GLOW_TIMING_LINE`, which is the
+  whole sentence already written. Change them there, never in the copy.
+- **A post that has already published cannot be edited by anything here.**
+  Blotato has no route for it — four posts had to be corrected by hand in
+  each app when the time moved. Facebook shows "Edited"; Instagram does not;
+  TikTok cannot be edited at all.
 - **The console cannot see a reply you sent from the Facebook app.** Press
   *I answered this elsewhere* or the thread keeps its red flag forever.
 - **A red flag on a message thread means a machine answered something it
