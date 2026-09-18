@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 18 September 2026 (fourth revision).
+Last updated 18 September 2026 (sixth revision).
 
 ---
 
@@ -1562,11 +1562,26 @@ there, it is not a rule.
   and shot at midday. Trust the timestamp inside the file, not the name.
 - **The Lake Bryan charters of 6 and 13 June 2026 are under NDA.** No media from
   those may be posted, ever.
-- **`Party Cove / 2025-09-27` is footage from The Dam.** Mis-filed. The theme
-  folder is the only thing that says where a clip was shot — the filenames are
-  bare timestamps — so until it is moved, treat that date as The Dam. It had
-  already become the opener and closer of a Party Cove compilation before you
-  spotted it.
+- **The 27 September 2025 charter now sits in The Dam, where it was shot.** It
+  spent a year filed under Party Cove, and the theme folder is the only thing
+  that records where a clip was taken — the filenames are bare timestamps — so
+  the folder was not merely untidy, it was asserting something false. It was
+  believed once: those clips supplied the opener *and* the closer of a Party
+  Cove compilation, 15.5 seconds of 49, and you caught it rather than the
+  system. Moved on 18 September 2026: 4 videos and a photo into `The Dam`, 18
+  stills into `The Dam/_from video`, nothing left behind. **This entry used to
+  say "treat that date as The Dam", which only worked while somebody
+  remembered to read it.**
+- **A block can cover part of a file, not all of it.** `doNotUse` blocks a whole
+  file; `timeRestricted` names the seconds to avoid and leaves the rest usable.
+  Search results carry the range with them. That distinction exists because an
+  all-or-nothing block on a mostly-good video gets overridden rather than obeyed
+  — which happened twice, by different people, each with a fair reason.
+- **Neon in a night shot is usually the speakers.** The Explorer's speaker rings
+  are lit whenever the radio is on, so colour in an evening shot on that boat is
+  ordinary. Glow nights are scheduled events; the test is the date, never the
+  lighting. Reading the lighting instead cost a usable clip a wrong nudity flag
+  AND a wrong misfiling claim on the same day.
 - **The blocked-media list is in `write-tags.js`, not only in the tags file.**
   That script REBUILDS the list wholesale rather than adding to it, so a block
   recorded only in `_media-tags.json` disappears the next time anybody runs

@@ -156,12 +156,14 @@ export default async function GlowPage() {
   const perGuest = pkg?.pricePerGuest ?? null;
   // The label when there is one, the number when there is not — a package
   // whose length varies cannot be an integer. See durationText.
-  // "5 hours" is 7pm to midnight. The old fallback said four, which is where
-  // "7-11pm" came from on every page that rendered before the package loaded.
+  // Seven hours: 5pm to around midnight. This fallback has been wrong twice
+  // already — it said four when the night ran five, and five when it ran
+  // seven — because it is only read when the package row cannot be, which is
+  // exactly when nobody is watching. It must move whenever fixedHours does.
   const GLOW_VESSEL_IDS = (pkg && Array.isArray(pkg.vessels) && pkg.vessels.length)
     ? pkg.vessels : GLOW_VESSEL_IDS_FALLBACK;
   const seats = await seatsOnTheNight(eventDate, GLOW_VESSEL_IDS);
-  const hours = durationText(pkg) || "5 hours";
+  const hours = durationText(pkg) || "7 hours";
 
   return (
     <div>
@@ -251,7 +253,7 @@ export default async function GlowPage() {
             />
             <Stat
               label="Seats"
-              value={seats ? (seats.left === 0 ? "Sold out" : seats.left + " left") : "30 total"}
+              value={seats ? (seats.left === 0 ? "Sold out" : seats.left + " left") : "31 total"}
               sub={seats
                 ? (seats.left === 0
                     ? "All " + seats.capacity + " taken across the three boats"

@@ -109,7 +109,7 @@ async function FeaturedGlowEvent() {
   if (eventDate < todayKey) return null;
 
   const perGuest = pkgRow?.pricePerGuest ?? null;
-  const hours = durationText(pkgRow) || "5 hours";
+  const hours = durationText(pkgRow) || "7 hours";
 
   const facts = [
     ["When", `${formatGlowDate(eventDate)} · ${GLOW_START_TIME}`],
