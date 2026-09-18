@@ -1286,9 +1286,16 @@ three stale pointers in old distributable test builds the day it was written.
 One consequence worth knowing: a file that git ignores AND that lives on the
 local disk is in no backup at all. There is one — `conf\token.txt`. Its
 contents were exposed in a working session on 15 September 2026, and the file
-now holds a note saying so rather than a token. **That credential still needs
-rotating.** Nothing in the app or the crew scripts reads the file, so nothing
-is broken by it sitting there — which is exactly why it would be forgotten.
+now holds a note saying so rather than a token. 
+
+**It turned out not to be a credential, and nothing needs rotating.** This
+manual said it did, for three days. What was in that file was a 32-character
+hex string, a millisecond timestamp and the word `NORMAL` — a state artefact,
+not a key. Nothing in this repository, in the crew scripts, or in any agent
+brief reads it: it was searched for by name across all three and has no
+readers. It was never on GitHub either, because `.gitignore` has covered
+`conf/` throughout. **The file can simply be deleted** if nothing has
+recreated it. Nothing is broken by it sitting there — which is exactly why it would be forgotten.
 
 `CHANGELOG.md` carries one entry per version, written to be read on a bad day.
 If an entry cannot tell you whether to restore that version, it was not written
@@ -1364,6 +1371,54 @@ travels by the route that demonstrably works.
 record, so anything sent to it is accepted and evaporates. It is still fine as a
 *from* address, and replies go to the Gmail address instead. This is unfixed —
 if anything ever assumes a reply can reach that address, it will fail.
+
+### Where the confirmation tells them to go
+
+The booking confirmation is the one message a guest keeps, forwards, and drives
+by. It now names **where their boat is** and **what time it leaves** — and until
+18 September it reliably got one of those wrong and never said the other at all.
+
+| Their booking | Where the email sends them |
+|---|---|
+| **Boatz & Glowz**, any boat | **Scott's Ridge boat ramp** — check in 4:30, lines off 5:00, back around midnight |
+| **Nauti Explorer**, anything else | the Pearl Bay dock, with "we'll text your gate code on the morning" |
+| **Nauti Islander** or **Nauti Yachti** | *"we'll be in touch with the meeting point"* — see below |
+
+**The glow night beats the boat.** Your words, 18 September: *"The glow party,
+all pickup locations will be at scotts ridge."* So the package decides, for all
+three boats, including the Explorer — whose own dock address is the one that
+would otherwise win.
+
+**There is more than one dock, and the email finally knows it.** The Explorer
+sits at Pearl Bay on the east side; the Islander and the Yachti are three miles
+west-south-west. The console has known this for as long as the weather has been
+forecast per boat — a single position *"would have routed two of the three fleet
+to the wrong shore"*. The address never got the same treatment. One value went
+out on every confirmation whichever boat was booked, so **two thirds of the
+fleet had been mailing guests to a house on the wrong side of the lake**, from 5
+September until it was found. It produced no complaint only because nobody on
+those two boats had paid by card in that window.
+
+**The west dock's address is not set yet, and nothing invents one.** Until it is
+given, an Islander or Yachti guest is told the meeting point is coming, which is
+true and costs you one text. It is deliberately not filled in from the
+Explorer's: falling back would silently restore the exact fault, and a
+confidently wrong address is the one mistake a guest cannot catch before they
+are already driving. Set `DOCK_ADDRESS_ISLANDER` and `DOCK_ADDRESS_YACHTI` and
+those bookings start carrying it the same day.
+
+**The gate code is still never emailed**, and is now only *promised* for a dock
+that actually has a gate. An email is forwarded and kept forever, so mailing the
+code would leave every guest the business has ever had holding working access to
+a private residence indefinitely. It goes by text on the morning, from the
+Arriving tab.
+
+**What went wrong on 18 September.** A guest paid for two glow seats at 06:55
+and was emailed the Pearl Bay address — a gated residence across the lake from
+the ramp his boat was leaving from — with a gate code promised that does not
+exist there. The booking was right and the payment was right; the single fact
+the email exists to deliver was wrong. He was told by text, and the code was
+changed so it cannot happen to the next one.
 
 ### How they sign off
 
