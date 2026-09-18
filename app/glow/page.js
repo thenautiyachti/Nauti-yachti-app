@@ -212,6 +212,28 @@ export default async function GlowPage() {
           <BookButton />
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 14 }}>
             {perGuest != null ? `${currency(perGuest)} per guest · ${hours} on the water` : `${hours} on the water`}
+            {/* THE SCARCITY BESIDE THE BUTTON, not a scroll below it.
+                Same figure as the Seats card — both read seatsOnTheNight, so
+                they cannot disagree, which is the whole reason it is not a
+                second count written here.
+                Coloured only when it is genuinely tight. "8 left" in warning
+                amber every day of a slow week teaches people to ignore the
+                colour, and then it says nothing on the night it matters. */}
+            {seats && (
+              seats.left === 0 ? (
+                <>
+                  {" · "}
+                  <strong style={{ color: "#E2685F" }}>Sold out</strong>
+                </>
+              ) : (
+                <>
+                  {" · "}
+                  <strong style={{ color: seats.left <= 6 ? "#E8934A" : "var(--text)" }}>
+                    {seats.left === 1 ? "1 seat left" : seats.left + " seats left"}
+                  </strong>
+                </>
+              )
+            )}
           </div>
         </div>
       </div>

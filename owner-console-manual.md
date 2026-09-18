@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 18 September 2026 (second revision).
+Last updated 18 September 2026 (third revision).
 
 ---
 
@@ -1590,7 +1590,9 @@ there, it is not a rule.
   have to follow. **The times live in `lib/glowEvent.js`**: `GLOW_CHECK_IN_TIME`,
   `GLOW_START_TIME`, `GLOW_RETURN_TIME`, and `GLOW_TIMING_LINE`, which is the
   whole sentence already written. Change them there, never in the copy.
-- **The glow page counts its own seats.** "31 seats" and "seats left" are
+- **The glow page counts its own seats**, and says the number twice — beside
+  the Reserve button and again on the Seats card. Both read the same count,
+  so they cannot disagree. "31 seats" and "seats left" are
   worked out from the bookings on the night, never typed in — every seat
   somebody is expecting counts as taken, including unpaid inquiries and the
   crew riding free, because a public page that promises a seat twice ends at
