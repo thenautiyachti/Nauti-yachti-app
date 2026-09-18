@@ -57,7 +57,7 @@ export default function GlowStrip({ eventDate, href = "/glow" }) {
         Boatz &amp; Glowz — {formatGlowDateShort(eventDate)}, {GLOW_START_TIME}
       </span>
       <span style={{ fontSize: 14, color: "var(--muted)" }}>
-        Party Cove after dark · 30 seats only
+        Party Cove after dark · 31 seats only
       </span>
       <span style={{ fontSize: 14, fontWeight: 700, color: "var(--purple)", whiteSpace: "nowrap" }}>
         See the details →

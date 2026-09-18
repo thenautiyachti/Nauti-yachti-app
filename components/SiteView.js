@@ -838,7 +838,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
               Board {GLOW_CHECK_IN_TIME} · lines off {GLOW_START_TIME} · {durationText(pkg)}
             </div>
             <div style={{ color: "var(--muted)" }}>Departs {GLOW_MEETING_POINT}</div>
-            <div style={{ color: "var(--muted)" }}>30 seats total across all 3 boats</div>
+            <div style={{ color: "var(--muted)" }}>31 seats total across all 3 boats</div>
             <a href="/glow" style={{ color: "var(--pink)", fontWeight: 700, textDecoration: "underline", display: "inline-block", marginTop: 4 }}>
               Full event details →
             </a>

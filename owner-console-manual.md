@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 18 September 2026.
+Last updated 18 September 2026 (second revision).
 
 ---
 
@@ -1405,6 +1405,13 @@ money being held, security, legal and overdue all go high. Anything falling due
 within two days is promoted regardless of wording. Only High is expanded when
 the page loads; Medium and Low fold open when you want them.
 
+**Long items fold.** The claim and its first two lines show; anything more
+sits behind *+ N more lines*, and the dated notes behind *N notes*, the way
+they always have. One item was rendering as twenty bullets on 17 September
+and its own verdict — Coral writing "Both halves dealt with" — was at the
+bottom where nobody would see it. Nothing is dropped; it is a reading
+transform only.
+
 **Pearl keeps the board.** She closes what the data shows is done, folds
 duplicates into the older entry, and rewrites anything Low that has sat
 untouched. She never edits or closes an item you wrote unless it is genuinely
@@ -1583,6 +1590,11 @@ there, it is not a rule.
   have to follow. **The times live in `lib/glowEvent.js`**: `GLOW_CHECK_IN_TIME`,
   `GLOW_START_TIME`, `GLOW_RETURN_TIME`, and `GLOW_TIMING_LINE`, which is the
   whole sentence already written. Change them there, never in the copy.
+- **The glow page counts its own seats.** "31 seats" and "seats left" are
+  worked out from the bookings on the night, never typed in — every seat
+  somebody is expecting counts as taken, including unpaid inquiries and the
+  crew riding free, because a public page that promises a seat twice ends at
+  the ramp. It refreshes every 60 seconds.
 - **A post that has already published cannot be edited by anything here.**
   Blotato has no route for it — four posts had to be corrected by hand in
   each app when the time moved. Facebook shows "Edited"; Instagram does not;

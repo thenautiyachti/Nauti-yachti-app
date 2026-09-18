@@ -28,6 +28,12 @@ import {
   isOwed,
 } from "../lib/bookingStatus";
 import { formatBody } from "../lib/boardText";
+
+// How many lines of a board item show before the rest folds away. Two, because
+// the claim plus two is enough to decide whether an item is yours to act on,
+// and because an item rendering as twenty bullets is what made the board
+// unreadable on 17 Sep 2026.
+const BOARD_POINTS_SHOWN = 2;
 import { LEAD_SOURCES, BOOKING_CHANNELS, PAYMENT_METHODS, LEDGER_ORIGIN, isRetiringOrigin, retiringOriginWarning } from "../lib/channels";
 import {
   PREMISES, SUBSCRIPTION_CATEGORIES, BILLING_CYCLES,
@@ -5124,6 +5130,10 @@ function BoardItem({ t, color, onToggle, onDelete }) {
   // Collapsed by default. The trail is worth keeping and worth reading, but it
   // is not what you scan the board for.
   const [showNotes, setShowNotes] = useState(false);
+  // And the same for the body of the first pass. Two lines under the claim is
+  // enough to decide whether an item is yours to act on; the rest is one click
+  // away. See the note on the list below.
+  const [showAllPoints, setShowAllPoints] = useState(false);
   const newest = updates.length ? updates[updates.length - 1].stamp : null;
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, lineHeight: 1.5 }}>
@@ -5148,11 +5158,42 @@ function BoardItem({ t, color, onToggle, onDelete }) {
         </div>
 
         {points.length > 0 && (
-          <ul style={{ margin: "5px 0 0", paddingLeft: 15, display: "grid", gap: 3 }}>
-            {points.map((pt, i) => (
-              <li key={i} style={{ color: "var(--text)", opacity: 0.88 }}>{pt}</li>
-            ))}
-          </ul>
+          /* THE FIRST TWO, THEN A COUNT.
+             Notes have opened on request since they were built; the body of the
+             first pass did not, and that is what made the board unreadable. An
+             agent writes a full forensic account into one item — where the file
+             came from, what was screened, at what resolution, what the record
+             says instead — and every sentence of it became its own bullet. One
+             entry rendered as twenty lines on 17 Sep 2026, and its own last line
+             was Coral saying "Both halves dealt with", which nobody could see
+             without scrolling past the argument to get to the verdict.
+             Owner: "Hard to read a list of 20 bullet points."
+             Nothing is dropped. The lead is the claim, the first two points are
+             enough to decide whether it is yours to act on, and the rest is one
+             click away — the same bargain the notes already strike. */
+          <>
+            <ul style={{ margin: "5px 0 0", paddingLeft: 15, display: "grid", gap: 3 }}>
+              {(showAllPoints ? points : points.slice(0, BOARD_POINTS_SHOWN)).map((pt, i) => (
+                <li key={i} style={{ color: "var(--text)", opacity: 0.88 }}>{pt}</li>
+              ))}
+            </ul>
+            {points.length > BOARD_POINTS_SHOWN && (
+              <button
+                type="button"
+                onClick={() => setShowAllPoints((v) => !v)}
+                aria-expanded={showAllPoints}
+                style={{
+                  marginTop: 4, marginLeft: 15, background: "transparent", border: "none",
+                  padding: 0, cursor: "pointer", color: "var(--purple)", fontSize: 11,
+                }}
+              >
+                {showAllPoints
+                  ? "show less"
+                  : "+ " + (points.length - BOARD_POINTS_SHOWN) + " more line" +
+                    (points.length - BOARD_POINTS_SHOWN === 1 ? "" : "s")}
+              </button>
+            )}
+          </>
         )}
 
         {updates.length > 0 && (

@@ -26,14 +26,17 @@ import CrewListForm from "../../components/CrewListForm";
 // with the package already chosen.
 // Price, date and photos all come from the live database — don't let a build
 // freeze them. Same cadence as the home page.
-export const revalidate = 1800;
+// Sixty seconds, not thirty minutes. Everything else on this page changes
+// rarely; the seat count changes whenever somebody books, and a number that
+// says two left when there are none is worse than showing no number.
+export const revalidate = 60;
 
 // Brand suffix omitted — the root layout's title template appends it.
 // Canonical is explicit so this page does not inherit the parent's.
 export const metadata = pageMetadata({
   title: "Boatz & Glowz — Party Cove Glow Party on Lake Conroe",
   description:
-    "The entire Nauti Yachti fleet lights up Party Cove on Lake Conroe. Glow gear, sober captains, and a ride to and from Scott's Ridge included. 30 seats only.",
+    "The entire Nauti Yachti fleet lights up Party Cove on Lake Conroe. Glow gear, sober captains, and a ride to and from Scott's Ridge included. 31 seats only.",
   path: "/glow",
 });
 
@@ -41,6 +44,10 @@ export const metadata = pageMetadata({
 // inquiry form and scrolls straight to it, so a visitor arriving from a
 // social post is one tap from booking rather than hunting through 8 package
 // cards. Handled by SiteView's ?package= reader.
+// The hulls the glow night runs, straight off the package row so adding a
+// fourth boat does not need a code change.
+const GLOW_VESSEL_IDS_FALLBACK = ["explorer", "islander", "yachti"];
+
 const BOOK_HREF = `/?package=${GLOW_PACKAGE_ID}#inquire`;
 
 function Stat({ label, value, sub }) {
@@ -83,6 +90,56 @@ function BookButton({ children = "Reserve your seat", style }) {
   );
 }
 
+// HOW MANY SEATS ARE ACTUALLY LEFT.
+//
+// Counted from the bookings on the night, never typed in. This page said
+// "30 total" as a hardcoded string, which was two things wrong at once: the
+// three boats actually hold 31 guests, and a fixed number cannot answer the
+// question anybody visiting two days before the event is asking.
+//
+// It is the same fault the old sold-out arrays had. Two hardcoded lists used to
+// say the Nauti Explorer was full; nothing ever rendered them, and by
+// 11 Sep 2026 they were simply wrong — the Explorer seats 14 and had 9 people
+// on it. A seat count that cannot go stale has to be counted.
+//
+// EVERY SEAT SOMEBODY IS EXPECTING COUNTS AS TAKEN — a paid booking, an unpaid
+// one, a website inquiry, and the crew riding free. An unpaid inquiry holds
+// nothing internally and that rule is right for the console, but this is a
+// public page: promising a seat to a second person because the first has not
+// paid yet is how somebody gets turned away at the ramp. Cancelled and lapsed
+// rows are not expecting anything and are excluded.
+async function seatsOnTheNight(eventDate, vesselIds) {
+  try {
+    const [vessels, bookings, inquiries] = await Promise.all([
+      prisma.vessel.findMany({ select: { id: true, capacity: true } }),
+      prisma.externalBooking.findMany({
+        where: { date: eventDate, status: { notIn: ["cancelled"] } },
+        select: { partySize: true },
+      }),
+      prisma.inquiry.findMany({
+        where: { date: eventDate, status: { notIn: ["cancelled", "lapsed"] } },
+        select: { partySize: true },
+      }),
+    ]);
+
+    // The captain occupies a seat on every boat, so guest capacity is one less
+    // per hull. Getting this wrong oversells the fleet by three.
+    const capacity = vessels
+      .filter((v) => vesselIds.includes(v.id))
+      .reduce((n, v) => n + Math.max(0, (v.capacity || 0) - 1), 0);
+
+    const taken = [...bookings, ...inquiries]
+      .reduce((n, r) => n + (Number(r.partySize) || 0), 0);
+
+    if (!capacity) return null;
+    return { capacity, taken, left: Math.max(0, capacity - taken) };
+  } catch {
+    // A seat count is worth having and is not worth taking the page down for.
+    // Returning null falls back to naming the fleet's size and nothing more.
+    return null;
+  }
+}
+
 export default async function GlowPage() {
   const [pkgRow, gallery] = await Promise.all([
     prisma.package.findUnique({ where: { id: GLOW_PACKAGE_ID } }),
@@ -101,6 +158,9 @@ export default async function GlowPage() {
   // whose length varies cannot be an integer. See durationText.
   // "5 hours" is 7pm to midnight. The old fallback said four, which is where
   // "7-11pm" came from on every page that rendered before the package loaded.
+  const GLOW_VESSEL_IDS = (pkg && Array.isArray(pkg.vessels) && pkg.vessels.length)
+    ? pkg.vessels : GLOW_VESSEL_IDS_FALLBACK;
+  const seats = await seatsOnTheNight(eventDate, GLOW_VESSEL_IDS);
   const hours = durationText(pkg) || "5 hours";
 
   return (
@@ -146,7 +206,7 @@ export default async function GlowPage() {
           <p style={{ fontSize: 17, color: "var(--text)", opacity: 0.88, lineHeight: 1.65, maxWidth: 640, margin: "0 auto 26px" }}>
             Twice a year we take the <strong>entire fleet</strong> out together, lit up, and park it
             in the middle of Party Cove. Glow gear, sober captains, and a ride
-            there and back — you just show up. Thirty seats across three boats,
+            there and back — you just show up. Thirty-one seats across three boats,
             and that's the whole night.
           </p>
           <BookButton />
@@ -167,7 +227,15 @@ export default async function GlowPage() {
               value={perGuest != null ? `${currency(perGuest)} / guest` : "Ask us"}
               sub="Per seat — book one or book the whole boat"
             />
-            <Stat label="Seats" value="30 total" sub="Split across all three vessels" />
+            <Stat
+              label="Seats"
+              value={seats ? (seats.left === 0 ? "Sold out" : seats.left + " left") : "30 total"}
+              sub={seats
+                ? (seats.left === 0
+                    ? "All " + seats.capacity + " taken across the three boats"
+                    : seats.taken + " of " + seats.capacity + " taken across the three boats")
+                : "Split across all three vessels"}
+            />
             <Stat label="Where from" value={GLOW_MEETING_POINT} sub="We're your taxi both ways — leave the truck parked" />
             <Stat label="Where to" value="Party Cove" sub="Lake Conroe's party spot, after dark" />
           </div>
@@ -269,7 +337,7 @@ export default async function GlowPage() {
       {/* CLOSING CTA */}
       <div style={{ background: "var(--ink)", padding: "54px 24px 30px", textAlign: "center" }}>
         <h2 className="display" style={{ fontSize: 30, color: "var(--text)", margin: "0 0 8px" }}>
-          Thirty seats. Twice a year.
+          Thirty-one seats. Twice a year.
         </h2>
         <p style={{ fontSize: 15, color: "var(--muted)", margin: "0 auto 24px", maxWidth: 520, lineHeight: 1.6 }}>
           Book a single seat or take a whole boat for your group. Questions? Call
