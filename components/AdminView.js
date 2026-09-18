@@ -1050,6 +1050,26 @@ function guestTextFor(r) {
     };
   }
   if (r.statusBucket === "booked") {
+    // BOOKED IS NOT THE SAME AS PAID, and this button assumed it was.
+    //
+    // Every booked row offered "Text reminder" — the day, the time and the
+    // meeting point — including the ones where nobody had paid. On the glow
+    // night that was five of six bookings: the only way to send somebody their
+    // checkout link was to put the booking back to inquiry first.
+    //
+    // A guest who has not paid needs the link, not a reminder of where to turn
+    // up. Reminders are for people who are actually coming.
+    const owes = g.paymentStatus !== "paid" && link;
+    if (owes) {
+      return {
+        body: bookingLinkMessage(g),
+        label: "Text payment link",
+        color: "#7FE0B8",
+        title: "Booked but not paid — text " + (g.name || g.guestName || "them")
+          + " their checkout link for $" + (g.priceQuoted ?? g.pricePaid),
+        noneLabel: "unpaid · no number",
+      };
+    }
     return {
       body: reminderMessage(g),
       label: "Text reminder",

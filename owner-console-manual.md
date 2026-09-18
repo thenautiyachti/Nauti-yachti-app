@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 18 September 2026 (seventh revision).
+Last updated 18 September 2026 (eighth revision).
 
 ---
 
@@ -1153,8 +1153,17 @@ and each row carries the text it needs:
   `/pay/<id>`, already filled in.
 - **Text to confirm** — a lead with no price yet. Asks them to confirm so you can
   price it and send the link after.
-- **Text reminder** — a booking that is already paid. Day, departure time and
-  where to meet. Boatz & Glowz says Scott's Ridge by name; every other charter
+- **Text reminder** — a booking that is already **paid**. Day, departure time and
+  where to meet. It is only ever offered once the money is in: a guest who has
+  not paid needs the link, not directions.
+- **Text payment link** — anyone who owes, whether the row says inquiry or
+  booked. Until 18 September this button appeared on inquiries only, so a
+  booked-but-unpaid charter offered a reminder instead and the only way to send
+  the link was to put the booking back to inquiry first. On the glow night that
+  was five bookings out of six.
+- **Text about the declined card** — replaces both of the above the moment a
+  card is refused, on an inquiry or a booking alike, and disappears again when
+  a payment succeeds. Boatz & Glowz says Scott's Ridge by name; every other charter
   meets wherever that one was arranged, so it stays general.
 - **Text about owed** — a charter paid for that never sailed.
 
