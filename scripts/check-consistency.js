@@ -29,9 +29,32 @@ const problems = [];
 const fail = (area, what) => problems.push({ area, what });
 const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return null; } };
 
-const liveTasks = fs.existsSync(TASKS)
+// THIS MACHINE RUNS MORE THAN ONE BUSINESS.
+//
+// .claude/scheduled-tasks is a user-level folder, not the yacht's, and other
+// projects put their schedules in it too. On 18 Sep 2026 a reunion-committee
+// Drive watcher appeared there and this check happily reported "13 tasks,
+// manual, protocol and roster all agree" -- naming a count of yacht crew that
+// included somebody's high-school reunion.
+//
+// Nothing broke, because every rule below asks whether a named task EXISTS
+// rather than whether every task is named. But a number that quietly counts
+// another business's work is the kind of thing that is believed, and the next
+// rule written here would have demanded the reunion watcher appear in the
+// yacht's manual.
+//
+// A task is the yacht's if its brief reaches into the yacht: the shared
+// protocol, the app folder, or the business by name. Cheap, and it cannot go
+// stale the way a hardcoded list of names would -- make-release.js already
+// copies crew/nauti-* by pattern and would have missed glow-night-media and
+// passcode-reminder if anyone had relied on the prefix.
+const BELONGS_TO_THE_YACHT = /_crew-protocol|Nauti-yachti-app|nauti yachti|thenautiyachti/i;
+const allTasks = fs.existsSync(TASKS)
   ? fs.readdirSync(TASKS).filter((d) => !d.startsWith("_") && fs.existsSync(path.join(TASKS, d, "SKILL.md")))
   : [];
+const liveTasks = allTasks.filter((d) =>
+  BELONGS_TO_THE_YACHT.test(read(path.join(TASKS, d, "SKILL.md")) || ""));
+const foreignTasks = allTasks.filter((d) => !liveTasks.includes(d));
 const manual = read(path.join(APP, "owner-console-manual.md")) || "";
 const crew = read(path.join(APP, "lib/crew.js")) || "";
 const proto = read(path.join(TASKS, "_crew-protocol.md")) || "";
@@ -692,6 +715,11 @@ try {
 // --- report -----------------------------------------------------------------
 if (!problems.length) {
   console.log(`  consistent — ${liveTasks.length} tasks, manual, protocol and roster all agree.`);
+  // Named rather than silently dropped: a yacht task wrongly excluded would
+  // otherwise vanish from every rule above without a word.
+  if (foreignTasks.length) {
+    console.log(`  (${foreignTasks.length} other project${foreignTasks.length === 1 ? "" : "s"} scheduled on this machine, not counted: ${foreignTasks.join(", ")})`);
+  }
 } else {
   for (const p of problems) console.log(`  [${p.area}]\n      ${p.what}`);
   console.log(`\n  ${problems.length} contradiction${problems.length === 1 ? "" : "s"}.`);

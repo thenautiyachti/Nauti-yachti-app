@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 18 September 2026 (sixth revision).
+Last updated 18 September 2026 (seventh revision).
 
 ---
 
@@ -59,6 +59,30 @@ and dedupes a person to one row however many lists they appear on. Adding 30 and
 
 Every charter, from any source — Boatsetter, GetMyBoat, the website, cash, Zelle.
 Add one with the form above the table.
+
+### What the status column tells you
+
+**Booked used to be one word for two opposite situations** — a charter that is
+settled and needs nothing, and one where somebody still owes money and nobody is
+chasing it. On 18 September the glow night showed five BOOKED rows and exactly
+one had been paid.
+
+| Reads | Colour | Means |
+|---|---|---|
+| **Booked / paid** | green | Settled. Nothing to collect. |
+| **Booked / no charge** | green | On the boat at no cost — the crew riding free. Settled, but never a sale, and it must not be counted as revenue. |
+| **Booked / unpaid** | blue | Confirmed and holding its date, and the money has not arrived. **This is the chase list.** |
+| **Booked / payment failed** | red | They tried to pay and their bank refused it. Different from never having tried — see *When somebody tries to pay and it does not work*. |
+| **Inquiry** | grey | Asked, not booked. Unpaid by definition. |
+
+**The words carry the meaning, not the colour.** A greyscale screenshot, a phone
+in sunlight or a colour-blind reader all get the same answer, and the colour is
+only reinforcement.
+
+**Nothing underneath changed.** A booking's status is still one of the six
+values, the dropdown still says *Booked*, and the crew still read `booked` as
+they always have. The protocol already described it as *"confirmed, paid or
+not"* — this shows which.
 
 ### Three questions, three fields
 
@@ -1060,6 +1084,18 @@ any charter; anchoring off mid-trip is normal.
 
 **A charter with no stated occasion is a Tubing / Wakeboarding charter.** That is
 the default, not a guess.
+
+**A per-seat event takes no add-ons at all.** Boatz & Glowz sells one seat on a
+boat carrying a dozen strangers, so there is no table to decorate and no way to
+set up for two people in the middle of somebody else's night. The booking form
+hides the add-on list for it, and the server refuses to charge for one even if
+the request arrives anyway. It is keyed on the pricing type rather than a list of
+packages, so the next per-seat event inherits the rule the day it is created.
+
+This cost real money first: a guest checked out for two glow seats on 18 September
+and the form let him add the Full Decoration Package, taking $100 to $160 for
+balloons and champagne nobody could have delivered. He had to be texted and
+refunded, and Stripe keeps its fee on a refund.
 
 These rules live in `lib/addOns.js` and are the single source for the booking
 form, the price quoted and the FAQ. Change them there, not in the copy, and run
