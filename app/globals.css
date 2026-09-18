@@ -211,6 +211,15 @@ img, video, canvas, svg, iframe { max-width: 100%; }
   /* The id is the longest thing left and carries the date, so let it wrap
      rather than force the row wide again. */
   .bookings-table td:nth-child(1) { white-space: normal !important; word-break: break-all; }
+
+  /* SEATS AND MONEY SURVIVE THE PHONE.
+     Party size and price paid are columns 8 and 9, so the rule above hides both
+     and a phone showed only a name, a status and some buttons -- no way to tell
+     a party of five from a single seat, or $250 from $20, on the screen the
+     owner actually runs the day from. They come back as one line under the
+     name, which is where the eye already is, rather than by un-hiding seven
+     columns onto a 400px screen. */
+  .row-summary { display: block !important; }
 }
 
 /* The site header is sticky, so its height is a permanent tax on every screen.
@@ -806,3 +815,6 @@ input::placeholder, textarea::placeholder {
  * that wrapper was put there to do — rather than for the page to grow. */
 .panel-split > *,
 .pair-split > * { min-width: 0; }
+
+/* Only ever shown on a phone -- see the bookings-table block above. */
+.row-summary { display: none; }

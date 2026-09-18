@@ -1889,6 +1889,33 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                           + {r.addOnIds.map((id) => addOns.find((a) => a.id === id)?.name || id).join(", ")}
                         </div>
                       )}
+                      {/* SEATS AND MONEY, ON A PHONE.
+                          Party size and price are columns 8 and 9, and the
+                          phone stylesheet hides both — so a phone showed a
+                          name, a status and some buttons, with no way to tell
+                          a party of five from a single seat or $250 from $20.
+                          That is the screen the day actually gets run from.
+                          Hidden on anything wider, where the real columns say
+                          it better. Shown for every kind of reservation, not
+                          just bookings, because an inquiry has a party size and
+                          a quote too. */}
+                      <div className="row-summary" style={{ fontWeight: 400, fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>
+                        {r.partySize ? (r.partySize === 1 || String(r.partySize) === "1" ? "1 seat" : r.partySize + " seats") : "party size not set"}
+                        {" · "}
+                        {/* WHAT THEY OWE, NOT WHAT THEY HAVE PAID.
+                            toUnifiedRows maps an inquiry's quote onto pricePaid
+                            but leaves an external booking's pricePaid null
+                            until money lands — so reading the unified field
+                            alone prints "no price" on every unpaid booking,
+                            which is the row where the number matters most.
+                            raw.priceQuoted is the figure being charged. */}
+                        {(() => {
+                          const amount = r.raw?.priceQuoted ?? r.pricePaid ?? r.raw?.pricePaid;
+                          if (Number(amount) > 0) return currency(amount);
+                          if (Number(amount) === 0) return "no charge";
+                          return "no price set";
+                        })()}
+                      </div>
                     </td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
                       {r.kind === "external" ? (

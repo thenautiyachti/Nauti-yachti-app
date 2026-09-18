@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 18 September 2026 (eighth revision).
+Last updated 18 September 2026 (ninth revision).
 
 ---
 
@@ -59,6 +59,13 @@ and dedupes a person to one row however many lists they appear on. Adding 30 and
 
 Every charter, from any source — Boatsetter, GetMyBoat, the website, cash, Zelle.
 Add one with the form above the table.
+
+**On a phone, every row shows its seats and its price under the name.** The
+table drops most columns at phone width, and party size and price were two of
+them — so the screen you actually run the day from showed a name, a status and
+some buttons, with no way to tell a party of five from a single seat. A booking
+at no charge says *no charge* rather than $0, because the crew riding free are
+not a sale.
 
 ### What the status column tells you
 
