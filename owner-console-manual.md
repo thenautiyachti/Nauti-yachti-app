@@ -1569,6 +1569,34 @@ is left alone.
 It only ever copies *from* Stripe. It cannot mark something paid that Stripe
 does not say is paid.
 
+### Why a confirmation sometimes did not arrive
+
+For a fortnight this looked random. Slade paid and got his email. Carlyn, Jim,
+Josh and Stephen paid and got nothing. Same code, same kind of payment, and the
+booking itself always came out right — which sent everyone looking at Resend and
+at the template, because those were the only moving parts anyone could see.
+
+The webhook was **not waiting** for the email. It started the send and moved on.
+The site runs on functions that are frozen the instant they answer Stripe, so
+the request to Resend was cut off in mid-air perhaps four times in five, with no
+error written anywhere. The booking survived because *that* write was waited for.
+
+It is now waited for, and it cannot fail a payment: a mail outage is caught and
+logged, exactly as before.
+
+**It was in four places, not one.** The same mistake was silently dropping the
+declined-card notice to you, and both gift certificate emails — the second of
+which matters most, because a certificate is usually bought for somebody else
+and the email is the thing that gets forwarded. Money taken, nothing delivered.
+
+`scripts/test-webhook-awaits.js` now fails the moment any of them is started and
+not waited for. It is a source check rather than a behaviour one on purpose:
+this bug is invisible at runtime, invisible in review, and only shows up as a
+guest who never heard from you.
+
+If one is ever missed again, `node scripts/send-missing-confirmations.js` lists
+everyone who has paid and never been told, and `--apply` sends them.
+
 ### How they sign off
 
 Every one closes as **The Nauti Yachti LLC**, through a single setting, so the

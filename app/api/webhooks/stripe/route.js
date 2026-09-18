@@ -100,10 +100,11 @@ async function POST(req) {
       }
 
       // Tell the owner, because the entire point is that he should not have to
-      // go and look. Not awaited and not allowed to throw -- Stripe retries any
-      // webhook that does not return 200, and a mail outage must not make it
-      // redeliver a failure forever.
-      sendPaymentFailedEmail({
+      // go and look. AWAITED, with .catch below: Stripe retries any webhook that
+      // does not return 200, so a mail outage must not throw -- but not awaiting
+      // it meant the notice was usually killed when this function froze, which is
+      // the same failure that lost four booking confirmations on 18 Sep 2026.
+      await sendPaymentFailedEmail({
         name: hit ? (hit.name || hit.guestName) : null,
         email: hit ? hit.email : (session && session.customer_details && session.customer_details.email) || null,
         phone: hit ? hit.phone : null,
@@ -184,12 +185,18 @@ async function POST(req) {
               console.error("[webhooks/stripe] certificate sold but NOT booked to the ledger:", ledgerErr);
             }
 
-          // Best-effort: the buyer already sees the code on the success page,
-          // so a failed send is not a failed purchase.
-          sendGiftCertificateEmail(cert).catch(() => {});
+          // AWAITED. "Best-effort" was doing no effort at all: this function is
+          // frozen the moment it answers Stripe, so an un-awaited send is simply
+          // cancelled. The buyer does see the code on the success page -- but a
+          // gift certificate is usually bought FOR somebody else, and the email
+          // is the thing that gets forwarded. Money taken, nothing delivered.
+          //
+          // .catch keeps a failed send from failing the purchase, which is what
+          // best-effort was meant to mean.
+          await sendGiftCertificateEmail(cert).catch(() => {});
           // And tell the business. Until 8 Sep 2026 nothing did, so the first
           // anyone heard of a certificate was somebody turning up to redeem it.
-          sendGiftCertificateOwnerEmail(cert).catch(() => {});
+          await sendGiftCertificateOwnerEmail(cert).catch(() => {});
         }
       } catch (err) {
         console.error("[webhooks/stripe] Failed to mint gift certificate:", err);
@@ -227,12 +234,17 @@ async function POST(req) {
           where: { id: externalBookingId }, data,
         });
 
-        // Same courtesy the website checkout sends. Not awaited and not
-        // allowed to throw: a mail outage must never make Stripe retry a
-        // payment. The send is now STAMPED rather than only logged: a line in a
-        // server log is not a record anybody reads, which is how Jim Gonzalez
-        // stayed paid and silent for a week.
-        sendBookingConfirmationEmail({
+        // AWAITED. It used to be fired and forgotten, with .then() attached, on
+        // the reasoning that a mail outage must never make Stripe retry a
+        // payment. That reasoning argues for catching, not for walking away:
+        // this runs on a serverless function, which is frozen the instant its
+        // response goes back to Stripe, so the request to Resend was killed in
+        // flight perhaps four times out of five. The row was updated because
+        // THAT was awaited. The guest heard nothing because this was not.
+        //
+        // The try/catch keeps the original guarantee whole: nothing in here can
+        // fail the webhook or make Stripe retry.
+        await sendBookingConfirmationEmail({
           name: paid.guestName, email: paid.email, phone: paid.phone,
           date: paid.date, hours: paid.hours, partySize: paid.partySize,
           // packageId and startTime decide the meeting point and the departure
@@ -422,7 +434,9 @@ async function POST(req) {
         // hear from us" into a fact that can be queried, which is what
         // scripts/check-output.js asks every morning.
         if (paidInquiry) {
-          sendBookingConfirmationEmail(paidInquiry)
+          // AWAITED, for the reason above: a floating promise on a serverless
+          // function is a promise the platform is free to kill, and it did.
+          await sendBookingConfirmationEmail(paidInquiry)
             .then(async (r) => {
               if (r && r.sent) {
                 await prisma.inquiry.update({
