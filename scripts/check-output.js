@@ -635,10 +635,24 @@ async function duplicatePeople() {
 
   // One list, tagged, so a pair can straddle the two tables -- which is the
   // shape the real case takes: a hand-typed booking and a website inquiry.
-  const rows = [
+  //
+  // COLLAPSED BY BOOKING NUMBER FIRST. A website charter is an inquiry AND its
+  // mirror, so without this a genuine duplicate is reported once per row of the
+  // charter it clashes with -- Stephen Herrick's double booking came out twice,
+  // word for word, which reads like the check is broken rather than like there
+  // are two of him.
+  const byRef = new Set();
+  const rows = [];
+  for (const r of [
     ...inquiries.map((r) => ({ ...r, table: "inquiry" })),
     ...bookings.map((r) => ({ ...r, table: "booking" })),
-  ];
+  ]) {
+    if (r.bookingId) {
+      if (byRef.has(r.bookingId)) continue;
+      byRef.add(r.bookingId);
+    }
+    rows.push(r);
+  }
 
   // Only charters still to come. A pair that sailed last month is history, and
   // history is not a to-do.
