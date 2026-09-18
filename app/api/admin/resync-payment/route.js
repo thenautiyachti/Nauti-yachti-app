@@ -97,6 +97,12 @@ async function POST(req) {
   if (session.payment_status === "paid") {
     if (booking.paymentStatus !== "paid") changed.paymentStatus = "paid";
     if (booking.status !== "booked" && booking.status !== "completed") changed.status = "booked";
+    // A PAID BOOKING MUST NEVER STILL WEAR A DECLINE. Somebody whose card was
+    // refused and who then paid on a second attempt is the ordinary case for
+    // this route, and without these two lines the repair left paymentFailedAt
+    // set -- so the row went on showing "Booked / payment failed" in red over
+    // money that had arrived, and onto the chase list with it.
+    if (booking.paymentFailedAt) { changed.paymentFailedAt = null; changed.paymentFailedError = null; }
     // Stripe paying IS the assertion — the one payment method this system can
     // know without being told. See lib/channels.js.
     if (!booking.paymentMethod) changed.paymentMethod = "Stripe (card)";

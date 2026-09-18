@@ -91,6 +91,25 @@ values, the dropdown still says *Booked*, and the crew still read `booked` as
 they always have. The protocol already described it as *"confirmed, paid or
 not"* — this shows which.
 
+### Which trip it is, at a glance
+
+The bookings table carries a **Package** column. Your words, 18 September: *"we
+don't have a column for package type, like whether they're boats and glows,
+people, or tubing, or party cove."*
+
+It said which boat and how long, and that does not tell a glow seat from a
+tubing afternoon on the same hull — while the package is what decides the price,
+whether add-ons apply at all, and where the guest is told to meet.
+
+**Half the rows had no package to show.** A website checkout writes the booking
+row automatically, and it was being created without one, so every charter taken
+through the site sat there blank. Fixed, and the existing rows filled in from
+their inquiries.
+
+On a phone the column is hidden like every other middle column, so the package
+joins the line under the guest's name instead: *Boatz & Glowz · 2 seats · $100.*
+
+
 ### Three questions, three fields
 
 These used to be one and a half fields, and the books paid for it. Each booking
@@ -1399,13 +1418,13 @@ fleet had been mailing guests to a house on the wrong side of the lake**, from 5
 September until it was found. It produced no complaint only because nobody on
 those two boats had paid by card in that window.
 
-**The west dock's address is not set yet, and nothing invents one.** Until it is
-given, an Islander or Yachti guest is told the meeting point is coming, which is
-true and costs you one text. It is deliberately not filled in from the
-Explorer's: falling back would silently restore the exact fault, and a
-confidently wrong address is the one mistake a guest cannot catch before they
-are already driving. Set `DOCK_ADDRESS_ISLANDER` and `DOCK_ADDRESS_YACHTI` and
-those bookings start carrying it the same day.
+**Both docks are set.** The Explorer's is `DOCK_ADDRESS`; the Islander's and the
+Yachti's are `DOCK_ADDRESS_ISLANDER` and `DOCK_ADDRESS_YACHTI`, added 18
+September. A boat whose address is missing is **never** given the Explorer's
+instead — its guest is told the meeting point is coming, which is true and costs
+one text. Falling back would silently restore the exact fault this replaced, and
+a confidently wrong address is the one mistake a guest cannot catch before they
+are already driving.
 
 **The gate code is still never emailed**, and is now only *promised* for a dock
 that actually has a gate. An email is forwarded and kept forever, so mailing the

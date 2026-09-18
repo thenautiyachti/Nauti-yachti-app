@@ -205,7 +205,8 @@ img, video, canvas, svg, iframe { max-width: 100%; }
   .bookings-table th:nth-child(7),  .bookings-table td:nth-child(7),
   .bookings-table th:nth-child(8),  .bookings-table td:nth-child(8),
   .bookings-table th:nth-child(9),  .bookings-table td:nth-child(9),
-  .bookings-table th:nth-child(10), .bookings-table td:nth-child(10) {
+  .bookings-table th:nth-child(10), .bookings-table td:nth-child(10),
+  .bookings-table th:nth-child(11), .bookings-table td:nth-child(11) {
     display: none;
   }
   /* The id is the longest thing left and carries the date, so let it wrap
@@ -213,7 +214,8 @@ img, video, canvas, svg, iframe { max-width: 100%; }
   .bookings-table td:nth-child(1) { white-space: normal !important; word-break: break-all; }
 
   /* SEATS AND MONEY SURVIVE THE PHONE.
-     Party size and price paid are columns 8 and 9, so the rule above hides both
+     Party size and price paid are columns 9 and 10 (8 and 9 until Package
+     was added ahead of them on 18 Sep 2026), so the rule above hides both
      and a phone showed only a name, a status and some buttons -- no way to tell
      a party of five from a single seat, or $250 from $20, on the screen the
      owner actually runs the day from. They come back as one line under the

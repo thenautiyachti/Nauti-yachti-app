@@ -1866,6 +1866,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                   <th style={{ padding: "4px 8px" }}>Name</th>
                   <th style={{ padding: "4px 8px" }}>Phone</th>
                   <th style={{ padding: "4px 8px" }}>Email</th>
+                  <th style={{ padding: "4px 8px" }}>Package</th>
                   <th style={{ padding: "4px 8px" }}>Vessel</th>
                   <th style={{ padding: "4px 8px" }}>Start</th>
                   <th style={{ padding: "4px 8px" }}>Duration</th>
@@ -1900,6 +1901,12 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                           just bookings, because an inquiry has a party size and
                           a quote too. */}
                       <div className="row-summary" style={{ fontWeight: 400, fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>
+                        {/* WHICH TRIP, on the screen the day is run from.
+                            The Package column is hidden at phone width like
+                            every other middle column, and "Nauti Yachti, 4
+                            hrs" does not tell a glow seat from a tubing
+                            afternoon. */}
+                        {r.raw?.packageName ? r.raw.packageName.replace(/ Package$/, "") + " · " : ""}
                         {r.partySize ? (r.partySize === 1 || String(r.partySize) === "1" ? "1 seat" : r.partySize + " seats") : "party size not set"}
                         {" · "}
                         {/* WHAT THEY OWE, NOT WHAT THEY HAVE PAID.
@@ -1939,6 +1946,9 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                       ) : (
                         r.email || "—"
                       )}
+                    </td>
+                    <td style={{ padding: "6px 8px", maxWidth: 150 }}>
+                      {r.raw?.packageName || <span style={{ color: "var(--muted)" }}>not set</span>}
                     </td>
                     <td style={{ padding: "6px 8px" }}>{r.vesselName || "—"}</td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>

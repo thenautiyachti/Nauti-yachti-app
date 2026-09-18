@@ -352,9 +352,35 @@ async function POST(req) {
                 platform: "Website",
                 paymentMethod: "Stripe (card)",
                 status: "booked",
+                // PAID. This was missing, and paymentStatus defaults to
+                // "unpaid" — so every website checkout produced a mirror row
+                // carrying the money in pricePaid and the word "unpaid" beside
+                // it. The Bookings tab showed a settled charter on the chase
+                // list, and once the status column started colouring by payment
+                // (v2.9.13) it showed them in the blue that means "nobody has
+                // paid and nobody is chasing it".
+                //
+                // Carlyn, Oscar and Slade were all wrong this way at once on
+                // 18 Sep 2026 and had to be corrected by hand. The inquiry knew,
+                // the mirror did not, and nothing compared them.
+                paymentStatus: "paid",
+                // A row created this instant carries no decline to clear. Stated
+                // anyway, because every other place that marks a payment paid
+                // clears it, and an invariant with one silent exception is how
+                // the exception becomes the next bug.
+                ...CLEAR_FAILURE,
                 pricePaid: paid,
+                // WHICH PACKAGE THEY BOUGHT. Also missing, so every mirror row
+                // had a null package — the Bookings tab could not say whether a
+                // charter was a glow seat or a tubing day, and lib/email.js
+                // reads packageId to decide where to tell the guest to meet.
+                // The inquiry has carried both since the table was created.
+                packageId: paidInquiry.packageId || null,
+                packageName: paidInquiry.packageName || null,
+                priceQuoted: paidInquiry.priceQuoted ?? null,
                 bookingId: paidInquiry.bookingId || null,
                 platformRef: session.id,
+                stripeSessionId: session.id,
                 // INHERIT WHAT BROUGHT THEM, not just which door they walked
                 // through. This was hardcoded "website", which is true of every
                 // checkout and therefore says nothing — the whole point of

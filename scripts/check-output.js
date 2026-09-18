@@ -611,6 +611,7 @@ async function paidWithNoMoney() {
     select: {
       id: true, bookingId: true, guestName: true, date: true, phone: true,
       pricePaid: true, priceQuoted: true, paymentMethod: true, partySize: true,
+      status: true,
     },
     orderBy: { date: "desc" },
   });
@@ -619,6 +620,35 @@ async function paidWithNoMoney() {
   for (const b of rows) {
     const claimed = b.pricePaid != null ? b.pricePaid : b.priceQuoted;
     if (!(claimed > 0)) continue; // free seats claim nothing
+
+    // MONEY TAKEN IN ADVANCE IS NOT MISSING MONEY.
+    //
+    // A charter's income row is written when it is marked COMPLETED -- that is
+    // the rule, it lives in lib/bookingLedger.js, and it exists so there is one
+    // way a charter's money is recognised rather than a different one per
+    // channel. Everything prepaid therefore sits paid-with-no-ledger-row from
+    // the day it is booked until the day it sails, entirely correctly.
+    //
+    // This check did not know that. It reported every prepaid future charter as
+    // "$X marked paid with nothing in the ledger behind them" -- on 18 Sep 2026
+    // that was Jim and Carlyn, $200 of perfectly well-handled money, on the
+    // morning list as a tier-1 problem the day before their trip. A check that
+    // reports correct bookkeeping as an error teaches the reader to skip it,
+    // and the one morning it is right is the morning it gets skipped.
+    //
+    // So the question is only asked once the trip has happened: a charter whose
+    // date has passed and whose money still is not in the books is either a
+    // booking nobody closed out or income nobody filed, and both need doing.
+    //
+    // CENTRAL, not UTC. The rest of this file reads today off toISOString(),
+    // which is UTC -- so from 7pm Central onwards it already believes it is
+    // tomorrow, and tomorrow's charter would be judged as having sailed. The
+    // bank panel had exactly this bug and reported a reading taken today as
+    // "1d ago". The boats are on Lake Conroe; the date that matters is the one
+    // in Texas.
+    const todayCentral = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+    const sailed = b.status === "completed" || (b.date && b.date < todayCentral);
+    if (!sailed) continue;
     // externalBookingId, NOT bookingId. LedgerEntry has both: bookingId is a
     // STRING holding the "NY-..." reference and is used on expenses, while
     // externalBookingId is the real foreign key — the schema says so in as many
@@ -642,7 +672,7 @@ async function paidWithNoMoney() {
   const worst = bad[0];
 
   fail(1, "paid with no money",
-    bad.length + " booking(s) are marked paid with nothing in the ledger behind them",
+    bad.length + " past charter(s) are paid with nothing in the ledger behind them",
     "$" + total.toFixed(2) + " across " + bad.length + " booking(s). A booking marked paid " +
     "drops off every chase list: it is counted in the season, it is not on anybody's " +
     "to-collect list, and the guest arrives either believing they have paid or about to be " +
