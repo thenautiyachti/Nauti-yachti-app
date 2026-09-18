@@ -26,6 +26,7 @@ import {
   INQUIRY_STATUS_BUCKET as INQUIRY_BUCKET_MAP,
   holdsTheDay,
   isOwed,
+  bookingDisplay,
 } from "../lib/bookingStatus";
 import { formatBody } from "../lib/boardText";
 
@@ -1942,9 +1943,27 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                     </td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{r.source}</td>
                     <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
-                      <span className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: BOOKING_STATUS_COLOR[r.statusBucket], textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                        {BOOKING_STATUS_LABEL[r.statusBucket] || r.status}
-                      </span>
+                      {/* BOOKED IS TWO DIFFERENT SITUATIONS AND SAID ONE WORD.
+                          A settled charter that needs nothing, and one where
+                          somebody still owes money and nobody is chasing it,
+                          both read BOOKED in blue. On 18 Sep 2026 the glow
+                          night had five of them and exactly one had been paid.
+                          Green paid, blue still owed, red a card that failed —
+                          label and colour from one function so they cannot
+                          drift apart. See bookingDisplay in lib/bookingStatus. */}
+                      {(() => {
+                        const d = bookingDisplay({ ...r.raw, statusBucket: r.statusBucket });
+                        return (
+                          <span className="mono" title={
+                            (BOOKING_HELP_TEXT[r.statusBucket] || "")
+                            + (d.tone === "unpaid" ? " Nobody has paid for this one yet." : "")
+                            + (d.tone === "failed" ? " A card was tried and refused. Their link may still work." : "")
+                            + (d.tone === "paid" ? " Settled — nothing to collect." : "")}
+                            style={{ fontSize: 10.5, fontWeight: 700, color: d.color, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                            {d.label || r.status}
+                          </span>
+                        );
+                      })()}
                       {/* THEY TRIED TO PAY AND IT DID NOT WORK.
                           Sarah Griffith's card was declined at 10:47pm on
                           12 Sep 2026 and this cell said "INQUIRY" -- the same

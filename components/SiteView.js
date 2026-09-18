@@ -5,7 +5,7 @@ import Link from "next/link";
 import { currency, dayTypeForDate, quotePackage, quoteTotal, imageFocus, durationText } from "../lib/pricing";
 import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
-import { includedIds, isIncluded, isCovered, chargeableIds } from "../lib/addOns";
+import { includedIds, isIncluded, isCovered, chargeableIds, takesAddOns } from "../lib/addOns";
 import { isPartnerReferral, PARTNER_PRICE_NOTE } from "../lib/partners";
 import { captureReferralSource, getReferralSource } from "../lib/referralSource";
 import NavBar from "./NavBar";
@@ -1243,7 +1243,14 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           />
         </label>
 
-        {addOns && addOns.length > 0 && (
+        {/* A per-seat event takes no add-ons and must not offer any. Boatz &
+            Glowz sells ONE SEAT on a boat carrying a dozen strangers — there is
+            no table to decorate and no way to set up for two people in the
+            middle of somebody else's night. Slade Deliberto was charged $60 for
+            a decoration package on two glow seats on the morning of 18 Sep 2026
+            because this dropdown offered it. lib/pricing.js refuses to charge
+            for it either way; this stops it being asked for. */}
+        {addOns && addOns.length > 0 && takesAddOns(selectedPkg) && (
           <AddOnsDropdown
             addOns={addOns}
             selectedIds={form.addOnIds}

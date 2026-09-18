@@ -114,11 +114,11 @@ async function seatsOnTheNight(eventDate, vesselIds) {
       prisma.vessel.findMany({ select: { id: true, capacity: true } }),
       prisma.externalBooking.findMany({
         where: { date: eventDate, status: { notIn: ["cancelled"] } },
-        select: { partySize: true },
+        select: { partySize: true, bookingId: true },
       }),
       prisma.inquiry.findMany({
         where: { date: eventDate, status: { notIn: ["cancelled", "lapsed"] } },
-        select: { partySize: true },
+        select: { partySize: true, bookingId: true },
       }),
     ]);
 
@@ -128,8 +128,31 @@ async function seatsOnTheNight(eventDate, vesselIds) {
       .filter((v) => vesselIds.includes(v.id))
       .reduce((n, v) => n + Math.max(0, (v.capacity || 0) - 1), 0);
 
-    const taken = [...bookings, ...inquiries]
-      .reduce((n, r) => n + (Number(r.partySize) || 0), 0);
+    // ONE CHARTER, TWO ROWS — COUNT IT ONCE.
+    //
+    // A website checkout writes a row in BOTH tables under the same booking
+    // number: the inquiry the guest filled in, and the mirror booking that
+    // blocks the date. That is by design and the console's toUnifiedRows has
+    // always deduped it. This did not, so on the morning of 18 Sep 2026 Slade
+    // Deliberto's two seats were counted twice and the page told the public
+    // "4 seats left" when there were 6.
+    //
+    // It errs toward under-selling rather than overselling, which is the safer
+    // direction and is exactly why it could have sat there unnoticed for weeks
+    // — every website booking makes it worse by the size of that party.
+    //
+    // Deduped on bookingId, the same key the console uses. A row without one
+    // cannot be a duplicate of anything, so it keeps its own identity.
+    const seen = new Set();
+    let taken = 0;
+    for (const r of [...bookings, ...inquiries]) {
+      const key = r.bookingId;
+      if (key) {
+        if (seen.has(key)) continue;
+        seen.add(key);
+      }
+      taken += Number(r.partySize) || 0;
+    }
 
     if (!capacity) return null;
     return { capacity, taken, left: Math.max(0, capacity - taken) };

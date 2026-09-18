@@ -117,3 +117,36 @@ for (const [outer, inner] of Object.entries(CONTAINS)) {
 
 console.log("\n  " + pass + " passed, " + fail + " failed\n");
 process.exit(fail ? 1 : 0);
+
+// --- a per-seat event takes no add-ons -------------------------------------
+//
+// Slade Deliberto checked out for two Boatz & Glowz seats on 18 Sep 2026 and
+// picked up the Full Decoration Package: $100 became $160 for balloons and
+// champagne nobody could have set up, because glow night sells one seat on a
+// boat carrying a dozen strangers rather than the boat itself.
+//
+// The form now hides the dropdown, but the test that matters is this one --
+// quoteTotal is what decides the number Stripe charges, and the form is not in
+// the path of a crafted request.
+{
+  const { takesAddOns } = require("../lib/addOns");
+  const { quoteTotal } = require("../lib/pricing");
+  const glow = { id: "glowz", pricingType: "per-guest", pricePerGuest: 50 };
+  const party = { id: "birthday", pricingType: "hourly-by-vessel",
+                  hourlyByVessel: { explorer: { weekend: { "4": 600 } } } };
+  const extras = [{ id: "decoration-package", price: 60 }, { id: "dinner-grill", price: 25 }];
+
+  ok("a per-guest package takes no add-ons", takesAddOns(glow), false);
+  ok("every other package still does", takesAddOns(party), true);
+  ok("an unknown package is not silently stripped", takesAddOns(null), true);
+
+  ok("glow ignores a ticked add-on",
+    quoteTotal(glow, extras, { partySize: 2, addOnIds: ["decoration-package"] }), 100);
+  ok("glow ignores several",
+    quoteTotal(glow, extras, { partySize: 2, addOnIds: ["decoration-package", "dinner-grill"] }), 100);
+  ok("Slade's exact booking now prices at 100, not 160",
+    quoteTotal(glow, extras, { partySize: 2, addOnIds: ["decoration-package"] }), 100);
+  ok("a whole-boat charter is untouched",
+    quoteTotal(party, extras, { vesselId: "explorer", hours: 4, dayType: "weekend",
+                                addOnIds: ["decoration-package"] }), 660);
+}

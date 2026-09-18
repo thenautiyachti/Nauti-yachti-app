@@ -573,8 +573,18 @@ async function paidWithNoMoney() {
   for (const b of rows) {
     const claimed = b.pricePaid != null ? b.pricePaid : b.priceQuoted;
     if (!(claimed > 0)) continue; // free seats claim nothing
+    // externalBookingId, NOT bookingId. LedgerEntry has both: bookingId is a
+    // STRING holding the "NY-..." reference and is used on expenses, while
+    // externalBookingId is the real foreign key — the schema says so in as many
+    // words, "the reliable join the bookingId string never provided".
+    //
+    // This check shipped on 18 Sep 2026 matching a cuid against the reference
+    // column, so it could never find income at all. It reported nothing, which
+    // looked like a pass: there was exactly one paid booking that day and it was
+    // the crew's $0 row, which the guard above skips. The first real paid
+    // booking would have been accused of holding money that was never banked.
     const led = await prisma.ledgerEntry.findMany({
-      where: { bookingId: b.id, type: "income" },
+      where: { externalBookingId: b.id, type: "income" },
       select: { amount: true },
     });
     if (led.length) continue;
