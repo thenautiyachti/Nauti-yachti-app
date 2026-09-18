@@ -85,6 +85,32 @@ check("availability, date could not be resolved",
 // Money that has already moved, phrased as a simple question.
 check("already paid", "I already paid, can you move it to Sunday?", "hold");
 
+// --- CONFIRMING A TIME, which is how guests actually ask ------------------
+//
+// Facebook, 18 Sep 2026, 4:42pm: "So boats take off at 5?" Held as
+// unrecognised, because the pattern knew "what time" and "when does" and
+// nothing else. Nobody phrases it that way when they are checking something
+// they have already read -- they quote the time back at you.
+//
+// It matters more than usual this month. The glow night moved from 7pm to 5pm
+// on 17 Sep and posts saying 7 are still out there, so every guest who saw an
+// old one asks in exactly this shape.
+check("the message that was held", "So boats take off at 5?", "reply");
+check("checking an old time", "Is it still 7pm?", "reply");
+check("quoting the time back", "5pm right?", "reply");
+check("confirming with a tag", "So we leave at 5 yeah?", "reply");
+check("a departure verb", "Do the boats depart at 5?", "reply");
+check("no punctuation, no am/pm", "are you still doing 7", "reply");
+check("the nautical phrasing", "what time do you push off", "reply");
+check("the other end of the night", "when are we back", "reply");
+
+// AND THE MONEY TRAPS. A price question wearing the same clothes must not be
+// answered with a departure time -- that is worse than holding it, because the
+// guest gets a confident answer to a question they did not ask.
+check("a price, not a time", "Is it still $50?", "hold");
+check("a party size, not a time", "Can I bring 5 people?", "hold");
+check("money already paid", "I paid $100 already", "hold");
+
 const r = rules();
 console.log("  " + r.hold.length + " hold rules, " + r.intents.length + " answerable intents");
 console.log("  a message over " + r.longMessage + " chars or with more than " +
