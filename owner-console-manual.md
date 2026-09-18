@@ -150,6 +150,49 @@ A booking paid through the website checkout now appears here on its own, created
 from the Stripe webhook as **booked** (not completed — the trip has not happened
 yet).
 
+### Taking a booking that came in by text
+
+Send the contact and the details and it goes on the books the same way every
+time, priced, numbered, and with the text to send printed at the end:
+
+```
+node scripts/add-booking.js --name "Josh Ramirez" --phone "(619) 248-2317" \
+     --package glowz --date 2026-09-19 --seats 1 --amount 20 --apply
+```
+
+It previews until `--apply`. `--amount` is a **total** and overrides the package
+price — that is where your $20 circle rate goes, and it stays out of the pricing
+code so it can never leak into a public quote. Leave it off and the charter is
+priced exactly as the website would price it. Leave `--vessel` off and the boat
+with the most room that day is chosen.
+
+**It refuses a name or number already on that date**, so the same guest cannot
+quietly land on the list twice. `--force` if it really is a second booking.
+
+**What makes it work all the way through** is that the row is created with a
+package and a price. Without those, the checkout link has nothing to charge and
+the seat cannot be sold — which is what a hand-typed row most often lacks.
+
+### Charging a booking that did not come from the website
+
+Both tools that issue a checkout link used to read the website table only, so
+the one command for charging a booking agreed by text could not see a booking
+agreed by text. Josh Ramirez was created on 18 September and the tool written
+for exactly that case answered *"No booking with reference NY-20260919-11"*.
+
+The quieter half was worse. Both had the wrong key written into the payment, so
+even a booking they *had* found would have sent the guest's money looking for a
+row in the other table — they would have paid, and nothing would have happened.
+
+Both read both tables now, and *Text payment link* in the console keeps working
+as it did.
+
+**A test-mode link is never saved against a booking.** A test link renders a
+convincing Stripe page, accepts a card, says thank you and collects nothing; and
+the id it leaves behind makes every later repair of that booking fail, because
+live Stripe has never heard of it. The tools now say **TEST LINK — DO NOT SEND**
+and leave the booking untouched.
+
 ### When the same guest ends up on the list twice
 
 Most bookings are typed in by hand from a text or a Facebook message, and the
