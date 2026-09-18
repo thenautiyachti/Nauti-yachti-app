@@ -239,7 +239,7 @@ async function POST(req) {
           // time in the email. Leaving them out is how a glow guest was sent to
           // the private dock -- see lib/email.js.
           packageId: paid.packageId, packageName: paid.packageName,
-          startTime: paid.startTime, vesselName: paid.vesselName,
+          startTime: paid.startTime, vesselId: paid.vesselId, vesselName: paid.vesselName,
           bookingId: paid.bookingId, priceQuoted: paid.pricePaid,
         })
           .then((r) => {
