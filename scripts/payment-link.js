@@ -32,6 +32,9 @@ if (fs.existsSync(SECRETS)) {
 }
 
 const { prisma } = require(path.join(__dirname, "..", "lib", "db"));
+const { findPayableByRef, metadataFor, modelFor } =
+  require(path.join(__dirname, "..", "lib", "payableBooking"));
+const { bookingLinkMessage } = require(path.join(__dirname, "..", "lib", "guestTexts"));
 
 const SITE = "https://www.thenautiyachti.com";
 const argv = process.argv.slice(2);
@@ -45,7 +48,11 @@ if (!ref) {
 }
 
 (async () => {
-  const booking = await prisma.inquiry.findFirst({ where: { bookingId: ref } });
+  // BOTH TABLES. This read prisma.inquiry only, which meant the one command for
+  // charging a booking agreed off the website could not see a booking agreed off
+  // the website. Josh Ramirez, 18 Sep 2026: created by hand, then "No booking
+  // with reference NY-20260919-11" from the tool built to charge him.
+  const booking = await findPayableByRef(ref);
   if (!booking) {
     console.error("\n  No booking with reference " + ref + "\n");
     process.exit(1);
@@ -57,9 +64,9 @@ if (!ref) {
     process.exit(1);
   }
 
-  const amount = val("--amount") != null ? Number(val("--amount")) : Number(booking.priceQuoted);
+  const amount = val("--amount") != null ? Number(val("--amount")) : Number(booking.amount);
   if (!amount || amount <= 0) {
-    console.error("\n  " + ref + " has no usable price (priceQuoted = " + booking.priceQuoted + ").");
+    console.error("\n  " + ref + " has no usable price (priceQuoted = " + booking.amount + ").");
     console.error("  Pass --amount <dollars> to set one.\n");
     process.exit(1);
   }
@@ -84,6 +91,7 @@ if (!ref) {
     booking.partySize ? booking.partySize + " guests" : null,
     ref,
   ].filter(Boolean).join(" · ");
+  const seats = booking.partySize ? booking.partySize + (booking.partySize === 1 ? " seat" : " seats") : "booking";
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -106,7 +114,10 @@ if (!ref) {
     cancel_url: SITE + "/#packages",
     // The key the webhook reads. Without it the payment cannot find its
     // booking and somebody has to match it up by hand later.
-    metadata: { inquiryId: booking.id, bookingRef: ref },
+    // Which table the webhook flips when the money lands. An ExternalBooking
+    // carries externalBookingId; hardcoding inquiryId sent the payment looking
+    // for a row that does not exist, and the guest would have paid into silence.
+    metadata: metadataFor(booking),
     phone_number_collection: { enabled: true },
     consent_collection: { terms_of_service: "required" },
     custom_text: {
@@ -116,10 +127,24 @@ if (!ref) {
     },
   });
 
-  await prisma.inquiry.update({
-    where: { id: booking.id },
-    data: { stripeSessionId: session.id },
-  });
+  const live = String(session.id).startsWith("cs_live_");
+
+  // Saved only when it is real. A test id on a live booking makes every later
+  // repair fail on a booking that was never broken.
+  if (live || argv.includes("--test-ok")) {
+    await modelFor(booking).update({
+      where: { id: booking.id },
+      data: { stripeSessionId: session.id },
+    });
+  }
+
+  if (!live) {
+    console.error("\n  TEST MODE \u2014 STRIPE_SECRET_KEY is a test key.");
+    console.error("  This link renders a convincing Stripe page, accepts a test card,");
+    console.error("  reports success and COLLECTS NOTHING. Do not send it to a guest.");
+    console.error("  The session id has NOT been saved against " + ref + ", so nothing");
+    console.error("  downstream is poisoned. Pass --test-ok to save it anyway.\n");
+  }
 
   console.log("\n  " + ref + "   " + booking.name);
   console.log("  " + itemName);
@@ -127,10 +152,21 @@ if (!ref) {
   console.log("\n  AMOUNT   $" + amount.toFixed(2));
   console.log("  EXPIRES  " + new Date(session.expires_at * 1000).toLocaleString() +
     "   (Stripe's own limit is 24 hours)");
-  console.log("\n  SEND THIS LINK:\n");
+  console.log("\n  " + (live ? "SEND THIS LINK:" : "TEST LINK \u2014 DO NOT SEND:") + "\n");
   console.log("  " + session.url + "\n");
-  console.log("  When he pays, " + ref + " flips to paid on its own — the session carries");
-  console.log("  the booking id, so nothing needs matching up afterwards.\n");
+  console.log("  When they pay, " + ref + " flips to paid on its own — the session carries");
+  console.log("  the booking id, so nothing needs matching up afterwards, and the");
+  console.log("  confirmation email goes out with it.\n");
+
+  // THE OTHER LINK, and usually the better one. A Stripe session dies after 24
+  // hours; /pay/<id> mints a fresh one whenever the guest opens it, so a text
+  // sent tonight still works on Saturday. The session above is for somebody
+  // standing in front of you ready to pay now.
+  const durable = bookingLinkMessage(booking.row);
+  if (durable) {
+    console.log("  OR SEND THE TEXT, which never expires:\n");
+    console.log("  " + durable + "\n");
+  }
 
   await prisma.$disconnect();
 })().catch((e) => {

@@ -1,5 +1,6 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
+const { findPayableByRef, metadataFor, modelFor } = require("../../../../lib/payableBooking");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 
 // Create a Stripe checkout link for a booking that was agreed somewhere else.
@@ -33,7 +34,11 @@ async function POST(req) {
     return NextResponse.json({ error: "Missing bookingId" }, { status: 400 });
   }
 
-  const booking = await prisma.inquiry.findFirst({ where: { bookingId: ref } });
+  // BOTH TABLES. This read prisma.inquiry only, so the button could not issue a
+  // link for a booking taken by text — which is most of them, and the entire
+  // reason the other table exists. lib/payableBooking already knew how to do
+  // this for the guest-facing /pay page; this route simply never asked it.
+  const booking = await findPayableByRef(ref);
   if (!booking) {
     return NextResponse.json({ error: "No booking with reference " + ref }, { status: 404 });
   }
@@ -42,7 +47,7 @@ async function POST(req) {
     return NextResponse.json({ error: ref + " is already paid" }, { status: 409 });
   }
 
-  const amount = body.amount != null ? Number(body.amount) : Number(booking.priceQuoted);
+  const amount = body.amount != null ? Number(body.amount) : Number(booking.amount);
   if (!amount || amount <= 0) {
     return NextResponse.json(
       { error: "No usable price on " + ref + ". Pass an amount." },
@@ -92,7 +97,10 @@ async function POST(req) {
       ],
       success_url: SITE + "/booking-success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: SITE + "/#packages",
-      metadata: { inquiryId: booking.id, bookingRef: ref },
+      // Which table the webhook flips when the money lands. An ExternalBooking
+      // carries externalBookingId; hardcoding inquiryId sent the payment looking
+      // for a row that does not exist.
+      metadata: metadataFor(booking),
       phone_number_collection: { enabled: true },
       consent_collection: { terms_of_service: "required" },
       custom_text: {
@@ -105,17 +113,22 @@ async function POST(req) {
     return NextResponse.json({ error: "Stripe refused: " + e.message }, { status: 502 });
   }
 
-  await prisma.inquiry.update({
-    where: { id: booking.id },
-    data: { stripeSessionId: session.id },
-  });
+  const live = String(session.id).startsWith("cs_live_");
+
+  // Saved only when it is real \u2014 see the note below. A preview deployment with
+  // a test key would otherwise write an id that live Stripe cannot resolve, and
+  // every later repair of that booking would fail on it.
+  if (live) {
+    await modelFor(booking).update({
+      where: { id: booking.id },
+      data: { stripeSessionId: session.id },
+    });
+  }
 
   // Say plainly whether this link can actually take money. A test-mode session
   // renders a convincing Stripe page, accepts a test card, reports success and
   // collects nothing — so "which mode is this" must never be something the
   // owner has to infer from the id.
-  const live = String(session.id).startsWith("cs_live_");
-
   return NextResponse.json({
     ok: true,
     bookingRef: ref,
