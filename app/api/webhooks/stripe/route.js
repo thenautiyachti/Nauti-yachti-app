@@ -235,7 +235,11 @@ async function POST(req) {
         sendBookingConfirmationEmail({
           name: paid.guestName, email: paid.email, phone: paid.phone,
           date: paid.date, hours: paid.hours, partySize: paid.partySize,
-          packageName: paid.packageName, vesselName: paid.vesselName,
+          // packageId and startTime decide the meeting point and the departure
+          // time in the email. Leaving them out is how a glow guest was sent to
+          // the private dock -- see lib/email.js.
+          packageId: paid.packageId, packageName: paid.packageName,
+          startTime: paid.startTime, vesselName: paid.vesselName,
           bookingId: paid.bookingId, priceQuoted: paid.pricePaid,
         })
           .then((r) => {
