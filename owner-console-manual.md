@@ -3,7 +3,7 @@
 For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
 for the passcode — it is not in this manual.
 
-Last updated 18 September 2026 (third revision).
+Last updated 18 September 2026 (fourth revision).
 
 ---
 
@@ -1567,6 +1567,18 @@ there, it is not a rule.
   bare timestamps — so until it is moved, treat that date as The Dam. It had
   already become the opener and closer of a Party Cove compilation before you
   spotted it.
+- **The blocked-media list is in `write-tags.js`, not only in the tags file.**
+  That script REBUILDS the list wholesale rather than adding to it, so a block
+  recorded only in `_media-tags.json` disappears the next time anybody runs
+  the tagger — silently, with searches simply starting to return the file
+  again. On 18 September the script held three entries and the live list held
+  seven. Four files would have been unblocked, two of them with a confirmed
+  topless woman.
+- **A block on a file is not always a block on every second of it.** The
+  20 September 2025 glow video is blocked for a figure at 4.5–6.5s; an excerpt
+  from 42–54s was reviewed and cleared. Where that has happened the doNotUse
+  entry names the seconds and says who cleared what, so the block keeps
+  meaning something instead of being re-argued every time.
 - **One glow clip is withdrawn for nudity:** `Boatz and Glowz / 2025-09-20 First
   run - promo event / 20250920_211850_303ad61a.mp4`. The whole clip, not just the
   part that was used, because it cannot be reviewed reliably at any size that
