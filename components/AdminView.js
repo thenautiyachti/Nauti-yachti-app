@@ -110,7 +110,29 @@ const STATEMENT_ORIGINS = [
   "Other",
 ];
 
+// One read of a badge endpoint, separating "the session has gone" from "there
+// was nothing to report".
+//
+// THE SESSION DIES UNDER THE POLL. The admin cookie lasts 12 hours and this
+// console is left open for far longer than that — on a phone the tab is never
+// closed. Once it expires the badge polls start coming back 401, and what this
+// used to do was `.then((r) => r.json())` followed by `.catch(() => {})`: a 401
+// body carries no `summary`, so nothing was set, nothing threw, and the badge
+// simply froze on whatever number it last saw.
+//
+// That is the worst available failure for these two in particular. A frozen DM
+// badge reads as "nobody waiting" rather than "not looking" — which is exactly
+// the thing the badge was built to prevent. Seen live on 20 Sep 2026 as a pair
+// of 401s in the Vercel log while the console showed a calm zero.
+async function readBadgeSummary(url) {
+  const res = await fetch(url);
+  if (res.status === 401) return { expired: true };
+  const body = await res.json().catch(() => null);
+  return { summary: body && body.summary };
+}
+
 export default function AdminView({
+  onSessionExpired,
   packages, vessels, gallery, blocked, partialDates, inquiries, ledger, totals, addons, externalBookings,
   maintenanceItems, engineHours, fuelLogs, coupons, subscriptions, mediaDrafts, testimonials, priceHistory,
   todos = [], agentActivity = [], bankBalances = [], onAddTodo, onToggleTodo, onDeleteTodo, onAddGalleryItem, onUpdateGalleryItem, onDeleteGalleryItem,
@@ -347,21 +369,34 @@ export default function AdminView({
   // Guests promised their photographs who have not had them yet.
   const photoRequestsOwed = (photoRequests || []).filter((r) => !r.sentAt).length;
 
+  // Kept in a ref so the two pollers below can keep an empty dependency list.
+  // A callback recreated on each render would tear down and rebuild both
+  // intervals on every render, which is how you end up with a console quietly
+  // making twelve requests a minute.
+  const sessionExpiredRef = useRef(onSessionExpired);
+  useEffect(() => { sessionExpiredRef.current = onSessionExpired; }, [onSessionExpired]);
+
   // Comments on our posts nobody has answered. Fetched here rather than only in
   // the panel so the badge is visible from any tab — the whole problem is that
   // David's challenge sat for twenty-three hours before anyone looked.
   const [openComments, setOpenComments] = useState(0);
   useEffect(() => {
     let alive = true;
-    const read = () => fetch("/api/admin/social-comments")
-      .then((r) => r.json())
-      .then((d) => { if (alive && d && d.summary) setOpenComments(d.summary.open || 0); })
+    let timer = null;
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const read = () => readBadgeSummary("/api/admin/social-comments")
+      .then((r) => {
+        if (!alive) return;
+        // No point hammering an endpoint that will keep saying no.
+        if (r.expired) { stop(); if (sessionExpiredRef.current) sessionExpiredRef.current(); return; }
+        if (r.summary) setOpenComments(r.summary.open || 0);
+      })
       .catch(() => {});
     read();
     // Comments arrive whenever they arrive, so this is the one queue worth
     // re-reading while the console sits open.
-    const id = setInterval(read, 5 * 60 * 1000);
-    return () => { alive = false; clearInterval(id); };
+    timer = setInterval(read, 5 * 60 * 1000);
+    return () => { alive = false; stop(); };
   }, []);
 
   // The same badge for DMs, and for a sharper reason. A comment is public, so
@@ -372,13 +407,18 @@ export default function AdminView({
   const [waitingMessages, setWaitingMessages] = useState(0);
   useEffect(() => {
     let alive = true;
-    const read = () => fetch("/api/admin/social-messages")
-      .then((r) => r.json())
-      .then((d) => { if (alive && d && d.summary) setWaitingMessages(d.summary.waiting || 0); })
+    let timer = null;
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const read = () => readBadgeSummary("/api/admin/social-messages")
+      .then((r) => {
+        if (!alive) return;
+        if (r.expired) { stop(); if (sessionExpiredRef.current) sessionExpiredRef.current(); return; }
+        if (r.summary) setWaitingMessages(r.summary.waiting || 0);
+      })
       .catch(() => {});
     read();
-    const id = setInterval(read, 5 * 60 * 1000);
-    return () => { alive = false; clearInterval(id); };
+    timer = setInterval(read, 5 * 60 * 1000);
+    return () => { alive = false; stop(); };
   }, []);
 
   // The tab counter has to agree with the list under it. A card-paid booking

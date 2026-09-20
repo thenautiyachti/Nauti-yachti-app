@@ -119,6 +119,20 @@ export default function AdminPage() {
     setAuthed(false);
   }
 
+  // A background poll came back 401, so the 12-hour cookie expired while the
+  // console sat open. Drop to the login box and SAY WHY: the alternative --
+  // which is what happened until 20 Sep 2026 -- is that the badges freeze on
+  // their last count and the console goes on looking perfectly healthy while
+  // it has stopped being able to read anything.
+  //
+  // Deliberately not calling /api/admin/logout: there is no session left to
+  // end, and a POST that answers 401 would only add noise to the log that
+  // showed us this in the first place.
+  const handleSessionExpired = useCallback(() => {
+    setAuthed(false);
+    setLoginError("Your session timed out. Sign in again.");
+  }, []);
+
   async function updatePackagePrice(id, price) {
     await api(`/api/packages/${id}`, { method: "PATCH", body: JSON.stringify({ field: "price", value: price }) });
     setPackages((prev) => prev.map((p) => (p.id === id ? { ...p, price } : p)));
@@ -387,6 +401,7 @@ export default function AdminPage() {
 
   return (
     <AdminView
+      onSessionExpired={handleSessionExpired}
       packages={packages}
       vessels={vessels}
       gallery={gallery}
