@@ -7,9 +7,18 @@ import AdminView from "../../components/AdminView";
 async function api(path, options) {
   const res = await fetch(path, {
     ...options,
+    // Never a cached answer. Every one of these is either live business data or
+    // an authentication state, and a console showing yesterday's bookings with
+    // no indication it is doing so is worse than one that fails outright.
+    cache: "no-store",
     headers: { "Content-Type": "application/json", ...(options && options.headers) },
   });
-  if (!res.ok) throw new Error(`Request failed: ${path}`);
+  // Carries the status so a caller can tell "signed out" from "broken".
+  if (!res.ok) {
+    const err = new Error(`Request failed: ${path} (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
@@ -20,6 +29,8 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
 
   const [loading, setLoading] = useState(false);
+  // Which panels did not come back on the last load. Empty is the normal case.
+  const [loadFailures, setLoadFailures] = useState([]);
   const [packages, setPackages] = useState([]);
   const [vessels, setVessels] = useState([]);
   const [gallery, setGallery] = useState([]);
@@ -60,42 +71,79 @@ export default function AdminPage() {
       .finally(() => setChecking(false));
   }, []);
 
+  // ONE DEAD ENDPOINT MUST NOT TAKE THE CONSOLE WITH IT.
+  //
+  // This used to be Promise.all over all twenty-two calls, with no try/catch
+  // and no .catch() on the caller below. Promise.all rejects the instant ONE
+  // of them fails, so setLoading(false) never ran and the console sat on
+  // "Loading console…" for ever — showing no error, because the rejection had
+  // nowhere to go.
+  //
+  // Owner, 20 Sep 2026: "The page cannot load with correct password." He was
+  // authenticating correctly every single time. One endpoint out of twenty-two
+  // was down and it blanked the entire console, which is also why it looked
+  // like a password fault: the login box is the last thing that renders
+  // properly before the screen that never arrives.
+  //
+  // allSettled costs a failure its own panel and nothing else, and the banner
+  // names what did not come back. A console that loads twenty-one panels and
+  // says so beats a console that loads none and says nothing.
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, v, g, b, pd, i, l, a, eb, mi, eh, fl, cp, sub, md, ts, ph, td, aa, gc, pr, bb] = await Promise.all([
-      api("/api/packages"),
-      api("/api/vessels"),
-      api("/api/gallery"),
-      api("/api/blocked-dates"),
-      api("/api/partial-dates"),
-      api("/api/inquiries"),
-      api("/api/ledger"),
-      api("/api/addons"),
-      api("/api/external-bookings"),
-      api("/api/maintenance-items"),
-      api("/api/engine-hours"),
-      api("/api/fuel-log"),
-      api("/api/coupons"),
-      api("/api/subscriptions"),
-      api("/api/media-drafts"),
-      api("/api/testimonials"),
-      api("/api/price-history"),
-      api("/api/jarvis-todos"),
-      api("/api/admin/agent-activity"),
-      api("/api/gift-certificates"),
-      api("/api/photo-requests"),
-      api("/api/admin/bank-balance"),
-    ]);
-    setPackages(p); setVessels(v); setGallery(g); setBlocked(b); setPartialDates(pd); setInquiries(i); setLedger(l); setAddons(a); setExternalBookings(eb);
-    setMaintenanceItems(mi); setEngineHours(eh); setFuelLogs(fl); setCoupons(cp); setSubscriptions(sub); setMediaDrafts(md); setTestimonials(ts); setPriceHistory(ph); setTodos(td); setAgentActivity(aa);
+    const paths = [
+      "/api/packages", "/api/vessels", "/api/gallery", "/api/blocked-dates",
+      "/api/partial-dates", "/api/inquiries", "/api/ledger", "/api/addons",
+      "/api/external-bookings", "/api/maintenance-items", "/api/engine-hours",
+      "/api/fuel-log", "/api/coupons", "/api/subscriptions", "/api/media-drafts",
+      "/api/testimonials", "/api/price-history", "/api/jarvis-todos",
+      "/api/admin/agent-activity", "/api/gift-certificates", "/api/photo-requests",
+      "/api/admin/bank-balance",
+    ];
+    const results = await Promise.allSettled(paths.map((path) => api(path)));
+
+    // A 401 is not a broken panel, it is a dead session, and the honest
+    // response is the login box rather than sixteen empty tabs. This is the
+    // state the owner was actually in on 20 Sep 2026: every gated endpoint
+    // answering 401 while the console showed him nothing at all.
+    if (results.some((r) => r.status === "rejected" && r.reason && r.reason.status === 401)) {
+      setAuthed(false);
+      setLoginError("Your session ended. Sign in again.");
+      setLoadFailures([]);
+      setLoading(false);
+      return;
+    }
+
+    const broken = [];
+    const at = (idx, fallback) => {
+      const r = results[idx];
+      if (r.status === "fulfilled") return r.value;
+      broken.push(paths[idx]);
+      return fallback;
+    };
+
+    setPackages(at(0, [])); setVessels(at(1, [])); setGallery(at(2, []));
+    setBlocked(at(3, {})); setPartialDates(at(4, {})); setInquiries(at(5, []));
+    setLedger(at(6, [])); setAddons(at(7, [])); setExternalBookings(at(8, []));
+    setMaintenanceItems(at(9, [])); setEngineHours(at(10, [])); setFuelLogs(at(11, []));
+    setCoupons(at(12, [])); setSubscriptions(at(13, [])); setMediaDrafts(at(14, []));
+    setTestimonials(at(15, [])); setPriceHistory(at(16, [])); setTodos(at(17, []));
+    setAgentActivity(at(18, []));
+
+    const gc = at(19, {});
     setGiftCertificates(gc.certificates || []); setGiftLiability(gc.liability || 0); setGiftsLoading(false);
+    const pr = at(20, []);
     setPhotoRequests(Array.isArray(pr) ? pr : []);
+    const bb = at(21, []);
     setBankBalances(Array.isArray(bb) ? bb : []);
+
+    setLoadFailures(broken);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (authed) loadAll();
+    // Belt as well as braces: loadAll no longer throws, but an unhandled
+    // rejection here is what made the original fault invisible.
+    if (authed) loadAll().catch(() => setLoading(false));
   }, [authed, loadAll]);
 
   async function handleLogin(e) {
@@ -400,7 +448,24 @@ export default function AdminPage() {
   }
 
   return (
-    <AdminView
+    <>
+      {loadFailures.length > 0 && (
+        // Names what is missing rather than letting a panel sit empty and be
+        // read as "nothing there" — an empty bookings table and a bookings
+        // table that failed to load look identical, and only one of them means
+        // there are no bookings.
+        <div
+          style={{
+            background: "rgba(255,92,138,0.12)", borderBottom: "1px solid var(--pink)",
+            color: "var(--text)", padding: "10px 16px", fontSize: 13.5, lineHeight: 1.5,
+          }}
+        >
+          <strong style={{ color: "var(--pink)" }}>Some panels did not load.</strong>{" "}
+          Everything else on this screen is live and current. Missing:{" "}
+          {loadFailures.map((p) => p.replace("/api/", "")).join(", ")}.
+        </div>
+      )}
+      <AdminView
       onSessionExpired={handleSessionExpired}
       packages={packages}
       vessels={vessels}
@@ -470,6 +535,7 @@ export default function AdminPage() {
       onMarkPhotoRequestSent={markPhotoRequestSent}
       onDeletePhotoRequest={deletePhotoRequest}
       onLogout={handleLogout}
-    />
+      />
+    </>
   );
 }
