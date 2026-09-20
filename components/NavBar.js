@@ -51,6 +51,10 @@ export default function NavBar() {
         <Link href="/faq" style={LINK_STYLE}>FAQ</Link>
         <Link href="/events" style={LINK_STYLE}>Events</Link>
         <Link href="/gift-certificates" style={LINK_STYLE}>Gift Cards</Link>
+        {/* Guests send in their own footage. It sits next to the ordinary
+            pages on purpose: somebody looking for it weeks after their
+            charter should find it without a link from us. */}
+        <Link href="/share-your-photos" style={LINK_STYLE}>Share Photos</Link>
         {/* Highlighted while the glow party is the live campaign — it's the
             only dated, sellable event on the site and needs to be reachable
             from every page in one tap. */}

@@ -499,6 +499,61 @@ model EngineHoursLog {
   createdAt DateTime @default(now())
 }
 
+// WHAT A GUEST SENT US, AND WHETHER IT HAS COME HOME YET.
+//
+// The website takes media from guests: they pick the charter they were on, say
+// who they are, and upload straight to storage. The file never passes through
+// the app -- a 240MB phone video cannot fit in a serverless request body, and
+// one clip off the glasses on 19 Sep was 239MB.
+//
+// THIS ROW IS THE ACCOUNTABILITY. An upload page that anybody can find is a
+// drop box for whatever the internet feels like sending, so every file arrives
+// with a name, a number, a charter and a consent timestamp attached, and the
+// bucket is private so nothing is readable on the web even by URL. Nothing is
+// ever posted from here: it lands in the inbox and goes through the same
+// approval the glasses footage does.
+//
+// consentAt is not decoration either. Posting a guest's video is a use of their
+// material, and "they sent it in" is a weaker answer than a recorded tick
+// against a named charter -- the same reasoning as termsAcceptedAt on a booking.
+model GuestUpload {
+  id            String   @id @default(cuid())
+  // Who says they sent it. Not verified, which is exactly why it is recorded.
+  uploaderName  String
+  uploaderPhone String
+  uploaderEmail String?
+
+  // Which night it belongs to. eventKey is the folder it lands in; eventLabel
+  // is what the guest saw when they picked it. A charter that is not on the
+  // list gets eventKey "other" and whatever they typed in eventLabel.
+  eventKey      String
+  eventLabel    String
+  // Set only when the phone matches a booking on that date. It is a hint for
+  // the owner, never a claim -- a party often books on one person's number.
+  bookingId     String?
+
+  fileName      String
+  storagePath   String   @unique
+  sizeBytes     Int
+  contentType   String
+
+  consentAt     DateTime
+  // Kept for abuse, not analytics. An open upload endpoint needs to be able to
+  // answer "where did this come from" exactly once, after something goes wrong.
+  userAgent     String?
+
+  // "pending" until the file is confirmed in the bucket, "uploaded" once it is,
+  // "pulled" once it reaches 00 Inbox on the owner's machine, "rejected" if he
+  // throws it out. Never deleted: the record of a bad upload is the point.
+  status        String   @default("pending")
+  pulledAt      DateTime?
+  note          String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([eventKey, status])
+}
+
 model FuelLog {
   id            String   @id @default(cuid())
   vesselId      String
