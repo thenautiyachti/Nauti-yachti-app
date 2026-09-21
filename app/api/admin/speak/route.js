@@ -114,6 +114,33 @@ async function POST(req) {
     return saveTextOnly("ELEVENLABS_API_KEY not set");
   }
 
+  // NOTHING IS SYNTHESISED UNLESS SOMEBODY ASKED TO HEAR IT.
+  //
+  // Owner, 21 Sep 2026: "I'm getting really high usage for 11 Labs and I'm not
+  // even using voice control recently."
+  //
+  // He was right, and it was not voice control. scripts/speak-remote.js posts
+  // here WITHOUT `immediate`, and every scheduled agent speaks through it — the
+  // eight-strong standup at 10:55, Pearl at 11:04, and the rest. Six to nine
+  // messages a day, every one of them billed to ElevenLabs per character, the
+  // mp3 then base64'd into a Postgres column.
+  //
+  // AND NOT ONE OF THEM WAS EVER HEARD. The ten-second poll that used to read
+  // those rows was deliberately retired when the Jarvis tab went; clicking a
+  // crew avatar posts the text back with `immediate: true` and plays the audio
+  // off THAT response, caching it client-side. So the stored audio had no
+  // reader left at all. It was synthesised, charged for, written to the
+  // database, and never played by anybody.
+  //
+  // It also cost twice: 122 MB of the 135 MB database was the dead remains of
+  // this audio, which is what put Supabase over its limit.
+  //
+  // So: a click still speaks, instantly, exactly as before. A crew status is
+  // kept as text — which is all the console has displayed since the poll went.
+  if (!immediate) {
+    return saveTextOnly("stored as text; audio is synthesised when you play it");
+  }
+
   try {
     const elevenRes = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -148,16 +175,23 @@ async function POST(req) {
     const arrayBuffer = await elevenRes.arrayBuffer();
     const audioB64 = Buffer.from(arrayBuffer).toString("base64");
 
-    const row = await prisma.speechEvent.create({ data: { text, audioB64 } });
-
-    // Age the audio out as we go. Each of these rows carries the whole MP3 as
-    // base64, and in one week that reached 128.8MB across 172 rows -- about a
-    // quarter of the free tier ceiling, made of lines already spoken and heard.
+    // THE MP3 IS NOT WRITTEN TO THE DATABASE. It rides back on this response,
+    // which is the only place it was ever read from: the caller plays it
+    // immediately and caches it client-side for the rest of the session.
     //
-    // The text is never touched: it is the transcript, the console shows it on
-    // open, and it costs nothing. Only the audio ages out, and only past the
-    // window, and no row is ever deleted -- so the record of what was said stays
-    // whole and nothing referencing a row can break.
+    // Storing it was how 122 MB of a 135 MB database came to be base64 audio.
+    // A row is still written, because the TEXT is the transcript and that is
+    // what the console displays — it just costs bytes instead of megabytes.
+    const row = await prisma.speechEvent.create({ data: { text, audioB64: null } });
+
+    // Clears audio off any row still carrying it from before the change above.
+    // Once those are gone this matches nothing and costs nothing, and it is
+    // kept only so the old rows drain without anybody having to run a script.
+    //
+    // NOTE: nulling the column does NOT give the space back — Postgres leaves
+    // the old TOAST chunks dead until a VACUUM FULL rewrites the table, which
+    // is exactly why the database still read 135 MB with only 19 MB of live
+    // audio in it.
     //
     // Failure here must not fail the request. The caller has already been
     // spoken; housekeeping that throws would turn a successful message into an
@@ -172,10 +206,9 @@ async function POST(req) {
       console.error("[speak] audio prune skipped:", e.message);
     }
 
-    // The audio only rides back on the response when it was asked for. It is
-    // the largest thing this route produces, and every other caller gets it
-    // from the poll a moment later anyway.
-    return NextResponse.json(immediate ? { ok: true, id: row.id, audioB64 } : { ok: true, id: row.id });
+    // This is now the ONLY way audio leaves this route — there is no poll to
+    // pick it up afterwards and nothing stored for one to read.
+    return NextResponse.json({ ok: true, id: row.id, audioB64 });
   } catch (err) {
     console.error("[speak] threw:", err);
     return NextResponse.json({ error: "Internal error", detail: String(err) }, { status: 500 });
@@ -183,7 +216,14 @@ async function POST(req) {
 }
 
 // GET ?since=<ISO timestamp> -> any SpeechEvent rows created after `since`,
-// oldest-first. Polled every ~2s by the console while it's open.
+// oldest-first.
+//
+// NOTHING CALLS THIS ANY MORE. The console's ten-second poll was retired with
+// the Jarvis tab and was not replaced. It is left in place because it is the
+// transcript of everything the crew has said and is the obvious thing to build
+// a reader on — but note that `audioB64` now comes back null on every row, so
+// anything new must synthesise on demand through POST rather than expect to
+// find audio waiting here.
 async function GET(req) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
