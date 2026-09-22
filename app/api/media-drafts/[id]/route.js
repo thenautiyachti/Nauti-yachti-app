@@ -86,12 +86,13 @@ async function PATCH(req, { params }) {
   // publishes to the feed, and the feed is the thing a Story was chosen to
   // avoid. See lib/socialPosting.js for what each value sends.
   if ("postType" in body) {
-    const value = body.postType || "feed";
-    if (!["feed", "story"].includes(value)) {
-      return NextResponse.json({ error: 'postType must be "feed" or "story"' }, { status: 400 });
+    const value = body.postType || "both";
+    if (!["both", "feed", "story"].includes(value)) {
+      return NextResponse.json({ error: 'postType must be "both", "feed" or "story"' }, { status: 400 });
     }
     data.postType = value;
   }
+  if ("storyPostUrl" in body) data.storyPostUrl = body.storyPostUrl || null;
   if ("caption" in body && body.caption) data.caption = body.caption;
   if ("postUrl" in body) data.postUrl = body.postUrl || null;
   // WHERE THE CLIP CAME FROM, and the delivery caveat under it.

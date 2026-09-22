@@ -1,33 +1,33 @@
-// A Story must reach a Story, and must never quietly reach the feed.
+// A post goes to the feed AND the Story, wherever that is possible.
 //
 //     node scripts/test-story-posts.js
 //
-// Owner, 21 Sep 2026: "Yes let's build that for the stories and lift the
-// Instagram still block."
+// Owner, 21 Sep 2026, having been given a Feed/Story toggle he did not want:
+// "I don't want to choose feed or story I just want both."
 //
-// TWO FAULTS THIS COVERS.
+// So "both" is the default and the choice is gone. A draft publishes to the
+// feed and is also shared to the Story, except where that cannot happen:
 //
-// The first is the one that made his own rule unfollowable. Borderline material
-// is supposed to go to Stories rather than the feed -- it reaches the people
-// already following him, expires in a day, and never sits in the grid above a
-// family charter. Nothing anywhere could ask for a Story: Instagram was
-// hardcoded to mediaType "reel" and Facebook was sent no mediaType at all. The
-// rule had been recommended twice in a week against a route that did not exist.
+//   TikTok  has no Stories at all -- videos and image carousels only.
+//   Images  cannot be one. Blotato documents Instagram's mediaType as having
+//           "no effect on image posts", so a picture asking to be a Story is
+//           ignored and lands in the FEED. On a "both" draft that would mean
+//           the same picture posted to the grid twice, so the leg is dropped
+//           instead. Dropping is the right failure; duplicating is not.
 //
-// The second is a block that was not true. Every Instagram draft carrying a
-// still was refused with "a still has to go up by hand", on the belief that
-// Blotato reaches Instagram only as reels and stories. Blotato's own docs list
-// images and carousels for Instagram and say of mediaType: "Has no effect on
-// image posts." The stills would have published.
+// Neither case blocks anything. The draft still publishes to the feed and the
+// owner is not asked a question. "feed" and "story" survive as deliberate
+// overrides -- story-only is how something borderline expires in 24 hours
+// without ever joining the grid -- and only story-only can be blocked, because
+// only it can end up with nothing to publish.
 //
-// AND THE REASON THE STORY CHECK FAILS CLOSED. That same sentence -- mediaType
-// has no effect on image posts -- means an IMAGE asking to be a Story is most
-// likely ignored and published to the FEED. That is the exact outcome choosing
-// a Story is meant to prevent, and it fails silently: he would believe
-// something borderline had expired overnight while it sat in the grid. So an
-// image Story is blocked until somebody has watched one publish and confirmed
-// where it landed.
-const { buildPost, blockedReason, isStory } = require("../lib/socialPosting");
+// THE OTHER HALF OF THIS FILE. Every Instagram draft carrying a still used to
+// be refused with "a still has to go up by hand", on the belief that Blotato
+// reaches Instagram only as reels and stories. Its docs list images and
+// carousels for Instagram. Those stills would always have published.
+const {
+  buildPost, buildPosts, blockedReason, isStory, postTypeOf, canStory,
+} = require("../lib/socialPosting");
 
 let pass = 0;
 const fails = [];
@@ -41,60 +41,78 @@ function falsy(label, v) { if (!v) pass++; else fails.push(label + "  (expected 
 const VIDEO = "https://example.com/clip.mp4";
 const IMAGE = "https://example.com/frame.jpg";
 const draft = (o) => ({ id: "x", caption: "c", mediaType: "video", mediaUrl: VIDEO, ...o });
+const legs = (d) => buildPosts(d).map((l) => l.leg);
 
 console.log("");
 
-// --- what actually gets sent -------------------------------------------------
+// --- the default: nobody chooses anything ------------------------------------
 
-const igFeed = buildPost(draft({ platform: "instagram" }));
-ok("instagram feed video is a reel", igFeed.mediaType, "reel");
-truthy("instagram feed keeps collaborators", igFeed.collaborators);
+ok("no postType at all means both", postTypeOf({}), "both");
+ok("an unrecognised value falls back to both", postTypeOf({ postType: "banana" }), "both");
+ok("instagram video goes to both", legs(draft({ platform: "instagram" })), ["feed", "story"]);
+ok("facebook video goes to both", legs(draft({ platform: "facebook" })), ["feed", "story"]);
 
-const igStory = buildPost(draft({ platform: "instagram", postType: "story" }));
-ok("instagram story asks for a story", igStory.mediaType, "story");
-// Collaborator puts one post on two grids. A Story has no grid to join, so
-// sending it is at best ignored and at worst an error.
-falsy("instagram story drops collaborators", igStory.collaborators);
+// --- where a Story is not possible, the feed post still happens --------------
 
-const fbVideo = buildPost(draft({ platform: "facebook" }));
-ok("facebook video says reel", fbVideo.mediaType, "reel");
-ok("facebook keeps its pageId", fbVideo.pageId, "630671406805108");
+ok("tiktok video is feed only, and not blocked", legs(draft({ platform: "tiktok" })), ["feed"]);
+falsy("tiktok video is not blocked", blockedReason(draft({ platform: "tiktok" })));
 
-const fbImage = buildPost(draft({ platform: "facebook", mediaType: "image", mediaUrl: IMAGE }));
-falsy("facebook image sends no mediaType", fbImage.mediaType);
-
-const fbStory = buildPost(draft({ platform: "facebook", postType: "story" }));
-ok("facebook story asks for a story", fbStory.mediaType, "story");
-
-// --- the block that was lifted ----------------------------------------------
-
-falsy("an instagram still is no longer blocked",
+ok("an instagram image is feed only",
+  legs(draft({ platform: "instagram", mediaType: "image", mediaUrl: IMAGE })), ["feed"]);
+falsy("an instagram image is NOT blocked",
   blockedReason(draft({ platform: "instagram", mediaType: "image", mediaUrl: IMAGE })));
-falsy("an instagram video is still fine",
-  blockedReason(draft({ platform: "instagram" })));
+ok("a facebook image is feed only",
+  legs(draft({ platform: "facebook", mediaType: "image", mediaUrl: IMAGE })), ["feed"]);
 
-// --- the block that was added, and why ---------------------------------------
+// --- what each leg actually sends --------------------------------------------
 
-truthy("an image story is blocked rather than published to the feed",
-  blockedReason(draft({ platform: "instagram", postType: "story", mediaType: "image", mediaUrl: IMAGE })));
-truthy("a facebook image story is blocked too",
-  blockedReason(draft({ platform: "facebook", postType: "story", mediaType: "image", mediaUrl: IMAGE })));
-falsy("a video story passes",
+const igBoth = buildPosts(draft({ platform: "instagram" }));
+ok("instagram feed leg is a reel", igBoth[0].mediaType, "reel");
+truthy("instagram feed leg keeps collaborators", igBoth[0].collaborators);
+ok("instagram story leg asks for a story", igBoth[1].mediaType, "story");
+// Collaborator puts one post on two grids. A Story has no grid to join.
+falsy("instagram story leg drops collaborators", igBoth[1].collaborators);
+
+const fbBoth = buildPosts(draft({ platform: "facebook" }));
+ok("facebook feed leg says reel", fbBoth[0].mediaType, "reel");
+ok("facebook feed leg keeps its pageId", fbBoth[0].pageId, "630671406805108");
+ok("facebook story leg says story", fbBoth[1].mediaType, "story");
+ok("facebook story leg keeps its pageId", fbBoth[1].pageId, "630671406805108");
+
+falsy("a facebook image sends no mediaType",
+  buildPosts(draft({ platform: "facebook", mediaType: "image", mediaUrl: IMAGE }))[0].mediaType);
+
+truthy("tiktok keeps its required flags",
+  buildPosts(draft({ platform: "tiktok" }))[0].privacyLevel);
+
+// --- the deliberate overrides -------------------------------------------------
+
+ok("feed-only is one leg", legs(draft({ platform: "instagram", postType: "feed" })), ["feed"]);
+ok("story-only is one leg", legs(draft({ platform: "instagram", postType: "story" })), ["story"]);
+falsy("story-only with a video is fine",
   blockedReason(draft({ platform: "instagram", postType: "story" })));
 
-truthy("tiktok has no stories",
+// Only story-only can end up with nothing to publish, so only it can block.
+truthy("story-only with an image is blocked",
+  blockedReason(draft({ platform: "instagram", postType: "story", mediaType: "image", mediaUrl: IMAGE })));
+truthy("story-only on tiktok is blocked",
   blockedReason(draft({ platform: "tiktok", postType: "story" })));
-truthy("tiktok still refuses a still",
-  blockedReason(draft({ platform: "tiktok", mediaType: "image", mediaUrl: IMAGE })));
-falsy("an ordinary tiktok video passes", blockedReason(draft({ platform: "tiktok" })));
+ok("a blocked story-only produces no legs at all",
+  legs(draft({ platform: "tiktok", postType: "story" })), []);
 
-// --- nothing written before today changes behaviour --------------------------
+// --- canStory says why, on its own -------------------------------------------
 
-falsy("a draft with no postType is not a story", isStory(draft({ platform: "instagram" })));
-ok("a draft with no postType still goes out as a reel",
-  buildPost(draft({ platform: "instagram" })).mediaType, "reel");
-falsy("undefined postType is not a story", isStory({ platform: "instagram" }));
-falsy("null postType is not a story", isStory({ platform: "instagram", postType: null }));
+truthy("a video on instagram can be a story", canStory(draft({ platform: "instagram" })));
+falsy("an image cannot be a story", canStory(draft({ platform: "instagram", mediaType: "image", mediaUrl: IMAGE })));
+falsy("tiktok can never be a story", canStory(draft({ platform: "tiktok" })));
+
+// --- the old single-post shape still answers ---------------------------------
+
+ok("buildPost still returns the feed leg", buildPost(draft({ platform: "instagram" })).mediaType, "reel");
+ok("buildPost on a story-only draft returns the story",
+  buildPost(draft({ platform: "instagram", postType: "story" })).mediaType, "story");
+falsy("isStory is false for a both draft", isStory(draft({ platform: "instagram" })));
+truthy("isStory is true only when story-only", isStory(draft({ platform: "instagram", postType: "story" })));
 
 // --- the older guards have not moved -----------------------------------------
 
@@ -102,6 +120,8 @@ truthy("a draft with no media is still blocked",
   blockedReason({ id: "x", platform: "instagram", caption: "c", mediaUrl: null }));
 truthy("an unknown platform is still blocked",
   blockedReason({ id: "x", platform: "threads", caption: "c", mediaUrl: VIDEO }));
+truthy("tiktok still refuses a still",
+  blockedReason(draft({ platform: "tiktok", mediaType: "image", mediaUrl: IMAGE })));
 
 console.log("  " + pass + " passed, " + fails.length + " failed");
 for (const f of fails) console.log("   FAIL  " + f);

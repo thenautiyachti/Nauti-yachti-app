@@ -579,17 +579,29 @@ model MediaDraft {
   caption    String // Drafted social caption text
   platform   String? // intended platform, e.g. "instagram", "facebook", "tiktok" — nullable, may be undecided
 
-  // Feed post or Story. "feed" covers an ordinary post and a reel; "story" is
-  // the 24-hour one that never joins the grid.
+  // Where this goes: "both" (the default), "feed" only, or "story" only.
   //
-  // WHY IT EXISTS. The owner's standing rule is that borderline content goes to
-  // Stories rather than the feed — it reaches the people who already follow him,
-  // expires, and never sits above a family charter in the grid. That rule was
-  // unenforceable until 21 Sep 2026, because nothing anywhere could ask for a
-  // Story: Instagram was hardcoded to mediaType "reel" in lib/socialPosting.js
-  // and Facebook was sent no mediaType at all. Borderline content had two
-  // destinations, the feed or nowhere.
-  postType   String    @default("feed") // "feed" | "story"
+  // BOTH IS THE DEFAULT BECAUSE IT IS NOT A DECISION WORTH MAKING. Owner,
+  // 21 Sep 2026: "I don't want to choose feed or story I just want both." So a
+  // draft is published to the feed AND shared to the Story wherever the
+  // platform and the media allow it, and nobody has to think about it. "feed"
+  // and "story" remain for the deliberate exception -- something borderline
+  // that should expire in 24 hours and never join the grid.
+  //
+  // WHAT "WHERE IT ALLOWS" MEANS. TikTok has no Stories, so it never gets that
+  // leg. And an image never gets it either: Blotato documents Instagram's
+  // mediaType as having "no effect on image posts", so a picture asking to be
+  // a Story is ignored and published to the FEED -- which on a "both" draft
+  // would mean the same picture posted to the grid twice. The Story leg is
+  // dropped rather than duplicated. See lib/socialPosting.js buildPosts.
+  postType   String    @default("both") // "both" | "feed" | "story"
+
+  // The Story leg's own URL, when the platform returns one. postUrl stays the
+  // feed post. A Story expires in a day so the link is nearly worthless as a
+  // record -- what it is actually for is proving the second leg ran at all,
+  // because a Story that silently never published looks identical to one that
+  // did and has since expired.
+  storyPostUrl String?
 
   status     String    @default("proposed") // pipeline stage: "proposed" | "approved" | "scheduled" | "posted" | "rejected"
   reviewNote String? // optional owner note when approving/rejecting

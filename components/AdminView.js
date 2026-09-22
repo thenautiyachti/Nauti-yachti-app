@@ -4165,38 +4165,67 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostT
                   never sits in the grid above a family charter. Nothing could
                   ask for one until now, so the rule could not be followed.
                   TikTok has no Stories, so it is not offered there. */}
-              {onSetPostType && String(d.platform || "").toLowerCase() !== "tiktok" && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 11px 11px" }}>
-                  <span style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 700, marginRight: 2 }}>
-                    Goes out as
-                  </span>
-                  {["feed", "story"].map((t) => {
-                    const on = (d.postType || "feed") === t;
-                    return (
-                      <button key={t} type="button" onClick={() => onSetPostType(d.id, t)}
-                        title={t === "story"
-                          ? "24 hours, no grid. Needs a video — an image marked as a Story would publish to the feed instead."
-                          : "An ordinary post, or a reel if it is a video."}
-                        style={{
-                          background: on ? "var(--purple)" : "transparent",
-                          color: on ? "#0A0612" : "var(--muted)",
-                          border: on ? "none" : "1px solid rgba(203,108,230,0.3)",
-                          borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 700,
-                          cursor: "pointer", textTransform: "capitalize",
-                        }}>
-                        {t}
-                      </button>
-                    );
-                  })}
-                  {/* Said here rather than discovered at publish time, which is
-                      days later and in somebody else's run. */}
-                  {(d.postType || "feed") === "story" && d.mediaType !== "video" && (
-                    <span style={{ fontSize: 11, color: "var(--pink)", lineHeight: 1.35 }}>
-                      needs a video
+              {onSetPostType && (() => {
+                // WHAT WILL ACTUALLY HAPPEN, not what was chosen.
+                //
+                // Owner, 21 Sep 2026: "I don't want to choose feed or story I
+                // just want both." So "both" is the default and this line is
+                // normally just a statement of fact. The overrides are for the
+                // exception -- something borderline that should expire in a day
+                // and never join the grid.
+                //
+                // The two legs can differ from the ask: TikTok has no Stories,
+                // and an image cannot be one (Blotato ignores mediaType on image
+                // posts, so it would land in the feed twice). Said here rather
+                // than discovered at publish time, which is days later and in
+                // Siren's run rather than his.
+                const want = d.postType || "both";
+                const isTikTok = String(d.platform || "").toLowerCase() === "tiktok";
+                const storyPossible = !isTikTok && d.mediaType === "video";
+                const willFeed = want !== "story";
+                const willStory = want !== "feed" && storyPossible;
+                const summary = willFeed && willStory ? "feed + story"
+                  : willFeed ? "feed only"
+                  : willStory ? "story only"
+                  : "nothing";
+                const why = want !== "feed" && !storyPossible
+                  ? (isTikTok ? "TikTok has no Stories" : "a Story needs a video")
+                  : null;
+                const OPTS = [["both", "Both"], ["feed", "Feed"], ["story", "Story"]];
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: "0 11px 11px" }}>
+                    <span style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 700 }}>
+                      Goes out as
                     </span>
-                  )}
-                </div>
-              )}
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: summary === "nothing" ? "var(--pink)" : "#7FE0B8" }}>
+                      {summary}
+                    </span>
+                    {why && (
+                      <span style={{ fontSize: 11, color: "var(--muted)" }}>({why})</span>
+                    )}
+                    <span style={{ flex: 1 }} />
+                    {OPTS.map(([value, label]) => {
+                      const on = want === value;
+                      if (value === "story" && isTikTok) return null;
+                      return (
+                        <button key={value} type="button" onClick={() => onSetPostType(d.id, value)}
+                          title={value === "story"
+                            ? "24 hours, never joins the grid. Needs a video."
+                            : value === "feed" ? "The grid only, no Story."
+                            : "The feed post and the Story, wherever both are possible."}
+                          style={{
+                            background: on ? "var(--purple)" : "transparent",
+                            color: on ? "#0A0612" : "var(--muted)",
+                            border: on ? "none" : "1px solid rgba(203,108,230,0.3)",
+                            borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer",
+                          }}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* WHAT IS WRONG WITH IT — the panel that replaced the duplicate
                   preview. Pick what is wrong, then say whether the post
