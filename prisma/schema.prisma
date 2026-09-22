@@ -1,3 +1,34 @@
+// ADDING A MODEL? TURN ROW-LEVEL SECURITY ON AFTER YOU PUSH IT.
+//
+//     ALTER TABLE public."YourNewTable" ENABLE ROW LEVEL SECURITY;
+//
+// WHY. This is a Supabase Postgres, and everything in the `public` schema is
+// served by PostgREST at <project>.supabase.co/rest/v1/<Table>. On 22 Sep 2026
+// Supabase mailed a CRITICAL alert and it was entirely accurate: all 29 tables
+// had RLS off and the `anon` role held SELECT, INSERT, UPDATE, DELETE and
+// TRUNCATE on every one of them. A single unauthenticated curl returned real
+// guests by name, email and phone. 12 inquiries, 88 bookings, 464 ledger rows,
+// the bank balances and the gift certificates were all readable and deletable
+// by anybody holding the anon key -- which is a PUBLISHABLE key, designed to sit
+// in client-side code. It is not a secret and was never meant to be the control.
+//
+// FIXED IN TWO HALVES, and the second half is the one that protects the future:
+//   1. RLS enabled and anon/authenticated revoked on all 29 existing tables.
+//   2. ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+//        REVOKE ALL ON TABLES FROM anon, authenticated;
+//      so a table created by a later `prisma db push` gets no public grant at
+//      all. That is what stops this coming straight back, because it arrived
+//      the first time simply by creating tables.
+//
+// NOTHING IN THE APP IS AFFECTED BY RLS. Prisma connects as `postgres`, which
+// owns every table and has rolbypassrls = true; the guest-upload route uses the
+// service-role key, which also bypasses. So enabling RLS costs nothing here --
+// it is purely a wall against the public API, which this app never uses.
+//
+// A new table is therefore already safe by grants, but Supabase's linter checks
+// RLS rather than grants and will raise a fresh CRITICAL until you run the line
+// at the top. Run it, and the advisor goes quiet.
+
 generator client {
   provider = "prisma-client-js"
 }
