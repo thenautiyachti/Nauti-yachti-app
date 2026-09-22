@@ -383,6 +383,17 @@ export default function AdminPage() {
     await api(`/api/media-drafts/${id}`, { method: "DELETE" });
     setMediaDrafts((prev) => prev.filter((d) => d.id !== id));
   }
+  // Feed post or Story. The owner's rule is that borderline material goes to
+  // Stories — it reaches the people already following him, expires in a day,
+  // and never sits in the grid above a family charter. Until 21 Sep 2026 there
+  // was no way to ask for one, so the rule could not actually be followed.
+  async function setMediaDraftPostType(id, postType) {
+    const updated = await api(`/api/media-drafts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ postType }),
+    });
+    setMediaDrafts((prev) => prev.map((d) => (d.id === id ? updated : d)));
+  }
   async function updateTestimonialStatus(id, status) {
     const updated = await api(`/api/testimonials/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
     setTestimonials((prev) => prev.map((t) => (t.id === id ? updated : t)));
@@ -527,6 +538,7 @@ export default function AdminPage() {
       onDeleteSubscription={deleteSubscription}
       onUpdateMediaDraftStatus={updateMediaDraftStatus}
       onAttachMediaDraftMedia={attachMediaDraftMedia}
+      onSetMediaDraftPostType={setMediaDraftPostType}
       onDeleteMediaDraft={deleteMediaDraft}
       onUpdateTestimonialStatus={updateTestimonialStatus}
       onUpdateTestimonialDate={updateTestimonialDate}

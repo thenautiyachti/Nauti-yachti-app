@@ -144,7 +144,7 @@ export default function AdminView({
   onUpdateMaintenanceItem, onAddEngineHoursLog, onAddFuelLog,
   onAddCoupon, onToggleCouponActive, onUpdateCoupon,
   onAddSubscription, onUpdateSubscription, onDeleteSubscription,
-  onUpdateMediaDraftStatus, onDeleteMediaDraft, onAttachMediaDraftMedia,
+  onUpdateMediaDraftStatus, onDeleteMediaDraft, onAttachMediaDraftMedia, onSetMediaDraftPostType,
   onUpdateTestimonialStatus, onUpdateTestimonialDate, onDeleteTestimonial,
   photoRequests, onMarkPhotoRequestSent, onDeletePhotoRequest,
 }) {
@@ -782,7 +782,7 @@ export default function AdminView({
             worth folding into these cards; swapping the layout to get them was
             not. components/SocialPipelinePanel.js is kept for that work. */}
         {tab === "mediaDrafts" && (
-          <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} onAttachMedia={onAttachMediaDraftMedia} />
+          <MediaDraftsTab mediaDrafts={mediaDrafts} onUpdateStatus={onUpdateMediaDraftStatus} onDelete={onDeleteMediaDraft} onAttachMedia={onAttachMediaDraftMedia} onSetPostType={onSetMediaDraftPostType} />
         )}
 
         {tab === "socialComments" && <SocialCommentsTab />}
@@ -3858,7 +3858,7 @@ function draftSortKey(d) {
 // to be readable at a glance beside the picture it goes out with. Every piece
 // this needs (MediaDraftCard, DraftDayGroup, draftIsPast, draftSortKey, the
 // .draft-days grid) survived the removal; only this function had gone.
-function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }) {
+function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia, onSetPostType }) {
   // Past drafts start hidden. They are a record, not a to-do list.
   // Both collapsed by default. Neither is something you come to this tab for.
   const [showPosted, setShowPosted] = useState(false);
@@ -3881,7 +3881,7 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
   const deniedOrPast = past.filter((d) => d.status !== "posted");
 
   const GRID = { display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
-  const cardProps = { onUpdateStatus, onDelete, onAttachMedia };
+  const cardProps = { onUpdateStatus, onDelete, onAttachMedia, onSetPostType };
 
   // Bucket the upcoming posts by the day they go out. `upcoming` is already in
   // date order, so walking it preserves that without sorting again — and a draft
@@ -3965,7 +3965,7 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia }
 }
 
 
-function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
+function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostType }) {
   // WHAT THE PREVIEW BUTTON BECAME.
   //
   // "The preview button really just displays again what is already displayed"
@@ -4156,6 +4156,45 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia }) {
                     style={{ flex: "1 1 46%", background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
                     {copied ? "Copied ✓" : "Copy caption"}
                   </button>
+                </div>
+              )}
+
+              {/* FEED OR STORY.
+                  The standing rule is that borderline material goes to Stories:
+                  it reaches the people already following, expires in a day, and
+                  never sits in the grid above a family charter. Nothing could
+                  ask for one until now, so the rule could not be followed.
+                  TikTok has no Stories, so it is not offered there. */}
+              {onSetPostType && String(d.platform || "").toLowerCase() !== "tiktok" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 11px 11px" }}>
+                  <span style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 700, marginRight: 2 }}>
+                    Goes out as
+                  </span>
+                  {["feed", "story"].map((t) => {
+                    const on = (d.postType || "feed") === t;
+                    return (
+                      <button key={t} type="button" onClick={() => onSetPostType(d.id, t)}
+                        title={t === "story"
+                          ? "24 hours, no grid. Needs a video — an image marked as a Story would publish to the feed instead."
+                          : "An ordinary post, or a reel if it is a video."}
+                        style={{
+                          background: on ? "var(--purple)" : "transparent",
+                          color: on ? "#0A0612" : "var(--muted)",
+                          border: on ? "none" : "1px solid rgba(203,108,230,0.3)",
+                          borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 700,
+                          cursor: "pointer", textTransform: "capitalize",
+                        }}>
+                        {t}
+                      </button>
+                    );
+                  })}
+                  {/* Said here rather than discovered at publish time, which is
+                      days later and in somebody else's run. */}
+                  {(d.postType || "feed") === "story" && d.mediaType !== "video" && (
+                    <span style={{ fontSize: 11, color: "var(--pink)", lineHeight: 1.35 }}>
+                      needs a video
+                    </span>
+                  )}
                 </div>
               )}
 

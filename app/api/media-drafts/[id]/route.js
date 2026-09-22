@@ -81,6 +81,17 @@ async function PATCH(req, { params }) {
   if ("scheduledDate" in body) data.scheduledDate = body.scheduledDate || null;
   if ("scheduledTime" in body) data.scheduledTime = body.scheduledTime || null;
   if ("platform" in body) data.platform = body.platform || null;
+  // Feed post or Story. Validated rather than taken as free text for the same
+  // reason as reviewReason: a typo here does not fail loudly, it just quietly
+  // publishes to the feed, and the feed is the thing a Story was chosen to
+  // avoid. See lib/socialPosting.js for what each value sends.
+  if ("postType" in body) {
+    const value = body.postType || "feed";
+    if (!["feed", "story"].includes(value)) {
+      return NextResponse.json({ error: 'postType must be "feed" or "story"' }, { status: 400 });
+    }
+    data.postType = value;
+  }
   if ("caption" in body && body.caption) data.caption = body.caption;
   if ("postUrl" in body) data.postUrl = body.postUrl || null;
   // WHERE THE CLIP CAME FROM, and the delivery caveat under it.

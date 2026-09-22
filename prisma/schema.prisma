@@ -578,6 +578,19 @@ model MediaDraft {
   mediaType  String    @default("image") // "image" | "video"
   caption    String // Drafted social caption text
   platform   String? // intended platform, e.g. "instagram", "facebook", "tiktok" — nullable, may be undecided
+
+  // Feed post or Story. "feed" covers an ordinary post and a reel; "story" is
+  // the 24-hour one that never joins the grid.
+  //
+  // WHY IT EXISTS. The owner's standing rule is that borderline content goes to
+  // Stories rather than the feed — it reaches the people who already follow him,
+  // expires, and never sits above a family charter in the grid. That rule was
+  // unenforceable until 21 Sep 2026, because nothing anywhere could ask for a
+  // Story: Instagram was hardcoded to mediaType "reel" in lib/socialPosting.js
+  // and Facebook was sent no mediaType at all. Borderline content had two
+  // destinations, the feed or nowhere.
+  postType   String    @default("feed") // "feed" | "story"
+
   status     String    @default("proposed") // pipeline stage: "proposed" | "approved" | "scheduled" | "posted" | "rejected"
   reviewNote String? // optional owner note when approving/rejecting
 
