@@ -1307,3 +1307,77 @@ model AgencySettings {
 
   updatedAt DateTime @updatedAt
 }
+
+// Somebody who applied to be a creator, before they are one.
+//
+// SEPARATE FROM AgencyCreator ON PURPOSE. A creator is somebody we have signed,
+// verified and taken responsibility for. An applicant is a stranger who filled
+// in a form. Collapsing the two would mean a public endpoint writes rows into
+// the table that drives payouts and compliance, and it would put people who
+// never got past the first screen into the same list as people we are paying.
+//
+// A row here becomes an AgencyCreator only at the end: verified, agreement
+// signed, and someone actually decided. See lib/agency/applications.js.
+//
+// WHAT IS NOT IN THIS TABLE, and why. No date of birth, no ID document, no
+// photographs. The age check happens in the route BEFORE anything is written
+// (see ageGate) and an applicant who fails it is refused without a row being
+// created at all — storing a minor's personal details in order to record that
+// we declined them would be the same mistake the check exists to prevent.
+// Identity documents arrive later, through AgencyComplianceRecord, which holds
+// a reference to a vault and never the document.
+model CreatorApplication {
+  id String @id @default(cuid())
+
+  // What they typed. Deliberately short fields — this is a first contact form,
+  // not a dossier.
+  name       String
+  email      String
+  phone      String?
+  // Where they already have an audience, if anywhere. Free text because every
+  // attempt to make this a structured list gets a platform wrong.
+  socials    String?
+  experience String? // in their words
+  about      String?
+
+  // They ticked the box saying they are 18 or over. Recorded as an attestation
+  // with a timestamp, which is what it is: a claim by them, not proof. Proof is
+  // a government ID checked by a person, and it happens before anything
+  // publishes. See AgencyComplianceRecord.
+  ageAttestedAt DateTime?
+
+  // WHO BROUGHT THEM IN. The whole partnership rests on this field: one partner
+  // recruits and the other operates, and a referral that nobody recorded is a
+  // conversation about who is owed what six months later.
+  referredBy String? // AgencyPartner.key — "austin" | "david" — or a campaign name
+
+  // "submitted" | "screening" | "verified" | "agreement_sent" | "signed"
+  // | "declined" | "withdrawn"
+  //
+  // A one-way street with one exception: "withdrawn" can happen at any point,
+  // because somebody changing their mind is not a rejection and should not read
+  // like one in the console.
+  status String @default("submitted")
+
+  screenedBy   String?
+  screenedAt   DateTime?
+  verifiedAt   DateTime? // a person checked a government ID
+  agreementSentAt   DateTime?
+  agreementSignedAt DateTime?
+  declineReason String?
+
+  // Set once this application becomes a creator. Null for everyone else, which
+  // is most of them.
+  creatorId String? @unique
+
+  // Where the form was filled in, for spam triage only. Not an identifier and
+  // not used for anything else.
+  sourcePath String?
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([referredBy])
+}
