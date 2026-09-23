@@ -23,8 +23,18 @@ async function PATCH(req, { params }) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+  // `params` is awaited: it is a promise in this version of Next. Reading
+  // params.id directly yields undefined, and Prisma then rejects the query --
+  // so EVERY inquiry status change failed, not just the one being attempted.
+  // Owner, 23 Sep 2026: "For Kaylee, Sarah's, and Brian King's inquiry, I
+  // cannot change it to lapsed." Nothing was wrong with those three rows, or
+  // with "lapsed"; this route had been answering 500 to all of them. The same
+  // fault was found and fixed in app/api/gallery/[id]/route.js, whose comment
+  // says "every other route here already awaits it" -- this file was the
+  // exception that claim missed.
+  const { id } = await params;
   const body = await req.json();
-  const existing = await prisma.inquiry.findUnique({ where: { id: params.id } });
+  const existing = await prisma.inquiry.findUnique({ where: { id } });
   if (!existing) {
     return NextResponse.json({ error: "Inquiry not found" }, { status: 404 });
   }
@@ -61,7 +71,7 @@ async function PATCH(req, { params }) {
     data.refundAmount = body.refundAmount === "" || body.refundAmount == null ? null : Number(body.refundAmount);
   }
 
-  const updated = await prisma.inquiry.update({ where: { id: params.id }, data });
+  const updated = await prisma.inquiry.update({ where: { id }, data });
 
   // KEEP THE MIRROR BOOKING IN STEP — the other half of the same problem.
   //
