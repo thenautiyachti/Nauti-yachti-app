@@ -960,6 +960,24 @@ model AgencyCreator {
   creatorShareBp Int    @default(5000) // basis points: 5000 = 50.00%
   splitBasis     String @default("net") // "net" | "gross"
 
+  // A RATE THAT IMPROVES AS SHE GROWS, instead of one flat percentage.
+  //
+  // JSON: [{ "uptoCents": 500000, "creatorShareBp": 5000 }, ...] with the last
+  // band carrying "uptoCents": null for everything above it. Bands are applied
+  // to her MONTHLY net, each band taking its own rate — the same shape as a tax
+  // bracket, and for the same reason: a cliff at $5,000 would mean earning one
+  // more dollar changed the rate on all the dollars beneath it.
+  //
+  // WHY THIS EXISTS AT ALL. A flat 50/50 means a creator clearing $20,000 a
+  // month pays the agency $10,000 for roughly the work of one clearing $5,000.
+  // She notices, and top earners are the most aggressively poached people in
+  // this industry — losing one is not a margin problem, it is the business
+  // walking out. Tiering costs nothing until she is winning.
+  //
+  // Null means the flat creatorShareBp above, which is still the right answer
+  // for a founding creator on a locked rate.
+  rateTiersJson String?
+
   // How they get paid, and what we are allowed to send.
   payoutMethod    String? // "ach" | "paypal" | "wise" | "crypto" | "check"
   payoutHandle    String? // account reference — last4, email, or wallet label

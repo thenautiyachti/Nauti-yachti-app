@@ -7,7 +7,10 @@
 // on the way to writing the module.
 
 const { applyBp, allocate, formatCents, parseMoneyToCents } = require("../lib/agency/money");
-const { splitEarning, settlePeriod } = require("../lib/agency/split");
+const {
+  splitEarning, settlePeriod, applyTiers, tiersFor, describeTiers,
+  DEFAULT_TIERS, FOUNDING_TIERS,
+} = require("../lib/agency/split");
 
 let pass = 0, fail = 0;
 function ok(what, got, want) {
@@ -172,6 +175,82 @@ const orphan = settlePeriod({
 });
 ok("an earning on an unknown account is skipped, not counted", orphan.agencyGrossCents, 0);
 ok("and named", orphan.warnings.length, 1);
+
+console.log("\n  THE RATE BANDS — a rate that improves as she grows\n");
+ok("$2,000 is all in the first band: half", applyTiers(200000, DEFAULT_TIERS), 100000);
+ok("exactly $5,000 is still half", applyTiers(500000, DEFAULT_TIERS), 250000);
+ok("$10,000 is 50% of five then 60% of five", applyTiers(1000000, DEFAULT_TIERS), 550000);
+ok("$15,000 tops out the middle band", applyTiers(1500000, DEFAULT_TIERS), 850000);
+ok("$20,000 reaches the top band", applyTiers(2000000, DEFAULT_TIERS), 1200000);
+ok("which leaves the agency $8,000", 2000000 - applyTiers(2000000, DEFAULT_TIERS), 800000);
+
+console.log("\n  NO CLIFF AT A BAND EDGE\n");
+ok("one cent over $5,000 earns one cent more, not less",
+  applyTiers(500001, DEFAULT_TIERS) > applyTiers(500000, DEFAULT_TIERS), true);
+ok("and the step is 60 cents on the dollar, not a re-price",
+  applyTiers(500100, DEFAULT_TIERS) - applyTiers(500000, DEFAULT_TIERS), 60);
+ok("earning more never takes home less, across every edge",
+  Array.from({ length: 40 }, (_, i) => applyTiers(i * 50000, DEFAULT_TIERS))
+    .every((v, i, a) => i === 0 || v >= a[i - 1]), true);
+
+console.log("\n  THE FOUNDING CREATOR\n");
+ok("60% from the first dollar", applyTiers(100000, FOUNDING_TIERS), 60000);
+ok("and still 60% at $10,000", applyTiers(1000000, FOUNDING_TIERS), 600000);
+ok("she beats the standard deal at $10,000",
+  applyTiers(1000000, FOUNDING_TIERS) > applyTiers(1000000, DEFAULT_TIERS), true);
+ok("but the standard deal overtakes her once it tiers up",
+  applyTiers(3000000, DEFAULT_TIERS) > applyTiers(3000000, FOUNDING_TIERS), true);
+
+console.log("\n  AWKWARD BANDS\n");
+ok("a month underwater takes back at the LOWEST rate, not the highest",
+  applyTiers(-50000, DEFAULT_TIERS), -25000);
+ok("zero is zero", applyTiers(0, DEFAULT_TIERS), 0);
+ok("no bands falls back to the standard ones", applyTiers(1000000, null), 550000);
+ok("bands that stop short still pay on the remainder",
+  applyTiers(1000000, [{ uptoCents: 100000, creatorShareBp: 5000 }]), 500000);
+
+console.log("\n  READING A RATE PLAN\n");
+ok("a JSON string parses", tiersFor({ rateTiersJson: JSON.stringify(DEFAULT_TIERS) }).length, 3);
+ok("no plan is null, not an empty list", tiersFor({ creatorShareBp: 5000 }), null);
+ok("malformed JSON is treated as absent, never as zero",
+  tiersFor({ rateTiersJson: "{not json" }), null);
+ok("an empty list is treated as absent", tiersFor({ rateTiersJson: "[]" }), null);
+ok("a band over 100% is dropped rather than paid",
+  tiersFor({ rateTiersJson: JSON.stringify([{ uptoCents: null, creatorShareBp: 15000 }]) }), null);
+
+console.log("\n  A TIERED MONTH, END TO END\n");
+const bigMonth = settlePeriod({
+  period: "2026-09",
+  creators: [{ id: "cr1", stageName: "Ava", creatorShareBp: 5000, splitBasis: "net",
+               rateTiersJson: JSON.stringify(DEFAULT_TIERS) }],
+  accounts: [{ id: "acc1", creatorId: "cr1", handle: "ava", platformFeeBp: 2000, royaltyCovered: true }],
+  earnings: [
+    { id: "e1", accountId: "acc1", period: "2026-09", grossCents: 1500000, platformFeeCents: 300000, netCents: 1200000 },
+    { id: "e2", accountId: "acc1", period: "2026-09", grossCents: 1000000, platformFeeCents: 200000, netCents: 800000 },
+  ],
+  expenses: [],
+  partners: [{ key: "owner", name: "Owner", shareBp: 4500, active: true },
+             { key: "david", name: "David", shareBp: 5500, active: true }],
+  settings: { royaltyRateBp: 0 },
+});
+ok("two lines totalling $20,000 of net", bigMonth.perCreator[0].netCents, 2000000);
+ok("are banded on the MONTH, not line by line", bigMonth.creatorOwedCents, 1200000);
+ok("leaving the agency $8,000", bigMonth.agencyGrossCents, 800000);
+ok("the creator row says which plan she is on",
+  bigMonth.perCreator[0].tiered, true);
+ok("creator plus agency still equals what arrived",
+  bigMonth.perCreator[0].creatorCents + bigMonth.perCreator[0].agencyCents,
+  bigMonth.perCreator[0].netCents);
+
+console.log("\n  BANDING BEATS LINE-BY-LINE, WHICH IS THE WHOLE POINT\n");
+ok("split per line she would have been underpaid",
+  applyTiers(1200000, DEFAULT_TIERS) + applyTiers(800000, DEFAULT_TIERS) < applyTiers(2000000, DEFAULT_TIERS),
+  true);
+
+ok("the partners split what is left, 45/55",
+  bigMonth.partnerDraws.map((p) => p.amountCents), [360000, 440000]);
+ok("and it reconciles exactly",
+  bigMonth.partnerDraws.reduce((a, p) => a + p.amountCents, 0), bigMonth.distributableCents);
 
 console.log(`\n  ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
