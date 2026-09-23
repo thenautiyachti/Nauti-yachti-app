@@ -7596,6 +7596,65 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
+// ---- The PDF, without a PDF library --------------------------------
+//
+// This app has six dependencies. jsPDF and its autotable plugin would have been
+// the seventh and eighth, for one button. Instead the report is written as a
+// self-contained HTML document into a new window and handed to the browser's
+// own print-to-PDF, which every desktop and phone browser already has. The text
+// stays selectable and searchable, pages break properly, and there is no
+// library to keep up to date.
+//
+// IT IS NOT window.print() ON THE CONSOLE. GiftCertificateReveal does that, and
+// it is fine there because the card IS the page. The console is a dark-themed
+// app with a nav bar and ten tabs; printing it produces an unreadable document
+// and a great deal of toner. This writes a light, paginated document containing
+// only the report.
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+function openPrintableReport(title, bodyHtml) {
+  const w = window.open("", "_blank");
+  if (!w) {
+    // Say which thing failed. "Nothing happened" on a button that is supposed
+    // to produce a document reads as a broken button, not a blocked pop-up.
+    alert("The browser blocked the report window. Allow pop-ups for this site, then press the button again.");
+    return;
+  }
+  w.document.write(
+    '<!doctype html><html><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    "<title>" + escapeHtml(title) + "</title><style>" +
+    "@page { margin: 14mm; }" +
+    "* { box-sizing: border-box; }" +
+    'body { font: 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;' +
+    "  color: #14121A; background: #fff; margin: 0; padding: 24px; }" +
+    "h1 { font-size: 20px; margin: 0 0 2px; letter-spacing: -0.2px; }" +
+    "h2 { font-size: 12px; margin: 22px 0 7px; text-transform: uppercase; letter-spacing: 0.6px;" +
+    "  color: #6B6478; border-bottom: 1px solid #DDD9E3; padding-bottom: 4px; page-break-after: avoid; }" +
+    ".sub { color: #6B6478; font-size: 11.5px; margin-bottom: 4px; }" +
+    "table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }" +
+    "th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;" +
+    "  color: #6B6478; border-bottom: 1px solid #C9C3D4; padding: 5px 6px; }" +
+    "td { padding: 4px 6px; border-bottom: 1px solid #EFECF3; vertical-align: top; }" +
+    "tr { page-break-inside: avoid; }" +
+    "thead { display: table-header-group; }" +
+    ".num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }" +
+    ".totals td { font-weight: 700; border-top: 1.5px solid #C9C3D4; border-bottom: none; font-size: 13px; }" +
+    ".note { background: #FFF6EC; border: 1px solid #E8C79B; border-radius: 5px; padding: 9px 11px;" +
+    "  font-size: 11.5px; margin: 14px 0; page-break-inside: avoid; }" +
+    ".foot { margin-top: 26px; padding-top: 10px; border-top: 1px solid #DDD9E3; color: #6B6478; font-size: 10.5px; }" +
+    "</style></head><body>" + bodyHtml + "</body></html>"
+  );
+  w.document.close();
+  w.focus();
+  // Let the document lay out before the print dialog measures it. Without the
+  // tick, Chrome can open the dialog against an empty page.
+  setTimeout(() => { try { w.print(); } catch { /* the window is the deliverable either way */ } }, 300);
+}
+
 // "The Nauti Explorer" and "Nauti Explorer" are the same boat, and both are in
 // the live data — $6,653 filed under one and $3,873 under the other. Without
 // this, a by-vessel breakdown shows the Explorer twice and neither figure is
@@ -7612,6 +7671,20 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
   years.sort((a, b) => b.localeCompare(a));
 
   const [year, setYear] = useState(years[0] || String(currentYear));
+
+  // Income, expenses, or both. Owner, 23 Sep 2026: "I also want to see an
+  // option for just income or outcome or both."
+  //
+  // It governs the SCREEN AND BOTH EXPORTS. A filter that only changed the
+  // screen would be a trap here, because the file is the thing that leaves the
+  // building -- picking "expenses only", pressing export and handing over a
+  // spreadsheet that still carries every booking is exactly the mistake this
+  // control invites if the two disagree.
+  const [scope, setScope] = useState("both");
+  const showIncome = scope !== "expense";
+  const showExpense = scope !== "income";
+  const scopeLabel = scope === "both" ? "Income and expenses"
+    : scope === "income" ? "Income only" : "Expenses only";
 
   const yearLedger = ledger.filter((l) => l.date && l.date.startsWith(year));
   // A deposit for a charter that never ran is not revenue for this year. It is
@@ -7652,17 +7725,109 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
   const unattributedRows = income.filter((l) => !String(l.subcategory || "").trim());
   const unattributed = unattributedRows.reduce((s, l) => s + Number(l.amount || 0), 0);
 
-  const activeSubs = subscriptions.filter((s) => s.active);
+  // BUSINESS ONLY, and this was wrong until 23 Sep 2026. This figure sat on the
+  // Tax Report counting every active subscription, personal ones included --
+  // $1,584 a year of Netflix, Hulu, Spotify, Xbox Game Pass, Amazon Prime, Roku
+  // and Peacock inside a number a bookkeeper reads as a deductible cost. The
+  // subscriptions CSV two functions below has always filtered them out, and the
+  // toggle that marks a subscription personal says in its own tooltip that such
+  // a row is "counted only on the personal line, never in the business totals or
+  // the Tax Report". The rule was written down and stated to the owner; only
+  // this one line had not been told. Found while adding the PDF export, because
+  // a wrong number printed and handed to somebody else is a different order of
+  // wrong from a number on your own screen.
+  const activeSubs = subscriptions.filter((s) => s.active && !isPersonal(s));
   const annualSubscriptionCost = activeSubs.reduce((sum, s) => sum + monthlyAmount(s) * 12, 0);
+
+  // The rows the exports carry. Sorted once, here, so the CSV and the PDF can
+  // never disagree about what "this report" means.
+  const scopeRows = yearLedger
+    .filter((l) => (scope === "both" ? true : scope === "income" ? l.type === "income" : l.type === "expense"))
+    .slice()
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+  const scopeSuffix = scope === "both" ? "" : `-${scope === "income" ? "income" : "expenses"}-only`;
 
   function exportYearCsv() {
     const rows = [
       ["Date", "Type", "Category", "Amount", "Origin", "Booking ID", "Vessel/Package", "Note"],
-      ...yearLedger
-        .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-        .map((l) => [l.date, l.type, stripCategoryPrefix(l.category) || "", l.amount, l.origin || "", l.bookingId || "", l.subcategory || "", l.note || ""]),
+      ...scopeRows.map((l) => [l.date, l.type, stripCategoryPrefix(l.category) || "", l.amount, l.origin || "", l.bookingId || "", l.subcategory || "", l.note || ""]),
     ];
-    downloadCsv(`nauti-yachti-tax-report-${year}.csv`, rows);
+    downloadCsv(`nauti-yachti-tax-report-${year}${scopeSuffix}.csv`, rows);
+  }
+
+  function exportPdf() {
+    const esc = escapeHtml;
+    const money = (n) => esc(currency(n));
+
+    const totals = [
+      showIncome && [`Total income`, totalIncome],
+      showExpense && [`Total expenses`, totalExpense],
+      showIncome && showExpense && [`Net profit`, net],
+      showExpense && [`Annual recurring subscription cost (business only)`, annualSubscriptionCost],
+    ].filter(Boolean);
+
+    const breakdown = (title, rows) => (!rows.length ? "" :
+      `<h2>${esc(title)}</h2><table><thead><tr><th>Item</th><th class="num">Entries</th><th class="num">Amount</th></tr></thead><tbody>`
+      + rows.map((r) => `<tr><td>${esc(r.label)}</td><td class="num">${r.count}</td><td class="num">${money(r.total)}</td></tr>`).join("")
+      + `</tbody></table>`);
+
+    const parts = [];
+    parts.push(`<h1>TheNautiYachti LLC</h1>`);
+    parts.push(`<div class="sub">Tax summary &middot; ${esc(year)} &middot; ${esc(scopeLabel)}</div>`);
+    parts.push(`<div class="sub">Generated ${esc(new Date().toLocaleString())}</div>`);
+
+    parts.push(`<h2>Totals</h2><table><tbody>`
+      + totals.map(([k, v]) => `<tr class="totals"><td>${esc(k)}</td><td class="num">${money(v)}</td></tr>`).join("")
+      + `</tbody></table>`);
+
+    // The same disclosure the screen makes. A bookkeeper reconciling against a
+    // bank statement WILL find this money and needs to know why the income
+    // figure excludes it -- leaving it off the printed version would be the one
+    // omission that actively misleads.
+    if (showIncome && heldNotEarned > 0) {
+      parts.push(`<div class="note"><strong>${money(heldNotEarned)} received in ${esc(year)} is not counted in the income above.</strong>
+        It was paid for a charter that never ran and has not been rescheduled, so it is money held rather than
+        revenue earned, and it goes back if the guest asks. It counts as income in the year the charter sails.
+        A bank statement for ${esc(year)} will show it.</div>`);
+    }
+
+    if (showIncome && charterCount > 0) {
+      parts.push(`<h2>Charters</h2><table><tbody>`
+        + `<tr><td>Completed charters</td><td class="num">${charterCount}</td></tr>`
+        + `<tr><td>Average per charter</td><td class="num">${money(perCharter)}</td></tr>`
+        + (totalHours ? `<tr><td>Average per hour</td><td class="num">${money(perHour)}</td></tr>` : "")
+        + (totalHours ? `<tr><td>Hours on the water</td><td class="num">${totalHours} hr</td></tr>` : "")
+        + `</tbody></table>`);
+    }
+
+    if (showExpense) parts.push(breakdown(`Expenses by category`, expenseBreakdown));
+    if (showIncome) parts.push(breakdown(`Income by vessel`, incomeByVessel));
+    if (showIncome) parts.push(breakdown(`Income by origin`, incomeByOrigin));
+
+    if (showIncome && unattributed > 0) {
+      parts.push(`<div class="note"><strong>${money(unattributed)} of ${esc(year)} income has no vessel recorded</strong>
+        and so is not attributed to a boat in the breakdown above.</div>`);
+    }
+
+    parts.push(`<h2>${esc(scopeLabel)} &mdash; every entry</h2>`);
+    if (!scopeRows.length) {
+      parts.push(`<p>No entries for ${esc(year)}.</p>`);
+    } else {
+      parts.push(`<table><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Origin</th>`
+        + `<th>Vessel / package</th><th>Note</th><th class="num">Amount</th></tr></thead><tbody>`
+        + scopeRows.map((l) => `<tr><td>${esc(l.date)}</td><td>${esc(l.type)}</td>`
+          + `<td>${esc(stripCategoryPrefix(l.category) || "")}</td><td>${esc(l.origin || "")}</td>`
+          + `<td>${esc(l.subcategory || "")}</td><td>${esc(l.note || "")}</td>`
+          + `<td class="num">${money(l.amount)}</td></tr>`).join("")
+        + `</tbody></table>`);
+    }
+
+    parts.push(`<div class="foot">This is not a filed tax form. It is a summary of everything logged in the
+      Income &amp; expenses and Subscriptions &amp; bills tabs for ${esc(year)}, on the same figures shown in the
+      owner console. Personal subscriptions are excluded from every total here.</div>`);
+
+    openPrintableReport(`Nauti Yachti tax summary ${year}`, parts.join(""));
   }
 
   // BUSINESS ROWS ONLY. This file is exported from the Tax Report and is handed
@@ -7689,9 +7854,22 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </label>
+        <label style={{ fontSize: 13, color: "var(--muted)" }}>
+          Show{" "}
+          <select value={scope} onChange={(e) => setScope(e.target.value)}
+            style={{ padding: "7px 10px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", marginLeft: 6 }}>
+            <option value="both">Income and expenses</option>
+            <option value="income">Income only</option>
+            <option value="expense">Expenses only</option>
+          </select>
+        </label>
         <button type="button" onClick={exportYearCsv}
           style={{ background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "9px 16px", fontWeight: 700, fontSize: 13 }}>
-          Download {year} income & expense CSV
+          Download {year} {scope === "both" ? "income & expense" : scope === "income" ? "income" : "expense"} CSV
+        </button>
+        <button type="button" onClick={exportPdf}
+          style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "9px 16px", fontWeight: 600, fontSize: 13 }}>
+          Download PDF
         </button>
         <button type="button" onClick={exportSubscriptionsCsv}
           style={{ background: "transparent", color: "var(--text)", border: "1px solid var(--purple)", borderRadius: 6, padding: "9px 16px", fontWeight: 600, fontSize: 13 }}>
@@ -7700,13 +7878,16 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
       </div>
 
       <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
-        <StatCard label={`${year} total income`} value={currency(totalIncome)} color="var(--purple)" />
-        <StatCard label={`${year} total expenses`} value={currency(totalExpense)} color="var(--pink)" />
-        <StatCard label={`${year} net profit`} value={currency(net)} color="#E8934A" />
-        <StatCard label="Annual recurring subscription cost" value={currency(annualSubscriptionCost)} color="#00d9ff" />
+        {showIncome && <StatCard label={`${year} total income`} value={currency(totalIncome)} color="var(--purple)" />}
+        {showExpense && <StatCard label={`${year} total expenses`} value={currency(totalExpense)} color="var(--pink)" />}
+        {/* Net profit needs both sides. Showing it beside a single-sided view
+            would print income as profit, which is the one number nobody should
+            ever read wrong. */}
+        {showIncome && showExpense && <StatCard label={`${year} net profit`} value={currency(net)} color="#E8934A" />}
+        {showExpense && <StatCard label="Annual subscriptions — business only" value={currency(annualSubscriptionCost)} color="#00d9ff" />}
       </div>
 
-      {heldNotEarned > 0 && (
+      {showIncome && heldNotEarned > 0 && (
         // Stated, not hidden. The bank received this money in the selected
         // year, so a bookkeeper reconciling against a statement will find it
         // and needs to know why the income figure above does not include it.
@@ -7730,7 +7911,7 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
 
       {/* Per charter and per hour are the two numbers that actually inform a
           pricing decision, and neither existed anywhere before. */}
-      {charterCount > 0 && (
+      {showIncome && charterCount > 0 && (
         <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
           <StatCard label={`${year} completed charters`} value={String(charterCount)} color="var(--purple)" />
           <StatCard label="Average per charter" value={currency(perCharter)} color="#7FE0B8" />
@@ -7740,12 +7921,12 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
       )}
 
       <div style={{ display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-        <BreakdownPanel title={`${year} expenses by category`} rows={expenseBreakdown} color="#F0559C" />
-        <BreakdownPanel title={`${year} income by vessel`} rows={incomeByVessel} color="#7FE0B8" />
-        <BreakdownPanel title={`${year} income by origin`} rows={incomeByOrigin} color="#00d9ff" />
+        {showExpense && <BreakdownPanel title={`${year} expenses by category`} rows={expenseBreakdown} color="#F0559C" />}
+        {showIncome && <BreakdownPanel title={`${year} income by vessel`} rows={incomeByVessel} color="#7FE0B8" />}
+        {showIncome && <BreakdownPanel title={`${year} income by origin`} rows={incomeByOrigin} color="#00d9ff" />}
       </div>
 
-      {unattributed > 0 && (
+      {showIncome && unattributed > 0 && (
         <div style={{ fontSize: 12.5, color: "#E8934A", background: "rgba(232,147,74,0.08)", border: "1px solid rgba(232,147,74,0.35)", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ marginBottom: 6 }}>
             <strong>{currency(unattributed)}</strong> of {year} income has no vessel recorded, so it cannot be
@@ -7769,7 +7950,7 @@ function TaxReportTab({ ledger, subscriptions, externalBookings = [] }) {
         </div>
       )}
 
-      <div style={{ fontSize: 11.5, color: "var(--muted)", maxWidth: 720 }}>
+      <div style={{ fontSize: 11.5, color: "var(--muted)", maxWidth: 720, display: showIncome ? "block" : "none" }}>
         Income by category is not shown: every reservation is logged under the single category
         &ldquo;Reservation&rdquo;, so it would be one row totalling everything. Vessel and origin are the
         splits that say something. Note that origin currently mixes how a booking was won
