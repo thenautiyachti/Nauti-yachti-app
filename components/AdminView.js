@@ -1150,23 +1150,75 @@ function contactKey(name, phone, email) {
   return n ? "n:" + n : null;
 }
 
+// TOSHIA MILLS, and the rule that keeps the two Ivys apart.
+//
+// contactKey falls back phone -> email -> name, so ONE person split into two
+// contacts when one of her charters carried her phone number and the other
+// carried nothing but her name. She showed as two people with one trip each.
+// Owner, 23 Sep 2026: "Toshia Mills had two trips."
+//
+// Only a NAME-KEYED entry is ever absorbed -- one with no phone and no email at
+// all -- because that is the only case where the split is an artefact of the
+// key rather than evidence of two people. It must match exactly one other
+// contact, on a name of at least two words.
+//
+// "Ivy" is why both of those conditions are here. There are two Ivys in this
+// table under two DIFFERENT phone numbers. Both are phone-keyed and the name is
+// one word, so neither test passes and nothing merges them -- which is right,
+// because they are almost certainly two different people. A looser rule that
+// merged on name alone would silently fuse two strangers into one contact and
+// credit one of them with the other's charter.
+function mergeNamedOrphans(map) {
+  const named = (n) => String(n || "").trim().toLowerCase();
+  for (const [key, orphan] of [...map]) {
+    if (!key.startsWith("n:")) continue;
+    const name = named(orphan.name);
+    if (name.split(/\s+/).length < 2) continue;
+    const hosts = [...map.values()].filter((c) => c !== orphan && named(c.name) === name);
+    if (hosts.length !== 1) continue;
+    const host = hosts[0];
+    for (const c of orphan.charters) host.charters.add(c);
+    if (orphan.last && (!host.last || orphan.last > host.last)) host.last = orphan.last;
+    if (orphan.optOut) host.optOut = true;
+    if (!host.askedAt && orphan.askedAt) host.askedAt = orphan.askedAt;
+    for (const sc of orphan.sources) host.sources.add(sc);
+    map.delete(key);
+  }
+}
+
+// ONE CHARTER IS ONE TRIP.
+//
+// `trips` was incremented once per ROW, and a website checkout writes TWO rows
+// for a single charter -- an Inquiry and a mirror ExternalBooking sharing one
+// booking number. So every guest who booked through the site read as having
+// sailed twice. Owner, 23 Sep 2026: "These people listed in the screenshot only
+// had one trip. I'm not sure if their bookings, the way we process the
+// bookings, counted it as a duplicate trip." It did. Five contacts were wrong:
+// Stephen Herrick, Oscar RoblesGil R, Julie Delafuente, Slade Deliberto and
+// Carlyn -- every one of them a website checkout.
+//
+// This is the same correction already made to the duplicate finder, which had
+// to learn that "a website charter is two rows" before it could stop reporting
+// one clash twice. The count is now a SET of booking numbers rather than a
+// tally of rows. A row with no booking number falls back to a token unique to
+// that row, so two genuinely untracked charters still count as two.
 function buildContacts(externalBookings, inquiries) {
   const map = new Map();
-  const add = (name, phone, email, date, status, source, optOut) => {
+  const add = (name, phone, email, date, status, source, optOut, bookingId, rowId) => {
     const key = contactKey(name, phone, email);
     if (!key) return;
-    const e = map.get(key) || { name, phone, email, trips: 0, last: null, sources: new Set(), optOut: false, askedAt: null };
+    const e = map.get(key) || { name, phone, email, charters: new Set(), last: null, sources: new Set(), optOut: false, askedAt: null };
     if (!e.name && name) e.name = name;
     if (!e.phone && phone) e.phone = phone;
     if (!e.email && email) e.email = email;
-    if (status === "completed") e.trips += 1;
+    if (status === "completed") e.charters.add(bookingId || source + ":" + rowId);
     if (date && (!e.last || date > e.last)) e.last = date;
     if (optOut) e.optOut = true;
     e.sources.add(source);
     map.set(key, e);
   };
   for (const b of externalBookings) {
-    add(b.guestName, b.phone, b.email, b.date, b.status, "charter", b.marketingOptOut);
+    add(b.guestName, b.phone, b.email, b.date, b.status, "charter", b.marketingOptOut, b.bookingId, b.id);
     if (b.reviewRequestedAt) {
       const e = map.get(contactKey(b.guestName, b.phone, b.email));
       if (e) e.askedAt = b.reviewRequestedAt;
@@ -1174,13 +1226,16 @@ function buildContacts(externalBookings, inquiries) {
   }
   for (const i of inquiries) {
     const source = isGuestContactRow(i) ? "extra contact" : isCrewListRow(i) ? "crew list" : "inquiry";
-    add(i.name, i.phone, i.email, i.date, i.status, source);
+    add(i.name, i.phone, i.email, i.date, i.status, source, undefined, i.bookingId, i.id);
     if (i.reviewRequestedAt) {
       const e = map.get(contactKey(i.name, i.phone, i.email));
       if (e) e.askedAt = i.reviewRequestedAt;
     }
   }
-  return [...map.values()].sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
+  mergeNamedOrphans(map);
+  return [...map.values()]
+    .map((e) => ({ ...e, trips: e.charters.size }))
+    .sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
 }
 
 function ContactsPanel({ externalBookings, inquiries }) {
