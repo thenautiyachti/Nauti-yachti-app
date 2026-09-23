@@ -666,8 +666,23 @@ model MediaDraft {
   postedAt      DateTime?
   postUrl       String?
 
+  // Blotato's own id for the published post, which is the ONLY thing that joins
+  // a comment back to the post it sits under.
+  //
+  // The comments API returns postId on every comment and nothing in this system
+  // could say what that post WAS. Owner, 22 Sep 2026: "it would also be nice to
+  // see which post the comments belong to." postUrl cannot do it -- it is a
+  // permalink, not an id, and the two are unrelated strings.
+  //
+  // Written by Siren at publish time, alongside postUrl. Expect it to be NULL
+  // often and by design: anything posted by hand from the phone has no draft row
+  // at all, so "post not identified" is a normal state, not a fault.
+  blotatoPostId      String?
+  blotatoStoryPostId String? // the Story leg, when one went out
+
   @@index([campaign, scheduledDate])
   @@index([status])
+  @@index([blotatoPostId])
 }
 
 model CommentReplyDraft {
@@ -700,6 +715,115 @@ model CommentReplyDraft {
   usedAt DateTime?
 
   @@index([platform])
+}
+
+// What was actually SENT on a comment, which nothing has ever recorded.
+//
+// CommentReplyDraft above holds what somebody SUGGESTED. Once the owner pressed
+// send, the only trace was usedAt going non-null -- so a reply he typed himself,
+// over the suggestion or from scratch, left nothing behind at all, and the
+// console could not tell an answered thread from an unanswered one after
+// Blotato's 250-row window rolled past it.
+//
+// Owner, 22 Sep 2026: "I would still like to see the history of answered
+// comments, but we are also finding out that we can see it in the Meta Business
+// Suite." Meta shows THAT a reply went out. This records what Meta cannot: which
+// post it was under, who drafted it, whether it sent itself, and what he changed
+// it to before sending.
+//
+// AND IT IS NOT ONLY A RECORD. It is how the queue knows a thread is finished.
+// Without it, a reply typed in the Facebook app leaves a thread looking open
+// here for ever -- and an open-looking thread is one an auto-sender may act on.
+model CommentReply {
+  id String @id @default(cuid())
+
+  // Blotato's id for the comment being answered. Unique, so a thread can only
+  // ever carry one send record -- the cheapest possible guard against a double
+  // reply in a stack that has no delete.
+  commentId       String  @unique
+  threadCommentId String? // the top-level comment, when the answer is to a follow-up
+  platform        String
+
+  // Which post it sat under. postId is Blotato's; blotatoPostId is the same
+  // value copied onto MediaDraft at publish time, which is what the join uses.
+  postId        String?
+  blotatoPostId String?
+
+  // What the comment said when it was answered. Kept so a later edit to the
+  // comment is visible as a divergence rather than silently rewriting history.
+  commentText String?
+
+  draftText   String? // what was suggested, if anything was
+  draftAuthor String? // "Nauti Siren", "Nauti Pearl"
+  sentText    String // what actually went out
+
+  // "auto"      -- a template sent itself
+  // "owner"     -- he pressed send here
+  // "elsewhere" -- he answered in the Facebook app or Meta Business Suite and
+  //                told the console afterwards
+  source               String  @default("owner")
+  editedFromSuggestion Boolean @default(false)
+
+  // The auto path only. Null on everything he sent himself.
+  templateId    String?
+  tier          String?
+  decidedRule   String?
+  decidedReason String?
+
+  // The 15-minute veto window and the claim that makes sending idempotent. A
+  // unique index does not stop two senders; a conditional claim does.
+  sendAt    DateTime?
+  claimedAt DateTime?
+  sentAt    DateTime?
+
+  blotatoReplyId String?
+  permalink      String?
+
+  // shadow | pending | sending | queued | posted | failed | cancelled | vanished
+  status          String    @default("posted")
+  statusCheckedAt DateTime?
+
+  // Shadow mode's review gate: 20 yes and no nos before the switch can be armed.
+  reviewedOk Boolean?
+
+  acknowledgedAt DateTime?
+
+  // There is NO delete or edit on Blotato's comments API. Retraction is a note
+  // and a manual procedure, never a button that pretends to pull a comment.
+  retractedAt    DateTime?
+  retractionNote String?
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([sentAt])
+  @@index([blotatoPostId])
+}
+
+// He answered it somewhere else. Mirrors MessageThreadAnswer field for field,
+// because it is the same problem: he works the Facebook app and Meta Business
+// Suite on his phone, and a reply typed there is invisible here.
+model CommentThreadAnswer {
+  id        String  @id @default(cuid())
+  commentId String  @unique
+  platform  String?
+
+  answeredCommentId String?
+  answeredAt        DateTime @default(now())
+  answeredWhere     String?
+  note              String?
+}
+
+// A key-value shelf for console state that is not about a booking, a guest or a
+// post. There was no generic settings table before this.
+//
+// FIRST USE: commentAutoSend, which is "off" | "shadow" | "on". An ABSENT ROW
+// MEANS OFF -- the switch must fail closed, so a fresh database, a failed
+// migration or a wiped table can never leave something publishing.
+model ConsoleSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 model Testimonial {

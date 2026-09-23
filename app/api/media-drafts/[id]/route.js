@@ -93,6 +93,13 @@ async function PATCH(req, { params }) {
     data.postType = value;
   }
   if ("storyPostUrl" in body) data.storyPostUrl = body.storyPostUrl || null;
+  // Blotato's own id for the published post. Not cosmetic: it is the ONLY key
+  // that joins an incoming comment back to the post it sits under, because
+  // postUrl is a permalink and the comments API speaks in ids. Siren writes it
+  // at publish time alongside postUrl; without it the console can read a comment
+  // and still not say what it is about.
+  if ("blotatoPostId" in body) data.blotatoPostId = body.blotatoPostId || null;
+  if ("blotatoStoryPostId" in body) data.blotatoStoryPostId = body.blotatoStoryPostId || null;
   if ("caption" in body && body.caption) data.caption = body.caption;
   if ("postUrl" in body) data.postUrl = body.postUrl || null;
   // WHERE THE CLIP CAME FROM, and the delivery caveat under it.

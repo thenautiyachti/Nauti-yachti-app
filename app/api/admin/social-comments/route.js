@@ -109,6 +109,81 @@ async function GET() {
       t.suggestionStale = !!(s.commentText && answers.text && s.commentText !== answers.text);
     }
 
+    // WHICH POST IS THIS UNDER. Owner, 22 Sep 2026: "it would also be nice to
+    // see which post the comments belong to, if this is possible."
+    //
+    // It is, and the data was already arriving — every comment carries postId
+    // and platformPostId and both were being discarded. The join is on
+    // MediaDraft.blotatoPostId, written at publish time.
+    //
+    // ITS OWN try/catch, and deliberately so. A comment queue that goes blank
+    // because a join failed is the worst outcome here: an empty queue reads as
+    // "everything is answered". The chip is a nicety; the comments are the point.
+    //
+    // Expect misses to be COMMON. Anything posted by hand from the phone has no
+    // MediaDraft at all, so "post not identified" is a normal state.
+    try {
+      const ids = [...new Set(threads.map((t) => t.postId).filter(Boolean))];
+      if (ids.length) {
+        const posts = await prisma.mediaDraft.findMany({
+          where: { blotatoPostId: { in: ids } },
+          select: {
+            blotatoPostId: true, caption: true, mediaUrl: true, mediaType: true,
+            platform: true, scheduledDate: true, postUrl: true, theme: true,
+          },
+        });
+        const byPost = new Map(posts.map((p) => [p.blotatoPostId, p]));
+        for (const t of threads) {
+          const p = t.postId && byPost.get(t.postId);
+          if (!p) {
+            // Say so rather than leave the header blank — an unlabelled card
+            // reads as "no post", not as "we could not tell".
+            t.post = null;
+            t.postUnidentified = true;
+            continue;
+          }
+          const line = String(p.caption || "").replace(/\s+/g, " ").trim();
+          t.post = {
+            label: p.theme || p.platform || "post",
+            caption: line.length > 70 ? line.slice(0, 70) + "…" : line,
+            thumb: p.mediaType === "image" ? p.mediaUrl : null,
+            mediaType: p.mediaType,
+            date: p.scheduledDate || null,
+            // The permalink we were given at publish time is the trustworthy
+            // one. Only fall back to building a Facebook URL from the platform
+            // id; Instagram's permalink needs a shortcode we do not have.
+            url: p.postUrl
+              || (t.platform === "facebook" && t.platformPostId
+                ? "https://facebook.com/" + t.platformPostId
+                : null),
+          };
+        }
+      }
+    } catch (e) {
+      // Leave every thread's post undefined and carry on serving comments.
+      console.error("[social-comments] post attribution skipped:", e.message);
+    }
+
+    // ANSWERED SOMEWHERE ELSE. He works the Facebook app and Meta Business Suite
+    // on his phone, and a reply typed there is invisible to this queue — the
+    // thread sits here looking open for ever. Same problem MessageThreadAnswer
+    // already solves for DMs, so the same shape solves it here.
+    try {
+      const answered = await prisma.commentThreadAnswer.findMany({
+        select: { commentId: true, answeredAt: true, answeredWhere: true },
+      });
+      const byId = new Map(answered.map((a) => [a.commentId, a]));
+      for (const t of threads) {
+        const hit = t.comment && byId.get(t.comment.id);
+        if (!hit) continue;
+        t.answeredElsewhere = true;
+        t.answeredElsewhereAt = hit.answeredAt;
+        t.answeredElsewhereWhere = hit.answeredWhere || null;
+      }
+    } catch (e) {
+      console.error("[social-comments] answered-elsewhere skipped:", e.message);
+    }
+
     return NextResponse.json({
       threads,
       summary: summarise(items),
@@ -149,6 +224,54 @@ async function POST(req) {
       method: "POST",
       body: JSON.stringify({ postId, parentCommentId: parentCommentId || undefined, text: body }),
     });
+
+    // RECORD WHAT WENT OUT. Until now the only trace of an answered comment was
+    // CommentReplyDraft.usedAt flipping non-null — which meant a reply he typed
+    // himself, over the suggestion or from scratch, left NOTHING behind. The
+    // console could not tell an answered thread from an unanswered one once
+    // Blotato's 250-row window rolled past it.
+    //
+    // Owner, 22 Sep 2026, on wanting the history even though Meta Business Suite
+    // has it: Meta shows THAT a reply went out. This shows which post it was
+    // under, who drafted it, and what he changed it to.
+    //
+    // Never fails the send. The comment is already public by this line; throwing
+    // here would tell him it failed and invite him to post it twice, into a
+    // stack with no delete.
+    try {
+      const draft = parentCommentId
+        ? await prisma.commentReplyDraft.findUnique({ where: { commentId: parentCommentId } })
+        : null;
+      await prisma.commentReply.upsert({
+        where: { commentId: parentCommentId || String(made && made.id) },
+        create: {
+          commentId: parentCommentId || String(made && made.id),
+          platform: (made && made.platform) || "facebook",
+          postId: String(postId),
+          commentText: draft ? draft.commentText : null,
+          draftText: draft ? draft.suggestion : null,
+          draftAuthor: draft ? draft.author : null,
+          sentText: body,
+          source: "owner",
+          // Whether he took the suggestion or wrote past it. The interesting
+          // number over time is how often the draft survived contact.
+          editedFromSuggestion: !!(draft && draft.suggestion && draft.suggestion.trim() !== body),
+          blotatoReplyId: made && made.id ? String(made.id) : null,
+          status: (made && made.status) || "queued",
+          sentAt: new Date(),
+        },
+        update: {
+          sentText: body,
+          source: "owner",
+          blotatoReplyId: made && made.id ? String(made.id) : null,
+          status: (made && made.status) || "queued",
+          sentAt: new Date(),
+        },
+      });
+    } catch (e) {
+      console.error("[social-comments] reply not recorded:", e.message);
+    }
+
     // Posting is asynchronous — it comes back "queued" and becomes "posted" or
     // "failed". The panel polls, rather than claiming success from a 201.
     return NextResponse.json(made);
@@ -159,4 +282,70 @@ async function POST(req) {
   }
 }
 
-module.exports = { GET, POST };
+// Body: { commentId, answered?: false, platform?, answeredCommentId?, answeredWhere?, note? }
+//
+// "I answered this elsewhere." He works the Facebook app and Meta Business Suite
+// on his phone, so a reply typed there never reaches this queue and the thread
+// sits here looking open for ever. Deliberately the same shape as the DM version
+// in social-messages, including the undo — the mistake it guards against is
+// marking the wrong thread, and without a way back that mistake is permanent.
+//
+// It also matters more than tidiness: an open-looking thread is one an
+// auto-sender would be entitled to act on.
+async function PATCH(req) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
+
+  const commentId = String(body.commentId || "").trim();
+  if (!commentId) return NextResponse.json({ error: "Which comment?" }, { status: 400 });
+
+  // Put it back. He marked the wrong one.
+  if (body.answered === false) {
+    const gone = await prisma.commentThreadAnswer.deleteMany({ where: { commentId } });
+    await prisma.commentReply.deleteMany({ where: { commentId, source: "elsewhere" } });
+    return NextResponse.json({ answered: false, cleared: gone.count });
+  }
+
+  const where = body.answeredWhere ? String(body.answeredWhere).slice(0, 120) : null;
+  const data = {
+    commentId,
+    platform: body.platform ? String(body.platform).slice(0, 40) : null,
+    answeredCommentId: body.answeredCommentId ? String(body.answeredCommentId).slice(0, 200) : null,
+    // When HE dealt with it, not when they wrote. Anything newer re-opens it.
+    answeredAt: new Date(),
+    answeredWhere: where,
+    note: body.note ? String(body.note).slice(0, 500) : null,
+  };
+
+  const row = await prisma.commentThreadAnswer.upsert({
+    where: { commentId }, update: data, create: data,
+  });
+
+  // Also goes in the history, so the Answered list is one list rather than two
+  // with different provenance. sentText is honest about not knowing the words —
+  // they were typed into Facebook, not into this box.
+  try {
+    await prisma.commentReply.upsert({
+      where: { commentId },
+      create: {
+        commentId,
+        platform: data.platform || "facebook",
+        sentText: "(answered outside the console)",
+        source: "elsewhere",
+        status: "posted",
+        sentAt: data.answeredAt,
+        decidedReason: where ? "answered in " + where : "answered elsewhere",
+      },
+      update: {},
+    });
+  } catch (e) {
+    console.error("[social-comments] elsewhere not recorded:", e.message);
+  }
+
+  return NextResponse.json(row);
+}
+
+module.exports = { GET, POST, PATCH };

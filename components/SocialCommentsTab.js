@@ -172,9 +172,60 @@ export default function SocialCommentsTab() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: colour }}>
                   {t.platform}{t.isFollowUp ? " · they came back" : ""}
+                  {t.answeredElsewhere ? " · answered elsewhere" : ""}
                 </span>
                 <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{shortAge(t.ageHours)}</span>
               </div>
+
+              {/* WHICH POST THIS IS UNDER. Owner, 22 Sep 2026. Answering a
+                  comment without knowing what it is about is guesswork, and
+                  "Lube" only makes sense once you can see it sat under a TUBING
+                  post.
+
+                  The unidentified state is SHOWN, not hidden. Anything the owner
+                  posted by hand from his phone has no draft row to join to, so a
+                  blank header would read as "no post" when it means "we could
+                  not tell" — and those are very different when deciding whether
+                  a jaunty reply is safe. */}
+              {t.post ? (
+                <a
+                  href={t.post.url || undefined}
+                  target={t.post.url ? "_blank" : undefined}
+                  rel="noreferrer"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, marginBottom: 8,
+                    padding: "5px 7px", borderRadius: 6, textDecoration: "none",
+                    background: "rgba(203,108,230,0.07)", border: "1px solid rgba(203,108,230,0.18)",
+                    cursor: t.post.url ? "pointer" : "default",
+                  }}
+                >
+                  {t.post.thumb ? (
+                    <img src={t.post.thumb} alt="" width={44} height={44}
+                      style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flex: "0 0 auto" }} />
+                  ) : (
+                    <span style={{
+                      width: 44, height: 44, borderRadius: 6, flex: "0 0 auto", display: "flex",
+                      alignItems: "center", justifyContent: "center", fontSize: 16,
+                      background: "rgba(203,108,230,0.12)", color: "var(--purple)",
+                    }}>{t.post.mediaType === "video" ? "▶" : "▦"}</span>
+                  )}
+                  {/* minWidth 0 is load-bearing: without it the flex child
+                      refuses to shrink and the caption pushes the age chip off
+                      the card on a phone. */}
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: "block", fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", fontWeight: 700 }}>
+                      on {t.post.label}{t.post.date ? " · " + t.post.date : ""}
+                    </span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {t.post.caption}
+                    </span>
+                  </span>
+                </a>
+              ) : (
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8, fontStyle: "italic" }}>
+                  post not identified — probably posted by hand rather than from the queue
+                </div>
+              )}
 
               <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
                 {t.comment.text}
