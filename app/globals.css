@@ -209,9 +209,20 @@ img, video, canvas, svg, iframe { max-width: 100%; }
   .bookings-table th:nth-child(11), .bookings-table td:nth-child(11) {
     display: none;
   }
-  /* The id is the longest thing left and carries the date, so let it wrap
-     rather than force the row wide again. */
-  .bookings-table td:nth-child(1) { white-space: normal !important; word-break: break-all; }
+  /* THE ID STAYS ON ONE LINE. It used to wrap with word-break: break-all to
+     keep the row narrow, but break-all splits mid-number: NY-20260927-01 came
+     out as "NY-20 / 26092 / 7-01", and that last fragment reads as a date.
+     Owner, 26 Sep 2026: "It almost makes it look like July 1st for Marcela."
+     A booking id is a reference people quote at each other and match against
+     Stripe -- it has to be readable as one token or it is worse than useless.
+     The table already scrolls sideways on a phone, so nowrap costs a little
+     scroll rather than a broken layout, and the smaller type buys most of it
+     back. */
+  .bookings-table td:nth-child(1) {
+    white-space: nowrap !important;
+    word-break: normal;
+    font-size: 10.5px;
+  }
 
   /* SEATS AND MONEY SURVIVE THE PHONE.
      Party size and price paid are columns 9 and 10 (8 and 9 until Package
