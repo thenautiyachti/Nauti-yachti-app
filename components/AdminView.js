@@ -627,7 +627,7 @@ export default function AdminView({
 
       <div style={{ padding: 24 }}>
         {tab === "inquiries" && (
-          <ContactsTab inquiries={inquiries} externalBookings={externalBookings} onUpdate={onUpdateInquiry} />
+          <ContactsTab inquiries={inquiries} externalBookings={externalBookings} onUpdate={onUpdateInquiry} coupons={coupons} />
         )}
 
         {tab === "bookings" && (
@@ -1462,7 +1462,7 @@ function CrewListPanel({ signups, onUpdate, reachable }) {
 // message from me to you."
 //
 // What is left is genuinely not a reservation: people, and how to reach them.
-function ContactsTab({ inquiries, externalBookings = [], onUpdate }) {
+function ContactsTab({ inquiries, externalBookings = [], onUpdate, coupons = [] }) {
   const crewList = inquiries.filter(isCrewListRow);
   const guestContacts = inquiries.filter(isGuestContactRow);
   // The two panels below are SUBSETS of the panel above, not additions to it.
