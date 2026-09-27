@@ -8,7 +8,7 @@ import {
   smsHref, normalizePhone,
 } from "../lib/reviews";
 import { owedCharters, owedMessage, windowFor } from "../lib/owedCharters";
-import { bookingLinkMessage, paymentFailedMessage, reminderMessage, payLink } from "../lib/guestTexts";
+import { bookingLinkMessage, paymentFailedMessage, reminderMessage, payLink, liveOffer, campaignMessage } from "../lib/guestTexts";
 import { bookingPhones } from "../lib/bookingPhones";
 import { isLinked, earnedIncome, unearnedTotal } from "../lib/ledgerLinks";
 import { hoursByVessel, fleetHours as fleetHoursOf, currentHours, isMetered } from "../lib/engineHours";
@@ -1238,9 +1238,16 @@ function buildContacts(externalBookings, inquiries) {
     .sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
 }
 
-function ContactsPanel({ externalBookings, inquiries }) {
+function ContactsPanel({ externalBookings, inquiries, coupons }) {
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const canSendSms = useCanSendSms();
+
+  // The sale, read live rather than written in. liveOffer() only accepts a
+  // coupon that has BOTH an end date and a usage cap, so a standing perk like
+  // SIDEPIECE50 can never end up texted to the whole list, and the button
+  // stops offering a code the day it expires or caps out.
+  const offer = liveOffer(coupons);
 
   const all = buildContacts(externalBookings, inquiries);
   const reachable = all.filter((c) => c.phone || String(c.email || "").includes("@"));
@@ -1291,6 +1298,22 @@ function ContactsPanel({ externalBookings, inquiries }) {
                 <span style={{ color: c.askedAt ? "var(--muted)" : "var(--purple)", whiteSpace: "nowrap", fontSize: 11 }}>
                   {c.optOut ? "opted out" : c.askedAt ? "asked" : "not asked"}
                 </span>
+                {/* NOT rendered for an opt-out. The row already dims and says
+                    "opted out"; leaving a text button on it invites the one
+                    mistake that cannot be taken back. */}
+                {!c.optOut && (
+                  <GuestTextButton
+                    phone={c.phone}
+                    body={campaignMessage({ name: c.name, sailed: (c.trips || 0) > 0 }, offer)}
+                    label={offer ? offer.code : "Get in touch"}
+                    color={offer ? "#7FE0B8" : "var(--purple)"}
+                    title={offer
+                      ? "Open a text to " + (c.name || "this guest") + " about " + offer.code + ". Nothing sends until you press send."
+                      : "Open a catch-up text. There is no live sale to mention."}
+                    noneLabel="no number"
+                    canSendSms={canSendSms}
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -1450,7 +1473,7 @@ function ContactsTab({ inquiries, externalBookings = [], onUpdate }) {
     .filter((c) => c.phone || String(c.email || "").includes("@")).length;
   return (
     <div style={{ display: "grid", gap: 10 }}>
-      <ContactsPanel externalBookings={externalBookings} inquiries={inquiries} />
+      <ContactsPanel externalBookings={externalBookings} inquiries={inquiries} coupons={coupons} />
       <ExtraContactsPanel contacts={guestContacts} reachable={reachable} />
       <CrewListPanel signups={crewList} onUpdate={onUpdate} reachable={reachable} />
     </div>
