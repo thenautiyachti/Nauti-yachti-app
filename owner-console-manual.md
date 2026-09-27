@@ -49,6 +49,40 @@ Three lists, all collapsed until you open them:
   header so you do not have to open the panel to use it. To honour an
   unsubscribe set that person's status to lapsed and they drop out of the copy.
 
+### Texting someone from the list
+
+**Every contact has a button that opens a text to them**, with the number filled
+in and a message already written. It sends nothing — it opens your phone's own
+messaging app, and you read it, change it if you like, and press send. On a
+computer it says so instead of pretending, because a desktop has nothing to
+hand a text to.
+
+**The message reads the sale that is live right now.** When a sale is running,
+the button is labelled with its code and the message names the discount, the
+limit and the end date. The day that code expires or runs out, the button stops
+offering it on its own — nothing to remember, nothing to update. With no sale
+running it becomes a plain catch-up message with no discount in it.
+
+**It will only offer a code that has both an end date and a usage limit.** That
+is deliberate. SIDEPIECE50 and FAMILY20 are codes kept for particular people; a
+button that picked "the biggest discount" would have texted fifty per cent off to
+the whole list.
+
+**Two versions of the opener.** Someone who has sailed with you gets *"hope
+you've been well since your trip"*; someone who only ever asked gets *"you asked
+about a charter a while back"*. Saying the first to the second reads like a
+mail-merge.
+
+**Anyone who opted out has no button at all** — not a greyed-out one, none.
+
+### Trips are charters, not rows
+
+The **N trips** badge counts charters. A booking taken through the website leaves
+two records behind it — the enquiry and the booking — and until 23 September both
+were counted, so every website guest showed as having sailed twice. And a guest
+whose number was on one booking but not another used to split into two people;
+they are now one, with both trips.
+
 **The two lower panels are subsets of the top one, not additions to it.** Their
 headings say so — *"2 of the 30 above"* — because the obvious arithmetic is
 wrong: the contacts list already folds in crew-list signups and extra contacts,
@@ -613,7 +647,20 @@ Two income rows against one charter is normal, not a duplicate.
 
 ## Tax Report
 
-Pick a year for totals, a CSV export, and breakdowns.
+Pick a year, then choose what to **Show**: income and expenses, income only, or
+expenses only. That choice drives the screen **and both downloads** — picking
+"expenses only" and exporting gives you a file with no bookings in it. Net profit
+only appears when both sides are showing, because next to one side alone it would
+read income as profit.
+
+**Download PDF** writes a clean, printable summary — totals, the breakdowns and
+every entry — and opens your browser's save-as-PDF. **Download CSV** gives the
+same rows as a spreadsheet. Both follow the Show choice.
+
+**The subscriptions figure is business only.** Until 23 September it counted every
+subscription, personal ones included — about $1,584 a year of Netflix, Hulu,
+Spotify and the like, inside a number a bookkeeper reads as a business cost.
+Personal subscriptions are now left out of it, and the PDF says so.
 
 **Money held for a charter that never ran is not counted as income**, in this
 report or in "Season in" on the Overview. It is a deposit against a trip that has
@@ -886,16 +933,22 @@ still most of TikTok.
 | | photo | video |
 |---|---|---|
 | **Facebook** | yes | yes — publishes as a **Reel** |
-| **Instagram** | **no** | yes |
+| **Instagram** | yes — feed only | yes |
 | **TikTok** | **no** | yes |
 
-**A still cannot be published to Instagram or TikTok at all.** The publisher
-reaches Instagram only as reels and stories, and both need video. Siren treats
-an Instagram or TikTok draft with a still as blocked: she will not attempt it,
-and reports it instead.
+**TikTok is the only one that refuses a still.** Instagram took stills from
+21 September; before that it did not, and older notes say otherwise.
 
-So a photo-only post can go to Facebook, and if you want it on the other two it
-has to be posted by hand from your phone. Facebook takes either, freely.
+### Every post goes to the feed and the Story
+
+**You are not asked to choose.** A post goes to the feed and to the Story on every
+platform that has one. TikTok has no Stories, so it gets the feed post only.
+
+**A Story needs a video.** A still still goes to the feed; it just does not get a
+Story. And **Facebook refuses any Story video that is not upright (9:16)** — the
+feed post still goes out, and Siren notes the Story that did not. When that
+happens Blotato emails *"your post has failed to publish"*, which reads as though
+the whole post died. It has not; check the feed before worrying.
 
 ### Every Instagram post tags your personal account
 
@@ -916,8 +969,9 @@ be forgotten on a run.
 removed the ability for apps to post to personal Facebook profiles in 2018, and
 TikTok's API writes only to the authorised account. Snapchat has no organic
 posting API at all and is not a platform the publisher supports. On those three,
-sharing to your own Story is a manual tap — and worth doing, because your Story
-reaches local friends who might book or refer.
+sharing to your own **personal** Story is a manual tap — and worth doing, because
+your Story reaches local friends who might book or refer. (The *business* Story
+now posts on its own; this is about your own profile.)
 
 ### Five hashtags, never six
 
@@ -975,6 +1029,24 @@ the box; you can send it, edit it, or empty the box and write your own. A reply
 is public, immediate and attributed to the business — every other agent in this
 system proposes and you decide, and a comment thread composed in response to
 something hostile is the last place to break that.
+
+**Each comment shows the post it is on** — a thumbnail, the date and the start of
+the caption, linking to the live post. "Lube" on its own means nothing; under a
+tubing post it is plainly someone reaching for the word TUBE. A post you put up by
+hand from your phone has no record here, so its comments say **post not
+identified** rather than leaving the header blank.
+
+**"I answered this elsewhere" works on comments too**, exactly as it does on
+Messages below — for a reply typed in the Facebook app, which this screen cannot
+otherwise see. It sends nothing, and **put it back** undoes it.
+
+**Every reply leaves a record** — what was said, under which post, and whether you
+changed the suggested wording first. Meta Business Suite shows *that* a reply went
+out; this keeps the rest.
+
+There is also a classifier being built to decide which comments a machine could
+safely answer by itself. **It sends nothing today.** There is no sender switched
+on, and everything above — nothing here posts on its own — is still true.
 
 **TikTok comments are not here**, because the publishing API does not expose
 them. They remain a manual job in the TikTok app. Saying otherwise would leave
