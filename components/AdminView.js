@@ -1282,26 +1282,30 @@ function ContactsPanel({ externalBookings, inquiries, coupons }) {
             </button>
           </div>
 
-          <div style={{ display: "grid", gap: 3, maxHeight: 340, overflowY: "auto" }}>
+          <div className="contact-list" style={{ display: "grid", gap: 3, maxHeight: 340, overflowY: "auto" }}>
             {shown.map((c, i) => (
-              <div key={(c.phone || c.email || c.name || "") + i}
+              <div key={(c.phone || c.email || c.name || "") + i} className="contact-row"
                 style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12.5, padding: "5px 0", borderBottom: "1px solid rgba(203,108,230,0.08)", opacity: c.optOut ? 0.5 : 1 }}>
-                <span style={{ fontWeight: 700, minWidth: 130 }}>{c.name || "(no name)"}</span>
-                <span className="mono" style={{ color: c.phone ? "var(--text)" : "var(--muted)", minWidth: 118 }}>
+                <span className="contact-name" style={{ fontWeight: 700, minWidth: 130 }}>{c.name || "(no name)"}</span>
+                {/* Only visible on a phone, where it forces the second line.
+                    See .contact-row in globals.css. */}
+                <span className="contact-break" aria-hidden="true" />
+                <span className="mono contact-phone" style={{ color: c.phone ? "var(--text)" : "var(--muted)", minWidth: 118 }}>
                   {c.phone ? prettyPhone(c.phone) : "—"}
                 </span>
-                <span style={{ color: "var(--muted)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span className="contact-email" style={{ color: "var(--muted)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {c.email || ""}
                 </span>
-                {c.trips > 1 && <span style={{ color: "#7FE0B8", fontWeight: 700, whiteSpace: "nowrap" }}>{c.trips} trips</span>}
-                <span style={{ color: "var(--muted)", whiteSpace: "nowrap", fontSize: 11 }}>{c.last || ""}</span>
-                <span style={{ color: c.askedAt ? "var(--muted)" : "var(--purple)", whiteSpace: "nowrap", fontSize: 11 }}>
+                {c.trips > 1 && <span className="contact-meta" style={{ color: "#7FE0B8", fontWeight: 700, whiteSpace: "nowrap" }}>{c.trips} trips</span>}
+                <span className="contact-meta" style={{ color: "var(--muted)", whiteSpace: "nowrap", fontSize: 11 }}>{c.last || ""}</span>
+                <span className="contact-meta" style={{ color: c.askedAt ? "var(--muted)" : "var(--purple)", whiteSpace: "nowrap", fontSize: 11 }}>
                   {c.optOut ? "opted out" : c.askedAt ? "asked" : "not asked"}
                 </span>
                 {/* NOT rendered for an opt-out. The row already dims and says
                     "opted out"; leaving a text button on it invites the one
                     mistake that cannot be taken back. */}
                 {!c.optOut && (
+                  <span className="contact-action">
                   <GuestTextButton
                     phone={c.phone}
                     body={campaignMessage({ name: c.name, sailed: (c.trips || 0) > 0 }, offer)}
@@ -1313,6 +1317,7 @@ function ContactsPanel({ externalBookings, inquiries, coupons }) {
                     noneLabel="no number"
                     canSendSms={canSendSms}
                   />
+                  </span>
                 )}
               </div>
             ))}

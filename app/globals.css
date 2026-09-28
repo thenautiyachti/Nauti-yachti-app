@@ -233,7 +233,38 @@ img, video, canvas, svg, iframe { max-width: 100%; }
      name, which is where the eye already is, rather than by un-hiding seven
      columns onto a 400px screen. */
   .row-summary { display: block !important; }
+
+  /* CONTACTS ON A PHONE: name and the text button on the first line, the
+     number and the details on the second.
+
+     Owner, 28 Sep 2026: "I can't see the text buttons on the right here when
+     I'm looking at this in mobile view." Each contact was one line that could
+     not wrap -- name held at 130px, number at 118px, then the date, the review
+     status and the button, all nowrap -- which comes to roughly 500px on a
+     390px screen. The button sat off the right edge, and the row dragged the
+     whole panel wider than the phone with it, which is why the panel's own
+     heading was cut off too.
+
+     The button goes FIRST on a phone, beside the name, because on this panel it
+     is the thing you came to press. .contact-break is the flex line break that
+     forces everything after it onto line two; it is hidden on a desktop, where
+     the one-line row still fits and still reads left to right as before. */
+  .contact-row { flex-wrap: wrap; row-gap: 4px; align-items: center !important; }
+  .contact-row .contact-name   { order: 1; flex: 1 1 auto; min-width: 0 !important; }
+  .contact-row .contact-action { order: 2; margin-left: auto; }
+  .contact-row .contact-break  { display: block; order: 3; flex-basis: 100%; height: 0; }
+  .contact-row .contact-phone  { order: 4; min-width: 0 !important; }
+  .contact-row .contact-email  { order: 5; }
+  .contact-row .contact-meta   { order: 6; }
+
+  /* And no scroll box inside a scrolling page. A 340px inner scroller on a
+     phone is a trap: the thumb scrolls the list when it meant the page, and
+     working down 45 contacts one text at a time happens entirely inside it. */
+  .contact-list { max-height: none !important; overflow-y: visible !important; }
 }
+
+/* Outside any breakpoint: the line break exists only for the phone layout. */
+.contact-break { display: none; }
 
 /* The site header is sticky, so its height is a permanent tax on every screen.
    On a phone the eleven links wrapped onto three rows and the bar stood 151px
