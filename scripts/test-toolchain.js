@@ -13,7 +13,7 @@
 const { execFileSync } = require("child_process");
 const path = require("path");
 
-const SCRIPTS = "C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI";
+const SCRIPTS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts";
 
 // Each entry is a command a brief actually contains, trimmed to its read-only
 // form. `expect` is a string that must appear in the output for the tool to

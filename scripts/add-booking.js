@@ -35,7 +35,7 @@
 //   --email     if known. Otherwise Stripe collects it at checkout.
 //   --note      anything worth remembering about how it was agreed
 //   --source    referralSource, default "Word of mouth"
-require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/paths.js").loadSecrets();
+require("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/paths.js").loadSecrets();
 const APP = "C:/Users/immex/Documents/Nauti-yachti-app";
 const { PrismaClient } = require(APP + "/node_modules/@prisma/client");
 const { phoneKey } = require(APP + "/lib/duplicateBooking");

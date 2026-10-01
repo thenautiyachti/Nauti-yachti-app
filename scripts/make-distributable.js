@@ -36,7 +36,7 @@ const CREW = "C:/Users/immex/.claude/scheduled-tasks";
 // The shared crew scripts, which live outside the repository. paths.js there
 // already knows where everything is, so ask it rather than hardcoding a fourth
 // copy of the same string.
-const SCRIPTS = "C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI";
+const SCRIPTS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts";
 
 const outFlag = process.argv.indexOf("--out");
 const OUT = outFlag !== -1 ? process.argv[outFlag + 1] : path.join(ROOT, "distributable", "charter-platform");

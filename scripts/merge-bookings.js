@@ -17,7 +17,7 @@
 // NOTHING IS DELETED. The redundant row is marked cancelled and given a note
 // pointing at the survivor. A hard delete would destroy the only evidence that
 // the merge happened, and the reason to doubt a merge always arrives afterwards.
-require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/paths.js").loadSecrets();
+require("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/paths.js").loadSecrets();
 const APP = "C:/Users/immex/Documents/Nauti-yachti-app";
 const { PrismaClient } = require(APP + "/node_modules/@prisma/client");
 const { looksLikeSamePerson } = require(APP + "/lib/duplicateBooking");

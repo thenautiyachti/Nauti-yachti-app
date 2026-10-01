@@ -10,9 +10,9 @@
 // paid by Boatsetter), so those are set; everything else is left null for him
 // to assert.
 const PATHS = { secrets: "C:/Users/immex/.secrets/nauti-yachti.env" };
-require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/node_modules/dotenv")
+require("dotenv")
   .config({ path: PATHS.secrets });
-const { Pool } = require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/node_modules/pg");
+const { Pool } = require("pg");
 const APP = require("path").join(__dirname, "..");
 const { normaliseChannel, normaliseLeadSource } = require(APP + "/lib/channels.js");
 

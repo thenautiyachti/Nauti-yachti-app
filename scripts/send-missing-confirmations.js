@@ -20,7 +20,7 @@
 // It reads the same question scripts/check-output.js asks every morning: paid,
 // with money against it, and no confirmationSentAt. One charter written as two
 // rows is counted once.
-require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/paths.js").loadSecrets();
+require("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/paths.js").loadSecrets();
 const APP = "C:/Users/immex/Documents/Nauti-yachti-app";
 const { PrismaClient } = require(APP + "/node_modules/@prisma/client");
 const { sendBookingConfirmationEmail } = require(APP + "/lib/email");

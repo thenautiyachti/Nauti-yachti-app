@@ -14,7 +14,7 @@
 //
 // Files land in a folder per charter, so "make the reel for the glow night" is
 // a folder rather than a search.
-require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/paths.js").loadSecrets();
+require("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/paths.js").loadSecrets();
 const fs = require("fs");
 const path = require("path");
 const APP = "C:/Users/immex/Documents/Nauti-yachti-app";

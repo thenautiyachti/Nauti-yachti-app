@@ -6,7 +6,7 @@
 // WHY THIS EXISTS. Git already versions the website. It does not version the
 // crew -- the eight briefs, the shared protocol, the cron schedules, the
 // permission rules and the shared scripts all live OUTSIDE the repository, in
-// C:\Users\immex\.claude and C:\Users\immex\Documents\_MyFiles\Jarvis-Voice-UI.
+// C:\Users\immex\.claude and C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\AI & Website\Crew\_Scripts.
 // That is the part which took months to get right and the part that would be
 // most painful to lose, and until now nothing captured it at all.
 //
@@ -50,7 +50,7 @@ const LLC = process.env.NAUTI_BUSINESS_DIR ||
   "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website";
 const TASKS = "C:/Users/immex/.claude/scheduled-tasks";
 const SKILLS = "C:/Users/immex/.claude/skills";
-const SHARED = "C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI";
+const SHARED = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts";
 const SETTINGS = "C:/Users/immex/.claude/settings.json";
 
 const version = (process.argv[2] || "").replace(/^v/, "");
@@ -133,7 +133,7 @@ console.log("  crew briefs and protocol");
   const CREW_DIR = path.join(LLC, "Crew");
   if (fs.existsSync(CREW_DIR)) {
     for (const e of fs.readdirSync(CREW_DIR)) {
-      if (e !== "_Old") copyTree(path.join(CREW_DIR, e), path.join(OUT, "crew-folder", e), "crew-folder");
+      if (e !== "_Old" && e !== "_Scripts") copyTree(path.join(CREW_DIR, e), path.join(OUT, "crew-folder", e), "crew-folder");
     }
     console.log("  the Crew folder (restore it to AI & Website/Crew)");
   } else {

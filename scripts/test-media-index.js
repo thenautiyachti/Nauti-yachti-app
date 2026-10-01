@@ -7,7 +7,7 @@
 // step, which fails somewhere far away from the cause.
 const fs = require("fs");
 const path = require("path");
-const PATHS = require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/paths.js");
+const PATHS = require("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/paths.js");
 
 const INDEX = path.join(PATHS.photos, "_media-index.json");
 const TAGS = path.join(PATHS.photos, "_media-tags.json");

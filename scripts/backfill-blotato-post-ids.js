@@ -14,7 +14,7 @@
 //
 // EXPECT MISSES AND DO NOT TREAT THEM AS FAILURES. Anything published by hand
 // from the phone has no MediaDraft at all, and nothing here can invent one.
-require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/paths.js").loadSecrets();
+require("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/paths.js").loadSecrets();
 const { PrismaClient } = require("../node_modules/@prisma/client");
 const db = new PrismaClient();
 

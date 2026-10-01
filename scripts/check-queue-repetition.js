@@ -23,7 +23,7 @@
 //
 // This reports. It changes nothing -- which draft dies is the owner's call, and
 // "repetitive" is already one of the reasons he can give.
-require("C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI/paths.js").loadSecrets();
+require("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/paths.js").loadSecrets();
 const { PrismaClient } = require("../node_modules/@prisma/client");
 const db = new PrismaClient();
 

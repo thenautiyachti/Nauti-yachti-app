@@ -1697,7 +1697,7 @@ Speaking aloud moved to the top bar, where her last message appears with a
 speaker on it. Pearl is the one you talk to now. (There was briefly an
 **Enable Pearl** button; it is gone — see the top bar above.)
 
-Nothing you can see says Jarvis any more. Four things under the floor still do,
+Nothing you can see says Jarvis any more. Three things under the floor still do,
 and they were left alone deliberately:
 
 | Still called | What it is | Why it stays |
@@ -1705,7 +1705,6 @@ and they were left alone deliberately:
 | `JarvisTodo` | the database table behind The Board | renaming it means a migration against the live database to change a word |
 | `JARVIS_SERVICE_KEY` / `x-jarvis-key` | how the crew scripts prove who they are | it is set in Vercel and in the secrets store; renaming means changing both in exact step or every agent stops being able to write |
 | `/api/jarvis-todos` | the address The Board reads from | an address only has to be stable, not pretty |
-| `Jarvis-Voice-UI` | the folder holding the crew scripts | hard-coded in fifteen scripts and nine agent briefs |
 
 Same rule as the task folders below: **rename what people read, leave what
 machines depend on.** If you see one of these in an error message, it is not a

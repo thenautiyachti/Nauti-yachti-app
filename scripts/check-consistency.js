@@ -23,7 +23,7 @@ const path = require("path");
 
 const APP = path.join(__dirname, "..");
 const TASKS = "C:/Users/immex/.claude/scheduled-tasks";
-const SCRIPTS = "C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI";
+const SCRIPTS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts";
 // Where VERSIONING.md, CHANGELOG.md, DISASTER RECOVERY.md and the release live.
 //
 // It used to be written path.join(APP, ".."), which was right until the app left
@@ -408,7 +408,7 @@ try {
   const crewSep = sepOf(read(path.join(SCRIPTS, "board.js")));
 
   if (!appSep) fail("board parser", "lib/board.js: could not find the owner/tier separator class");
-  else if (!crewSep) fail("board parser", "Jarvis-Voice-UI/board.js: could not find the owner/tier separator class");
+  else if (!crewSep) fail("board parser", "Crew/_Scripts/board.js: could not find the owner/tier separator class");
   else if (appSep !== crewSep) {
     fail("board parser",
       "the two parsers disagree, so an agent will file at one priority and the console show another:\n" +
