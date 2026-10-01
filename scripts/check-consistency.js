@@ -24,10 +24,34 @@ const path = require("path");
 const APP = path.join(__dirname, "..");
 const TASKS = "C:/Users/immex/.claude/scheduled-tasks";
 const SCRIPTS = "C:/Users/immex/Documents/_MyFiles/Jarvis-Voice-UI";
+// Where VERSIONING.md, CHANGELOG.md, DISASTER RECOVERY.md and the release live.
+//
+// It used to be written path.join(APP, ".."), which was right until the app left
+// Drive on 15 Sep 2026. From then on APP/.. was Documents, every check written
+// that way read a file that was not there, and each one passed by finding
+// nothing to check. Found 1 Oct 2026. Same fix make-release.js already had.
+const AIW = process.env.NAUTI_BUSINESS_DIR ||
+  "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website";
+// Since 1 Oct 2026 a crew SKILL.md is a launcher: a list of files in here. The
+// words an agent actually follows are in these files, so that is what is checked.
+const CREW = path.join(AIW, "Crew");
+const RULES = path.join(CREW, "_Global Rules");
 
 const problems = [];
 const fail = (area, what) => problems.push({ area, what });
 const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return null; } };
+
+// A launcher names its Crew files in backticks, relative to the Crew folder.
+const isLauncher = (md) => /^## Your brief lives in the Crew folder/m.test(md || "");
+const launcherFiles = (md) => !isLauncher(md) ? [] :
+  [...md.matchAll(/`([^`\n]+?\.md)`/g)].map((m) => path.join(CREW, m[1].replace(/\\/g, "/")));
+// What an agent actually reads: its SKILL.md plus every Crew file it names.
+// Checking SKILL.md alone would now be checking a table of contents, and every
+// rule below would pass on it -- the same silent pass as the APP/.. paths above.
+const briefText = (t) => {
+  const md = read(path.join(TASKS, t, "SKILL.md")) || "";
+  return [md, ...launcherFiles(md).map((f) => read(f) || "")].join("\n");
+};
 
 // THIS MACHINE RUNS MORE THAN ONE BUSINESS.
 //
@@ -57,7 +81,15 @@ const liveTasks = allTasks.filter((d) =>
 const foreignTasks = allTasks.filter((d) => !liveTasks.includes(d));
 const manual = read(path.join(APP, "owner-console-manual.md")) || "";
 const crew = read(path.join(APP, "lib/crew.js")) || "";
-const proto = read(path.join(TASKS, "_crew-protocol.md")) || "";
+// The crew protocol, which since 1 Oct 2026 is the files in Crew/_Global Rules.
+// _crew-protocol.md in the tasks folder is now only a pointer to them.
+const ruleFiles = (() => {
+  try { return fs.readdirSync(RULES).filter((f) => f.endsWith(".md")).sort(); } catch { return []; }
+})();
+const proto = ruleFiles.map((f) => read(path.join(RULES, f)) || "").join("\n");
+if (!ruleFiles.some((f) => f.startsWith("00"))) {
+  fail("crew rules", "Crew/_Global Rules has no 00 file — every launcher's first read is missing");
+}
 
 // --- 1. no document may name a task that does not exist ---------------------
 // A retired ID left in prose sends someone to a folder that no longer runs.
@@ -82,7 +114,7 @@ for (const [label, text] of [["manual", manual], ["lib/crew.js", crew], ["protoc
   }
 }
 for (const t of liveTasks) {
-  const md = read(path.join(TASKS, t, "SKILL.md")) || "";
+  const md = briefText(t);
   const self = md.match(/^name:\s*(\S+)/m);
   if (self && self[1] !== t) fail("brief:" + t, `frontmatter says name: ${self[1]}`);
   for (const id of new Set(md.match(idPattern) || [])) {
@@ -91,6 +123,39 @@ for (const t of liveTasks) {
     if (/retired|superseded|used to|no longer|old id|historical|was called/i.test(nearby)) continue;
     fail("brief:" + t, `names "${id}", which is not a live task`);
   }
+}
+
+// --- 1b. a launcher and the Crew folder must agree, both ways ---------------
+//
+// A launcher naming a file that is not there sends an agent to read nothing; the
+// launcher tells her to stop and say so, but she would say so every run.
+// The other direction is quieter and worse: a skill added to an agent's folder
+// that no launcher lists is never read by anyone, and looks finished.
+{
+  const listed = new Set();
+  const agentDirs = new Set();
+  for (const t of liveTasks) {
+    const md = read(path.join(TASKS, t, "SKILL.md")) || "";
+    for (const f of launcherFiles(md)) {
+      listed.add(path.resolve(f));
+      const rel = path.relative(CREW, f).split(path.sep);
+      if (rel[0] !== "_Global Rules") agentDirs.add(rel[0] === "_Routines" ? path.join(CREW, rel[0], rel[1]) : path.join(CREW, rel[0]));
+      if (!fs.existsSync(f)) fail("brief:" + t, "lists a Crew file that does not exist: " + path.relative(CREW, f));
+    }
+  }
+  const walk = (dir) => {
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith(".md") && e.name.toLowerCase() !== "readme.md" && !listed.has(path.resolve(full))) {
+        fail("crew folder", path.relative(CREW, full) + " is not listed by any launcher, so no agent ever reads it");
+      }
+    }
+  };
+  for (const d of agentDirs) walk(d);
+  walk(RULES);
 }
 
 // --- 2. every rostered agent must have a task, and vice versa ---------------
@@ -117,7 +182,7 @@ if (honoursTime && /posts whatever is due(?![^.]*time)/i.test(manual)) {
 
 // --- 5. every script a brief tells an agent to run must exist ---------------
 for (const t of liveTasks) {
-  const md = read(path.join(TASKS, t, "SKILL.md")) || "";
+  const md = briefText(t);
   for (const m of md.matchAll(/node\s+"?([A-Za-z]:[^"\n]*?\.js)"?/g)) {
     if (!fs.existsSync(m[1].replace(/\\\\/g, "\\"))) fail("brief:" + t, "runs a missing script: " + m[1]);
   }
@@ -130,7 +195,7 @@ for (const t of liveTasks) {
 try {
   const roster = [...crew.matchAll(/taskId:\s*"([^"]+)",[\s\S]{0,400}?schedule:\s*"([^"]+)"/g)];
   for (const [, id, shown] of roster) {
-    const md = read(path.join(TASKS, id, "SKILL.md"));
+    const md = read(path.join(TASKS, id, "SKILL.md")) ? briefText(id) : null;
     if (!md) continue;
     const hourly = /every hour|hourly/i.test(shown);
     // A card claiming a single daily time, for a task whose brief says hourly,
@@ -210,7 +275,7 @@ try {
   if (!read(path.join(SCRIPTS, SCRIPT))) {
     fail("publish path", SCRIPT + " is missing — dated approved drafts will never publish");
   }
-  const siren = read(path.join(TASKS, "nauti-siren", "SKILL.md")) || "";
+  const siren = briefText("nauti-siren");
   if (!siren) {
     fail("publish path", "Siren has no brief to run the promotion from");
   } else if (!siren.includes(SCRIPT)) {
@@ -415,11 +480,10 @@ try {
 // would have caught this the day it happened.
 {
   const docs = [
-    ["crew protocol", path.join(TASKS, "_crew-protocol.md")],
     ["owner manual", path.join(APP, "owner-console-manual.md")],
-    ["versioning", path.join(APP, "..", "VERSIONING.md")],
-    ["recovery", path.join(APP, "..", "DISASTER RECOVERY.md")],
-    ["changelog", path.join(APP, "..", "CHANGELOG.md")],
+    ["versioning", path.join(AIW, "VERSIONING.md")],
+    ["recovery", path.join(AIW, "DISASTER RECOVERY.md")],
+    ["changelog", path.join(AIW, "CHANGELOG.md")],
   ];
   // Every crew brief too — they are edited far more often than the protocol.
   try {
@@ -429,6 +493,20 @@ try {
       if (fs.existsSync(brief)) docs.push([d.name + " brief", brief]);
     }
   } catch { /* no tasks directory */ }
+  // And every file in the Crew folder, the crew rules included -- since 1 Oct
+  // 2026 that is where the words are. _Old holds the pre-split briefs as history.
+  {
+    const walk = (dir) => {
+      let entries = [];
+      try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+      for (const e of entries) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) { if (e.name !== "_Old") walk(full); }
+        else if (e.name.endsWith(".md")) docs.push(["crew: " + path.relative(CREW, full), full]);
+      }
+    };
+    walk(CREW);
+  }
 
   for (const [label, file] of docs) {
     const body = read(file);
@@ -473,8 +551,8 @@ try {
 // the single worst place in this system for a stale fact: it is read exactly
 // once, by someone having a bad day, who will follow it literally.
 {
-  const relDir = path.join(APP, "..", "releases");
-  const doc = read(path.join(APP, "..", "DISASTER RECOVERY.md"));
+  const relDir = path.join(AIW, "releases");
+  const doc = read(path.join(AIW, "DISASTER RECOVERY.md"));
   if (doc) {
     // Releases are kept as ONE compressed archive now, not as folders, so this
     // must match "v1.4.zip" as well as a bare directory. It briefly did not,

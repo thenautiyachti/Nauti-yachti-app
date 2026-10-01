@@ -1428,7 +1428,7 @@ the release is the moment anyone reliably does.
 ## What you actually get
 
 One `.zip` in `AI & Website/releases/`, and only ever the newest one: the crew
-briefs, the protocol, the schedules, the permission rules, the hand-written
+briefs and the Crew folder they read from, the schedules, the permission rules, the hand-written
 skills and the shared scripts — everything git does not version. Older *release
 folders* are deleted; **every git tag is kept forever**, so the code for each
 version is still on GitHub.
@@ -1878,9 +1878,27 @@ brief that disagrees:
 - No agent spends, refunds or changes a price.
 - No agent publishes except Siren, and only drafts you have already scheduled.
 
-The full rulebook lives at
-`C:\Users\immex\.claude\scheduled-tasks\_crew-protocol.md`. If a rule is not in
+The full rulebook lives in the Crew folder, at
+`_The Nauti Yachti LLC\AI & Website\Crew\_Global Rules`. If a rule is not in
 there, it is not a rule.
+
+## Where the crew's instructions live
+
+Since 1 October 2026 everything the crew reads is in one folder you can open,
+read and edit: **`_The Nauti Yachti LLC\AI & Website\Crew`**. Google Drive backs
+it up.
+
+- **`_Global Rules`** — the rulebook every agent reads first, plus pages on the
+  business, on you and how you write, on releases, and on files and Drive.
+- **One folder per agent** — `Nauti Pearl`, `Nauti Coral` and the rest. Each
+  holds a **Briefing** (what she does, when, and why), her **Voice**, her
+  **Skills** (one file per part of the job) and her **References**.
+- **`_Routines`** — the morning standup and the hourly comment watch.
+
+Each agent's scheduled task still has a `SKILL.md`, but it is now only a list:
+which Crew files to read every run, and which only when the run needs them.
+**To change what an agent does, edit her file in the Crew folder.** The split
+moved every line word for word, and a script checked that none was lost.
 
 ---
 

@@ -719,6 +719,11 @@ if (DRY) {
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 const work = fs.mkdtempSync(path.join(require("os").tmpdir(), "montage-"));
+// The finished file is rendered HERE and moved into the charter folder in one
+// step at the end. Writing it straight into the folder let Google Drive start
+// uploading it half-written: on 9 Sep 2026 three Party Cove cuts got stuck that
+// way with an EMPTY copy in the cloud, and had no backup for 22 days.
+const renderPath = path.join(work, outName);
 console.log(`\n  normalising to ${W}x${H} @ ${FPS}fps${KEEP_AUDIO ? " with audio" : ", muted"}…\n`);
 
 const parts = [];
@@ -773,7 +778,7 @@ rows.forEach((r, i) => {
 const listFile = path.join(work, "list.txt");
 fs.writeFileSync(listFile, parts.map((p) => `file '${p.replace(/\\/g, "/")}'`).join("\n"));
 
-const joined = MUSIC ? path.join(work, "joined.mp4") : outPath;
+const joined = MUSIC ? path.join(work, "joined.mp4") : renderPath;
 
 if (NO_TRANS || parts.length < 2) {
   // Hard cuts: the segments are already identical in every respect, so this
@@ -851,9 +856,18 @@ if (MUSIC) {
     args.push("-filter_complex", music.replace("[m]", "[a]"));
   }
   args.push("-map", "0:v", "-map", "[a]", "-c:v", "copy",
-    "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-shortest", outPath);
+    "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-shortest", renderPath);
   execFileSync(FFMPEG, args, { stdio: ["ignore", "ignore", "pipe"] });
   try { fs.unlinkSync(joined); } catch {}
+}
+
+// Into the charter folder whole. Temp and _MyFiles are on the same disk, so this
+// is a rename and Drive sees a finished file appear; the copy is only a fallback.
+try { fs.renameSync(renderPath, outPath); }
+catch (e) {
+  if (e.code !== "EXDEV") throw e;
+  fs.copyFileSync(renderPath, outPath);
+  fs.unlinkSync(renderPath);
 }
 
 for (const p of parts) { try { fs.unlinkSync(p); } catch {} }

@@ -123,6 +123,24 @@ console.log("  building v" + version + "\n");
 copyTree(TASKS, path.join(OUT, "crew"), "crew");
 console.log("  crew briefs and protocol");
 
+// --- 1a. the Crew folder those briefs read from ----------------------------
+// Since 1 Oct 2026 every brief above is a launcher: a short list of files in
+// AI & Website/Crew, which hold the actual instructions and the crew rules. A
+// restored launcher with no Crew folder points at nothing, so a release carries
+// both. _Old is the pre-split history; Drive keeps it and a restore does not
+// need it.
+{
+  const CREW_DIR = path.join(LLC, "Crew");
+  if (fs.existsSync(CREW_DIR)) {
+    for (const e of fs.readdirSync(CREW_DIR)) {
+      if (e !== "_Old") copyTree(path.join(CREW_DIR, e), path.join(OUT, "crew-folder", e), "crew-folder");
+    }
+    console.log("  the Crew folder (restore it to AI & Website/Crew)");
+  } else {
+    console.log("  Crew folder MISSING at " + CREW_DIR + " -- the launchers in crew/ will point at nothing");
+  }
+}
+
 // --- 1b. the hand-written skills -------------------------------------------
 // Added 14 Sep 2026. These sit in .claude\skills, which is a different tree
 // from .claude\scheduled-tasks and was never captured -- so /watch, the skill
