@@ -17,8 +17,11 @@ const fakePrisma = {
 
 const CASES = [
   // The asserted method always wins, whatever channel took the booking.
+  // "Stripe", not "Website": on 13 Sep 2026 the owner ruled that where a guest
+  // came from and how they paid are different things, and lib/channels.js was
+  // corrected that day. This line was not, and failed quietly until 1 Oct 2026.
   ["direct booking, owner says Stripe",
-   { platform: "Direct", paymentMethod: "Stripe (card)" }, "Website"],
+   { platform: "Direct", paymentMethod: "Stripe (card)" }, "Stripe"],
   ["direct booking, owner says Cash",
    { platform: "Direct", paymentMethod: "Cash" }, "Cash"],
   ["direct booking, owner says Zelle",
