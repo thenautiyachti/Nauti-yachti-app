@@ -52,6 +52,15 @@ const briefText = (t) => {
   const md = read(path.join(TASKS, t, "SKILL.md")) || "";
   return [md, ...launcherFiles(md).map((f) => read(f) || "")].join("\n");
 };
+// The same, minus the shared crew rules. For claims an agent makes about
+// HERSELF, such as her schedule: the shared rules describe every agent and
+// routine, so a line there about Comment Watch running hourly is not Pearl
+// saying she does. Reading them as hers made all eight look hourly at once.
+const ownBriefText = (t) => {
+  const md = read(path.join(TASKS, t, "SKILL.md")) || "";
+  const own = launcherFiles(md).filter((f) => !path.relative(CREW, f).startsWith("_Global Rules"));
+  return [md, ...own.map((f) => read(f) || "")].join("\n");
+};
 
 // THIS MACHINE RUNS MORE THAN ONE BUSINESS.
 //
@@ -195,7 +204,7 @@ for (const t of liveTasks) {
 try {
   const roster = [...crew.matchAll(/taskId:\s*"([^"]+)",[\s\S]{0,400}?schedule:\s*"([^"]+)"/g)];
   for (const [, id, shown] of roster) {
-    const md = read(path.join(TASKS, id, "SKILL.md")) ? briefText(id) : null;
+    const md = read(path.join(TASKS, id, "SKILL.md")) ? ownBriefText(id) : null;
     if (!md) continue;
     const hourly = /every hour|hourly/i.test(shown);
     // A card claiming a single daily time, for a task whose brief says hourly,
