@@ -78,7 +78,14 @@ async function POST(req) {
   const folder = clean(body.folder, 200);
   const fileName = clean(body.fileName, 240);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(charterDate)) return NextResponse.json({ error: "charterDate must be YYYY-MM-DD" }, { status: 400 });
-  if (!folder || !folder.startsWith(charterDate)) return NextResponse.json({ error: "folder must be the charter folder, starting with its date" }, { status: 400 });
+  // A charter folder starts with its date. A THEME folder (Boatz and Glowz,
+  // Bachelor and Bachelorette...) does not, but its finished files carry the
+  // date in their own names -- 2026-09-19_glowz_neon-deck_3x4.jpg -- which is how
+  // the glow night's guests, who have no charter folder of their own, get their
+  // photos (2 Oct 2026).
+  const base = fileName.split("/").pop();
+  const dated = folder.startsWith(charterDate) || base.startsWith(charterDate) || base.startsWith(charterDate.replace(/-/g, ""));
+  if (!folder || !dated) return NextResponse.json({ error: "the folder or the file's own name must start with the charter's date" }, { status: 400 });
   if (!acceptableName(fileName)) return NextResponse.json({ error: "photos only: .jpg or .png" }, { status: 400 });
   if (isRestricted(folder, fileName)) return NextResponse.json({ error: "that folder or file is marked as never to be published" }, { status: 400 });
 
