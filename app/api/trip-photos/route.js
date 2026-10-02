@@ -47,37 +47,36 @@ async function GET(req) {
   return NextResponse.json({ photos: rows });
 }
 
-async function POST(req) {
-  if (!(await authorized(req))) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  if (!storageConfigured()) return NextResponse.json({ error: "Storage is not configured on this deployment." }, { status: 503 });
-  const body = await req.json().catch(() => ({}));
+// ---- one photo at a time, used singly or in a batch --------------------------
+// Each returns { status, body } so the single and batch forms answer alike.
 
-  if (body.action === "confirm") {
-    const id = clean(body.id, 40);
-    const row = id ? await prisma.tripPhoto.findUnique({ where: { id } }) : null;
-    if (!row) return NextResponse.json({ error: "Unknown photo" }, { status: 404 });
-    const size = await storedSize(row.storagePath);
-    if (size == null) return NextResponse.json({ ok: false, error: "Storage cannot see that file yet." });
-    await prisma.tripPhoto.update({ where: { id }, data: { status: "approved", bytes: size || row.bytes, decidedAt: new Date() } });
-    return NextResponse.json({ ok: true, status: "approved" });
-  }
+async function confirmOne(rawId) {
+  const id = clean(rawId, 40);
+  const row = id ? await prisma.tripPhoto.findUnique({ where: { id } }) : null;
+  if (!row) return { status: 404, body: { id, error: "Unknown photo" } };
+  const size = await storedSize(row.storagePath);
+  if (size == null) return { status: 200, body: { id, ok: false, error: "Storage cannot see that file yet." } };
+  await prisma.tripPhoto.update({ where: { id }, data: { status: "approved", bytes: size || row.bytes, decidedAt: new Date() } });
+  return { status: 200, body: { id, ok: true, status: "approved" } };
+}
 
-  if (body.action === "remove") {
-    const id = clean(body.id, 40);
-    const row = id ? await prisma.tripPhoto.findUnique({ where: { id } }) : null;
-    if (!row) return NextResponse.json({ error: "Unknown photo" }, { status: 404 });
-    // Only what the folder put up is the folder's to take down. A photo the
-    // owner removed is already off the page, and stays recorded as his call.
-    if (row.status !== "approved") return NextResponse.json({ ok: true, status: row.status });
-    await prisma.tripPhoto.update({ where: { id }, data: { status: "removed", note: "left the Completed folder", decidedAt: new Date() } });
-    return NextResponse.json({ ok: true, status: "removed" });
-  }
+async function removeOne(rawId) {
+  const id = clean(rawId, 40);
+  const row = id ? await prisma.tripPhoto.findUnique({ where: { id } }) : null;
+  if (!row) return { status: 404, body: { id, error: "Unknown photo" } };
+  // Only what the folder put up is the folder's to take down. A photo the
+  // owner removed is already off the page, and stays recorded as his call.
+  if (row.status !== "approved") return { status: 200, body: { id, ok: true, status: row.status } };
+  await prisma.tripPhoto.update({ where: { id }, data: { status: "removed", note: "left the Completed folder", decidedAt: new Date() } });
+  return { status: 200, body: { id, ok: true, status: "removed" } };
+}
 
-  // ---- sign -----------------------------------------------------------------
-  const charterDate = clean(body.charterDate, 10);
-  const folder = clean(body.folder, 200);
-  const fileName = clean(body.fileName, 240);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(charterDate)) return NextResponse.json({ error: "charterDate must be YYYY-MM-DD" }, { status: 400 });
+async function signOne(item) {
+  const charterDate = clean(item.charterDate, 10);
+  const folder = clean(item.folder, 200);
+  const fileName = clean(item.fileName, 240);
+  const echo = { folder, fileName };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(charterDate)) return { status: 400, body: { ...echo, error: "charterDate must be YYYY-MM-DD" } };
   // A charter folder starts with its date. A THEME folder (Boatz and Glowz,
   // Bachelor and Bachelorette...) does not, but its finished files carry the
   // date in their own names -- 2026-09-19_glowz_neon-deck_3x4.jpg -- which is how
@@ -85,18 +84,23 @@ async function POST(req) {
   // photos (2 Oct 2026).
   const base = fileName.split("/").pop();
   const dated = folder.startsWith(charterDate) || base.startsWith(charterDate) || base.startsWith(charterDate.replace(/-/g, ""));
-  if (!folder || !dated) return NextResponse.json({ error: "the folder or the file's own name must start with the charter's date" }, { status: 400 });
-  if (!acceptableName(fileName)) return NextResponse.json({ error: "photos only: .jpg or .png" }, { status: 400 });
-  if (isRestricted(folder, fileName)) return NextResponse.json({ error: "that folder or file is marked as never to be published" }, { status: 400 });
+  if (!folder || !dated) return { status: 400, body: { ...echo, error: "the folder or the file's own name must start with the charter's date" } };
+  if (!acceptableName(fileName)) return { status: 400, body: { ...echo, error: "photos only: .jpg or .png" } };
+  if (isRestricted(folder, fileName)) return { status: 400, body: { ...echo, error: "that folder or file is marked as never to be published" } };
 
   // Any status counts, so a photo the owner took down is never put back up by
   // the next sync, and one that left the folder and came back needs his hand.
   const existing = await prisma.tripPhoto.findFirst({ where: { folder, fileName, status: { not: "pending" } } });
-  if (existing) return NextResponse.json({ error: "already " + existing.status, id: existing.id, status: existing.status }, { status: 409 });
+  if (existing) return { status: 409, body: { ...echo, error: "already " + existing.status, id: existing.id } };
 
-  const already = await prisma.tripPhoto.count({ where: { charterDate, status: "approved" } });
+  // Pending ones from the last hour count too, so one batch cannot sail past the
+  // limit before any of it is confirmed. An older pending row is an upload that
+  // never finished, and does not hold a place.
+  const already = await prisma.tripPhoto.count({
+    where: { charterDate, OR: [{ status: "approved" }, { status: "pending", createdAt: { gt: new Date(Date.now() - 3600000) } }] },
+  });
   if (already >= MAX_PER_CHARTER) {
-    return NextResponse.json({ error: "this charter already has " + already + " photos on its trip page; the limit is " + MAX_PER_CHARTER }, { status: 429 });
+    return { status: 429, body: { ...echo, error: "this charter already has " + already + " photos on its trip page; the limit is " + MAX_PER_CHARTER } };
   }
 
   // Who may see it: every completed booking on that date that carries a number.
@@ -106,14 +110,14 @@ async function POST(req) {
     select: { bookingId: true },
   });
   const refs = refsField(bookings.map((b) => b.bookingId));
-  if (!refs) return NextResponse.json({ error: "no completed booking with a number on " + charterDate }, { status: 400 });
+  if (!refs) return { status: 400, body: { ...echo, error: "no completed booking with a number on " + charterDate } };
 
   const row = await prisma.tripPhoto.create({
     data: {
       charterDate, folder, fileName, bookingRefs: refs,
-      bytes: Math.max(0, Math.round(Number(body.bytes) || 0)),
+      bytes: Math.max(0, Math.round(Number(item.bytes) || 0)),
       storagePath: "pending:" + Date.now() + ":" + Math.random().toString(36).slice(2),
-      proposedBy: clean(body.proposedBy, 60) || "Nauti Coral",
+      proposedBy: clean(item.proposedBy, 60) || "Nauti Coral",
       status: "pending",
     },
   });
@@ -122,11 +126,41 @@ async function POST(req) {
 
   try {
     const uploadUrl = await signUploadUrl(storagePath);
-    return NextResponse.json({ id: row.id, uploadUrl, bookingRefs: refs });
+    return { status: 200, body: { ...echo, id: row.id, uploadUrl, bookingRefs: refs } };
   } catch (err) {
     await prisma.tripPhoto.update({ where: { id: row.id }, data: { status: "rejected", note: "could not sign: " + String(err.message).slice(0, 160) } }).catch(() => {});
-    return NextResponse.json({ error: "could not start the upload" }, { status: 502 });
+    return { status: 502, body: { ...echo, error: "could not start the upload" } };
   }
+}
+
+// BATCHES, because of the bot checkpoint. Vercel challenges this whole PC after
+// roughly forty requests in ten minutes, and the crew's own scripts are blocked
+// with it. A season's photos sent one call at a time is hundreds of calls, so
+// `items` (sign) and `ids` (confirm, remove) carry up to 50 per request. The
+// uploads themselves go straight to storage and never touch Vercel.
+const BATCH = 50;
+
+async function POST(req) {
+  if (!(await authorized(req))) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (!storageConfigured()) return NextResponse.json({ error: "Storage is not configured on this deployment." }, { status: 503 });
+  const body = await req.json().catch(() => ({}));
+  const each = async (list, fn) => {
+    const results = [];
+    for (const x of list.slice(0, BATCH)) results.push((await fn(x)).body); // in order: the count limit depends on it
+    return NextResponse.json({ results });
+  };
+
+  if (body.action === "confirm") {
+    if (Array.isArray(body.ids)) return each(body.ids, confirmOne);
+    const r = await confirmOne(body.id); return NextResponse.json(r.body, { status: r.status });
+  }
+  if (body.action === "remove") {
+    if (Array.isArray(body.ids)) return each(body.ids, removeOne);
+    const r = await removeOne(body.id); return NextResponse.json(r.body, { status: r.status });
+  }
+  if (Array.isArray(body.items)) return each(body.items, signOne);
+  const r = await signOne(body);
+  return NextResponse.json(r.body, { status: r.status });
 }
 
 module.exports = { GET, POST };
