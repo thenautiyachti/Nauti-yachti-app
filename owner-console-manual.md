@@ -1305,6 +1305,7 @@ A few internal names still say "Jarvis", the system's original name, on purpose:
 | A file's date looks wrong | names can record when a file was saved, not when it was shot | trust the date inside the file, not its name |
 | The bank balance looks old | it is a reading typed in, not a live figure; amber after a week | record a new reading |
 | The consistency check fails | a document, task or file no longer matches the system | read its message: it names the file and the line to fix |
+| The share page or a trip page says uploads are not switched on | the website's settings lack the storage keys | add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to the website's settings and to the secrets file on the office computer, then redeploy |
 
 # Appendices
 

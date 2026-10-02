@@ -31,6 +31,11 @@ const REQUIRED = [
   ["FROM_EMAIL", "confirmations send from Resend's sandbox address"],
   ["JARVIS_SERVICE_KEY", "the crew cannot file statuses or speak"],
   ["ELEVENLABS_API_KEY", "no voice, anywhere"],
+  // Found missing 2 Oct 2026, the day the trip page shipped: the share page had
+  // been saying "uploads are not switched on yet" since it was built, and
+  // nothing on this list would have said why.
+  ["SUPABASE_URL", "guests cannot send photos: the share page and trip pages say uploads are off"],
+  ["SUPABASE_SERVICE_ROLE_KEY", "guests cannot send photos, and the console cannot preview the ones already sent"],
 ];
 
 // Optional means: there is a working default, and the default is acceptable.
