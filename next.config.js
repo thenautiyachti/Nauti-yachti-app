@@ -25,6 +25,19 @@ try {
   // Never let a documentation check stop a build.
 }
 
+// The Manual button links to the PDF with this edition's stamp on the end
+// (?v=...). Without it, Chrome on Android kept opening the edition it had
+// already seen: on 1 Oct 2026 the console button showed the 37-page September
+// manual on his phone while a download of the same link gave the new one. A new
+// edition gets a new address, so no cache anywhere can answer with the old one.
+// The stamp is the one check-manual-fresh.js --stamp writes.
+let MANUAL_STAMP = "";
+try {
+  MANUAL_STAMP = require("fs").readFileSync(require("path").join(__dirname, "public", "owner-console-manual.sha"), "utf8").trim();
+} catch (e) {
+  // No stamp just means the plain URL, as before.
+}
+
 // --- local secrets -----------------------------------------------------------
 //
 // The real secrets live OUTSIDE this folder, in C:/Users/immex/.secrets/, and
@@ -77,6 +90,8 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  env: { MANUAL_STAMP },
 
   // The waiver PDF lives outside public/ and is read at runtime by the
   // admin-gated route, so Next must trace it into that function bundle.

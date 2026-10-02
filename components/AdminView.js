@@ -572,7 +572,9 @@ export default function AdminView({
           {/* The dock page. Everything on it needs a phone -- an sms: link, and
               an engine-hour reading taken at the boat rather than at a desk. */}
           <a className="console-btn" href="/admin/ask">📱 On the dock</a>
-          <a className="console-btn" href="/owner-console-manual.pdf" target="_blank" rel="noopener noreferrer">📖 Manual</a>
+          {/* The stamp changes with every edition, so a phone cannot reopen an
+              old copy it saved. See MANUAL_STAMP in next.config.js. */}
+          <a className="console-btn" href={"/owner-console-manual.pdf" + (process.env.MANUAL_STAMP ? "?v=" + process.env.MANUAL_STAMP : "")} target="_blank" rel="noopener noreferrer">📖 Manual</a>
           <a className="console-btn" href="/">← Back to site</a>
           <button className="console-btn" onClick={onLogout} style={{ background: "var(--purple)", color: "#0A0612", borderColor: "var(--purple)", fontWeight: 700 }}>
             Log out
