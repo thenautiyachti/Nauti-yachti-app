@@ -81,6 +81,10 @@ const SECRET_PATTERNS = [
   [/\bsk-ant-[A-Za-z0-9-]{16,}/, "Anthropic API key"],
   [/postgres(ql)?:\/\/[^\s"']*:[^\s"'@]+@/, "database URL with a password"],
   [/\bxi-api-key\s*[:=]\s*['"][A-Za-z0-9]{16,}/, "ElevenLabs key"],
+  // Added 2 Oct 2026, the day the Supabase service_role key first reached this
+  // PC (for guest uploads). It is a JWT, and it bypasses every database rule.
+  [/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/, "JWT (a Supabase key?)"],
+  [/\bsb_secret_[A-Za-z0-9_-]{16,}/, "Supabase secret key"],
 ];
 
 const TEXT = /\.(js|jsx|ts|tsx|md|json|txt|css|html|yml|yaml|env|sh|ps1|prisma)$/i;

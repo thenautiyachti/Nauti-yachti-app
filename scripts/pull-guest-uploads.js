@@ -25,6 +25,43 @@ const { BUCKET, localFileNameFor, storedSize } = require(APP + "/lib/guestUpload
 const APPLY = process.argv.includes("--apply");
 const INBOX = process.env.NAUTI_INBOX
   || "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/00 Inbox";
+
+// Guest files land in their own folder inside the inbox, never loose in it.
+// Owner, 2 Oct 2026: call it "Imported from Website" "so we know they came from
+// the customer and we know that there is no backup of this." Everything else in
+// 00 Inbox is a phone sync target and safe to clear; this folder is the opposite,
+// because the pull removes each file from storage once it is here. The crew's
+// file-inbox.js reads the same name.
+const IMPORTED = path.join(INBOX, "Imported from Website");
+
+// WHO IT CAME FROM, in the folder name, as far as it is actually known. Owner,
+// same day: "if you're able to figure out who exactly they came from, then that
+// makes filing it even easier."
+//
+//   trip page   -> "2026-09-19 Pat Example - NY-20260919-03". Certain: the link
+//                  that opened the page was signed for that booking.
+//   share page  -> "2026-09-19 boatz-glowz - phone matches NY-20260919-03" when
+//                  the sender's number matched a booking that day. A hint, never
+//                  a claim (parties book on one person's phone), so it says so.
+//   otherwise   -> "2026-09-19 boatz-glowz", the charter they picked.
+//
+// The date stays first either way: file-inbox.js files by it. Who SENT each
+// file is in its own name (guest_<name>_...), because a forwarded trip link
+// means the sender is often not the person who booked.
+const bookerName = new Map();
+async function folderFor(db, u) {
+  if (u.eventKey === "other") return "_no charter given";
+  if (!u.bookingId) return u.eventKey;
+  if (u.source !== "trip") return u.eventKey + " - phone matches " + u.bookingId;
+  if (!bookerName.has(u.bookingId)) {
+    const e = await db.externalBooking.findFirst({ where: { bookingId: u.bookingId }, select: { guestName: true } }).catch(() => null);
+    const i = e && e.guestName ? null
+      : await db.inquiry.findFirst({ where: { bookingId: u.bookingId }, select: { name: true } }).catch(() => null);
+    bookerName.set(u.bookingId, String((e && e.guestName) || (i && i.name) || "").trim());
+  }
+  const who = bookerName.get(u.bookingId).replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").slice(0, 40).trim();
+  return u.eventKey.slice(0, 10) + (who ? " " + who : "") + " - " + u.bookingId;
+}
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
@@ -114,7 +151,7 @@ function storageNote(result) {
     for (const u of waiting) {
       // "other" has no date and no shape, so it gets its own shelf rather than
       // polluting a real charter's folder.
-      const folder = path.join(INBOX, u.eventKey === "other" ? "_guest uploads - no charter given" : u.eventKey);
+      const folder = path.join(IMPORTED, await folderFor(db, u));
       fs.mkdirSync(folder, { recursive: true });
       const dest = path.join(folder, localFileNameFor(u));
 
@@ -170,7 +207,7 @@ function storageNote(result) {
     }
 
     console.log("\n  " + ok + " pulled" + (failed ? ", " + failed + " failed" : "")
-      + "   ->  " + INBOX);
+      + "   ->  " + IMPORTED);
     if (stillStored && !KEEP) {
       console.log("  " + stillStored + " still in storage (see the reason beside each). They count against the 1 GB.");
     }

@@ -2,7 +2,7 @@
 
 How to run a charter business on this system: the public website, the owner console at thenautiyachti.com/admin, and the AI crew that watches over both.
 
-Edition for version 2.14.0 · October 2026
+Edition for version 2.15.0 · October 2026
 
 [[TOC]]
 
@@ -794,7 +794,7 @@ All charter photos and video live in the `Photos` folder of the business folder,
 
 | Folder | What goes there |
 |---|---|
-| `00 Inbox` | where new footage lands from the phone and the camera glasses. The content agent files it every run. |
+| `00 Inbox` | where new footage lands from the phone and the camera glasses. The content agent files it every run. Its `Imported from Website` folder holds what guests sent through the site: the only copy, never deleted ([6.2](#6-2-photos-guests-send-you)). |
 | `02 Charters\_By charter` | one folder per charter, named `YYYY-MM-DD Guest Name`. **This is the main library.** |
 | `02 Charters\<theme>` | finished cuts and stills grouped by theme or place (tubing, birthday, the cove, and so on). The folder name is the classification. |
 | `_from video` | stills pulled from video |
@@ -852,7 +852,7 @@ Both take up to 2 GB a file into private cloud storage. Nothing is ever posted f
 
 **Marketing → Photo Requests → Photos guests sent us** shows the latest 200: a preview, who sent it, the booking or trip, when consent was given, and whether it has reached the PC yet. Previews are links that stop working after an hour; the storage itself is never public. **Throw out** stops a file being pulled to the PC. The record stays, and **put it back** undoes it.
 
-A script run on the office computer, `pull-guest-uploads.js`, brings new files into `Photos\00 Inbox` for filing, then **removes each one from cloud storage**. From then on the copy on the computer, and Drive behind it, is the only one. A file is removed only once the copy on disk has been measured and matches what storage held; anything that does not match stays in storage and the script says why. `--keep` leaves everything in storage. Using one in a post or on the website goes through the photo library and post approval like any other photo.
+**Coral pulls them on each of her runs** (8:30am and 2:30pm), with `pull-guest-uploads.js` on the office computer, into **`Photos\00 Inbox\Imported from Website`**, then **removes each one from cloud storage**. That folder is named so that anyone can see the files came from guests and that there is no other copy. Inside it there is one folder per charter, named after the booking when it is known: `2026-09-19 Pat Example - NY-20260919-03` came from that booking's trip page and is certain; `… - phone matches NY-…` came from the share page, where the booking is a guess from the sender's phone; `_no charter given` waits for you. Who sent each file is in its name (`guest_tyler_…`), and is often not the person who booked. Coral's filing step then moves each folder's files into that charter's folder, never deleting one. From then on the copy on the computer, and Drive behind it, is the only one. A file is removed only once the copy on disk has been measured and matches what storage held; anything that does not match stays in storage and the script says why. `--keep` leaves everything in storage. Using one in a post or on the website goes through the photo library and post approval like any other photo.
 
 > **Why it works this way.** The free storage plan holds 1 GB across the whole account, and one glow night of guest video came to 2.4 GB. Left in storage, a single busy night would put the account over its limit, and the provider may then restrict the project. Your choice on 2 October 2026, over paying for a bigger plan, "for now at least".
 
@@ -1003,7 +1003,7 @@ The crew drafts a reply for each held thread; you send it or write over it. If t
 - **Nothing is sent until you press Send** and confirm. The card says whether the guest will get an email copy.
 - **Handled elsewhere** clears a message you answered by phone or text. It sends nothing, and the thread comes back if they write again.
 
-**Known limit:** the crew do not read trip page messages yet, so the site's draft is the only one.
+**Siren drafts for the held ones** on each run, so a held trip page message usually has her draft by the next morning or evening. Hers replaces the site's for that thread. Like every draft, it waits for you to send it.
 
 # Part 7 — The AI crew
 
@@ -1014,14 +1014,14 @@ Eight agents and two routines run on a schedule on the office computer. **None o
 | When | Who | What she does |
 |---|---|---|
 | Daily, 8am | **Nauti Penny** · Accounts Receivable | money in: payouts against the ledger, and money held for trips that never ran. Keeps the business inbox in order. |
-| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | files new footage, drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
+| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | pulls what guests sent from the website, files new footage, drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
 | Fri–Mon, 9am | **Nauti Joy** · Guest Relations | who to ask for a review, new crew-list signups, guests owed a charter |
 | Fri–Mon, 9:30am | **Nauti Reef** · Revenue Growth | money the business is not collecting, as one to four ideas |
 | Fri–Mon, 10am | **Nauti Shelly** · Accounts Payable | what is paid for against what is used |
 | Daily, 10:30am | **Nauti Nova** · Market Research | the outside world: rules, grants, platforms. Reports only on Mondays, and usually reports nothing. |
 | Daily, 10:45am | Crew Standup (routine) | files a status card for all eight, so no card is blank |
 | Daily, 11am and 8pm | **Nauti Pearl** · Chief of Staff | reads everything, keeps the board, decides what reaches you. The 8pm run is a short evening check. |
-| Daily, 11:15am and 7:15pm | **Nauti Siren** · Publishing & Brand Safety | the last check before anything is public, then publishes what is due. Drafts replies to comments and held messages. |
+| Daily, 11:15am and 7:15pm | **Nauti Siren** · Publishing & Brand Safety | the last check before anything is public, then publishes what is due. Drafts replies to comments, held messages and held trip page messages. |
 | Hourly, 8am–9pm | Comment Watch (routine) | drafts replies to new comments |
 
 Times are when each run is scheduled; a run can start up to about a quarter of an hour later. The office computer must be on for them to run.
