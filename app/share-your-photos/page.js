@@ -44,6 +44,19 @@ export default function ShareYourPhotosPage() {
         </section>
 
         <section style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px 64px" }}>
+          {/* Booked guests belong on their own trip page, where the upload is
+              tied to their booking for certain (owner, 2 Oct 2026: that is
+              "where their photo upload should be"). This page stays for a party
+              member with no link of their own. */}
+          <p style={{
+            fontSize: 15, lineHeight: 1.55, color: "var(--text)", margin: "0 0 18px",
+            padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(203,108,230,0.35)",
+            background: "rgba(203,108,230,0.08)",
+          }}>
+            <strong>Booked with us?</strong> Use your{" "}
+            <a href="/trip" style={{ color: "var(--purple)", fontWeight: 700 }}>Guest Login</a>{" "}
+            instead. Your photos go straight onto your booking, and your group can add theirs.
+          </p>
           <UploadForm />
         </section>
       </main>

@@ -80,7 +80,7 @@ async function POST(req) {
 
   const view = tripView(auth.trip);
   if (!view.canUpload) {
-    return NextResponse.json({ error: "Photo uploads open on the day of your trip." }, { status: 400 });
+    return NextResponse.json({ error: "Photo uploads open once your booking is confirmed." }, { status: 400 });
   }
 
   if (body.action === "confirm") {

@@ -51,10 +51,14 @@ export default function NavBar() {
         <Link href="/faq" style={LINK_STYLE}>FAQ</Link>
         <Link href="/events" style={LINK_STYLE}>Events</Link>
         <Link href="/gift-certificates" style={LINK_STYLE}>Gift Cards</Link>
-        {/* Guests send in their own footage. It sits next to the ordinary
-            pages on purpose: somebody looking for it weeks after their
-            charter should find it without a link from us. */}
-        <Link href="/share-your-photos" style={LINK_STYLE}>Share Photos</Link>
+        {/* The guest's own trip page: their charter, payment, messages, and
+            the box where they send us their photos. Owner, 2 Oct 2026: "I don't
+            see the guest console where they can log in and see all their stuff.
+            That's where their photo upload should be." So it replaced Share
+            Photos in this bar; the public share page is still linked from /trip
+            for a party member who has no link of their own. Highlighted so a
+            guest weeks after their charter finds it without asking us. */}
+        <Link href="/trip" style={{ ...LINK_STYLE, color: "var(--purple)", fontWeight: 700 }}>Guest Login</Link>
         {/* Highlighted while the glow party is the live campaign — it's the
             only dated, sellable event on the site and needs to be reachable
             from every page in one tap. */}

@@ -57,7 +57,7 @@ export default function TripSignIn() {
           color: "#0A0612", border: "none", borderRadius: 8, padding: "14px",
           fontWeight: 700, fontSize: 16, opacity: busy ? 0.7 : 1, cursor: busy ? "wait" : "pointer",
         }}>
-        {busy ? "Finding it…" : "Open my trip"}
+        {busy ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );

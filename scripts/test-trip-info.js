@@ -63,9 +63,11 @@ ok("GetMyBoat, however it is spelled", view({ platform: "GetmyBoat" }).money.pla
 ok("refunded says refunded, offers no pay link", view({ paymentStatus: "refunded" }).money.payPath, null);
 
 console.log("\n  photos and the review");
-ok("no photo box before the day", view({}).canUpload, false);
+ok("photo box open before the day (owner, 2 Oct 2026)", view({}).canUpload, true);
 ok("photo box open on the day", view({ date: "2026-10-02" }).canUpload, true);
 ok("photo box open afterwards", view({ date: "2026-09-20" }).canUpload, true);
+ok("no photo box on a cancelled booking", view({ status: "cancelled" }).canUpload, false);
+ok("no photo box before a booking is confirmed", view({ status: "inquiry" }).canUpload, false);
 ok("no review ask before the trip", view({}).review, null);
 ok("review ask afterwards goes to Google", /writereview/.test(view({ date: "2026-09-20" }).review.google), true);
 

@@ -181,9 +181,9 @@ A routine that keeps everything current with the least effort.
 | `/events` | upcoming events |
 | `/faq`, `/about`, `/terms`, `/privacy-policy` | questions, the business, the terms and waiver, privacy |
 | `/gift-certificates` | buying a gift certificate |
-| `/share-your-photos` | guests upload their own photos and video from a trip |
+| `/share-your-photos` | anyone uploads photos and video from a trip; it points booked guests to Guest Login. No longer in the menu |
 | `/trip/<booking number>/<key>` | the guest's own trip page: times, meeting point, payment, photo box, review and messages. See [2.8](#2-8-the-trip-page) |
-| `/trip` | where a guest who has lost that link finds it again, with their booking number and phone |
+| `/trip` | **Guest Login**, in the menu on every page: a guest signs in with their booking number and phone and lands on their trip page |
 | `/thanks` | after a trip, from the on-boat QR code: ask for photos, leave a review |
 | `/pay/<id>` | the payment page you text a guest, see [3.7](#3-7-charging-a-booking-and-payment-links) |
 | `/booking-success` | where a guest lands after paying |
@@ -362,13 +362,12 @@ Every booking with a booking number has its own page for the guest: `thenautiyac
 
 | When | The page leads with |
 |---|---|
-| before the day | the charter, how to get there and when to arrive, payment, what to bring, and the common questions |
-| on the day | the same, with the photo box open |
+| before the day, and on it | the charter, how to get there and when to arrive, payment, what to bring, the photo box, messages, and the common questions |
 | afterwards | the photo box and a **Leave a Google review** button, then the charter and payment |
 | cancelled or refunded | that it was cancelled, and how to reach you |
 | not yet confirmed | that the date is not held until it is paid, with the payment button |
 
-**How a guest gets in.** The link is in the booking confirmation email and in **Text reminder**. Tapping it is the sign-in; there is no password. A guest who has lost it goes to `/trip` and types their booking number and the phone number on the booking. Any number on the booking works. After five wrong tries from one connection it makes them wait, and the wait doubles with each further try.
+**How a guest gets in.** Two ways, and neither needs a password. The link in the booking confirmation email and in **Text reminder** signs them straight in. Or **Guest Login** in the website's menu, on every page, asks for their booking number and the phone number on the booking. Any number on the booking works. After five wrong tries from one connection it makes them wait, and the wait doubles with each further try.
 
 > **Why it works this way.** A booking number is the date and a counter, so anyone could guess the next one. The key on the end of the link is what keeps the page closed, and the phone number does the same job for a guest without the link. A password nobody remembers at a boat ramp would lock out more guests than strangers.
 
@@ -383,7 +382,7 @@ Every booking with a booking number has its own page for the guest: `thenautiyac
 - Website and direct bookings show the charter price, any discount or gift certificate, and what was paid. An unpaid balance has a **Pay** button that goes to the booking's `/pay/<id>` page, never to Stripe directly.
 - **Boatsetter and GetMyBoat bookings show no amounts**, only that the platform took the payment. What reaches you from a platform is not what the guest was charged.
 
-**Photos.** The photo box opens on the day of the trip. Anyone with the link can send photos and video, up to 2 GB a file, after ticking the same permission as the share page; the exact words they agreed to are kept with each file. Uploads land with the share page's ([6.2](#6-2-photos-guests-send-you)), already attached to the booking, and the group can see what has been sent so far.
+**Photos.** The photo box is there from the moment the booking is confirmed, before the trip as well as after; most photos arrive afterwards. It is not shown on a cancelled booking or one not yet confirmed. Anyone with the link can send photos and video, up to 2 GB a file, after ticking the same permission as the share page; the exact words they agreed to are kept with each file. Uploads land with the share page's ([6.2](#6-2-photos-guests-send-you)), already attached to the booking, and the group can see what has been sent so far.
 
 **Messages.** A guest can write to you from the page. You are emailed straight away and answer in **Marketing → Messages** ([6.7](#6-7-messages)). Your reply appears on their page and, when the booking has an email address, is emailed to them as well.
 
@@ -845,8 +844,8 @@ Three things are never posted, and the index and the publishing checks enforce a
 
 Guests send their own photos and video two ways:
 
-- **`/share-your-photos`**, open to anyone. They give their name and phone, pick their trip from a list of recent dates (packages only, never guest names), tick that you may use them, and upload. The booking is matched by phone number, which is a hint, not proof.
-- **Their trip page** ([2.8](#2-8-the-trip-page)), from the day of the trip. There is no phone to give and no list to pick from, because the link already says which booking it is. The exact consent wording is stored with each file.
+- **`/share-your-photos`**, open to anyone, for a party member with no link of their own. It is no longer in the menu, and it tells booked guests to use Guest Login. They give their name and phone, pick their trip from a list of recent dates (packages only, never guest names), tick that you may use them, and upload. The booking is matched by phone number, which is a hint, not proof.
+- **Their trip page** ([2.8](#2-8-the-trip-page)), through **Guest Login**, any time once the booking is confirmed. There is no phone to give and no list to pick from, because the link already says which booking it is. The exact consent wording is stored with each file.
 
 Both take up to 2 GB a file into private cloud storage. Nothing is ever posted from there.
 

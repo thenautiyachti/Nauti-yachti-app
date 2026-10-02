@@ -102,7 +102,7 @@ export default function TripUploads({ tripRef, tripKey, canUpload, demo, default
 
       {!canUpload && (
         <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-          The photo box opens on the day of your trip. Afterwards, send us your best shots here and
+          Once your booking is confirmed, this is where you send us your photos and video, and
           everyone in your group with this link can add theirs.
         </p>
       )}
