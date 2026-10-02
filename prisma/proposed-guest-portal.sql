@@ -1,4 +1,5 @@
--- The guest trip page (2 Oct 2026). NOT APPLIED until the owner says yes.
+-- The guest trip page (2 Oct 2026). APPLIED 2 Oct 2026 on the owner's yes, as
+-- Supabase migration "guest_trip_page", before the code that needs it shipped.
 --
 -- A live schema change needs his explicit OK and goes in BEFORE the code that
 -- needs it: deploy the trip page first and every message a guest writes fails
