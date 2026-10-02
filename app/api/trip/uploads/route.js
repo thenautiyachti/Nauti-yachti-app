@@ -50,9 +50,12 @@ async function GET(req) {
   const rows = await prisma.guestUpload.findMany({
     where: { bookingId: auth.ref, source: "trip", status: { in: ["uploaded", "pulled"] } },
     orderBy: { createdAt: "asc" },
-    select: { id: true, uploaderName: true, fileName: true, contentType: true, sizeBytes: true, storagePath: true, createdAt: true },
+    select: { id: true, uploaderName: true, fileName: true, contentType: true, sizeBytes: true, storagePath: true, createdAt: true, status: true, note: true },
   });
-  const urls = await signedReadUrls(rows.map((r) => r.storagePath));
+  // Once the pull script has moved a file to the owner's PC it is removed from
+  // storage (the free plan holds 1 GB), so it is listed as received, not shown.
+  const inStorage = (r) => !(r.status === "pulled" && /^on the PC only/.test(String(r.note || "")));
+  const urls = await signedReadUrls(rows.filter(inStorage).map((r) => r.storagePath));
   return NextResponse.json({
     configured: storageConfigured(),
     uploads: rows.map((r) => ({

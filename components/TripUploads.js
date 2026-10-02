@@ -159,7 +159,7 @@ export default function TripUploads({ tripRef, tripKey, canUpload, demo, default
                 {u.kind === "image" && u.url
                   ? <img src={u.url} alt={"Photo from " + (u.by || "your group")} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : <span style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted)", padding: 6, textAlign: "center" }}>
-                      {u.kind === "video" ? "▶ video" : "photo"}
+                      {(u.kind === "video" ? "▶ video" : "photo") + (u.url ? "" : " · received")}
                     </span>}
               </a>
             ))}

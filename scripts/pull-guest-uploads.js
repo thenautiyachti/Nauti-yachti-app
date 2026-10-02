@@ -1,7 +1,8 @@
 // Bring guest uploads down off the web and into the inbox.
 //
 //   node scripts/pull-guest-uploads.js            what is waiting
-//   node scripts/pull-guest-uploads.js --apply    download it
+//   node scripts/pull-guest-uploads.js --apply    download it, then remove it from storage
+//   node scripts/pull-guest-uploads.js --apply --keep   download it, leave it in storage
 //
 // WHY THIS IS A LOCAL SCRIPT AND NOT A WEBHOOK. This machine is not reachable
 // from the internet, so nothing on Vercel can hand a file to it. Something here
@@ -19,7 +20,7 @@ const fs = require("fs");
 const path = require("path");
 const APP = "C:/Users/immex/Documents/Nauti-yachti-app";
 const { PrismaClient } = require(APP + "/node_modules/@prisma/client");
-const { BUCKET, localFileNameFor } = require(APP + "/lib/guestUploads");
+const { BUCKET, localFileNameFor, storedSize } = require(APP + "/lib/guestUploads");
 
 const APPLY = process.argv.includes("--apply");
 const INBOX = process.env.NAUTI_INBOX
@@ -28,6 +29,43 @@ const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 const mb = (n) => (Number(n) / 1048576).toFixed(1) + " MB";
+
+// ONCE IT IS HERE, IT LEAVES STORAGE. Owner, 2 Oct 2026, choosing this over a
+// paid plan "for now at least": the free Supabase plan holds 1 GB across the
+// whole account, and one glow night of guest video came to 2.4 GB. Left in the
+// bucket, a single busy night would put the account over and Supabase may then
+// restrict the project.
+//
+// So the copy in 00 Inbox (and Drive behind it) becomes the only copy, and the
+// removal is guarded accordingly: a file leaves storage only after the bytes on
+// this disk have been counted and match, exactly, what storage says it holds.
+// Anything that does not match stays put and is reported. --keep leaves every
+// file in storage, for a run you want to be able to repeat.
+const KEEP = process.argv.includes("--keep");
+
+async function removeFromStorage(u, dest) {
+  if (KEEP) return { removed: false, why: "kept (--keep)" };
+  const held = await storedSize(u.storagePath);
+  if (held == null) return { removed: false, why: "storage did not confirm its size" };
+  const onDisk = fs.statSync(dest).size;
+  if (!(onDisk > 0) || onDisk !== held) {
+    return { removed: false, why: mb(onDisk) + " on disk but " + mb(held) + " in storage" };
+  }
+  const r = await fetch(SUPABASE_URL + "/storage/v1/object/" + BUCKET + "/" + u.storagePath, {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + SERVICE_KEY },
+  });
+  if (!r.ok) return { removed: false, why: "storage refused the delete (" + r.status + ")" };
+  return { removed: true, why: "removed from storage" };
+}
+
+// What the row says afterwards, so the console and the next person can tell a
+// file that is only on the PC from one that is still in the bucket.
+function storageNote(result) {
+  return result.removed
+    ? "on the PC only; removed from storage " + new Date().toISOString().slice(0, 10)
+    : "still in storage: " + result.why;
+}
 
 (async () => {
   if (!SUPABASE_URL || !SERVICE_KEY) {
@@ -72,7 +110,7 @@ const mb = (n) => (Number(n) / 1048576).toFixed(1) + " MB";
     if (!APPLY) { console.log("\n  nothing written. re-run with --apply\n"); return; }
     console.log("");
 
-    let ok = 0, failed = 0;
+    let ok = 0, failed = 0, stillStored = 0;
     for (const u of waiting) {
       // "other" has no date and no shape, so it gets its own shelf rather than
       // polluting a real charter's folder.
@@ -81,9 +119,14 @@ const mb = (n) => (Number(n) / 1048576).toFixed(1) + " MB";
       const dest = path.join(folder, localFileNameFor(u));
 
       if (fs.existsSync(dest)) {
-        await db.guestUpload.update({ where: { id: u.id }, data: { status: "pulled", pulledAt: new Date() } });
-        console.log("  already here   " + path.basename(dest));
+        const gone = await removeFromStorage(u, dest);
+        await db.guestUpload.update({
+          where: { id: u.id },
+          data: { status: "pulled", pulledAt: new Date(), note: storageNote(gone) },
+        });
+        console.log("  already here   " + path.basename(dest) + "   " + gone.why);
         ok++;
+        if (!gone.removed) stillStored++;
         continue;
       }
 
@@ -108,12 +151,14 @@ const mb = (n) => (Number(n) / 1048576).toFixed(1) + " MB";
         }
         fs.renameSync(tmp, dest);
 
+        const gone = await removeFromStorage(u, dest);
         await db.guestUpload.update({
           where: { id: u.id },
-          data: { status: "pulled", pulledAt: new Date(), sizeBytes: buf.length },
+          data: { status: "pulled", pulledAt: new Date(), sizeBytes: buf.length, note: storageNote(gone) },
         });
-        console.log("  pulled         " + path.basename(dest) + "   " + mb(buf.length));
+        console.log("  pulled         " + path.basename(dest) + "   " + mb(buf.length) + "   " + gone.why);
         ok++;
+        if (!gone.removed) stillStored++;
       } catch (err) {
         await db.guestUpload.update({
           where: { id: u.id },
@@ -126,6 +171,9 @@ const mb = (n) => (Number(n) / 1048576).toFixed(1) + " MB";
 
     console.log("\n  " + ok + " pulled" + (failed ? ", " + failed + " failed" : "")
       + "   ->  " + INBOX);
+    if (stillStored && !KEEP) {
+      console.log("  " + stillStored + " still in storage (see the reason beside each). They count against the 1 GB.");
+    }
     console.log("  Drive picks them up on its own from here.\n");
     process.exitCode = failed ? 1 : 0;
   } finally { await db.$disconnect(); }

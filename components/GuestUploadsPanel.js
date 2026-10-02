@@ -86,7 +86,7 @@ export default function GuestUploadsPanel() {
                 <video src={u.url} preload="metadata" muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <span style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted)" }}>
-                  {u.url ? "open file" : "no preview"}
+                  {u.url ? "open file" : u.onPcOnly ? "on the PC, in 00 Inbox" : "no preview"}
                 </span>
               )}
             </a>

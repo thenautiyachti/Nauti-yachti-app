@@ -19,6 +19,12 @@ const { signedReadUrls, previewKind, storageConfigured } = require("../../../../
 // Nothing here publishes anything. Using a guest photo in a post or on the site
 // goes through the media library and the approval it always has.
 
+// scripts/pull-guest-uploads.js removes a file from storage once it is safely
+// on the PC, and says so on the row (owner, 2 Oct 2026: the free plan holds 1 GB).
+function onPcOnly(r) {
+  return r.status === "pulled" && /^on the PC only/.test(String(r.note || ""));
+}
+
 async function GET(req) {
   if (!(await isAdminAuthenticated())) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const url = new URL(req.url);
@@ -30,8 +36,9 @@ async function GET(req) {
     take: 200,
   });
   // Rejected files are listed for the record but not re-signed: there is no
-  // reason to keep handing out links to something he threw out.
-  const urls = await signedReadUrls(rows.filter((r) => r.status !== "rejected").map((r) => r.storagePath));
+  // reason to keep handing out links to something he threw out. Nor are files
+  // the pull script has already moved to the PC and removed from storage.
+  const urls = await signedReadUrls(rows.filter((r) => r.status !== "rejected" && !onPcOnly(r)).map((r) => r.storagePath));
   const fresh = await prisma.guestUpload.count({ where: { status: "uploaded" } });
 
   return NextResponse.json({
@@ -52,6 +59,7 @@ async function GET(req) {
       consentText: r.consentText || null,
       createdAt: r.createdAt,
       pulledAt: r.pulledAt,
+      onPcOnly: onPcOnly(r),
       url: urls[r.storagePath] || null,
     })),
   });

@@ -850,11 +850,17 @@ Both take up to 2 GB a file into private cloud storage. Nothing is ever posted f
 
 **Marketing → Photo Requests → Photos guests sent us** shows the latest 200: a preview, who sent it, the booking or trip, when consent was given, and whether it has reached the PC yet. Previews are links that stop working after an hour; the storage itself is never public. **Throw out** stops a file being pulled to the PC. The record stays, and **put it back** undoes it.
 
-A script run on the office computer, `pull-guest-uploads.js`, brings new files into `Photos\00 Inbox` for filing. Using one in a post or on the website goes through the photo library and post approval like any other photo.
+A script run on the office computer, `pull-guest-uploads.js`, brings new files into `Photos\00 Inbox` for filing, then **removes each one from cloud storage**. From then on the copy on the computer, and Drive behind it, is the only one. A file is removed only once the copy on disk has been measured and matches what storage held; anything that does not match stays in storage and the script says why. `--keep` leaves everything in storage. Using one in a post or on the website goes through the photo library and post approval like any other photo.
+
+> **Why it works this way.** The free storage plan holds 1 GB across the whole account, and one glow night of guest video came to 2.4 GB. Left in storage, a single busy night would put the account over its limit, and the provider may then restrict the project. Your choice on 2 October 2026, over paying for a bigger plan, "for now at least".
+
+Once a file has been pulled, the console and the guest's trip page show it as received but no longer preview it.
 
 **Known limit:** no email arrives when a guest uploads. Look at the panel, or run the pull script.
 
 **Known limit:** share-page uploads record when consent was given, not the words agreed to.
+
+**Known limit:** a file you throw out is never pulled, so it is never removed from storage either, and it keeps counting against the 1 GB.
 
 ## 6.3 The public gallery
 
