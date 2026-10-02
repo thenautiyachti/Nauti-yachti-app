@@ -182,6 +182,8 @@ A routine that keeps everything current with the least effort.
 | `/faq`, `/about`, `/terms`, `/privacy-policy` | questions, the business, the terms and waiver, privacy |
 | `/gift-certificates` | buying a gift certificate |
 | `/share-your-photos` | guests upload their own photos and video from a trip |
+| `/trip/<booking number>/<key>` | the guest's own trip page: times, meeting point, payment, photo box, review and messages. See [2.8](#2-8-the-trip-page) |
+| `/trip` | where a guest who has lost that link finds it again, with their booking number and phone |
 | `/thanks` | after a trip, from the on-boat QR code: ask for photos, leave a review |
 | `/pay/<id>` | the payment page you text a guest, see [3.7](#3-7-charging-a-booking-and-payment-links) |
 | `/booking-success` | where a guest lands after paying |
@@ -293,8 +295,12 @@ On the booking you get a **Text** button whose message says the seat is still he
 | a gift certificate is bought | the certificate and how to use it; so does the person it is for, when the buyer gives their email | one notice: the code, the value and who it reached |
 | a guest paid for a boat that was already taken | nothing from the site | an **ACTION** email: move them or refund them |
 | a refund goes through on Stripe | nothing from the site | a notice of what was recorded |
+| a guest writes on their trip page | nothing until you reply | a notice, saying whether a reply has been drafted |
+| you reply on a trip page | your reply, by email, when the booking has an address | nothing |
 
 **The confirmation tells the guest where to go and when.** The meeting point is chosen by package first, then by boat: an event with its own meeting point uses it for every boat; otherwise each boat's own dock address is used. A boat with no address set is never given another boat's. Its guest is told the meeting point is coming, which costs one text and cannot send anyone to the wrong shore. **The dock gate code is never emailed**, because emails are forwarded and kept forever. It goes by text on the morning (see [8.3](#8-3-arriving-guests-and-the-gate-code)).
+
+**The confirmation links to the guest's trip page** ([2.8](#2-8-the-trip-page)), which carries everything in the email plus the photo box and the message board.
 
 **Automatic emails sign as the business.** Texts you send from your own phone carry your name.
 
@@ -349,6 +355,43 @@ The server also refuses a seat-sale booking for any date other than the event's 
 **Not checked:** a booking you add in the console yourself, and a payment link for a booking you have already marked booked. Both are your decision.
 
 > **Why it works this way.** A website booking names a boat, a day and a number of hours, never a start time; you settle the time with the guest. So the server can only ask what the calendar asks: is the day blocked, and are the hours left? If the check itself cannot run, for example because the database does not answer, the booking goes through as it did before the check existed: refusing every guest because of a fault would cost more charters than it saves.
+
+## 2.8 The trip page
+
+Every booking with a booking number has its own page for the guest: `thenautiyachti.com/trip/<booking number>/<key>`. It is the page they open before, on and after the day.
+
+| When | The page leads with |
+|---|---|
+| before the day | the charter, how to get there and when to arrive, payment, what to bring, and the common questions |
+| on the day | the same, with the photo box open |
+| afterwards | the photo box and a **Leave a Google review** button, then the charter and payment |
+| cancelled or refunded | that it was cancelled, and how to reach you |
+| not yet confirmed | that the date is not held until it is paid, with the payment button |
+
+**How a guest gets in.** The link is in the booking confirmation email and in **Text reminder**. Tapping it is the sign-in; there is no password. A guest who has lost it goes to `/trip` and types their booking number and the phone number on the booking. Any number on the booking works. After five wrong tries from one connection it makes them wait, and the wait doubles with each further try.
+
+> **Why it works this way.** A booking number is the date and a counter, so anyone could guess the next one. The key on the end of the link is what keeps the page closed, and the phone number does the same job for a guest without the link. A password nobody remembers at a boat ramp would lock out more guests than strangers.
+
+**Anyone holding the link is the guest.** That is deliberate: the person who booked forwards it to the group, and everyone aboard can send their photos. The page says so beside the message box.
+
+**What it shows, and what it never shows.**
+
+- Times and the meeting point come from the same place as the confirmation email ([2.5](#2-5-the-emails-the-site-sends)), so the two cannot disagree. A glow seat is always sent to the event's meeting point. A boat with no address set says the meeting point is coming.
+- **The gate code is never on it.** It still goes by text on the morning ([8.3](#8-3-arriving-guests-and-the-gate-code)).
+- Website and direct bookings show the charter price, any discount or gift certificate, and what was paid. An unpaid balance has a **Pay** button that goes to the booking's `/pay/<id>` page, never to Stripe directly.
+- **Boatsetter and GetMyBoat bookings show no amounts**, only that the platform took the payment. What reaches you from a platform is not what the guest was charged.
+
+**Photos.** The photo box opens on the day of the trip. Anyone with the link can send photos and video, up to 2 GB a file, after ticking the same permission as the share page; the exact words they agreed to are kept with each file. Uploads land with the share page's ([6.2](#6-2-photos-guests-send-you)), already attached to the booking, and the group can see what has been sent so far.
+
+**Messages.** A guest can write to you from the page. You are emailed straight away and answer in **Marketing → Messages** ([6.7](#6-7-messages)). Your reply appears on their page and, when the booking has an email address, is emailed to them as well.
+
+**Known limit:** a booking with no number (an inquiry with no date) has no trip page.
+
+**Known limit:** there is no way to withdraw one booking's link. Anyone it was forwarded to keeps it.
+
+**Known limit:** platform bookings rarely carry an email address, so a reply to one of those guests waits on their page until they look. Text them as well if it matters.
+
+**Known limit:** the links are signed with the website's session secret unless `TRIP_LINK_SECRET` is set. Changing the session secret withdraws every trip link ever sent, so set `TRIP_LINK_SECRET` first if it ever has to change.
 
 # Part 3 — Bookings
 
@@ -416,11 +459,13 @@ Add a booking with the form above the table. Each row shows the guest, the date 
 |---|---|
 | **Text payment link** | anyone who owes money and whose row has a package and a price |
 | **Text to confirm** | a lead with no price yet: asks them to confirm so you can price it |
-| **Text reminder** | a **paid** booking: the day, departure time and where to meet |
+| **Text reminder** | a **paid** booking: the day, departure time, where to meet and their trip page link |
 | **Text about the declined card** | replaces the payment link while a card decline is on record |
 | **Text about owed** | a charter that was paid for and never sailed |
 
 Every guest text ends by saying a real person is on the other end and they can reply.
+
+**trip page ↗** on a row opens the page that guest sees ([2.8](#2-8-the-trip-page)). Copy it from there to send it by hand.
 
 ## 3.4 Lead source, channel and how they paid
 
@@ -723,6 +768,8 @@ On Testimonials, four filters: **Still to ask**, **Already asked**, **Not asking
 - The button opens a message with the greeting written. **Paste the album link yourself**: the files are on your computer, not in the database.
 - Marking it sent clears it from the queue.
 
+Underneath, **Photos guests sent us** shows the photos and video guests have uploaded to you ([6.2](#6-2-photos-guests-send-you)).
+
 ## 5.5 Charters we owe
 
 A guest who paid for a trip that never happened, through weather, a breakdown or their own plans changing, is **owed** a charter. They appear on **Overview → Guests → Charters we owe** until it is settled, with what you are holding and for how long.
@@ -794,11 +841,20 @@ Three things are never posted, and the index and the publishing checks enforce a
 
 ## 6.2 Photos guests send you
 
-Guests can upload their own photos and video from a trip at `/share-your-photos`. They give their name and phone, pick their trip from a list of recent dates (packages only, never guest names), tick that you may use them, and upload, up to 2 GB a file.
+Guests send their own photos and video two ways:
 
-The files go to private cloud storage, and a script run on the office computer, `pull-guest-uploads.js`, brings them into `Photos\00 Inbox` for filing.
+- **`/share-your-photos`**, open to anyone. They give their name and phone, pick their trip from a list of recent dates (packages only, never guest names), tick that you may use them, and upload. The booking is matched by phone number, which is a hint, not proof.
+- **Their trip page** ([2.8](#2-8-the-trip-page)), from the day of the trip. There is no phone to give and no list to pick from, because the link already says which booking it is. The exact consent wording is stored with each file.
 
-**Known limit:** there is no console tab for guest uploads and no email when one arrives. Run the pull script to see what has come in.
+Both take up to 2 GB a file into private cloud storage. Nothing is ever posted from there.
+
+**Marketing → Photo Requests → Photos guests sent us** shows the latest 200: a preview, who sent it, the booking or trip, when consent was given, and whether it has reached the PC yet. Previews are links that stop working after an hour; the storage itself is never public. **Throw out** stops a file being pulled to the PC. The record stays, and **put it back** undoes it.
+
+A script run on the office computer, `pull-guest-uploads.js`, brings new files into `Photos\00 Inbox` for filing. Using one in a post or on the website goes through the photo library and post approval like any other photo.
+
+**Known limit:** no email arrives when a guest uploads. Look at the panel, or run the pull script.
+
+**Known limit:** share-page uploads record when consent was given, not the words agreed to.
 
 ## 6.3 The public gallery
 
@@ -929,6 +985,17 @@ These are always held for you, and the reason shows on the card:
 Long messages, ones asking more than two questions, and ones nothing in the system can answer are held too. **An unrecognised message is not a safe message.**
 
 The crew drafts a reply for each held thread; you send it or write over it. If the guest writes again first, the draft is marked stale and not pre-filled. **I answered this elsewhere** works here as on Comments, and re-opens on its own if they write again. It has no effect on the automatic reply, which can only be switched off in the publishing service.
+
+### Trip page messages
+
+**Trip page messages** sit at the top of the tab: booked guests writing from their own trip page ([2.8](#2-8-the-trip-page)). They count toward the tab's number, and you are emailed when one arrives.
+
+- **A draft is waiting when the booking itself has the answer**: the departure time, the meeting point, what is included and what to bring. The site writes it from the booking and shows it as Pearl's. It quotes nothing the guest's own page does not already say.
+- **Everything the message rules above hold is held here too**, and so is any question about price or another date, because on a booked trip those change the booking or the bill. The reason shows on the card.
+- **Nothing is sent until you press Send** and confirm. The card says whether the guest will get an email copy.
+- **Handled elsewhere** clears a message you answered by phone or text. It sends nothing, and the thread comes back if they write again.
+
+**Known limit:** the crew do not read trip page messages yet, so the site's draft is the only one.
 
 # Part 7 — The AI crew
 
@@ -1206,6 +1273,8 @@ A few internal names still say "Jarvis", the system's original name, on purpose:
 | A guest cannot book the seat-sale event; its page says the next date is coming | the night has passed, so sales closed by themselves | give the package its next date when you want to sell ([2.6](#2-6-seat-sale-events)) |
 | A guest was charged twice for one booking | two checkouts, both paid: a known, accepted limit | refund the second charge in Stripe, then cancel the extra row by hand ([2.2](#2-2-how-a-guest-books)) |
 | Undid a completion by mistake and income is still there | income is not removed when the status changes back | delete that ledger row by hand |
+| A guest says their trip page link does not work | it was copied incompletely | send it again from **trip page ↗** on their row, or have them use `/trip` ([2.8](#2-8-the-trip-page)) |
+| A guest cannot get in at `/trip` | the phone they typed is not on the booking | add their number to the booking, or send them the link |
 
 ## 10.2 Posts, comments and messages
 
@@ -1274,6 +1343,7 @@ A few internal names still say "Jarvis", the system's original name, on purpose:
 | **Refunded** | it was a booking, and the money has gone back |
 | **Hold** | the 35 minutes a guest on the payment page keeps their boat and hours |
 | **Booking number** | `NY-YYYYMMDD-NN`; never changes |
+| **Trip page** | a guest's own page for one booking, opened by a signed link; anyone holding the link can use it |
 | **Mirror row** | the Bookings row created for a website booking, sharing its number with the inquiry |
 | **Lead source** | where the guest found you |
 | **Booking channel** | who took the booking: a platform, the website, or you directly |
@@ -1349,6 +1419,7 @@ This system is built to be handed to another charter operator. **What transfers 
 | the words on the site | `lib/packageContent.js` and `lib/faqContent.js` |
 | photos | the Photos library, tagged rather than re-filed |
 | keys and accounts | a new secrets file and the website's private settings |
+| trip page links | the web address in `lib/tripLink.js`, and a `TRIP_LINK_SECRET` of their own |
 | this manual's Appendix C | rewritten for their business |
 | the crew's business pages | `Crew\_Global Rules\20 The business.md` and `21 The owner…` |
 | crew names and voices | optional: the setup step can rename them |
@@ -1357,5 +1428,5 @@ This system is built to be handed to another charter operator. **What transfers 
 
 **Before a new operator takes a booking:** run the consistency check and the health check. Both should be clean.
 
-**Known spots that still carry this business's details in code**, to clear before distributing: the gate-code text's signature and one Overview footnote. Both are on the board.
+**Known spots that still carry this business's details in code**, to clear before distributing: the gate-code text's signature, one Overview footnote, and the phone number in the trip page's error messages. The first two are on the board.
 

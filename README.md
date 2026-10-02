@@ -101,6 +101,13 @@ price. Six charters' income once went missing because this was done by hand.
 additive change, prefer `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and update
 `schema.prisma` to match.
 
+**Regenerating the Prisma client on this PC changes what the crew's scripts
+see.** Scripts such as `pull-guest-uploads.js` load the app's own
+`node_modules/@prisma/client`. Generate it from a branch whose new columns are
+not in the live database yet, and every script that reads that table fails
+until the change is applied. When you are done on such a branch, regenerate
+from `main`'s schema (found 2 Oct 2026, building the trip page).
+
 **Vercel resolves environment variables at build time.** A variable added or
 rotated after a deployment does nothing until the next build.
 

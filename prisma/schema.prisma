@@ -569,6 +569,15 @@ model GuestUpload {
   contentType   String
 
   consentAt     DateTime
+  // The exact words agreed to, for uploads from the trip page (2 Oct 2026).
+  // Null on share-page uploads, which record only the time. See
+  // lib/uploadConsent.js.
+  consentText   String?
+  // Where it came from: "share" (the public /share-your-photos page, where the
+  // charter is the guest's own pick and bookingId only a phone-number hint) or
+  // "trip" (the guest's trip page, where bookingId is certain because the link
+  // that opened the page was signed for that booking).
+  source        String   @default("share")
   // Kept for abuse, not analytics. An open upload endpoint needs to be able to
   // answer "where did this come from" exactly once, after something goes wrong.
   userAgent     String?
@@ -583,6 +592,35 @@ model GuestUpload {
   createdAt     DateTime @default(now())
 
   @@index([eventKey, status])
+}
+
+// A MESSAGE ON A GUEST'S TRIP PAGE, either way.
+//
+// Added 2 Oct 2026 with the trip page. The owner wanted guests able to "message
+// us directly" from it, with an AI agent helping on simple questions -- and
+// chose "drafts, you send": the draft lives in MessageReplyDraft under
+// conversationId "trip:<bookingId>", and only a row here with fromGuest false is
+// something the guest actually sees from us.
+//
+// Keyed on the booking number, not a foreign key, because a trip can live in
+// Inquiry, ExternalBooking or both (see lib/tripBooking.js). Never deleted: a
+// conversation with a guest about their booking is a record.
+model TripMessage {
+  id         String    @id @default(cuid())
+  bookingId  String    // "NY-20260919-03"
+  fromGuest  Boolean
+  // Whoever the guest said they were (the link is often forwarded to the whole
+  // party), or "The Nauti Yachti" for a reply.
+  author     String?
+  body       String
+  createdAt  DateTime  @default(now())
+  // Guest messages only: when the owner opened the thread.
+  readAt     DateTime?
+  // When the notice went out -- to the owner for a guest message, to the guest
+  // for a reply. Null when there was nobody to email.
+  emailedAt  DateTime?
+
+  @@index([bookingId, createdAt])
 }
 
 model FuelLog {

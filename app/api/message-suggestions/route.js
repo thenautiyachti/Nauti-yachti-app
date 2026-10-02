@@ -69,7 +69,12 @@ async function POST(req) {
 
   const errors = [];
   if (!conversationId) errors.push("conversationId is required — it is what the console keys the box on.");
-  if (!["facebook", "instagram"].includes(platform)) errors.push("platform must be facebook or instagram.");
+  // "trip" since 2 Oct 2026: a guest's trip page, keyed "trip:<booking number>".
+  // Still nothing sends -- the owner answers those from Marketing -> Messages.
+  if (!["facebook", "instagram", "trip"].includes(platform)) errors.push("platform must be facebook, instagram or trip.");
+  if (platform === "trip" && !/^trip:NY-\d{8}-\d{2,3}$/.test(conversationId)) {
+    errors.push("a trip conversationId is \"trip:\" plus the booking number, e.g. trip:NY-20260919-03.");
+  }
   if (!suggestion) errors.push("suggestion cannot be empty.");
   // Both platforms cap a DM at 1000 characters and the console's own box says
   // so. A suggestion that cannot be sent as written is worse than none: it

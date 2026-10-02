@@ -45,6 +45,8 @@ import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
 import SocialMessagesTab from "./SocialMessagesTab";
+import TripMessagesPanel from "./TripMessagesPanel";
+import GuestUploadsPanel from "./GuestUploadsPanel";
 
 // Names only. The leading numbers came from a spreadsheet's sort order and had
 // started to do real damage: 05 was three different repair categories, 06 was
@@ -422,6 +424,27 @@ export default function AdminView({
     return () => { alive = false; stop(); };
   }, []);
 
+  // Trip page messages count toward the same badge. Polled on its own so a
+  // Blotato outage cannot hide a guest's question about their own booking, and
+  // the panel itself refreshes the number whenever it loads.
+  const [waitingTripMessages, setWaitingTripMessages] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    let timer = null;
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const read = () => readBadgeSummary("/api/admin/trip-messages")
+      .then((r) => {
+        if (!alive) return;
+        if (r.expired) { stop(); if (sessionExpiredRef.current) sessionExpiredRef.current(); return; }
+        if (r.summary) setWaitingTripMessages(r.summary.waiting || 0);
+      })
+      .catch(() => {});
+    read();
+    timer = setInterval(read, 5 * 60 * 1000);
+    return () => { alive = false; stop(); };
+  }, []);
+  const waitingAllMessages = waitingMessages + waitingTripMessages;
+
   // The tab counter has to agree with the list under it. A card-paid booking
   // exists in both tables by design — see toUnifiedRows — so a straight
   // inquiries + externalBookings sum counts it twice, and the number on the tab
@@ -498,7 +521,7 @@ export default function AdminView({
         { id: "socialComments", label: tabLabel("Comments", openComments), count: openComments },
         // Beside Comments because it is the same job on a quieter channel — and
         // the quiet is the danger: nobody but the sender sees a DM go unread.
-        { id: "socialMessages", label: tabLabel("Messages", waitingMessages), count: waitingMessages },
+        { id: "socialMessages", label: tabLabel("Messages", waitingAllMessages), count: waitingAllMessages },
         { id: "testimonials", label: tabLabel("Testimonials", needsReviewCount(testimonials)), count: needsReviewCount(testimonials) },
         // Badged on the OUTSTANDING count, not the total: this is a queue of
         // promises still owed, and once it is empty it should say nothing.
@@ -790,14 +813,26 @@ export default function AdminView({
         )}
 
         {tab === "socialComments" && <SocialCommentsTab />}
-        {tab === "socialMessages" && <SocialMessagesTab />}
+        {/* Trip page messages first: those are booked guests asking about a
+            trip that is happening, and nobody else will ever see them. */}
+        {tab === "socialMessages" && (
+          <>
+            <TripMessagesPanel onWaiting={setWaitingTripMessages} />
+            <SocialMessagesTab />
+          </>
+        )}
 
         {tab === "photoRequests" && (
-          <PhotoRequestsTab
-            photoRequests={photoRequests}
-            onMarkSent={onMarkPhotoRequestSent}
-            onDelete={onDeletePhotoRequest}
-          />
+          <>
+            <PhotoRequestsTab
+              photoRequests={photoRequests}
+              onMarkSent={onMarkPhotoRequestSent}
+              onDelete={onDeletePhotoRequest}
+            />
+            {/* The other direction: photos guests sent US, from the share page
+                and their trip pages. Same tab, because it is the same subject. */}
+            <GuestUploadsPanel />
+          </>
         )}
 
         {tab === "testimonials" && (
@@ -1080,6 +1115,20 @@ function GuestTextButton({ phone, body, label, color, title, canSendSms, noneLab
       title={title}
     >
       {label}
+    </a>
+  );
+}
+
+// The page this guest sees -- their times, directions, photo box and messages --
+// opened from their booking row. The link is the guest's own key, which is why
+// only the console's booking APIs carry it (lib/tripLink.js).
+function TripPageLink({ row }) {
+  const url = (row && ((row.raw && row.raw.tripUrl) || row.tripUrl)) || null;
+  if (!url) return null;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" title="Open the trip page this guest sees"
+      style={{ fontSize: 11, color: "var(--purple)", whiteSpace: "nowrap" }}>
+      trip page ↗
     </a>
   );
 }
@@ -2233,6 +2282,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                               />
                             );
                           })()}
+                          <TripPageLink row={r} />
                           {isOwed(r.status) && (() => {
                             const body = owedMessage("sms", r, localDayKey(new Date()));
                             const phone = bookingPhones(r)[0];
@@ -2308,6 +2358,7 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                               />
                             );
                           })()}
+                          <TripPageLink row={r} />
                           {/* Same delete as an external booking, asked for on
                               11 Sep 2026 so the two halves of this table behave
                               alike. The confirm is the whole safety story: this

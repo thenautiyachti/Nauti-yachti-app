@@ -14,6 +14,7 @@ export default function robots() {
           "/admin",           // owner console
           "/glow/crew",       // per-booking crew list, reached by link only
           "/booking-success", // post-checkout confirmation, unique per booking
+          "/trip",            // guests' own trip pages, reached by signed link only
           "/owner-console-manual.pdf",   // internal operations manual
         ],
       },

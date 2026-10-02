@@ -8,6 +8,7 @@ const { eventBookingRefusal } = require("../../../lib/eventSeats");
 const { availabilityProblem } = require("../../../lib/availabilityQuery");
 const { checkGiftCertificate } = require("../../../lib/giftCertificates");
 const { parsePackage } = require("../../../lib/serialize");
+const { tripUrl } = require("../../../lib/tripLink");
 const {
   DUPLICATE_WINDOW_MINUTES,
   UNTOUCHED_STATUS,
@@ -21,7 +22,8 @@ async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const inquiries = await prisma.inquiry.findMany({ orderBy: { submittedAt: "desc" } });
-  return NextResponse.json(inquiries);
+  // The guest's trip page link, as on external bookings. See lib/tripLink.js.
+  return NextResponse.json(inquiries.map((i) => ({ ...i, tripUrl: i.bookingId ? tripUrl(i.bookingId) : null })));
 }
 
 // Public: customers submit inquiries from the booking form.

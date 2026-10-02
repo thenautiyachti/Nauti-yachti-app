@@ -105,8 +105,9 @@ const nextConfig = {
   //
   // Origins a real policy has to admit: embed.windy.com (frame-src, the radar
   // map on the public site page), fonts.googleapis.com (style-src),
-  // fonts.gstatic.com (font-src), and ONE tile host under img-src --
-  // tilecache.rainviewer.com, which supplies the radar frames on the dock page.
+  // fonts.gstatic.com (font-src), ONE tile host under img-src --
+  // tilecache.rainviewer.com, which supplies the radar frames on the dock page --
+  // and *.supabase.co, where guest photos are uploaded and previewed from.
   //
   // There is deliberately no basemap host. CARTO's tiles were here briefly and
   // began answering with an "API KEY REQUIRED" watermark; the lake is now drawn
@@ -140,7 +141,12 @@ const nextConfig = {
           // claimed a wrong policy would break payment. It would not.
           {
             key: "Content-Security-Policy-Report-Only",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://tilecache.rainviewer.com; media-src 'self' data: blob:; connect-src 'self'; frame-src https://embed.windy.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; report-uri /api/csp-report",
+            // *.supabase.co (2 Oct 2026): guest photos go from the browser
+            // straight to the private Storage bucket (connect-src), and the trip
+            // page and console show them back through one-hour signed links
+            // (img-src, media-src). Without it, enforcing this policy would
+            // break /share-your-photos the day it was switched on.
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://tilecache.rainviewer.com https://*.supabase.co; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co; frame-src https://embed.windy.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; report-uri /api/csp-report",
           },
           { key: "X-Frame-Options", value: "DENY" },
           // Stop a browser from second-guessing a declared Content-Type, which

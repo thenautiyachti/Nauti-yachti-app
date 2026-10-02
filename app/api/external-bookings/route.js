@@ -2,13 +2,17 @@ const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 const { generateBookingId } = require("../../../lib/bookingId");
+const { tripUrl } = require("../../../lib/tripLink");
 
 async function GET() {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const bookings = await prisma.externalBooking.findMany({ orderBy: { date: "asc" } });
-  return NextResponse.json(bookings);
+  // Each row carries its guest's trip page link, so the reminder text can include
+  // it and the owner can open the page the guest sees. Admin-only response: the
+  // link is the guest's key. See lib/tripLink.js.
+  return NextResponse.json(bookings.map((b) => ({ ...b, tripUrl: b.bookingId ? tripUrl(b.bookingId) : null })));
 }
 
 const { STATUSES: EXTERNAL_BOOKING_STATUSES } = require("../../../lib/bookingStatus");
