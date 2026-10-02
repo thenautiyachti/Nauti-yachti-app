@@ -2,11 +2,16 @@ import { notFound } from "next/navigation";
 import TripPageView from "../../../components/TripPageView";
 import { tripView } from "../../../lib/tripInfo";
 import { lakeTodayKey } from "../../../lib/eventSeats";
+import { isAdminAuthenticated } from "../../../lib/auth-guard";
 
 // thenautiyachti.com/trip/demo -- what a trip page looks like, with no booking
-// behind it. NOT ON THE LIVE SITE: it exists for previews and local
-// development, so the page can be looked at without opening a real guest's trip.
-// The boat is real fleet; the booking is not, and the page says so.
+// behind it, so it can be looked at without opening a real guest's trip. The
+// boat is real fleet; the booking is not, and the page says so.
+//
+// ON THE LIVE SITE, ONLY FOR THE OWNER. Owner, 2 Oct 2026, wanting to "see the
+// customer's login console, example": the console links here, and a signed-in
+// session sees it. Everyone else gets a plain not-found, so a made-up booking is
+// never something a guest or a search engine can land on.
 //
 //   ?phase=today | past    the day itself, or afterwards (default: ten days out)
 //   ?glow=1                a Boatz & Glowz seat instead of a private charter
@@ -21,7 +26,7 @@ function shiftDays(dateKey, days) {
 }
 
 export default async function TripDemoPage({ searchParams }) {
-  if (process.env.VERCEL_ENV === "production") notFound();
+  if (process.env.VERCEL_ENV === "production" && !(await isAdminAuthenticated())) notFound();
   const sp = (await searchParams) || {};
   const today = lakeTodayKey();
   const date = sp.phase === "today" ? today : sp.phase === "past" ? shiftDays(today, -3) : shiftDays(today, 10);

@@ -372,6 +372,8 @@ Every booking with a booking number has its own page for the guest: `thenautiyac
 
 > **Why it works this way.** A booking number is the date and a counter, so anyone could guess the next one. The key on the end of the link is what keeps the page closed, and the phone number does the same job for a guest without the link. A password nobody remembers at a boat ramp would lock out more guests than strangers.
 
+**To see one without opening a guest's**, use **See an example trip page** in Marketing → Messages. It is a made-up booking on a real boat, and it opens only while you are signed in to the console; anyone else gets "not found". Add `?phase=today`, `?phase=past` or `?glow=1` to its address to see the other states.
+
 **Anyone holding the link is the guest.** That is deliberate: the person who booked forwards it to the group, and everyone aboard can send their photos. The page says so beside the message box.
 
 **What it shows, and what it never shows.**

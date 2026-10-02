@@ -90,7 +90,12 @@ export default function TripMessagesPanel({ onWaiting }) {
       <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, maxWidth: 640, marginBottom: 12 }}>
         Booked guests writing from their own trip page. You are emailed when one arrives. Pearl drafts an answer
         when the booking itself has it — the time, the meeting point, what to bring — and holds everything else
-        for you. Nothing is sent until you press Send.
+        for you. Nothing is sent until you press Send.{" "}
+        {/* What a guest sees, without opening a real guest's trip. Only a
+            signed-in console session can open it on the live site. */}
+        <a href="/trip/demo" target="_blank" rel="noopener noreferrer" style={{ color: "var(--purple)" }}>
+          See an example trip page ↗
+        </a>
         {data.error && <span style={{ color: "#ff4d5e" }}> {data.error}</span>}
       </div>
 
