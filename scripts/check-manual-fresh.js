@@ -57,6 +57,15 @@ module.exports = { check, stamp };
 
 if (require.main === module) {
   if (process.argv.includes("--stamp")) {
+    // On THIS PC, unlike a fresh checkout, mtimes do mean something: a PDF older
+    // than the markdown was not rebuilt. 2 Oct 2026 a failed build (missing
+    // arguments) was followed by --stamp in the same command, and the stale PDF
+    // was stamped fresh. Refuse that; --force if you really mean it.
+    if (fs.existsSync(PDF) && fs.statSync(PDF).mtimeMs < fs.statSync(MD).mtimeMs && !process.argv.includes("--force")) {
+      console.log("  REFUSED: the PDF is older than the markdown, so it was not rebuilt. Build it, then stamp.");
+      process.exitCode = 1;
+      return;
+    }
     console.log("stamped " + stamp());
   } else {
     const r = check();
