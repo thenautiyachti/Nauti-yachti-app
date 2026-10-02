@@ -1,2072 +1,1361 @@
-# The Nauti Yachti — Owner Console Manual
+# The Nauti Yachti — Website and Owner Console
 
-For anyone using the admin dashboard at **thenautiyachti.com/admin**. Ask the owner
-for the passcode — it is not in this manual.
+How to run a charter business on this system: the public website, the owner console at thenautiyachti.com/admin, and the AI crew that watches over both.
 
-Last updated 18 September 2026 (ninth revision).
+Edition for version 2.14.0 · October 2026
 
----
+[[TOC]]
 
-## How the console is laid out
+# About this manual
 
-Six groups run along the top. Clicking a group reveals its tabs underneath.
+## How to use this manual
+
+This is an operations manual. It tells you what each part of the system is for, how the logic behind it works, and what to do, step by step, for the jobs that come up. It is written for the owner and for anyone the owner trusts to run the business with them.
+
+It is organised the way the work is, not the way the system was built:
+
+| Part | Read it when you need to… |
+|---|---|
+| 1 · The system at a glance | understand what the pieces are and find your way around the console |
+| 2 · The public website | know what a guest sees and what happens when they book or pay |
+| 3 · Bookings | take, change, charge, complete or untangle a booking |
+| 4 · Money | record income and costs, reconcile, or produce tax figures |
+| 5 · Guests | reach past guests, ask for reviews, answer photo requests |
+| 6 · Photos, video and social media | find media, approve posts, answer comments and messages |
+| 7 · The AI crew | understand the agents, their board and their limits |
+| 8 · Fleet and on the water | use the phone page on the dock, log hours and maintenance |
+| 9 · Running and protecting the system | releases, backups, files, and the checks that keep it honest |
+| 10 · Troubleshooting | something looks wrong and you want the fix |
+| Appendices | quick reference, glossary, this installation's specifics, and setting it up for another business |
+
+New to the system? Read Part 1, then Part 3. Everything else can be looked up when it comes up.
+
+## Conventions used in this manual
+
+- **Bold** names a button, tab or label exactly as it appears on screen.
+- **Group → Tab** gives a path through the console, for example **Bookings → Availability**.
+- `Monospace` is a file, a script or a value typed exactly as shown.
+- Numbered steps are a procedure: do them in order.
+
+> **Why it works this way.** Boxes like this explain the reason behind a rule. Most rules in this system exist because something went wrong once. The box tells you what, so you can judge the edge cases the rule does not cover.
+
+Facts that belong to this one business (its boats, docks, packages and accounts) are collected in [Appendix C](#appendix-c-this-installation-the-nauti-yachti). Everything else describes how the system works and holds for any business running it.
+
+## Keeping this manual true
+
+The manual lives in the app as `owner-console-manual.md`, and the **Manual** button in the console opens a PDF built from it. Three things keep the two honest:
+
+- A check compares the tab names in [How the console is laid out](#1-4-how-the-console-is-laid-out) with the tabs the console really has, and fails the release if they differ.
+- A check fails if the PDF no longer matches the text it was built from.
+- The manual is re-read at every release, and a stamp records the version it was last read against.
+
+If you notice something here that is no longer true, say so. A wrong sentence in a manual is worse than a missing one.
+
+# Part 1 — The system at a glance
+
+## 1.1 What the system is
+
+The system has three parts that share one database.
+
+| Part | Who uses it | What it does |
+|---|---|---|
+| **The public website** | guests | shows the boats, packages and prices, takes inquiries and card payments, sells gift certificates, collects crew-list signups and guest photos |
+| **The owner console** | you | every booking, every dollar, every post and message, and the crew's to-do board, at `/admin` |
+| **The AI crew** | runs on its own, on a schedule | eight agents and two routines that check the books, draft social posts, publish what you approved, chase reviews and report what needs you |
+
+Around them sit outside services, each doing one job:
+
+| Service | Its job |
+|---|---|
+| **Stripe** | takes card payments and tells the site when one succeeds or fails |
+| **Resend** | sends the website's emails |
+| **Blotato** | publishes posts to Facebook, Instagram and TikTok, and reads comments and messages |
+| **ElevenLabs** | the crew's spoken voices, when you click an agent to hear her |
+| **Supabase** | the database |
+| **Vercel** | hosts the website and the console |
+| **Google Drive** | backs up the business files, the photo library and the crew's instructions |
+| **GitHub** | backs up the code, with every version tagged |
+
+> **Why it works this way.** Every outside service holds one job, so a failure is easy to place. If posts stop, it is Blotato. If confirmations stop, it is Resend. If payments stop, it is Stripe.
+
+## 1.2 How the pieces connect
+
+A booking shows the whole chain:
+
+1. A guest fills in the form on the website. The site prices it and writes an **inquiry** into the database.
+2. The guest gets an acknowledgement email, and you get a copy.
+3. You agree the details and send a payment link. The guest pays through Stripe.
+4. Stripe tells the site. The site marks the booking paid, blocks the date on the calendar and emails a confirmation.
+5. After the trip you mark it **completed**. The income is written into the ledger on its own.
+6. The next morning the crew checks the money arrived, asks the guest for a review, and suggests a post from the photos.
+
+Nothing in that chain needs you to copy a number from one screen to another. Where you do have to step in, the console tells you: that is what the numbers on the tabs are for.
+
+## 1.3 Signing in and the top bar
+
+Open `/admin` on the website and enter the passcode. The passcode is not written in this manual or anywhere in the system's files. If your session times out, the console says so and asks you to sign in again.
+
+The bar along the top:
+
+| Item | What it does |
+|---|---|
+| **Version badge** | The version of the whole system, for example `v2.13.0`. The same number sits under the Owner console link on the public site. Hover for details. See [9.1 Versions and releases](#9-1-versions-and-releases). |
+| **📱 On the dock** | The phone page for the boat: weather, guests arriving, review asks, engine hours and fuel. See [Part 8](#part-8-fleet-and-on-the-water). |
+| **📖 Manual** | Opens this manual as a PDF. |
+| **← Back to site** | The public website. |
+| **Log out** | Ends your session. |
+
+A muted-speaker notice appears only if the crew's speech fails. Click it to dismiss it.
+
+## 1.4 How the console is laid out
+
+Six groups run along the top. Clicking a group shows its tabs underneath.
 
 | Group | Tabs |
 |---|---|
-| **Overview** | The day at a glance, the bank balance, the board, and the crew |
+| **Overview** | the day at a glance: what needs you, money, guests, the fleet, the board and the crew |
 | **Bookings** | Contacts · Bookings · Availability |
 | **Money** | Income & expenses · Reconciliation · Tax Report · Gift certificates · Subscriptions & bills |
 | **Marketing** | Media · Media Drafts · Comments · Messages · Testimonials · Photo Requests |
 | **Setup** | Packages & pricing · Add-ons · Coupons |
 | **Boat** | Maintenance |
 
-A number in brackets after a tab name means **something is waiting on you**. No
-number means nothing needs doing — it does not mean the tab is empty. Testimonials
-holds every approved review and still shows no number, because none of them need
-a decision.
+**A number after a tab or group name means something is waiting on you.** No number means nothing needs doing. It does not mean the tab is empty: Testimonials can hold every approved review and still show no number. The number on **Overview** counts agents waiting for your answer.
 
----
+If a panel cannot load, a pink **Some panels did not load** banner says so instead of showing blanks.
 
-# Bookings
+## 1.5 The Overview screen
 
-## Contacts
+The Overview is where to start every day. On a wide screen it has three columns; on a phone it stacks. Most panel headings are links to the tab that can act on them.
 
-People, and how to reach them. This tab was called Inquiries and used to list
-them; it no longer does, because **every reservation lives in Bookings** —
-inquiry, booked or completed, whether it came from Boatsetter, GetMyBoat, the
-website or a text message. A lead that showed in one place and not the other is
-exactly how one went missing.
+**Crew alerts** appear at the very top, only when there is something to say: an agent **Waiting on you**, or one that failed, stopped mid-run, has gone quiet, or has no standup filed. To restart an agent, open the scheduled routines in the Claude app and choose **Run now**.
 
-Three lists, all collapsed until you open them:
-
-- **Everyone we can contact** — people, not trips, so a repeat guest appears
-  once. The count is the ones with a phone or an email; anyone with neither
-  cannot be asked for a review or told about a glow night.
-- **Extra guest contacts** — people who were on somebody else's charter and
-  whose number is worth keeping. Deliberately not counted as inquiries.
-- **Crew list** — emails captured from `/glow` and the on-boat QR code. This is
-  the list to mail when a date is set. **Copy mailable emails** sits on the
-  header so you do not have to open the panel to use it. To honour an
-  unsubscribe set that person's status to lapsed and they drop out of the copy.
-
-### Texting someone from the list
-
-**Every contact has a button that opens a text to them**, with the number filled
-in and a message already written. It sends nothing — it opens your phone's own
-messaging app, and you read it, change it if you like, and press send. On a
-computer it says so instead of pretending, because a desktop has nothing to
-hand a text to.
-
-**The message reads the sale that is live right now.** When a sale is running,
-the button is labelled with its code and the message names the discount, the
-limit and the end date. The day that code expires or runs out, the button stops
-offering it on its own — nothing to remember, nothing to update. With no sale
-running it becomes a plain catch-up message with no discount in it.
-
-**It will only offer a code that has both an end date and a usage limit.** That
-is deliberate. SIDEPIECE50 and FAMILY20 are codes kept for particular people; a
-button that picked "the biggest discount" would have texted fifty per cent off to
-the whole list.
-
-**Two versions of the opener.** Someone who has sailed with you gets *"hope
-you've been well since your trip"*; someone who only ever asked gets *"you asked
-about a charter a while back"*. Saying the first to the second reads like a
-mail-merge.
-
-**Anyone who opted out has no button at all** — not a greyed-out one, none.
-
-### Trips are charters, not rows
-
-The **N trips** badge counts charters. A booking taken through the website leaves
-two records behind it — the enquiry and the booking — and until 23 September both
-were counted, so every website guest showed as having sailed twice. And a guest
-whose number was on one booking but not another used to split into two people;
-they are now one, with both trips.
-
-**The two lower panels are subsets of the top one, not additions to it.** Their
-headings say so — *"2 of the 30 above"* — because the obvious arithmetic is
-wrong: the contacts list already folds in crew-list signups and extra contacts,
-and dedupes a person to one row however many lists they appear on. Adding 30 and
-2 and 2 counts four people twice.
-
-## Bookings
-
-Every charter, from any source — Boatsetter, GetMyBoat, the website, cash, Zelle.
-Add one with the form above the table.
-
-**On a phone, every row shows its seats and its price under the name.** The
-table drops most columns at phone width, and party size and price were two of
-them — so the screen you actually run the day from showed a name, a status and
-some buttons, with no way to tell a party of five from a single seat. A booking
-at no charge says *no charge* rather than $0, because the crew riding free are
-not a sale.
-
-### What the status column tells you
-
-**Booked used to be one word for two opposite situations** — a charter that is
-settled and needs nothing, and one where somebody still owes money and nobody is
-chasing it. On 18 September the glow night showed five BOOKED rows and exactly
-one had been paid.
-
-| Reads | Colour | Means |
-|---|---|---|
-| **Booked / paid** | green | Settled. Nothing to collect. |
-| **Booked / no charge** | green | On the boat at no cost — the crew riding free. Settled, but never a sale, and it must not be counted as revenue. |
-| **Booked / unpaid** | blue | Confirmed and holding its date, and the money has not arrived. **This is the chase list.** |
-| **Booked / payment failed** | red | They tried to pay and their bank refused it. Different from never having tried — see *When somebody tries to pay and it does not work*. |
-| **Inquiry** | grey | Asked, not booked. Unpaid by definition. |
-
-**The words carry the meaning, not the colour.** A greyscale screenshot, a phone
-in sunlight or a colour-blind reader all get the same answer, and the colour is
-only reinforcement.
-
-**Nothing underneath changed.** A booking's status is still one of the six
-values, the dropdown still says *Booked*, and the crew still read `booked` as
-they always have. The protocol already described it as *"confirmed, paid or
-not"* — this shows which.
-
-### Which trip it is, at a glance
-
-The bookings table carries a **Package** column. Your words, 18 September: *"we
-don't have a column for package type, like whether they're boats and glows,
-people, or tubing, or party cove."*
-
-It said which boat and how long, and that does not tell a glow seat from a
-tubing afternoon on the same hull — while the package is what decides the price,
-whether add-ons apply at all, and where the guest is told to meet.
-
-**Half the rows had no package to show.** A website checkout writes the booking
-row automatically, and it was being created without one, so every charter taken
-through the site sat there blank. Fixed, and the existing rows filled in from
-their inquiries.
-
-On a phone the column is hidden like every other middle column, so the package
-joins the line under the guest's name instead: *Boatz & Glowz · 2 seats · $100.*
-
-
-### Three questions, three fields
-
-These used to be one and a half fields, and the books paid for it. Each booking
-now answers them separately, and they are genuinely different questions:
-
-| field | the question | options |
-|---|---|---|
-| **Lead source** | Where did the enquiry come from? | Website · Text / WhatsApp · Phone · Walk-up · Instagram · Facebook · Repeat guest · Referral from a friend · Boatsetter · GetMyBoat · AI search (ChatGPT) · Other |
-| **Booking channel** | Who took and processed it? | Boatsetter · GetMyBoat · Website · Direct |
-| **How paid** | How did the money actually arrive? | Unpaid · Stripe (card) · Cash · Cash App · Zelle · Venmo · PayPal · Boatsetter payout · GetMyBoat payout · Gift certificate |
-
-A GetMyBoat booking can come from a guest who found us on Instagram. That is the
-interesting fact, and until now there was nowhere to put it.
-
-**"How paid" is the one the system cannot work out for itself.** Stripe paying is
-the single exception — that gets set on its own. Everything else has to be said
-by you, because nothing anywhere proves cash changed hands except you saying so.
-Leave it blank and the income row says so rather than guessing.
-
-That guess is why this exists. The booking channel used to be read as the payment
-method — anything taken directly was assumed to be cash — so the first card
-payment on a text booking would have been filed in the cash column, the hardest
-one to reconcile and the easiest place to lose a number.
-
-The old `Other` channel is now **Direct**, which is what those bookings always
-were: ones we took ourselves, by text, on the phone or at the dock.
-
-**Marking a booking "completed" now writes its income row automatically.** That
-was the single biggest hole in the system: the two records were only ever joined
-by hand, and six charters' income went missing that way. Two rules govern it:
-
-- It will not create a second row if one already exists, so re-saving a completed
-  booking is safe.
-- **No price means no income row.** It refuses to guess, because a made-up number
-  in the ledger is worse than an obviously missing one.
-
-A booking paid through the website checkout now appears here on its own, created
-from the Stripe webhook as **booked** (not completed — the trip has not happened
-yet).
-
-### Taking a booking that came in by text
-
-Send the contact and the details and it goes on the books the same way every
-time, priced, numbered, and with the text to send printed at the end:
-
-```
-node scripts/add-booking.js --name "Josh Ramirez" --phone "(619) 248-2317" \
-     --package glowz --date 2026-09-19 --seats 1 --amount 20 --apply
-```
-
-It previews until `--apply`. `--amount` is a **total** and overrides the package
-price — that is where your $20 circle rate goes, and it stays out of the pricing
-code so it can never leak into a public quote. Leave it off and the charter is
-priced exactly as the website would price it. Leave `--vessel` off and the boat
-with the most room that day is chosen.
-
-**It refuses a name or number already on that date**, so the same guest cannot
-quietly land on the list twice. `--force` if it really is a second booking.
-
-**What makes it work all the way through** is that the row is created with a
-package and a price. Without those, the checkout link has nothing to charge and
-the seat cannot be sold — which is what a hand-typed row most often lacks.
-
-### Charging a booking that did not come from the website
-
-Both tools that issue a checkout link used to read the website table only, so
-the one command for charging a booking agreed by text could not see a booking
-agreed by text. Josh Ramirez was created on 18 September and the tool written
-for exactly that case answered *"No booking with reference NY-20260919-11"*.
-
-The quieter half was worse. Both had the wrong key written into the payment, so
-even a booking they *had* found would have sent the guest's money looking for a
-row in the other table — they would have paid, and nothing would have happened.
-
-Both read both tables now, and *Text payment link* in the console keeps working
-as it did.
-
-**A test-mode link is never saved against a booking.** A test link renders a
-convincing Stripe page, accepts a card, says thank you and collects nothing; and
-the id it leaves behind makes every later repair of that booking fail, because
-live Stripe has never heard of it. The tools now say **TEST LINK — DO NOT SEND**
-and leave the booking untouched.
-
-### When the same guest ends up on the list twice
-
-Most bookings are typed in by hand from a text or a Facebook message, and the
-guest is then sent a checkout link. **If they use that link there is nothing to
-guess** — the payment carries the booking's own number, Stripe comes back an
-exact match, and the email and phone from the checkout are written straight onto
-it. That is Jim's case, and it needs no attention.
-
-The gap is the guest who does something else: books on the website instead, so a
-second row appears beside the one already typed in for them. One person, two
-rows, **and the seat counted twice** — on the manifest, in the seats-left figure
-on the glow page, and in the money.
-
-The morning check now names those pairs and says why:
-
-> `NY-20260919-03 and NY-20260919-11 look like the same person on 2026-09-19`
-> `Jim / Jim Gonzalez — same phone (…8379); names fit. Two rows means the seat is counted twice.`
-
-**Nothing merges on its own, and that is the design.** Two bookings sharing a
-phone number are just as likely to be two friends who booked from one handset.
-Oscar's charter carried a party member's number rather than his own, and that is
-ordinary on a boat that seats fourteen. Merging automatically would delete a real
-guest's seat and nobody would find out until somebody was standing on the ramp.
-
-So a pair is only ever **proposed**, with its evidence, for you to judge. What
-gets it raised:
-
-| Reads | Means |
+| Panel | What it shows |
 |---|---|
-| **certain** | Same email, or the same ten digits of phone, on the same day |
-| **likely** | No contact detail in common, but one name fits inside the other and they bought the same thing on the same day |
+| **Needs attention** | Every item waiting on you, each a link to where it can be fixed: new inquiries, maintenance due, approved posts with no date, drafts to approve, completed charters with no price, posts going out in the next three days, guests never asked for a review, income not tied to a charter, bills due within two weeks, past guests with no phone. Urgent lines are bold orange. When it says *Genuinely nothing waiting*, there is nothing. |
+| **Money** | The bank balance as last recorded and how old the reading is, income earned this season, money held for trips that have not happened, costs, net, monthly fixed costs, break-even in charters per month, and this month so far. |
+| **Guests** | Reviews and the average rating, how many guests can be reached, and **Charters we owe** when anyone has paid for a trip that never ran. |
+| **Pearl** | The lead agent's morning summary. Click her face to hear it. |
+| **The Board (To-do List)** | The shared to-do list between you and the crew. See [7.3](#7-3-the-board). |
+| **Research** | Anything the research agent has found that cleared her bar. Usually *Nothing has cleared the bar*, which is normal. |
+| **The fleet** | The next charter out, trips and earnings per boat this season, and idle days. |
+| **Going out next** | The next posts due, how far ahead the queue runs, and the last confirmed publish. |
+| **Money on the table** | Open Saturdays in the next eight weeks, gift certificates sold and revenue ideas open on the board. |
 
-A repeat guest is never reported — the day has to match, or the best guest you
-have would be flagged as a duplicate of himself all season. Neither is an inquiry
-and the booking row written from it: they share a booking number on purpose.
+Each panel carries the face of the agent who owns that area. At the bottom, a chart shows who reports to whom.
 
-**To act on one**, run it past yourself first — it prints everything it would do
-and writes nothing until you add `--apply`:
+## 1.6 A day in the life
 
-`node scripts/merge-bookings.js NY-20260919-03 NY-20260919-11`
+A routine that keeps everything current with the least effort.
 
-The row holding the money survives; the other is filled in from it where it was
-blank, then **cancelled rather than deleted**, with a note pointing at the
-survivor. The reason to doubt a merge always turns up afterwards, and a deleted
-row cannot be doubted.
+**Every morning, five minutes:**
 
-It **refuses outright** if both rows have money against them. That is not a
-duplicate to tidy away — it is either two real bookings or one guest charged
-twice, and merging would bury whichever it is along with somebody's refund.
+1. Open **Overview**. Work down **Needs attention** from the top.
+2. Read Pearl's summary, or click her face to hear it.
+3. Glance at **The Board** for anything marked High.
+4. Open **Marketing → Media Drafts** if the badge shows posts waiting for approval, and approve, reschedule or reject them.
 
-### One charter, two rows — and they now stay in step
+**On a charter day:**
 
-A website checkout leaves **two** records for the same charter: the Inquiry the
-guest filled in, and the mirror booking above that blocks the date on the
-calendar. Nothing used to join their statuses.
+1. Open **📱 On the dock** on your phone.
+2. On **Arriving**, text each guest the dock details and gate code.
+3. Before heading out, and whenever weather builds, check **Weather → Can I get back before it hits?**
 
-So marking a charter **completed** used to leave its inquiry record still
-reading **booked and paid** — which is what happened to Oscar RoblesGil's
-6 September charter. He was the first website checkout to produce such a pair, which is the
-only reason nobody had seen it; every one after him would have done the same.
+**After every charter:**
 
-Changing the status updates both records, in both directions. Since 11 Sep 2026
-there is only one place to do it — the Bookings list — but the rule still matters,
-because the two rows are what the calendar and the ledger each read. Platform
-bookings — Boatsetter, GetMyBoat, cash — have no inquiry behind them and are
-unaffected.
+1. In **Bookings**, set the charter to **completed**. That writes its income.
+2. On the phone page, log engine hours (**Boat log**) and any fuel.
+3. Text the guest for a review from **Reviews**, ideally the same day.
 
-Either record completing writes the income row, by the same rule as above. That
-was worth being careful about: without it, which screen you happened to use would
-have decided whether a charter's money got recorded.
+**Once a week:** reconcile platform payouts (**Money → Reconciliation**), file receipts (**Money → Income & expenses**), and record the bank balance.
+
+# Part 2 — The public website
+
+## 2.1 The pages and what each is for
+
+| Page | What it is for |
+|---|---|
+| `/` (home) | the boats, the packages, the gallery, the reviews, and the booking form at the bottom |
+| `/packages` | each package in full |
+| `/glow` | the seat-sale event page: the date and the seats while it is on sale, the crew-list signup always. See [2.6](#2-6-seat-sale-events) |
+| `/events` | upcoming events |
+| `/faq`, `/about`, `/terms`, `/privacy-policy` | questions, the business, the terms and waiver, privacy |
+| `/gift-certificates` | buying a gift certificate |
+| `/share-your-photos` | guests upload their own photos and video from a trip |
+| `/thanks` | after a trip, from the on-boat QR code: ask for photos, leave a review |
+| `/pay/<id>` | the payment page you text a guest, see [3.7](#3-7-charging-a-booking-and-payment-links) |
+| `/booking-success` | where a guest lands after paying |
+
+A link with `?package=<id>` opens the home page with that package already chosen in the form. A link with `?from=<source>` records where the guest came from, which ends up as the booking's lead source.
+
+## 2.2 How a guest books
+
+The booking form is at the bottom of the home page.
+
+**The guest fills in:** name, email, phone, party size, the package, the boat (only boats that run that package are offered), the date, the hours (for hourly packages), any add-ons, an optional coupon code, an optional gift certificate code and a message, and ticks to accept the terms. For a fixed-date event the date is set for them, and once that date has passed the event is not offered at all (see [2.6](#2-6-seat-sale-events)).
+
+The price updates as they choose. Then they pick one of two buttons:
+
+| Button | What happens |
+|---|---|
+| **Book & pay now** | The site re-checks the price on the server, records the inquiry, and sends the guest to Stripe to pay. If card payments are switched off it falls back to sending an inquiry. |
+| **Not ready to pay? Just send an inquiry** | The inquiry is recorded with status **new**, and both of you get an email. You follow up. |
+
+**Either button first checks that the boat is free** (see [2.7](#2-7-the-availability-check)). If it is not, the guest is told why on the spot, for example that the boat only has three hours left that day, and nothing is recorded.
+
+**The site confirms on screen and the confirmation stays there.** The form is replaced by a panel that reads back what they asked for and says no more is needed, so nobody fills the form in twice thinking it failed.
 
 ### The same inquiry sent twice
 
-Sarah Griffith sent the same glow-night inquiry **three minutes apart** on
-12 September. Nothing was wrong with the first one. The form simply reset itself
-and flashed a message for two and a half seconds, so thirty seconds later her
-screen looked exactly like a form she had never filled in — and she filled it in
-again. You got two rows and she got two acknowledgement emails for one charter.
+A plain inquiry that matches one already waiting is folded into it instead of making a second row. It counts as the same inquiry when all of these match:
 
-Two separate things now stop that.
-
-**The website confirms it on screen and leaves it there.** The form is replaced
-by a panel that reads back what she asked for — charter, boat, date, guests,
-quoted price — says where her confirmation email is going, and says plainly that
-there is nothing else to do and no need to send it again. It does not time out.
-There is a *Send another inquiry* button for anyone who genuinely wants a second.
-
-**And the site refuses to write the duplicate anyway.** The panel only helps
-somebody whose browser still has the page; a second tab, a phone after a laptop,
-or a form reloaded later never sees it. So a submission that matches an inquiry
-already sitting in the console is folded into that one instead of making a new row.
-
-| | |
+| Must match | Within |
 |---|---|
-| Counts as the same inquiry | same email address, same requested date, same package, **same boat** |
-| Within | 30 minutes of the first one |
-| Only if | you have not touched the first one yet — it is still **new** |
+| email, requested date, package and **boat** | 30 minutes of the first, and only while the first is still **new** |
 
-Party size, phone number and message are deliberately **not** part of that test,
-because those are exactly what somebody corrects on a second try, and a
-correction is still the same charter.
+If they changed something (party size, phone, message), the row is updated and you get one email headed **Updated inquiry**. If they changed nothing, you hear nothing more. The guest never gets a second acknowledgement. An inquiry with no date is never merged.
 
-**The boat is part of it, though, and that is the interesting one.** A group too
-big for one deck books *two* — same person, same date, same package, two
-vessels, very plausibly half an hour apart while they count heads. Leaving the
-boat out of the test meant the second inquiry was folded into the first and the
-different vessel filed as a "corrected boat": not a duplicate prevented, half a
-booking gone. Including it costs the opposite case — somebody who changes their
-mind about the boat and resubmits gets a second row, which is the old behaviour
-and one click to delete. Those two are not comparable, so the tie goes to never
-losing the booking.
+> **Why it works this way.** The boat is part of the test because a large group sometimes books two boats for the same day, half an hour apart. Leaving the boat out would merge two real bookings into one. A second row you delete costs a click; a lost booking costs a charter.
 
-The 30 minutes is not a guess at how fast people double-click — it is how long
-"I am trying to book this one charter" lasts as a single sitting. Someone who
-fills the form, goes to check a date with a friend and comes back twenty minutes
-later is on the same errand. It is deliberately not a whole day: two inquiries
-for the same date a week apart are worth seeing separately, because by then
-something has changed.
+**Known limit:** **Book & pay now** does not de-duplicate. Every press makes a new inquiry. See [3.8](#3-8-when-the-same-guest-appears-twice).
 
-**What you get told.** Nothing, if they changed nothing — a double-click is not
-news, and the email you already have is still correct. If they *did* change
-something, the row is updated to the newer details and you get one email whose
-subject begins **"Updated inquiry"** and whose first line says
-*NOT A NEW INQUIRY* and names what changed. The guest gets no second
-acknowledgement either way: a second email about one charter is what causes the
-"do I have two bookings?" phone call this exists to prevent.
+**Known limit, accepted:** one guest can be charged twice for one booking, by paying through two checkouts. Nothing stops it, by the owner's choice: the guest will notice and say so, and the fix is quick. Refund the second charge in Stripe, then cancel the extra row. The merge tool refuses a pair that both carry money, so this one is done by hand (see [3.8](#3-8-when-the-same-guest-appears-twice)).
 
-**Three things it will not do.** It will not merge two inquiries from the same
-person for *different* dates, *different* packages or *different* boats. It will not touch an
-inquiry you have already booked, lapsed or cancelled — if somebody asks again
-after a cancellation, that is new intent and gets its own row. And an inquiry
-with **no date** is never deduplicated, because there is nothing to identify it
-by, and wrongly merging two "someday" inquiries loses a real lead — which is
-much worse than a duplicate you delete.
+## 2.3 How prices are worked out
 
-## Where they came from, and how they paid
+**Every price lives in the database, in Setup → Packages & pricing.** The website, the payment page and the checkout all compute from it. A price written anywhere else, such as a flyer or an old price card, is only a copy.
 
-**These are two different questions and the books used to answer them in one
-column.** A guest can find you on Instagram and hand you cash. They can come
-through the website and pay by Venmo. Boatsetter and GetMyBoat always pay the
-same way — a payout straight to the bank — but everything else is free to
-combine however it likes.
+Each package is priced one of four ways:
 
-| | Says | Lives on |
-|---|---|---|
-| **Lead source** | where the guest came from | the booking |
-| **How paid** | how the money arrived | the booking |
-| **Ledger origin** | how the money arrived | each income or expense row |
-
-The ledger's origin had been doing both jobs, so income was filed under
-**Instagram** ($775), **Friends** ($928.06), **Yolo Lake Conroe** ($2,400) and
-**Website** — none of which is a way of paying. Worse, the income dropdown
-offered only sources, so there was *literally no way* to record that a charter
-was paid in cash. Both dropdowns are now built from the payment-method list, so
-one cannot gain an option the other lacks.
-
-Corrected 13 September 2026, across 24 rows. Totals did not move — this changed
-what the money is filed under, never how much of it there is.
-
-**Cash App is not Cash.** It leaves a statement that can be reconciled and can
-charge a fee; cash in a hand does neither, and the whole point of the field is
-telling those apart. It files to the ledger as *Cash App Statement*, the
-spelling your expense rows already used.
-
-**One charter can be paid two ways.** Rheya Palmer bought two hours by card and
-topped up to three by Venmo; Nagdy's extra hour came by Zelle on top of a
-Boatsetter payout. The booking's *How paid* holds the principal method and each
-actual payment is its own ledger row, so the books can still say how every
-dollar arrived.
-
-**One thing spelled two ways is two things.** The expense side carried
-"Gmail" and "Gmail Statement" for the same email receipts, and "T-Mobile"
-and "Tmobile Statement" for the same phone bill — four totals split in half,
-with neither figure the real one. Merged 13 September 2026; the totals did not
-move, because renaming money never should.
-
-Two origins were carrying a *detail* rather than a method — which bank a Venmo
-came out of, who the cash went to. Those moved into the note, where they are
-still readable, instead of splitting a total.
-
-The morning check now watches for both faults: an origin the console cannot
-display (which would silently refile a row the next time you edited it) and the
-same origin spelled more than one way.
-
-### When somebody tries to pay and it does not work
-
-Sarah Griffith tried to pay $100 for two glow seats at **10:47pm on 12
-September** and her bank declined it for insufficient funds. Her row read
-**new / unpaid** — true, and exactly what it read before she ever opened the
-link. The webhook only listened for success, so the attempt existed nowhere but
-in Stripe's own dashboard. It was found because you went and looked.
-
-A guest who tried and was stopped by her bank needs *"your seats are still
-there, try another card"*. A guest who never opened the link needs a nudge.
-Those are opposite messages, and until now both looked the same on screen.
-
-So a declined payment is now recorded on the booking and shows in the Bookings
-list as **⚠ TRIED TO PAY — DECLINED**, with the reason and the time on hover.
-You also get one email naming what to say.
-
-**Nothing is sent to the guest automatically.** Stripe already told them on the
-spot, in their bank's own words, and an automatic second message from us an hour
-later only causes the phone call. What you get instead is a **Text** button on
-the row, which opens your own messaging app with the words already written — you
-send it, from your phone, when you choose to.
-
-That text leads with *your spot is still held* and **never says why the card was
-declined**. We know the reason and the guest does not need it from us; "your
-bank said insufficient funds" is a humiliating thing to receive from a boat
-company, and it is their bank's business, not ours.
-
-Every guest text now ends by saying a real person is on the other end and they
-can reply — because they can, and a number that looks automated gets no answer
-when you actually need one.
-
-**Nothing is cancelled and no seat is released.** A Stripe checkout link stays
-open for 24 hours, so most of the time the link they already have still works —
-the email tells you whether it does, by its real expiry rather than by
-assumption. Cancelling on a decline would turn a retryable moment into a lost
-booking.
-
-**It says when the fault is ours.** An expired API key or an amount Stripe will
-not take is not something a guest can retry their way out of, and that email
-arrives as **PAYMENT BROKEN OUR END** instead. An unrecognised decline code is
-passed through in Stripe's own words and flagged as not understood rather than
-being softened into "their card didn't work" — which could otherwise hide a
-fault of ours while somebody sits there unable to pay.
-
-The badge clears itself the moment a payment succeeds, so a paid booking never
-wears an old decline.
-
-## A charter that was paid for and never happened
-
-Weather, a breakdown, a guest who cannot make it. They have paid, the day is gone,
-and no new date has been agreed. That booking is **owed** — a status added on
-5 September 2026 because there was no honest word for it.
-
-It is not *cancelled*. Cancelled means money went out or is going out and the
-relationship is finished. Owed means the opposite: their money is still here, they
-still want to go, and the business owes them a boat. Christian Gehring sat marked
-cancelled for two months for want of this distinction, and nothing ever put him on
-a list.
-
-What the status changes:
-
-- **It does not hold the day.** An owed charter has no date, so it blocks nothing
-  on the availability calendar. This is the one status where a real booking with
-  real money behind it occupies no day at all.
-- **It counts as active.** It shows under the Active filter on the bookings table,
-  in amber, because it is work outstanding rather than history.
-- **It is not a cancellation** in any count, so conversion figures stop being
-  wrong in the business's favour.
-- **Pearl reports it every morning** until it is settled. If there is no phone or
-  email on the row she raises it as urgent, because a charter that cannot be
-  rescheduled is money owed forever.
-- **Money can still be attached to it** in the ledger. The payment is real.
-
-When they pick a date, set it back to **booked**. Owed is a waiting room, not a
-destination. The standing rule when you contact them is to offer a weekend, not a
-refund — if they want the money back they will ask.
-
-## A charter that was refunded
-
-**Refunded** is the seventh status, added on 1 October 2026 at your request: *"We
-need to have a refunded status if that ever happens."* It closes what
-**cancelled** leaves open. Cancelled says a repayment may be owed; refunded says
-it has been made and nothing is owed either way.
-
-- **A full refund made in Stripe sets it on its own.** The booking is marked
-  refunded, its payment shows refunded, and you get an email saying so.
-- **A partial refund leaves the status alone.** The amount is recorded on the
-  booking and you get the same email.
-- **A cash, Zelle or other refund is set by hand** from the status dropdown.
-- It holds no day, no seat and no income, and it is never an owed charter.
-- If the charter had already been marked **completed**, its income row is still
-  on the books: the email says so, and the row has to be corrected by hand.
-
-**Stripe has to be told to send refunds.** The webhook only hears about a refund
-if, in the Stripe dashboard under Developers → Webhooks, the site's endpoint is
-subscribed to the event `charge.refunded`. Without it, mark refunds by hand.
-
-### Where to see them: Overview → Guests → "Charters we owe"
-
-Each one shows the guest, what you are holding, how long it has been, and which
-boat. Three buttons:
-
-- **Text it** — opens your phone's messaging app with the message already
-  written. On a desktop it says *"phone only"* and refuses, because a desktop has
-  nothing to hand an `sms:` link to and a message you think you sent is worse
-  than one you know you didn't.
-- **Preview** — shows the exact wording, with **Copy** underneath for sending it
-  another way.
-- **Email** — only appears when there is an email on file.
-
-The wording is not editable, on purpose. None of the drafts mention a refund and
-none of them apologise at length, because opening with *"do you want your money
-back?"* invites the answer that ends the relationship when what the guest wanted
-was to go boating.
-
-The section is **not there at all** when nobody is owed. That is the normal state.
-
-## When a charter's money can't be found
-
-The Overview also says *"N income rows are not tied to a charter."* That is not
-the same as money going missing, and the difference matters more than the number:
-
-- **Unlinked** — the money is on the books, but nothing joins it to the charter,
-  so anything asked from the booking's side answers "no money". **Fix the link.
-  Do not add a row.**
-- **Missing** — nothing in the ledger matches it at all. Find out what happened,
-  then write one.
-
-Adding an income row for money that was already recorded **doubles it on your tax
-report**. Christian Gehring's $520 looked missing for exactly this reason: the
-Zelle row had been there since 9 June and simply wasn't tied to his booking.
-
-Pearl's morning check now reports this, and says which of the two it is rather
-than leaving you to guess. Some unlinked income is perfectly correct and always
-will be — the May 2026 Glow Party seats are real income with no booking to attach
-to.
-
-## Booking numbers never change
-
-Every booking is `NY-YYYYMMDD-NN`. The date inside it is the date the charter was
-**first booked for**, not where it ended up, and the `NN` is just the order it was
-taken that day.
-
-So when a charter is rescheduled, **the booking number stays exactly as it is** and
-the date column moves instead. That is deliberate: the number is what a guest
-quotes on the phone, what the ledger points at, and what an old email says. A
-number that moves is a number that stops matching the paperwork.
-
-There was one exception, made once, on 5 September 2026: `NY-20260711-GEHRING` was
-written by hand and ended in a surname instead of a number. It became
-`NY-20260711-02`, with its ledger entries moved in the same transaction. That was a
-one-off correction to an id that never conformed — not a precedent.
-
-## Availability
-
-Block days per vessel. A day with bookings that do not fill it shows as partially
-booked, calculated from the summed hours of that day's charters.
-
-**A partly-booked day now says *when* it is taken.** A guest complained on
-8 September 2026 that clicking a date told him it was partially booked and
-nothing more — which hid the one fact that decides whether he can still come.
-The day now reads its windows: `7–11pm`, `10am–2pm`.
-
-The information was always there; the calendar was throwing it away and keeping
-only the total hours, because all it needed to answer was whether the day was
-full.
-
-A booking with no start time on record is left out rather than guessed at.
-Twelve of the forty-two are like that — mostly older ones taken by text — and an
-invented window would be worse than a vague one, because a wrong time is
-something a guest will act on.
-
-**A booking you confirm by text now blocks its date.** Until 5 September 2026 the
-public calendar only knew about charters paid for by card, because the Stripe
-webhook was the only thing that wrote a diary entry. Anything you took over the
-phone and marked **booked** left the day still on sale — you could have sold it
-twice. Marking an inquiry booked is now enough.
-
-Nothing else changed: an inquiry still blocks nothing, and a charter paid by card
-is counted once rather than twice even though it exists in both lists.
-
-**The server now checks the boat is free** (1 October 2026, your words: *"We need
-to check for availability when a guest books or pays"*). Until then the calendar
-only displayed availability: the date box on the booking form accepted any day,
-and two guests could have paid for the same boat on the same day. Now:
-
-- **When a guest books** (either button on the form), the boat's day must not be
-  blocked and must have the hours they asked for left. A day holds eight hours,
-  the same figure that turns a calendar square from partial to full. If it does
-  not fit, the guest is told on the spot how many hours are left.
-- **When a payment link is opened** for a booking that does not yet hold its day,
-  the same check runs. A booking you have already marked booked is yours and is
-  not re-checked.
-- **While a guest is on Stripe's payment page** their boat and hours are held for
-  35 minutes, and the page itself expires after 30, so a second guest cannot slip
-  in behind them.
-- **When the money arrives** it is checked once more. If two guests got through
-  at the same instant, the second is marked paid but **not booked**, is sent no
-  confirmation, and you get an email headed **ACTION** telling you to move them
-  or refund them.
-- On a glow night the question is seats, not hours: a party bigger than the
-  seats available is refused.
-
-A booking you add yourself in the console is not checked. That is your call.
-
----
-
-# Money
-
-## Income & expenses
-
-Every dollar in or out. The form on the left adds an entry: Income or Expense, a
-category, an amount, a date, and for income the origin it came from. Linking an
-entry to a booking makes it appear in that booking's profit.
-
-Below the list: breakdowns by category, profit per booking, and commission lost to
-the platforms.
-
-## What is actually in the bank
-
-The ledger answers *did we make money*. It does not answer *will Thursday's bill
-clear*, and those are genuinely different questions — on 31 August 2026 the
-season was in profit while the business account sat at **minus $11.36** with two
-rejected Optimum payments against it.
-
-So the Money card on the Overview now opens with the account balance.
-
-**It is a reading, not a live figure.** Nothing here is connected to Woodforest.
-Somebody reads the app and records what it said, with the date it said it. The
-age is shown beside the number for exactly that reason — `today`, `1d ago` — and
-past a week it turns amber, because a stale balance read as current is worse
-than no balance at all. The colour of the figure itself is the money: green,
-amber below $250, red if it is negative.
-
-**Readings are never edited.** A figure that was wrong is corrected by recording
-a newer one; the old reading stays. That is the whole reason for keeping
-readings rather than one number that gets overwritten — the 31 August overdraft
-is only visible because it was kept, and a balance history that begins at a
-healthy number hides the month that went wrong.
-
-Two are on file, both taken from the same screenshot on 16 September 2026:
-
-| As of | Balance | |
-|---|---|---|
-| 16 September 2026 | **$934.30** | after the $824.70 transfer in on the 14th, and the $45.32 Optimum payment out the same day |
-| 31 August 2026 | **−$11.36** | overdrawn. A $12.00 service charge took it under; the Optimum payment had been rejected twice, on 12 and 18 August, and did not clear until 14 September |
-
-### Wells Fargo is being retired
-
-Your decision, 16 September 2026: **the business pays from Woodforest now.**
-
-Filing an expense against *Wells Fargo Statement* dated on or after that day
-raises a warning under the origin dropdown. It does **not** stop you. If the
-money really did come out of Wells Fargo, file it truthfully — the warning's job
-is to remind you to go and move whatever is still charging that account.
-
-Rows dated before the cutover are ordinary history and say nothing. There are
-171 of them going back to June 2025 and every one is correct.
-
-**The morning check watches the same thing from the other side.** The warning
-only covers rows you file by hand. A statement import, an agent recording a
-cost, or an autopay you have forgotten is still pointed at the old account never
-touches that form — and those are the ones that matter, because nobody chose
-them. The check reports and does not block: moving direct debits takes weeks,
-and a checker that shouted about a cable bill would be turned off by Thursday.
-
-As of 16 September nothing has been paid from Wells Fargo since the decision.
-The newest row on it is 25 August.
-
-## Reconciliation
-
-Answers one question per booking — is this charter's money actually on the books?
-Matching is on the real foreign key between a booking and its ledger rows, not on
-date and amount.
-
-**Boatsetter pays in two legs**, the boat and the captain fee, often days apart.
-Two income rows against one charter is normal, not a duplicate.
-
-## Tax Report
-
-Pick a year, then choose what to **Show**: income and expenses, income only, or
-expenses only. That choice drives the screen **and both downloads** — picking
-"expenses only" and exporting gives you a file with no bookings in it. Net profit
-only appears when both sides are showing, because next to one side alone it would
-read income as profit.
-
-**Download PDF** writes a clean, printable summary — totals, the breakdowns and
-every entry — and opens your browser's save-as-PDF. **Download CSV** gives the
-same rows as a spreadsheet. Both follow the Show choice.
-
-**The subscriptions figure is business only.** Until 23 September it counted every
-subscription, personal ones included — about $1,584 a year of Netflix, Hulu,
-Spotify and the like, inside a number a bookkeeper reads as a business cost.
-Personal subscriptions are now left out of it, and the PDF says so.
-
-**Money held for a charter that never ran is not counted as income**, in this
-report or in "Season in" on the Overview. It is a deposit against a trip that has
-not happened — if the guest asks for it back, it goes back — so it becomes income
-in the year the charter actually sails.
-
-It is never just removed. Both places name the excluded amount, because your bank
-statement will show that money arriving and the two figures have to be
-reconcilable. The Overview shows it as **"Held, not earned"**; the Tax Report
-shows an amber note above the totals saying how much and why. Anyone marked
-**Owed** in Bookings is where it comes from.
-
-Income is split **by vessel** and **by origin** rather than by category — every
-reservation is logged under the single category "Reservation", so a by-category
-panel would be one row totalling everything.
-
-It also shows **average per charter** and **average per hour**, which are the two
-numbers pricing actually turns on. These come from bookings rather than ledger
-rows, because a Boatsetter charter produces two income rows and counting rows
-would halve the apparent value of a trip.
-
-If income has no vessel recorded, an amber note says how much. That is a prompt to
-fill it in, not a rounding error.
-
-## Gift certificates
-
-Certificates bought from the public site, and what has been redeemed against
-them. The tab sits under **Money** because that is what one is: money taken now
-for a charter owed later.
-
-Each shows its code, who bought it, the face value, what is left on it, and its
-state. A certificate that has been paid for and not yet redeemed is a
-**liability** — the money is in the account but the trip has not been given. It
-is the same shape as a charter someone paid for and never took, and it should be
-read the same way.
-
-**Guests redeem one themselves** (since 1 October 2026; your words: *"We
-definitely have to fix the gift certificates"*). The booking form has a gift
-certificate box beside the coupon box, and every payment page you text has a
-**Have a gift certificate?** link. The balance comes off the total; it is spent
-only once the rest is paid, or straight away when it covers everything. A code
-given on the form travels with the inquiry: you see it in the inquiry email, and
-the payment link fills it in. Partial redemptions leave the remainder on the
-certificate.
-
-**When one is bought**, it is emailed to the buyer and, when they give it, to the
-person it is for. You get one notice with the code, the value and who it reached.
-Before this, the person it was for was never emailed, and your notice came twice
-with a dash where the amount should be.
-
-**They do not expire on their own.** Nothing in this system voids one for age,
-so an old certificate is still owed unless you decide otherwise — and that is a
-decision to make deliberately, not to discover when someone turns up with it.
-
-## Subscriptions & bills
-
-Every recurring cost the business carries, normalised to a monthly figure so
-weekly, monthly and yearly items can be summed.
-
-It used to hold software and boat storage only. On 13 September 2026 the
-household accounts moved in beside them — electricity, gas, water, sewer, trash,
-phone, internet, storage — because the office is at home and a bill you never
-recorded is a deduction you never claimed. Bringing them in recovered
-**$2,451.56** of payments that had been made and never entered anywhere.
-
-### The four columns that decide what a bill is worth
-
-**Where** — which address it belongs to. The move in April 2026 means most
-services have one account at each, and several of the old ones ran on for
-months afterwards. Two live accounts with the same supplier usually means the
-old one was never closed, and the tab says so out loud when it sees one.
-
-**Amount** — and **blank is not zero**. Blank means nobody has found out what it
-costs yet; `0` means it is confirmed free. The two look identical in a total and
-mean opposite things, so they are stored differently and shown differently: a
-blank amount is listed by name under the totals as an open question, and adds
-nothing until somebody answers it. Supabase and Vercel really are free. Microsoft
-and ElevenLabs simply have not been looked up.
-
-**Business %** — how much of that bill is the business's, and **blank means
-nobody has decided**. It is not zero. A bill with no share set stays out of the
-deductible total entirely rather than being guessed at in either direction.
-
-**Ended** — the date the account closed. Setting it is what closes an account;
-`Active` follows it automatically, so a closed bill can never keep counting
-toward the monthly total because two fields disagreed.
-
-### The two totals, and why they differ
-
-The first is what leaves the bank every month. The second is **the business's
-share of it** — the only figure that belongs on a tax return.
-
-Boat storage and software are 100%. Whole-home utilities are a proportion: the
-office is a 10 × 10 room in a 1,900 sq ft home, which by floor area is **5.26%**.
-You chose to claim **10%**. Both numbers are written into every bill's note on
-purpose, because a percentage in a tax record is only worth the basis somebody
-can point at a year later, and an accountant should see the measurement as well
-as the figure claimed.
-
-Three bills are not apportioned by floor area, because floor area is the wrong
-test for them: T-Mobile (a business account in the LLC's name, 13 lines),
-Optimum and AT&T. Those are set to 100% on your instruction. The note on each
-records that the 100% is your account of how the line is used and is not
-something the bill itself establishes — which is exactly what an accountant will
-ask about first.
-
-### Personal subscriptions, and why they are here at all
-
-Netflix, Hulu, Spotify, Xbox Game Pass, the car note, renters insurance. You
-wanted one place to see everything you pay for monthly so duplicates and waste
-could be found across the lot — and the very first look found two identical
-Google One subscriptions on two different Google accounts.
-
-**They are counted nowhere near the business.** Not at 0%, which would still put
-Netflix inside the monthly cost and merely leave it out of the deductible half.
-The split happens before any arithmetic: personal rows have their own line with
-their own total, they never enter the business figures, and they are stripped out
-of the subscriptions CSV that the Tax Report exports for a bookkeeper.
-
-The **Side** button on each row moves a bill between the two. It is a button
-rather than a fixed property because the answer can genuinely change — Meta One
-Advanced looked personal until its billing screen showed it subscribed to The
-Nauti Yachti page, at which point it was a marketing cost.
-
-### Grouped, and folded shut
-
-Thirty-odd rows in one run is a wall, not a list. Bills sit under their category
-— Utilities, Storage, Software, Hosting, Other, then Personal last — and every
-heading carries that group's own count, monthly total, business share, how many
-have no amount yet and how many are closed.
-
-**Groups start closed.** Click a heading to open it. Inside a group the biggest
-bill sorts first, because that is the one worth arguing about, and anything
-unpriced sinks to the bottom where it reads as a question rather than as a cheap
-item.
-
-### The calendar
-
-A total says how much. It does not say how much *this week*, which is the
-question you actually ask when deciding whether something can be paid now. The
-calendar draws the month, with each bill on the day it lands.
-
-**It will not pretend.** Only the bills whose due date came off a receipt are on
-it; the rest are named underneath as bills it cannot place. An empty Tuesday has
-to mean nothing is due on Tuesday, not that nobody has looked. A monthly bill
-repeats on its day and is drawn every month; a yearly one appears only in the
-month it actually falls, because spreading Peacock across twelve squares would
-turn one $79.99 charge into an imagined $960.
-
-It earns its place immediately: Blotato, Claude Max and ElevenLabs all fall due
-on the 28th — $159.53 in one morning, which no list sorted by name would show
-you.
-
-### On a phone
-
-The table stacks into one card per bill, each row labelled by the column it
-lost. Nothing scrolls sideways, and the calendar scrolls inside its own box
-rather than widening the page.
-
----
-
-# Marketing
-
-## Media
-
-The public gallery, grouped by package — bachelor, birthday, corporate, glowz,
-night, partycove, tubing. Grouping makes it obvious which package is thin.
-
-Captions edit in place. **+ Add** adds a tile to that category.
-
-New images belong in the site's `public/gallery/` folder and are referenced as
-`/gallery/name.jpg`. They are then served from our own repository. Most of the
-older tiles still point at BrandCrowd, a logo-design service — if that account
-ever lapses, those images disappear, which is why new ones go in our own folder.
-
-## Media Drafts
-
-Every post Coral has drafted, laid out as cards and boxed by the day it goes
-out. Two days side by side, soonest first.
-
-### On a card
-
-- The photo or clip it goes out with, or **No media attached** with a link to
-  add one. Instagram and TikTok refuse a post without one, so a scheduled card
-  showing that warning will fail on the day.
-- The caption in full, so you are approving the words against the picture.
-- The platform and when it goes out.
-- **I posted it myself** · **Don't post**
-
-Posted, denied and past drafts sit in a collapsed group above the days —
-a record, not a to-do list.
-
-### What goes out on its own, and what does not
-
-**A post marked SCHEDULED will publish by itself.** Siren runs each morning and
-puts out whatever is due that day. Giving a draft a date *is* the permission to
-post it, so she does not ask again — there is no second confirmation, and no
-message the morning it happens.
-
-**Approving a post that already has a date is the same permission.** Siren puts
-those on the schedule herself at the start of each run, then publishes them when
-their time comes. You do not have to press anything a second time.
-
-That was not always true, and it cost a post. On 12 September 2026 the Facebook
-copy of a Boatz & Glowz post went out at its 10:30 slot and the Instagram and
-TikTok copies of the same post did not — identical date, identical time, and
-those two were sitting at APPROVED rather than SCHEDULED. Nothing errored and
-nothing logged it; it was spotted by looking at the feed.
-
-Permission still stops there. Nothing else is ever published: not a draft Coral
-has proposed, not one you have approved **without a date**, and not one you have
-rejected.
-
-So the queue is safe to leave alone **until a post's date arrives**. Up to that
-morning you have as long as you like to read it. Once the date is today, the
-next thing to touch it is Siren.
-
-To stop one, press **Don't post**. That is the only thing that takes it out of
-her way.
-
-### Saying what is wrong with a post
-
-**Discuss** is on every card, at every stage — including after it is scheduled,
-which is exactly when "not that clip" tends to get noticed. It replaced
-**Preview** on 8 September 2026, which showed the caption and the media a second
-time underneath the ones already on the card, and so cost a click to learn
-nothing.
-
-Pick what is wrong from the list, then say whether the post survives it:
-
-| Reason | Means |
+| Pricing type | How the price is found |
 |---|---|
-| **Wrong photo or clip** | It does not match the post — wrong guest, wrong trip, wrong thing happening |
-| **Find a better one** | Right footage, weak shot. There is better in the same folder |
-| **Caption needs work** | Wording, tone, hashtags or a wrong detail |
-| **Wrong day or time** | Right post, wrong slot |
-| **Too similar to another post** | Same clip, angle or message as something already queued |
-| **Guest or privacy problem** | Someone in it should not be, or it names the wrong guest |
-| **Not right for us** | Wrong message for the business, whatever the media |
-| **Something else** | Say what in the note |
+| **Hourly by vessel** | a grid per boat: hours × weekday or weekend. Saturday and Sunday are the weekend; holidays are not treated specially. |
+| **Per guest** | party size × price per guest. Used for seat-sale events. |
+| **Tiered by guests** | one flat price for the size band the party falls in |
+| **Flat** | one price |
 
-**Wrong photo or clip** and **Find a better one** are deliberately separate.
-Wrong means find the *right* one, and sends whoever picks the replacement to a
-different folder; better means find a *stronger* one, usually from the same
-shoot. Both offer **Swap the media now** so you can replace it without leaving
-the card.
+If a combination has no price (a boat or a number of hours missing from the grid), the site **refuses** rather than quoting $0.
 
-Then either:
+**The server re-prices every checkout.** If the server's price is higher than what the guest's screen showed, the checkout stops with a "the price changed" message. If it is lower, the lower price is charged.
 
-- **Keep it — send back for changes.** The post stays in the queue and moves to
-  *Needs work*.
-- **Don't post it at all.** It moves to *Rejected*.
+### Add-ons
 
-**Neither of these deletes anything.** Rejected is not gone: **Back to review**
-brings it straight back. Deleting is a separate button that only appears on a
-rejected card, behind a confirm. The note is optional — "wrong clip" is already
-a complete answer.
+Extras a guest can add. Which ones come free with which package, and their prices, are set in **Setup → Add-ons** and in `lib/addOns.js`, which is the single source for the form, the quote and the FAQ. This installation's list is in [Appendix C](#appendix-c-this-installation-the-nauti-yachti).
 
-### Why the reason is a fixed list
+- A bundle that contains other add-ons is never charged twice for what it contains.
+- **A per-guest event takes no add-ons at all.** There is no table to decorate for one seat on a shared boat, so the form hides them and the server ignores them.
+- A charter with no stated occasion is the default package, not a guess. See Appendix C.
 
-A rejected post used to record nothing at all. It vanished from the queue and
-the reason lived only in your head, so the same mistake could be proposed again
-the following week and nothing could count how often that happened.
+### Coupons
 
-The list is short and fixed because the point is counting. *"Six of the last ten
-were killed for the wrong clip"* is a fact that changes what Coral does next
-week; ten sentences roughly saying that are not. The free-text note still
-exists — the two are written together, and both show on the card afterwards,
-including on rejected posts, so a post you killed still says why when you come
-back to it.
+Codes are made in **Setup → Coupons**: a percentage or a fixed amount off, with an optional end date, usage limit, and "returning guests only".
 
-### "I posted it myself"
+- A code is checked when the guest checks out. A code that is unknown, inactive, expired or used up is **silently ignored** and the full price is charged.
+- "Returning guests only" means the email must match an earlier paid booking.
+- A discount never takes the price below zero.
 
-This button used to say **Mark posted**, which did not explain when to use it.
-For anything Siren publishes you never touch it — she marks her own as posted
-and records the live URL. It is only for posts that go out by hand, which is
-still most of TikTok.
+**Known limit:** a use is counted when the checkout **starts**, not when the guest pays, so an abandoned checkout still uses one. Watch the count on a code with a small limit.
 
-### What each account will actually take
+### Gift certificates at checkout
 
-| | photo | video |
+A guest can enter a gift certificate code in two places: the booking form, beside the coupon box, and the payment page you text them, under **Have a gift certificate?**. The code is checked as they type it and the balance is shown.
+
+- The certificate is applied **after** any coupon, against whatever is still owed.
+- It is **spent only once the rest is paid**, so an abandoned checkout never uses it. When it covers the whole charter there is nothing for the card to pay, so it is spent at once, the booking is marked paid by gift certificate, and the guest gets their confirmation.
+- A code given with a plain inquiry is kept on the inquiry, shown in your inquiry email, and filled in on the payment page when you send the link. It is not spent until they pay.
+
+See [4.6](#4-6-gift-certificates).
+
+## 2.4 What happens when a guest pays
+
+1. The guest pays on Stripe's page. Stripe collects their phone and their acceptance of the terms.
+2. Stripe tells the site. The site checks once more that the boat is still free (see [2.7](#2-7-the-availability-check)), then marks the inquiry **booked** and **paid**, records the payment method as card, and saves the phone, email and terms acceptance.
+3. It creates the matching row in **Bookings**, with the same booking number. That row is what blocks the date on the calendar.
+4. It emails the guest their confirmation, with you copied, and records that it was sent.
+
+**No income is written at payment.** Income is written when the charter is marked **completed** (see [3.11](#3-11-completing-a-charter)), so money for a trip that has not happened is never counted as earned.
+
+### When a payment is declined
+
+If the guest's bank refuses the card, the booking is marked **payment failed** with the reason and the time, and **you** get an email. The guest is not emailed by the site: Stripe already told them on the spot. The booking is not cancelled and the seat is not released, because a Stripe payment link stays usable for a day and most declines are retried.
+
+On the booking you get a **Text** button whose message says the seat is still held and **never says why** the card was declined. The badge clears itself when a payment succeeds. A fault that is the business's (an expired key, an amount Stripe refuses) arrives as **PAYMENT BROKEN OUR END** instead.
+
+## 2.5 The emails the site sends
+
+| When | The guest gets | You get |
 |---|---|---|
-| **Facebook** | yes | yes — publishes as a **Reel** |
-| **Instagram** | yes — feed only | yes |
-| **TikTok** | **no** | yes |
+| an inquiry is sent | an acknowledgement | the inquiry, or **Updated inquiry** for a changed duplicate |
+| a checkout starts | an acknowledgement | the inquiry |
+| a payment succeeds | the booking confirmation | a copy of it |
+| a card is declined | nothing from the site | a notice saying what to send |
+| someone joins the crew list | a welcome, with how to unsubscribe | a copy, and a signup notice |
+| a gift certificate is bought | the certificate and how to use it; so does the person it is for, when the buyer gives their email | one notice: the code, the value and who it reached |
+| a guest paid for a boat that was already taken | nothing from the site | an **ACTION** email: move them or refund them |
+| a refund goes through on Stripe | nothing from the site | a notice of what was recorded |
 
-**TikTok is the only one that refuses a still.** Instagram took stills from
-21 September; before that it did not, and older notes say otherwise.
+**The confirmation tells the guest where to go and when.** The meeting point is chosen by package first, then by boat: an event with its own meeting point uses it for every boat; otherwise each boat's own dock address is used. A boat with no address set is never given another boat's. Its guest is told the meeting point is coming, which costs one text and cannot send anyone to the wrong shore. **The dock gate code is never emailed**, because emails are forwarded and kept forever. It goes by text on the morning (see [8.3](#8-3-arriving-guests-and-the-gate-code)).
 
-### Every post goes to the feed and the Story
+**Automatic emails sign as the business.** Texts you send from your own phone carry your name.
 
-**You are not asked to choose.** A post goes to the feed and to the Story on every
-platform that has one. TikTok has no Stories, so it gets the feed post only.
+If confirmations ever stop arriving, see [Troubleshooting](#part-10-troubleshooting).
 
-**A Story needs a video.** A still still goes to the feed; it just does not get a
-Story. And **Facebook refuses any Story video that is not upright (9:16)** — the
-feed post still goes out, and Siren notes the Story that did not. When that
-happens Blotato emails *"your post has failed to publish"*, which reads as though
-the whole post died. It has not; check the feed before worrying.
+**Known limit:** no email goes out when a booking's status changes, when a charter completes, or for photo requests and guest uploads.
 
-### Every Instagram post tags your personal account
+## 2.6 Seat-sale events
 
-Instagram posts carry a **Collaborator** tag on `austinhefty` and
-`brookeashley_05_`. A collab is not a repost: Instagram puts the one post on all
-three profiles' feeds and grids, and the likes and comments pool rather than
-splitting across separate copies.
+A seat-sale event is a package priced **per guest** with a fixed date: one night, many parties, each buying seats on a shared fleet. This installation has one, described in [Appendix C](#appendix-c-this-installation-the-nauti-yachti).
 
-You each get a notification to accept, once per post. Nothing fails if you don't
-— the post publishes to the business account regardless and simply doesn't appear
-on your profile.
+**Seats are counted, never typed in.** The count reads every booking on the night, in both tables, each charter once:
 
-Instagram caps this at **three** collaborators, so there is room for one more.
-The list lives in `lib/socialPosting.js`, not in an agent's brief, so it cannot
-be forgotten on a run.
-
-**There is no equivalent on the other platforms, and there cannot be.** Meta
-removed the ability for apps to post to personal Facebook profiles in 2018, and
-TikTok's API writes only to the authorised account. Snapchat has no organic
-posting API at all and is not a platform the publisher supports. On those three,
-sharing to your own **personal** Story is a manual tap — and worth doing, because
-your Story reaches local friends who might book or refer. (The *business* Story
-now posts on its own; this is about your own profile.)
-
-### Five hashtags, never six
-
-Blotato rejects an Instagram post with more than five: *"Instagram allows a
-maximum of 5 hashtags per post."* It does not trim, warn or retry — the draft
-stays marked **scheduled** and looks perfectly healthy.
-
-The sober-captains video failed this way on 4 September 2026 and again on the
-5th with the caption untouched. On the 8th an audit found **seventeen of
-twenty-one** Instagram drafts over the limit at once — the better part of a
-fortnight of Instagram silently not posting, with nothing to say so until each
-day came and went.
-
-The limit is now applied to every platform, because nothing this business has
-ever published carried more than five on any account, and a dropped generic
-hashtag costs less than a post that never goes out. `drafts.js --check` reports
-any caption over five as **T1**.
-
-### Where a clip came from
-
-Every draft cut since 8 September 2026 records its source in the photo hint —
-which charter folder, which file, which second of it.
-
-That exists because of a real confusion: a night-cruise clip was read as coming
-from one guest's folder when it was another's, and nothing on the card said
-otherwise. Older drafts whose media predates this are left blank rather than
-guessed at.
-
-### Approved with no date
-
-An approved post with no date **will never go out**, and that is the one gap
-still left on purpose. Approved with a date means "yes, and then" — Siren
-schedules those herself. Approved with NO date means you have said yes but not
-when, and nothing invents a date for you.
-
-Coral now proposes a date for each of these in her daily status, and raises one
-as a board item if it has been waiting more than three days. The Overview also
-flags them under **Needs attention**. Set the date with **Reschedule**.
-
-## Comments
-
-The queue of comments nobody has answered, from Facebook and Instagram.
-
-It exists because of one day. On 6 September 2026 a Boatz & Glowz post drew four
-comments challenging the operation — liability, life jackets, drink-driving,
-litter on the shoreline — and the first sat **twenty-three hours** before anyone
-saw it. The people reading a thread like that are the ones who never comment, and
-an unanswered accusation reads as conceded.
-
-A thread is colour-coded by how long it has waited: **fresh** under six hours,
-**waiting** past six, **overdue** past twenty-four.
-
-**Nothing here posts on its own.** Siren writes a suggested reply and it sits in
-the box; you can send it, edit it, or empty the box and write your own. A reply
-is public, immediate and attributed to the business — every other agent in this
-system proposes and you decide, and a comment thread composed in response to
-something hostile is the last place to break that.
-
-**Each comment shows the post it is on** — a thumbnail, the date and the start of
-the caption, linking to the live post. "Lube" on its own means nothing; under a
-tubing post it is plainly someone reaching for the word TUBE. A post you put up by
-hand from your phone has no record here, so its comments say **post not
-identified** rather than leaving the header blank.
-
-**"I answered this elsewhere" works on comments too**, exactly as it does on
-Messages below — for a reply typed in the Facebook app, which this screen cannot
-otherwise see. It sends nothing, and **put it back** undoes it.
-
-**Every reply leaves a record** — what was said, under which post, and whether you
-changed the suggested wording first. Meta Business Suite shows *that* a reply went
-out; this keeps the rest.
-
-There is also a classifier being built to decide which comments a machine could
-safely answer by itself. **It sends nothing today.** There is no sender switched
-on, and everything above — nothing here posts on its own — is still true.
-
-**TikTok comments are not here**, because the publishing API does not expose
-them. They remain a manual job in the TikTok app. Saying otherwise would leave
-you believing a channel was covered while nothing was watching it.
-
----
-
-## Messages
-
-The direct-message inbox, from Facebook and Instagram.
-
-**Nothing read these before it existed.** There was a comments tab and no
-messages tab, and not one of the scheduled crew had DMs in their brief — so a
-message arrived, sat there, and there was no point at which anybody found out.
-
-The first look at the real data found two unread messages from 7 September, a
-day and a half old, from the man who had posted publicly about litter on the
-shoreline. He was offering two of his own boats to help clean up after the glow
-party.
-
-It is built to the same shape as Comments on purpose. They answer the same
-question on different channels, and two panels that disagreed about what
-"waiting" means would be worse than one.
-
-**This is no longer true of sending, and that changed on 17 September 2026.**
-Nothing YOU see here sends on its own — but most DMs are answered by an
-automatic reply seconds after they arrive, before this tab is ever opened. See
-*Messages answer themselves* below.
-
----
-
-### "I answered this elsewhere"
-
-**The console cannot see a reply you typed in the Facebook app.** Blotato only
-knows about messages Blotato sent, so when you answer a DM from your phone —
-which is most of them — that reply never comes back to us. The thread keeps
-sitting there in red saying **never answered**, and it is wrong.
-
-It was wrong about two threads on 17 September 2026, one of them for ten days:
-the man offering two of his own boats for the shoreline cleanup had been
-answered the same week, and the console had no way to know.
-
-So each waiting thread carries a small **I answered this elsewhere** link under
-the reply box. Press it and the thread goes quiet: the red flag clears, the
-colour drops, and it stops counting toward the number on the Messages tab. The
-card then reads *answered by you*, with **put it back** if you pressed it on the
-wrong one.
-
-**It sends nothing.** It writes a note against that thread in our own database
-and touches no platform.
-
-**If they write again, it re-opens on its own.** The mark records *when* you
-dealt with it, not a permanent "done" — so anything they say afterwards puts the
-thread straight back in the queue with its flag. You never have to remember to
-un-mark it.
-
-**And it has no effect whatsoever on the automatic reply.** That fires inside
-Blotato the moment a message arrives and never reads our database, so their next
-question gets an instant answer whether or not you marked the thread. Nothing on
-this screen can switch that off — that switch is in Blotato, on automations 5989
-and 5988.
-
-### Messages answer themselves. Comments do not.
-
-Your decision, 17 September 2026, and it is the one place in this system where
-something goes out without you reading it first — so it is worth knowing exactly
-how far that goes.
-
-**The difference is the size of the audience.** A comment is published under the
-business's name to everyone reading the thread. A DM goes to one person and can
-be corrected in the next sentence. Speed is worth more in an inbox; caution is
-worth more in a thread.
-
-**No agent sends any of it.** The automatic reply is a Blotato automation, which
-is a platform feature rather than a crew member. Nothing Siren or anyone else
-runs sends a message to a person — that rule is intact.
-
-**What actually goes out.** Within seconds of a DM arriving, on any platform, at
-any hour:
-
-> Thanks for the message 🤙
->
-> Easiest way to get you sorted is a text — drop your number here and we'll send
-> you dates, prices and a link to lock it in.
->
-> Or have a look at the site below. A real person reads these, so ask away.
->
-> — The Nauti Yachti
-
-It asks for the number because a number turns a DM into a text thread, and the
-pay link goes by text. It is a fixed string: **it never quotes a price, a date
-or a seat count**, because it cannot know any of them.
-
-**It fires on keywords, and the list was nearly useless.** It held thirteen
-words — book, booking, price, prices, pricing, cost, available, availability,
-rent, rental, glow, tube, tubing. On 17 September a guest wrote *"Hey bub, you
-got any seats open for Saturday?"* and matched **none of them**: the single most
-common question this business gets, missed by one word. He sat for two hours and
-was found by eye, not by the system. It now holds forty, including seat, spot,
-room, space, open, the days of the week, "how much" and "what time".
-
-**The hazard, and what watches it.** A keyword match is blind. *"Your prices are
-a scam and I want a refund"* contains `price`, so the machine sends that person
-the packages link. Nothing stops it — the automation cannot read.
-
-So every waiting thread is now checked against a set of rules after the fact,
-and the Messages tab flags any the machine answered that it should not have, in
-red: **"Answered automatically, and should not have been"**, with the reason.
-Read what went out before you reply to one of those.
-
-**What is never the machine's to answer** — these always come to you, and they
-are the reasons you will see on a card:
-
-| Held because | Meaning |
+| Shown as | Counts |
 |---|---|
-| **safety** | someone may have been hurt, or something was damaged |
-| **legal** | lawyers, insurance, liability, a refund or a chargeback |
-| **complaint** | it reads as a grievance |
-| **money already moved** | it asks to change, refund or reschedule something paid for |
-| **solicitation** | a pitch, not a guest |
-| **NDA** | it touches the Lake Bryan charters |
-| **photographs** | somebody's picture, or a request to take one down |
+| **Confirmed** | booked or completed |
+| **Tentative** | an inquiry, a lapsed inquiry, an owed charter, or any status the system does not recognise |
+| **Available** | capacity, minus confirmed, minus tentative |
 
-Plus three structural ones: anything over 320 characters, anything asking more
-than two questions, and anything matching nothing the system can answer from its
-own data. That last is the important default — **an unrecognised message is not
-a safe message, it is a message nobody has understood.**
+Capacity is the event's boats, less one seat per boat for the captain. A cancelled booking holds nothing. The same numbers show on the event page, on the Events page and under the package in **Setup → Packages & pricing**, for example *12 confirmed · 18 tentative · 10 available*. The event page refreshes them every minute.
 
-A price question wrapped in a complaint is treated as a complaint.
+> **Why it works this way.** A tentative seat counts against capacity because promising a seat to a second person while the first has not paid is how somebody gets turned away at the ramp. Showing it separately says how much of the night is really settled. A lapsed inquiry keeps its seats until you cancel it, so cancel the ones you know are not coming, or they hold seats nobody will sit in.
 
-**Siren drafts the held ones.** Her reply appears in the box the same way it
-does on Comments, with her name on it, and you send it or type over it. If they
-write again before you get to it, the draft is marked stale and will not
-pre-fill — an answer to a question that has been overtaken is worse than an
-empty box.
+**Sales close by themselves once the night has passed**, at midnight lake time, and reopen only when the package is given its next date. While they are closed:
 
-## Asking for Google reviews
+- the event page says the next date is coming, and every button on it goes to the crew-list signup, which stays open between seasons;
+- the booking form does not offer the event, and an old link with `?package=` opens the home page without it;
+- the checkout and the inquiry route refuse it, so a page left open from before, or a hand-made request, cannot buy a seat.
 
-The panel at the top of **Testimonials** lists everyone who could be asked, with
-the freshest charter first.
+The server also refuses a seat-sale booking for any date other than the event's own.
 
-Four filters: **Still to ask**, **Already asked**, **Not asking**, and **Every
-charter** — which means every charter, archived ones included.
+**To reopen**, give the package its next date. Sales open the moment it is saved, so do not set a date before you want to sell seats.
+
+**Known limit:** the event date cannot be changed from the console yet. Ask Claude to set it.
+
+## 2.7 The availability check
+
+**The server checks that the boat is free, three times.** The calendar on the home page only shows availability; it does not stop anyone choosing a day. The check is what does.
+
+| When | What is checked |
+|---|---|
+| a guest presses either button on the booking form | the whole request |
+| a payment link is opened for a booking that does not yet hold its day | that booking, leaving itself out |
+| the money arrives | that booking again, as a backstop |
+
+**For a charter**, the boat's day must not be blocked, and it must have the hours asked for left. A day holds eight hours, the same figure that turns a calendar square from partial to full ([3.10](#3-10-availability-and-blocking-days)). **For a seat-sale event**, the party must fit the seats available ([2.6](#2-6-seat-sale-events)).
+
+**A guest on Stripe's payment page holds their boat.** For 35 minutes from the moment they press **Book & pay now**, their hours count against the day, and Stripe's page itself closes after 30. So a second guest cannot slip in behind somebody typing a card number. A plain inquiry holds nothing.
+
+**If the money arrives for a boat that is no longer free** (two guests at the same instant, or a booking you logged by hand while they were paying), the booking is marked **paid but not booked**, the guest is sent no confirmation, and you get an email headed **ACTION**. Call them: move them to another boat or date and mark it booked, or refund them in Stripe. The morning check keeps showing it until you do.
+
+**Not checked:** a booking you add in the console yourself, and a payment link for a booking you have already marked booked. Both are your decision.
+
+> **Why it works this way.** A website booking names a boat, a day and a number of hours, never a start time; you settle the time with the guest. So the server can only ask what the calendar asks: is the day blocked, and are the hours left? If the check itself cannot run, for example because the database does not answer, the booking goes through as it did before the check existed: refusing every guest because of a fault would cost more charters than it saves.
+
+# Part 3 — Bookings
+
+**Every reservation lives in Bookings → Bookings**, whatever it is (an inquiry, a confirmed trip or one that has sailed) and wherever it came from: the website, Boatsetter, GetMyBoat, a text, a phone call or the dock.
+
+## 3.1 The booking lifecycle
+
+A booking moves through a small set of statuses:
+
+```
+inquiry ──► booked ──► completed
+   │           │
+   ▼           ├──► owed ──► booked (when a new date is agreed)
+lapsed         └──► cancelled ──► refunded
+```
+
+| Status | Means | Blocks the date? |
+|---|---|---|
+| **inquiry** | someone asked; still live | no |
+| **lapsed** | never turned into a booking. Nothing went wrong. | no |
+| **booked** | confirmed and holding its date, paid or not | **yes** |
+| **owed** | they paid, the trip never happened, no new date yet | no |
+| **completed** | the charter ran | **yes** |
+| **cancelled** | it was a booking and is off; money may need to go back | no |
+| **refunded** | it was a booking, and the money has gone back. Nothing is owed either way. | no |
+
+**Refunded closes what cancelled leaves open.** A full refund made in Stripe sets it by itself and emails you; a cash, Zelle or other refund is set by hand. A **partial** refund leaves the status alone and records the amount on the booking. A booking can go straight from booked to refunded.
+
+On a website inquiry the first status reads **new** rather than inquiry; it means the same.
+
+**Payment is tracked separately from status**, so the Bookings tab shows both together:
+
+| Reads | Colour | Means |
+|---|---|---|
+| **Booked / paid** | green | settled; nothing to collect |
+| **Booked / no charge** | green | on board at no cost, such as crew riding free. Never counted as a sale. |
+| **Booked / unpaid** | blue | confirmed and holding the date; the money has not arrived. **This is the chase list.** |
+| **Booked / payment failed** | red | they tried to pay and the bank refused |
+| **Inquiry** | grey | asked, not booked |
+
+The words carry the meaning and the colour only reinforces them, so the screen reads the same in sunlight, in black and white, or to a colour-blind reader.
+
+## 3.2 Booking numbers
+
+Every booking gets a number like `NY-20261018-02`:
+
+- the date inside it is the date the charter was **first booked for**;
+- the last two digits are the order it was taken for that date, counted across every source.
+
+**A booking number never changes.** When a charter is rescheduled, the date column moves and the number stays. The number is what the guest quotes, what the ledger points at and what old emails say. A number that moved would stop matching the paperwork.
+
+**A number is never given out twice, not even after its booking is deleted.** Each day remembers the highest number it has ever issued, so deleting a booking retires its number rather than freeing it, and there can be gaps in a day's sequence. Two limits: a number deleted before October 2026 left no record, and two bookings created at the very same instant could still draw the same number. The second is a known, accepted limit: at this business's volume it is unlikely.
+
+A booking needs a date to get a number. A website booking and its mirror row share one number on purpose.
+
+## 3.3 The Bookings tab
+
+Add a booking with the form above the table. Each row shows the guest, the date and time, the boat, the **Package** (what decides the price, whether add-ons apply and where to meet), seats, price, status and payment.
+
+**On a phone** the table drops its middle columns and puts the essentials under the guest's name, for example *Glow night · 2 seats · $100*. A booking at no charge says *no charge*, not $0.
+
+**Each row carries the text it needs.** These open your phone's messaging app with the message written; they send nothing on their own, and on a computer they say so instead.
+
+| Button | Offered when |
+|---|---|
+| **Text payment link** | anyone who owes money and whose row has a package and a price |
+| **Text to confirm** | a lead with no price yet: asks them to confirm so you can price it |
+| **Text reminder** | a **paid** booking: the day, departure time and where to meet |
+| **Text about the declined card** | replaces the payment link while a card decline is on record |
+| **Text about owed** | a charter that was paid for and never sailed |
+
+Every guest text ends by saying a real person is on the other end and they can reply.
+
+## 3.4 Lead source, channel and how they paid
+
+Each booking answers three different questions:
+
+| Field | The question | Options |
+|---|---|---|
+| **Lead source** | Where did they find us? | Website · Text / WhatsApp · Phone · Walk-up · Instagram · Facebook · Repeat guest · Referral · Boatsetter · GetMyBoat · AI search · Other |
+| **Booking channel** | Who took and processed it? | Boatsetter · GetMyBoat · Website · Direct |
+| **How paid** | How did the money actually arrive? | Unpaid · Stripe (card) · Cash · Cash App · Zelle · Venmo · PayPal · Boatsetter payout · GetMyBoat payout · Gift certificate |
+
+**How paid is the one only you can answer.** A card payment through Stripe is recorded on its own; everything else has to be set by you, because nothing proves cash changed hands except you saying so. Left blank, the income row says so rather than guessing.
+
+## 3.5 Taking a booking that came in by text or phone
+
+Most bookings arrive by text, WhatsApp or phone. That is the biggest channel and the easiest to lose track of, so log it the moment it arrives.
+
+1. **Check three things against the live data:** the date is free for that boat, the boat seats the party (see [3.12](#3-12-capacity-counts-the-captain)), and the price matches **Setup → Packages & pricing**.
+2. **Log it** as an inquiry, either with the form on **Bookings → Bookings**, or by sending the message to Claude (a screenshot is enough), which logs it with a booking number and drafts your reply.
+3. **Reply** to what the guest actually asked, written fresh, not from a template. If they named no occasion, it is the default package.
+4. **When they say yes**, set it to **booked** and send **Text payment link**. The row needs a package and a price for the link to work.
+5. **When they pay**, the site marks it paid and sends the confirmation on its own (see [2.4](#2-4-what-happens-when-a-guest-pays)). If they pay another way, set **How paid** yourself.
+
+**Between "yes" and "paid", a booked row holds the date.** An inquiry does not. If a date is in demand and the guest has not committed, block it by hand (see [3.10](#3-10-availability-and-blocking-days)) and unblock it if they never pay.
+
+### From the command line
+
+The same thing in one step, priced the way the website would price it:
+
+```
+node scripts/add-booking.js --name "Guest Name" --phone "(555) 555-0100" \
+     --package <package id> --date 2026-10-18 --seats 4 --apply
+```
+
+- It previews until you add `--apply`.
+- `--amount` is a **total** that overrides the package price, for an agreed special rate. It never touches the public prices.
+- Without `--vessel`, the boat with the most room that day is chosen.
+- It refuses a name or number already booked on that date; add `--force` if it really is a second booking.
+
+## 3.6 Platform bookings: Boatsetter and GetMyBoat
+
+A platform booking is entered in **Bookings → Bookings** with its channel set to the platform and the platform's reference.
+
+- The platform takes the payment and pays you later: **Boatsetter in legs** (the boat, then the captain fee, sometimes add-ons, days apart), **GetMyBoat in one sum.**
+- The platforms do not share guest phone numbers or emails. Ask the guest on the day and add them, or they can never be asked for a review.
+- The price on the booking is what you are paid, not what the guest paid the platform.
+
+## 3.7 Charging a booking and payment links
+
+**Text payment link** sends the guest their own page on your website: `thenautiyachti.com/pay/<id>`. It shows the charter and the total, then hands off to Stripe.
+
+- **Never text a raw `checkout.stripe.com` link.** To a careful guest it looks exactly like a scam.
+- The page charges the price on the booking, with no coupons. Change the price on the booking first if it needs changing.
+- The guest can apply a gift certificate on the page (see [2.3](#2-3-how-prices-are-worked-out)). A code they gave with their inquiry is filled in for them.
+- If the booking does not yet hold its day, the page first checks the boat is still free (see [2.7](#2-7-the-availability-check)).
+- A booking already paid shows **Already paid** instead of charging twice.
+- **A test-mode link is never saved against a booking.** A test link takes a card, says thank you and collects nothing. The tools label one **TEST LINK — DO NOT SEND**.
+
+## 3.8 When the same guest appears twice
+
+Usually a payment link carries the booking's own number, so a guest who pays through it lands on the right row with nothing to untangle. The trouble comes when a guest you logged by hand then books on the website as well: one person, two rows, **and the seat counted twice**.
+
+The morning check names such pairs with its evidence:
+
+| Reads | Means |
+|---|---|
+| **certain** | same email, or the same ten-digit phone, on the same day |
+| **likely** | no contact detail in common, but one name fits inside the other and they bought the same thing on the same day |
+
+**Nothing merges on its own.** Two bookings sharing a phone are just as likely to be two friends booking from one handset, and merging would delete a real seat. To merge a pair you have judged:
+
+```
+node scripts/merge-bookings.js NY-20261018-03 NY-20261018-11
+```
+
+It shows what it would do and writes nothing until you add `--apply`. The row holding the money survives; the other is filled in from it, then **cancelled, not deleted**, with a note pointing at the survivor. It refuses outright if both rows have money against them: that is either two real bookings or one guest charged twice, and needs a person.
+
+## 3.9 Owed: paid for, never sailed
+
+When weather, a breakdown or the guest's plans cancel a trip they have paid for, and no new date is agreed yet, set the booking to **owed**. Do not use **cancelled**: cancelled means the relationship is finished and money is going back. Owed means their money is still here and they still want to go.
+
+- An owed booking **does not hold a day**: it has no date.
+- It shows as **active**, in amber, because it is work outstanding.
+- Pearl reports it every morning until it is settled, urgently if there is no phone or email on file.
+- Money stays attached to it in the ledger, and it is **not counted as earned income** until the trip sails.
+
+Reach out from **Overview → Guests → Charters we owe** (see [5.5](#5-5-charters-we-owe)). When they pick a date, set it back to **booked**.
+
+## 3.10 Availability and blocking days
+
+**Bookings → Availability** shows each boat's days. A day is:
+
+| State | When |
+|---|---|
+| **full** | booked charters on that boat add up to 8 hours or more, or you blocked it |
+| **partial** | booked hours add up to less than 8. The calendar shows the windows taken, such as `10am–2pm`. |
+| **open** | nothing booked or blocked |
+
+Only **booked** and **completed** charters take up time. Inquiries, owed, cancelled and refunded bookings never do. A website booking and its mirror row are counted once.
+
+**To block a day**, open **Availability** and toggle the day on that boat. Use it for maintenance, private days, and to hold a date for a guest who has said yes but not paid.
+
+A booking with no hours on it counts as none, and one with no start time is not shown as a window. Add both to keep the calendar, and the availability check, honest.
+
+**The website enforces this calendar.** A guest cannot book or pay for a boat on a blocked day, or for more hours than the day has left. See [2.7](#2-7-the-availability-check).
+
+## 3.11 Completing a charter
+
+After the trip, set the booking to **completed**. That one action:
+
+1. writes the income row in the ledger, once, with the amount paid, the boat and the hours. Origin comes from **How paid**.
+2. updates the website inquiry behind it, if there is one, so the two stay in step.
+
+**A completed booking with no price writes nothing.** The Overview flags it under **Needs attention**: add the price and the income follows.
+
+**Known limit:** setting a completed booking back to another status does not remove its income row. If you completed one by mistake, delete the row in **Money → Income & expenses** too.
+
+## 3.12 Capacity counts the captain
+
+A boat's capacity **includes the captain.** A boat listed for 12 carries 11 guests. This is the easiest mistake to make when quoting quickly. Capacities for this fleet are in [Appendix C](#appendix-c-this-installation-the-nauti-yachti).
+
+## 3.13 When a payment and the console disagree
+
+A guest says they paid and the booking still says unpaid. Ask Claude to **resync** it; there is no button for this in the console. The resync re-reads Stripe's own record and repairs what is missing: payment, email, phone and terms acceptance. Then it sends the confirmation if the guest never had one. It only ever copies **from** Stripe, so it cannot mark paid something Stripe does not show as paid.
+
+If confirmations were ever missed in bulk, `node scripts/send-missing-confirmations.js` lists everyone who paid and was never told, and `--apply` sends them.
+
+# Part 4 — Money
+
+The ledger in **Money → Income & expenses** is the record of every dollar. Folders of statements and receipts are evidence for it; when the two disagree, that is something to investigate, not something to file.
+
+## 4.1 Income & expenses
+
+Every dollar in or out is one row. The form on the left adds one: **Income** or **Expense**, a category, an amount, a date, and the **origin**, meaning how the money moved. Link a row to a booking and it counts toward that booking's profit.
+
+Below the list are breakdowns by category, profit per booking, and commission lost to the booking platforms.
+
+**Two kinds of row write themselves:**
+
+| Event | Row written |
+|---|---|
+| A booking is set to **completed** | its income row, once. Re-saving does not add a second. A completed booking with **no price** gets no row: the system will not invent a number. |
+| Fuel is logged on the phone page with a dollar total | the fuel expense |
+
+Everything else is entered by hand, by you or from a statement you have checked.
+
+> **Why it works this way.** Income used to be joined to bookings by hand, and six charters' money went missing that way. A missing row is easy to spot; a made-up number is not, so the system writes rows only from facts it has.
+
+## 4.2 Origin: how the money moved
+
+Three questions are kept apart, because a guest can find you on Instagram, book through a platform and pay in cash:
+
+| Field | The question | Lives on |
+|---|---|---|
+| **Lead source** | Where did the guest come from? | the booking |
+| **How paid** | How did the money arrive? | the booking |
+| **Origin** | How did this particular dollar move? | each ledger row |
+
+The origin list and the payment-method list are built from the same source, so neither can gain an option the other lacks. Card payments file as **Stripe**; a platform payout files under the platform; cash as **Cash**; Cash App, Zelle, Venmo and PayPal each as their own statement.
+
+- **Cash App is not Cash.** One leaves a statement and can charge a fee; the other does neither.
+- **One charter can be paid two ways.** The booking holds the main method, and each actual payment is its own ledger row.
+- **One thing spelled two ways is two things.** Use the spelling already in the list. The morning check reports an origin spelled more than one way, and an origin the console cannot display.
+
+## 4.3 Reconciliation
+
+**Money → Reconciliation** answers one question per booking: is this charter's money on the books? It matches on the real link between a booking and its ledger rows, never on date and amount.
+
+**Boatsetter pays in legs** (the boat, then the captain fee, sometimes add-ons), often days apart. Several income rows on one charter is normal there. GetMyBoat pays in one sum.
+
+### When a charter's money cannot be found
+
+The Overview may say *"N income rows are not tied to a charter."* Find out which of two things it is before doing anything:
+
+- **Unlinked:** the money is in the ledger but not joined to its booking. **Link it. Do not add a row.**
+- **Missing:** nothing in the ledger matches at all. Find out what happened, then add one.
+
+Adding a row for money that was already recorded **counts it twice on your tax report.** Some unlinked income is correct and always will be, for example ticket income from an event with no single booking behind it.
+
+## 4.4 Tax Report
+
+1. Open **Money → Tax Report** and pick the year.
+2. Choose **Show**: income and expenses, income only, or expenses only. The choice applies to the screen **and** to both downloads.
+3. **Download PDF** for a printable summary (totals, breakdowns, every entry), or **Download CSV** for a spreadsheet.
+
+Net profit appears only when both sides are showing, so one side alone is never read as profit.
+
+What the report does for you:
+
+- **Money held for a trip that never ran is not income.** It is a deposit until the trip sails. The report shows the excluded amount in an amber note so it still reconciles with the bank.
+- **Income is split by vessel and by origin**, because every charter is filed under the one category *Reservation*.
+- **Average per charter and per hour** come from bookings, not ledger rows, so a platform charter paid in two legs is not counted as two trips.
+- **The subscriptions figure is business only.** Personal subscriptions are left out, and the PDF says so.
+- An amber note flags income with no vessel recorded. Fill those in.
+
+## 4.5 The bank balance
+
+The ledger answers *did we make money*. The bank balance answers *will this week's bills clear*. They are different questions, and a season can be profitable while the account is overdrawn.
+
+The balance on the Overview is **a reading, not a live feed.** Someone reads the bank app and records the figure with its date. The age shows beside it and turns amber after a week. The figure is green, amber under $250, red when negative.
+
+**Readings are never edited.** A wrong figure is corrected by recording a newer one, so the history keeps the bad month as well as the good one. Readings are recorded by an agent or a script with the date they were taken; the console shows them and does not take input.
+
+## 4.6 Gift certificates
+
+**Money → Gift certificates** lists every certificate bought on the website: code, buyer, face value, what is left and its state.
+
+**When one is bought**, the buyer is emailed the certificate, and so is the person it is for when the buyer gives their email. You get one notice: the code, the value, and who it reached. The sale is income on the day it is bought.
+
+A certificate that is paid for and not yet used is a **liability**: the money is in the bank and the trip is still owed. Read it like a charter that was paid for and never sailed.
+
+- **Guests redeem one themselves**, on the booking form or on a payment page ([2.3](#2-3-how-prices-are-worked-out)). You can still redeem one by hand here against a booking. A partial use leaves the rest on the certificate.
+- **A certificate refunded in full in Stripe is voided by itself.** Its sale stays in the ledger as income until you correct that row.
+- **Certificates never expire on their own.** Voiding an old one is a decision to make on purpose.
+
+## 4.7 Subscriptions & bills
+
+Every recurring cost, turned into a monthly figure so weekly, monthly and yearly bills can be added up. It includes the household bills that are partly business costs when the office is at home.
+
+### The four columns that matter
+
+| Column | Meaning | Note |
+|---|---|---|
+| **Where** | which address or account it belongs to | Two live accounts with the same supplier usually means an old one was never closed, and the tab says so. |
+| **Amount** | the cost | **Blank is not zero.** Blank means nobody has checked; `0` means confirmed free. Blank amounts are listed as open questions and add nothing to totals. |
+| **Business %** | the business's share | **Blank means not decided**, and the bill stays out of the deductible total until it is. |
+| **Ended** | the date the account closed | Setting it closes the account; *Active* follows on its own. |
+
+### The two totals
+
+The first total is what leaves the bank each month. The second is **the business's share**, the only figure that belongs on a tax return. Write the basis for each percentage into the bill's note (for example, the office's share of the home's floor area), because an accountant will ask for it.
+
+### Personal subscriptions
+
+Personal subscriptions can be kept here so duplicates and waste show up across everything you pay for. They are **kept apart from the business entirely**: their own line, their own total, and never included in the business figures or the tax export. The **Side** button moves a bill between business and personal.
+
+### Groups, the calendar and phones
+
+Bills are grouped by category (Utilities, Storage, Software, Hosting, Other, then Personal). Groups start closed; each heading shows its count, monthly total, business share, and how many bills are unpriced or closed. Inside a group the largest bill sorts first.
+
+The **calendar** draws the month with each bill on its due day, but only bills whose due date came from a real receipt. The others are named underneath, so an empty day means nothing is due. Yearly bills appear only in their own month.
+
+On a phone, each bill becomes a card and the calendar scrolls inside its own box.
+
+# Part 5 — Guests
+
+## 5.1 Contacts
+
+**Bookings → Contacts** lists people, not trips, so a repeat guest appears once however many times they have sailed. Three lists, each collapsed until opened:
+
+| List | Who is on it |
+|---|---|
+| **Everyone we can contact** | every guest and enquirer with a phone or an email. The count is of people you can actually reach. |
+| **Extra guest contacts** | people who sailed on someone else's booking and whose number was kept |
+| **Crew list** | people who signed up for event news on the website or from the on-boat QR code |
+
+The two lower lists are **subsets of the top one**, not additions to it, and their headings say so (*"2 of the 30 above"*). Do not add the three counts together.
+
+**Trips count charters, not rows.** A website booking leaves two records behind it, and a guest whose number appears on one booking but not another is merged into one person with both trips.
+
+**Copy mailable emails** sits on the crew-list header, for mailing everyone when an event date is set. To honour an unsubscribe, set that person's status to lapsed.
+
+### Texting someone from the list
+
+Every reachable contact has a button that opens a text to them, with the number and a message already filled in. **It sends nothing:** it opens your phone's own messaging app, and you read it, change it if you like, and press send. On a computer it says so instead of pretending.
+
+- **It reads the offer that is live right now.** While a sale runs, the button carries its code and the message names the discount, the limit and the end date. When the code expires or runs out, the button stops offering it on its own. With no sale, it is a plain catch-up message.
+- **It only offers a code with both an end date and a usage limit.** Codes kept for particular people never go to the whole list.
+- **Two openers:** someone who has sailed hears *"hope you've been well since your trip"*; someone who only asked hears *"you asked about a charter a while back."*
+- **Anyone who opted out has no button at all.**
+
+## 5.2 Asking for reviews
+
+Google reviews are the business's best advertising, and the time to ask is within a few days of the trip. There are two places to ask from:
+
+- **On the dock → Reviews** on your phone: the quickest way, with guests sorted warmest first. See [8.4](#8-4-reviews-on-the-phone).
+- **Marketing → Testimonials**, on any screen: the full list with filters.
+
+On Testimonials, four filters: **Still to ask**, **Already asked**, **Not asking**, **Every charter**.
 
 | Button | What it does |
 |---|---|
-| **Text it** (green) | Opens your messaging app with the message already written, and ticks them off. Phone only — a desktop has nothing to hand an `sms:` link to. |
-| **Preview** (blue) | Shows the wording first, and can copy it for pasting into a platform message thread. |
-| **Don't ask** (amber) | Takes them off the list for good. |
+| **Text it** | opens your messaging app with the message written, and ticks the guest off. Phone only. |
+| **Preview** | shows the wording, and can copy it for pasting into a platform's message thread |
+| **Don't ask** | takes the guest off the list for good. They move to **Not asking** and can be restored with **Put back**. Nothing is deleted. |
 
-**Don't ask** is for the guest you will never ask — one who damaged something,
-or who you would rather not hear from. They move to **Not asking**, come out of
-the counts, and can be restored with **Put back**. Nothing is deleted. Before
-this existed the only way to clear such a guest was to mark them asked, which
-puts something untrue in the record and then hides it behind a tick.
+**Ask via** appears only for guests with no phone number: a platform message thread is then the only way to reach them. Rows marked **extra contact** are people from someone else's booking, and can be asked like anyone else.
 
-**Ask via** only appears for guests with no phone number. Those cannot be texted
-at all, so the platform thread is the only way to reach them, and the column is
-the instruction. A guest with a number just says *Text*.
+> **Why it works this way.** The booking platforms do not hand over guest contact details, so every number was entered by hand. A guest with no number is a review that can never be asked for. **Don't ask** exists so a guest you will never ask does not have to be falsely marked as asked.
 
-Two rows say **extra contact** instead of a charter reference. Those are people
-who sailed on somebody else's booking and whose number you kept — see *Extra
-guest contacts* under Bookings. They can be asked like anyone else.
+## 5.3 Testimonials
 
-## Testimonials
+**Marketing → Testimonials** also holds the reviews shown on the public website. New ones wait for your approval and the tab's number counts those waiting. Approved reviews carry no number, because nothing about them needs a decision.
 
-Reviews shown on the public site, plus the panel for **asking past guests for a
-Google review**.
+## 5.4 Photo Requests
 
-Neither booking platform hands over contact details, so every number was typed in
-by hand — a guest with no number is a review that never gets asked for.
+**Marketing → Photo Requests** lists guests who asked for their photos and have not been sent them. The number counts what is still owed.
 
-**Text it** opens your phone's messaging app with the message already written and
-ticks the charter off. **It does nothing on a desktop** — this has to be done from
-a phone.
+- **Longest wait first**, on purpose: the guest at the top is the one most likely to have given up.
+- The button opens a message with the greeting written. **Paste the album link yourself**: the files are on your computer, not in the database.
+- Marking it sent clears it from the queue.
 
----
+## 5.5 Charters we owe
 
-## Photo Requests
+A guest who paid for a trip that never happened, through weather, a breakdown or their own plans changing, is **owed** a charter. They appear on **Overview → Guests → Charters we owe** until it is settled, with what you are holding and for how long.
 
-Guests who asked for their photos and have not been sent them. The badge counts
-what is still **owed**, not the total, so once the queue is clear it says
-nothing.
+| Button | What it does |
+|---|---|
+| **Text it** | opens your messaging app with the message written. Phone only; with no number on file it says the guest cannot be reached at all. |
+| **Preview / Hide** | shows the exact wording, with **Copy wording** |
+| **Email** | appears only when there is an email on file |
 
-**Longest wait first, deliberately not newest first.** The guest at the top is
-the one most likely to have given up on us. The days-waiting figure beside each
-name is counted in whole days from the day they asked.
+The wording cannot be edited, on purpose. **Offer a weekend, not a refund:** none of the messages mention money back or apologise at length, because leading with a refund invites the answer that ends the relationship. If they want their money back they will ask. When they pick a date, set the booking back to **booked**.
 
-**The link cannot be filled in from here.** The files are on your machine, not in
-this database, so the button opens the message with the greeting already written
-and leaves you to paste the album link — the whole job reduced to one tap and one
-paste. Marking it sent is what clears it from the queue.
+The panel is not shown at all when nobody is owed, which is the normal state.
 
----
+# Part 6 — Photos, video and social media
 
-# Setup
+## 6.1 The photo library
 
-## Packages & pricing
+All charter photos and video live in the `Photos` folder of the business folder, backed up by Google Drive. It is large, and organised so the crew can find things without anyone browsing it.
 
-Per-package prices, per-guest rates, and the hourly grid per vessel for weekday
-and weekend. Every change is logged to price history.
+| Folder | What goes there |
+|---|---|
+| `00 Inbox` | where new footage lands from the phone and the camera glasses. The content agent files it every run. |
+| `02 Charters\_By charter` | one folder per charter, named `YYYY-MM-DD Guest Name`. **This is the main library.** |
+| `02 Charters\<theme>` | finished cuts and stills grouped by theme or place (tubing, birthday, the cove, and so on). The folder name is the classification. |
+| `_from video` | stills pulled from video |
+| `_originals` | the uncropped original of a cropped file. Never post both. |
+| `compilation video` | recap cuts of a charter. These are finished, postable content. |
+| `_Unsorted` | footage that is not a charter, such as maintenance or errands |
 
-## Add-ons · Coupons
+**Filenames carry what a folder cannot.** A file keeps its name when it moves, and loses its folder. So a finished cut carries its date, its subject, its shape and, where known, its place:
 
-Extras that can be attached at checkout, and discount codes with optional expiry
-and usage limits.
+```
+2025-07-20_tubing_wakeboarder-golden-hour_9x16.mp4
+```
 
-**What comes free with what, and what is charged:**
+| Suffix | Shape | Used for |
+|---|---|---|
+| `_9x16` | upright | Reels, TikTok, Stories |
+| `_4x5` | tall rectangle | Facebook and Instagram feed |
+| `_1x1` | square | feeds |
+| `_16x9` | landscape | the website, YouTube |
+
+### Finding a photo
+
+**Do not browse the folders. Ask the index.** Every photo is tagged with its package, place and activity, and a search returns matches with anything blocked already removed:
+
+```
+node "<Crew\_Scripts>\find-media.js" --activity tubing --clean
+node "<Crew\_Scripts>\find-media.js" --package birthday
+node "<Crew\_Scripts>\find-media.js" --location party-cove
+node "<Crew\_Scripts>\find-media.js" --vocab        (every tag that exists)
+node "<Crew\_Scripts>\find-media.js" --coverage     (which themes are thin)
+```
+
+Tags live in `Photos\_media-tags.json`. Tag a charter folder and every file in it inherits the tags. A file is never copied into a second folder to file it twice.
+
+### Media that must not be used
+
+Three things are never posted, and the index and the publishing checks enforce all three:
+
+- anything on the **`doNotUse`** list in the tags file. Some entries block a whole file; others (`timeRestricted`) block only certain seconds of it.
+- anything in a folder whose name contains **`[NDA]`**
+- a boat the business does not own presented as one a guest can book
+
+**Everything else is a candidate.** A watermark from the editing app, another company's boat in the background, a recognisable stranger: none of these is a reason to reject a picture. The crew has been far more often wrong in rejecting good material than in letting bad material through.
+
+**Screen night footage at full size.** At thumbnail size a problem in a dark clip cannot be seen. Look at the frame that will be used at full resolution before it ships.
+
+## 6.2 Photos guests send you
+
+Guests can upload their own photos and video from a trip at `/share-your-photos`. They give their name and phone, pick their trip from a list of recent dates (packages only, never guest names), tick that you may use them, and upload, up to 2 GB a file.
+
+The files go to private cloud storage, and a script run on the office computer, `pull-guest-uploads.js`, brings them into `Photos\00 Inbox` for filing.
+
+**Known limit:** there is no console tab for guest uploads and no email when one arrives. Run the pull script to see what has come in.
+
+## 6.3 The public gallery
+
+**Marketing → Media** manages the photo gallery on the website, grouped by package. Grouping shows at a glance which package is thin.
+
+- Captions edit in place. **+ Add** adds a tile to that group.
+- New images belong in the site's own `public/gallery/` folder, referenced as `/gallery/name.jpg`. Images hosted elsewhere disappear if that account ever lapses.
+- Deleting a tile removes it from the site, not the image file.
+
+## 6.4 Social posts: from draft to published
+
+The content agent drafts posts from real fleet media; you approve them; the publishing agent puts them out. Every post is a card in **Marketing → Media Drafts**, boxed by the day it goes out, soonest first.
+
+```
+proposed ──► approved ──► scheduled ──► posted
+    │            ▲             │
+    ▼            │             ▼
+needs work ──────┘          rejected  (Back to review restores it)
+```
+
+| State | Means |
+|---|---|
+| **Proposed** | drafted by the crew, waiting for you |
+| **Needs work** | you sent it back with a reason; the crew will fix it |
+| **Approved** | you said yes |
+| **Scheduled** | approved and dated: **it will publish on its own** |
+| **Posted** | live, with its link recorded |
+| **Rejected** | you said no. Nothing is deleted. |
+
+### What publishes on its own
+
+**A post marked scheduled publishes on its own when its date and time come.** The publishing agent runs twice a day, late morning and evening, and puts out whatever is due by then. Giving a draft a date **is** the permission to post it: there is no second confirmation.
+
+- **Approved with a date** is the same permission. The publisher moves those onto the schedule herself at the start of each run.
+- **Approved with no date never goes out.** The content agent gives each of these a date every morning and says which dates she chose, so you can move one with **Reschedule**.
+- Nothing else is ever published: not a proposed draft, not one that needs work, not a rejected one.
+
+So the queue is safe to leave alone until a post's date arrives. **To stop a post, press Don't post.** That is the only thing that takes it out of the publisher's way.
+
+### On a card
+
+- The photo or clip, or **No media attached** with a link to add one. A scheduled post with no media fails on the day.
+- The caption in full, so you approve the words against the picture.
+- The platform and the time.
+- **Discuss**, **I posted it myself**, **Don't post**.
+
+Posted, rejected and past drafts sit in a collapsed group, as a record.
+
+### Saying what is wrong with a post
+
+**Discuss** is on every card at every stage, including after scheduling. Pick a reason, then decide whether the post survives:
+
+| Reason | Means |
+|---|---|
+| **Wrong photo or clip** | the media does not match the post |
+| **Find a better one** | right footage, weak shot |
+| **Caption needs work** | wording, tone, hashtags or a wrong detail |
+| **Wrong day or time** | right post, wrong slot |
+| **Too similar to another post** | repeats something already queued |
+| **Guest or privacy problem** | someone in it should not be, or it names the wrong guest |
+| **Not right for us** | wrong message for the business |
+| **Something else** | say what in the note |
+
+Then **Keep it — send back for changes** (it moves to *Needs work*) or **Don't post it at all** (it moves to *Rejected*). Both wrong-media reasons offer **Swap the media now**.
+
+> **Why it works this way.** The reasons are a fixed list so they can be counted. "Six of the last ten were rejected for the wrong clip" changes what the content agent does next week; ten free-text notes saying roughly that do not.
+
+**I posted it myself** is only for a post you put out by hand. The publisher marks her own posts and records their links.
+
+**Every card records where its media came from**: which charter folder, which file, which second.
+
+## 6.5 What each platform will take
+
+| | Photo | Video | Story |
+|---|---|---|---|
+| **Facebook** | yes | yes, as a Reel | yes, for upright (9:16) video only |
+| **Instagram** | yes, feed only | yes | yes, for video |
+| **TikTok** | **no** | yes | has no Stories |
+
+- **Every post goes to the feed and to the Story** on each platform that has one, automatically. A photo gets no Story leg. If a Facebook Story refuses a video that is not upright, the feed post still goes out, though the publisher's email can make it sound as if the whole post failed.
+- **Five hashtags, never six.** More than five makes Instagram reject the post outright while the draft still looks scheduled. The limit applies to every platform.
+- **A published post cannot be edited from here.** Fix it in each app by hand; TikTok cannot be edited at all.
+- **Borderline audio or language goes to a Story**, which disappears, not to the permanent feed.
+
+## 6.6 Comments
+
+**Marketing → Comments** is the queue of Facebook and Instagram comments nobody has answered.
+
+| Colour | Waiting |
+|---|---|
+| **fresh** | under 6 hours |
+| **waiting** | over 6 hours |
+| **overdue** | over 24 hours |
+
+**Nothing here posts on its own.** The crew writes a suggested reply into the box; you send it, edit it, or write your own. A comment reply is public, immediate and attributed to the business, so a person sends it.
+
+- **Each comment shows the post it is on**, with a link. A comment on a post you put up by hand reads **post not identified**.
+- **I answered this elsewhere** clears a comment you answered in the Facebook or Instagram app, which this screen cannot see. **Put it back** undoes it.
+- **Every reply leaves a record**: what was said, under which post, and whether the suggested wording was changed.
+- **TikTok comments are not here**: the publishing service cannot read them. Check them in the TikTok app.
+
+A classifier is being built to decide which comments a machine could safely answer. **It sends nothing**, and will not until it has been run in a watch-only mode and you approve it.
+
+## 6.7 Messages
+
+**Marketing → Messages** is the direct-message inbox from Facebook and Instagram, built the same way as Comments.
+
+### Messages answer themselves; comments do not
+
+**Most messages get an automatic reply within seconds**, from an automation in the publishing service, not from any crew member. It is a fixed message that asks for a phone number and points to the website. It never quotes a price, a date or a seat count. It fires on keywords such as book, price, available, seat, open, the days of the week, and "how much".
+
+> **Why it works this way.** A comment speaks to everyone reading the thread, so caution matters most there. A message speaks to one person and can be corrected in the next sentence, so speed matters most there.
+
+**Keyword matching is blind.** "Your prices are a scam and I want a refund" contains *price*. So every thread is checked afterwards, and one the machine should not have answered is flagged in red: **Answered automatically, and should not have been**. Read what went out before replying.
+
+These are always held for you, and the reason shows on the card:
+
+| Held because | Meaning |
+|---|---|
+| **safety** | someone may have been hurt, or something damaged |
+| **legal** | lawyers, insurance, liability, a refund or a chargeback |
+| **complaint** | it reads as a grievance |
+| **money already moved** | it asks to change, refund or move something paid for |
+| **solicitation** | a sales pitch, not a guest |
+| **NDA** | it touches a charter under a confidentiality agreement |
+| **photographs** | someone's picture, or a request to take one down |
+
+Long messages, ones asking more than two questions, and ones nothing in the system can answer are held too. **An unrecognised message is not a safe message.**
+
+The crew drafts a reply for each held thread; you send it or write over it. If the guest writes again first, the draft is marked stale and not pre-filled. **I answered this elsewhere** works here as on Comments, and re-opens on its own if they write again. It has no effect on the automatic reply, which can only be switched off in the publishing service.
+
+# Part 7 — The AI crew
+
+## 7.1 Who they are and when they run
+
+Eight agents and two routines run on a schedule on the office computer. **None of them post, spend or contact a guest without you**, and only one acts outside the business at all.
+
+| When | Who | What she does |
+|---|---|---|
+| Daily, 8am | **Nauti Penny** · Accounts Receivable | money in: payouts against the ledger, and money held for trips that never ran. Keeps the business inbox in order. |
+| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | files new footage, drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
+| Fri–Mon, 9am | **Nauti Joy** · Guest Relations | who to ask for a review, new crew-list signups, guests owed a charter |
+| Fri–Mon, 9:30am | **Nauti Reef** · Revenue Growth | money the business is not collecting, as one to four ideas |
+| Fri–Mon, 10am | **Nauti Shelly** · Accounts Payable | what is paid for against what is used |
+| Daily, 10:30am | **Nauti Nova** · Market Research | the outside world: rules, grants, platforms. Reports only on Mondays, and usually reports nothing. |
+| Daily, 10:45am | Crew Standup (routine) | files a status card for all eight, so no card is blank |
+| Daily, 11am and 8pm | **Nauti Pearl** · Chief of Staff | reads everything, keeps the board, decides what reaches you. The 8pm run is a short evening check. |
+| Daily, 11:15am and 7:15pm | **Nauti Siren** · Publishing & Brand Safety | the last check before anything is public, then publishes what is due. Drafts replies to comments and held messages. |
+| Hourly, 8am–9pm | Comment Watch (routine) | drafts replies to new comments |
+
+Times are when each run is scheduled; a run can start up to about a quarter of an hour later. The office computer must be on for them to run.
+
+## 7.2 What none of them may do
+
+- Write to any table except the to-do board and their own activity log.
+- Contact a guest. (The automatic message reply in [6.7](#6-7-messages) is a feature of the publishing service, not a crew member.)
+- Spend, refund or change a price.
+- Publish anything, except Siren publishing posts **you** have approved and dated.
+
+## 7.3 The Board
+
+**Overview → The Board (To-do List)** is the shared workspace between you and the crew. They write to it, read each other's items, and hand work over by naming another agent in an item.
+
+- Type into **Add a task…** and press **+** to add your own.
+- Items are ranked **High / Medium / Low**, not by date. Crew items carry their own priority; yours are ranked by what they say. Money held, security, legal and overdue go High, and anything due within two days is promoted. High starts open; Medium and Low fold open when clicked.
+- **Long items fold**: the claim and its first two lines show, with *+ N more lines* and *N notes* for the rest.
+- Tick an item to mark it done. **✕** deletes it, after a confirmation, and cannot be undone. Done items fold into **N done**.
+- Every crew item is **signed**, for example `[PENNY · T2]`. An unsigned item means you wrote it. **T1** is urgent, **T2** worth your attention, **T3** background.
+- **Pearl keeps the board**: she closes what the data shows is done, folds duplicates together, and tidies stale low items. She never closes an item you wrote unless it is genuinely finished.
+
+## 7.4 Status cards and voices
+
+Each agent has a card with her latest status, filed every morning **even on days she does not run**. A card showing a date instead of today means she has not filed today.
+
+**Click an agent's face to hear her read it** in her own voice. Clicking again stops her; clicking another agent stops the first. Nothing in the console ever speaks on its own. Each click costs a little, because speech is billed per character; replaying the same status is free.
+
+| | Voice | How she writes |
+|---|---|---|
+| **Pearl** | Alice | dry and unhurried; tells you what you would rather not hear |
+| **Coral** | Jessica | keen, and hardest on her own work |
+| **Siren** | Charlotte | flat and literal on purpose: she is the gate |
+| **Joy** | Lily | warm, a little wounded on the guests' behalf |
+| **Penny** | Matilda | charming and teasing, proprietary about the books |
+| **Reef** | Laura | the enthusiast, selling you an idea |
+| **Shelly** | Sarah | dry and sceptical about what you pay for |
+| **Nova** | River | sparse; speaks rarely |
+
+**One limit on all of them: tone lives in the framing, never in the finding.** Anything serious (money held, a booking at risk, anything legal, insurance or safety) is said straight, with no colour. Statuses are written to be heard: full month names, plain times, no database ids or file paths.
+
+### When a card says something went wrong
+
+| Card shows | Means | Do |
+|---|---|---|
+| **Waiting on you** | she needs a decision only you can make | read the card and answer |
+| **failed** | the run went wrong, or the card is a logging artefact | read the detail: a real failure says what broke |
+| **Stopped mid-run** | the run was cut off, usually by a permission prompt nobody answered | in the Claude app's scheduled routines, choose **Run now** |
+| **No standup filed** / **gone quiet** | nothing filed recently | check the computer was on, then **Run now** |
+
+A card can also carry the value `status`. That is the daily card itself, not a state. There are many of these and they are correct.
+
+## 7.5 Who checks whom
+
+Everything routes through Pearl. Coral reports to Siren, Siren to Pearl, and Pearl to you. The one loop that runs backwards is Coral checking what Siren actually published, because Siren is the only agent whose mistakes go public. Joy, Reef and Nova are deliberately not reviewed: putting a reviewer in front of an agent that only proposes adds delay and no safety.
+
+Pearl reports upward to the owner's main assistant, which coordinates this business alongside the owner's other projects.
+
+## 7.6 Where their instructions live, and how to change them
+
+Everything the crew reads is in **`AI & Website\Crew`** in the business folder, backed up by Google Drive:
+
+| Folder | Holds |
+|---|---|
+| `_Global Rules` | the rulebook every agent reads first (`00`), rulebook topics opened when needed (`10`–`13`), and pages on the business, the owner, releases, and files and Drive (`20`–`23`) |
+| `Nauti <Name>` | one per agent: **Briefing** (what, when, why), **Voice**, **Skills** (one file per part of the job), **References** |
+| `_Routines` | the standup and Comment Watch |
+| `_Scripts` | every command the crew runs, with a map of who uses which |
+| `_Old` | the instructions as they were before this layout, kept as history |
+
+Each scheduled task's own instructions file (`SKILL.md`) is only a list: which Crew files to read every run, and which only when needed.
+
+**To change what an agent does:**
+
+1. Edit her file in the Crew folder, not the list.
+2. Run the consistency check (see [9.4](#9-4-the-checks-that-keep-it-honest)). It fails if a list names a missing file, or if a Crew file is listed nowhere and so would never be read.
+3. A change to how an agent works is a revision; it goes out with the next release.
+
+## 7.7 Working with Claude
+
+Beyond the scheduled crew, you can work with Claude directly in a session on the office computer. It reads the same Crew folder and the same database.
+
+- **Forward a guest's enquiry** (a screenshot is enough) and it logs the booking and drafts your reply.
+- **Ask for a resync** when a payment and a booking disagree.
+- **Ask for a change** to the website or a crew instruction. It will make the change, check it, and ask before cutting a release.
+
+# Part 8 — Fleet and on the water
+
+## 8.1 Boats and docks
+
+Each boat is set up in the system with its capacity, its slip, whether it has an engine-hour meter, and its dock position. **Each boat can live at its own dock**, so the meeting point, the run-for-home weather check and the confirmation email are all worked out per boat, never from one business-wide address. This fleet's boats and docks are in [Appendix C](#appendix-c-this-installation-the-nauti-yachti).
+
+## 8.2 The On the dock page
+
+**📱 On the dock** (`/admin/ask`) is built for a phone at the boat. Add it to your home screen. If you are not signed in it asks for the passcode.
+
+At the top, a strip shows the charter **on the water now** or **up next**: countdown, guest, boat, party size, hours, when it is due back, add-ons, and a tap-to-call number.
+
+Four tabs: **⛈ Weather**, **Arriving**, **Reviews**, **Boat log**.
+
+### Weather: can I get back before it hits?
+
+The weather check runs when the page opens, using your phone's location and the boat that is out (or next out). **Can I get back before it hits?** runs it again.
+
+| Verdict | Means |
+|---|---|
+| **clear** | nothing wet in the window |
+| **go** | rain is coming and you have 20 minutes or more to spare |
+| **tight** | under 20 minutes to spare: go now |
+| **shelter** | you will not beat it; find cover |
+| **unknown** / **unavailable** | no position, or the forecast could not be reached |
+
+It also shows the distance and bearing to that boat's dock, minutes home, wind and gusts, a three-hour rain strip and the radar map.
+
+**It is weather timing, not navigation.** It does not know where stumps, shallows or no-wake zones are.
+
+**Nearest places.** Save useful spots from the water (fuel docks, covered shelter, ramps, hazards) with **save this spot**, from your position, a tap on the map or typed coordinates. When rain is near, covered shelter is listed first. Each boat's **dock** is set here too, from your position or typed coordinates, after a confirmation.
+
+## 8.3 Arriving guests and the gate code
+
+**Arriving** lists today's and tomorrow's booked charters, earliest first.
+
+**Text the gate code** opens a message to the guest with the dock address, the gate code, parking, and when to arrive. It is marked sent the moment you tap it, shown as *✓ Sent* with an **undo** link.
+
+- **The gate code is only ever sent by text, on the day.** It is never emailed and is not stored in any file: it is set as a private setting on the website. If it is not set, the tab warns you.
+- Tap the number line to choose which number to text, set a default, or add another person's number to the booking. If the booking has no number, the first one you add becomes its phone.
+- Phone only: on a computer the button explains and does nothing.
+
+## 8.4 Reviews on the phone
+
+**Reviews** lists completed charters with a phone number, warmest first, labelled by how fresh the trip is:
+
+| Label | Days since the trip |
+|---|---|
+| **Ask now** | up to 3 |
+| **Good window** | up to 14 |
+| **Late but fine** | up to 90 |
+| **Cold** | over 90 |
+
+Each guest has **Text <name>** (opens the message and marks them asked), **Copy wording**, and **Mark asked** (records it without texting). **Asked** lists who has been asked, with **Undo**. At the foot is a script for asking in person and a link to your review page.
+
+## 8.5 Boat log: hours, fuel and service
+
+**Engine hours.** Pick the boat. For a boat with an hour meter, enter the meter reading; for one without, enter the hours run this trip, which are added to its total. **Log it** saves the entry. A reading lower than the last one is refused.
+
+**Fuel.** Pick the boat, enter gallons and/or the dollar total, optionally the hours at fill-up and a note, then **Log the fill-up**. **A dollar total writes the fuel expense into the ledger.**
+
+**Service checks.** Items are grouped by boat. Tap one to confirm it was done today at the boat's current hours.
+
+Logging works from a computer too; only the texting buttons need a phone.
+
+## 8.6 Maintenance
+
+**Boat → Maintenance** holds each boat's service items, tracked against elapsed months or engine hours, plus the hours and fuel history. Items turn overdue on their own.
+
+**Nothing hour-based can be judged until hours are logged.** Until readings exist, the panel shows *nothing overdue*, which looks exactly like a healthy fleet. The Overview says *No maintenance can be judged* instead. Log hours after every outing (see [8.5](#8-5-boat-log-hours-fuel-and-service)) and the intervals work on their own.
+
+# Part 9 — Running and protecting the system
+
+## 9.1 Versions and releases
+
+The version badge says which release you are running. It exists for one moment: something is wrong and you need to know what to go back to.
+
+**The crew doing their job is not a revision.** Drafting, publishing, filing a status, a booking landing, a photo being tagged: that is the system running. A revision is the system itself changing.
+
+| Size | Moves | When |
+|---|---|---|
+| **Small** | 2.13.0 → 2.13.1 | wording, formatting, a colour or a label. Nothing behaves differently. |
+| **Moderate** | 2.13.0 → 2.14.0 | an agent's logic or a workflow changes |
+| **Large** | 2.13.0 → 3.0.0 | a whole layout, or a new large-scale idea |
+
+Always three numbers. Unsure between two sizes? Take the smaller.
+
+**Nobody cuts a release without asking you.** A release draws a line under a batch of work and only you know where the batch ends. The routine is: finish the work, say what changed and what size it looks, and ask *"are you done with changes?"*
+
+**A release produces:**
+
+1. a version number in the code, tagged on GitHub, kept forever;
+2. one compressed backup in `AI & Website\releases`, holding everything the code does not: the crew's instructions and scripts, the schedules, the permission rules, the hand-written skills, this manual and the database structure. Only the newest is kept, and only once it exists;
+3. an entry in `CHANGELOG.md`, written to be read on a bad day. If it cannot tell you whether to go back to that version, it is not finished.
+
+The full rules are in `AI & Website\VERSIONING.md`.
+
+## 9.2 Where everything lives
+
+| What | Where | Backed up by |
+|---|---|---|
+| Business files: photos, finance, legal, releases | `Documents\_MyFiles\_The Nauti Yachti LLC` | Google Drive |
+| The crew's instructions and scripts | `…\AI & Website\Crew` | Google Drive |
+| The website and console code | `Documents\Nauti-yachti-app` | GitHub, every version tagged |
+| The libraries the crew scripts need | `C:\Users\<you>\.node_modules` | nothing; rebuilt after a restore (see [9.3](#9-3-backups-and-disaster-recovery)) |
+| Keys and passwords | a private secrets file outside every synced folder | **nothing**: keep your own copy somewhere safe |
+| Bookings, money, posts | the Supabase database | Supabase, plus snapshots in `AI & Website\db-backups` |
+
+**Google Drive cannot sync a code project.** A folder holding `.git`, `node_modules` or build output makes Drive give up on the whole folder, and nothing announces it beyond a red mark. So code lives outside Drive, and the consistency check refuses a release if any of those turn up in the business folder.
+
+**Never write a video straight into a Drive folder.** Drive can start uploading a file that is still being written and get stuck with an empty copy in the cloud. Render into a scratch folder and move the finished file in. The montage tool does this already.
+
+**Outdated files go into `_Old`, not the bin.** Most folders have an `_Old` folder; the owner decides later what goes for good. Anything in `_Old` is history, never a current fact.
+
+## 9.3 Backups and disaster recovery
+
+`AI & Website\DISASTER RECOVERY.md` is the full procedure for rebuilding on a new computer. In outline:
+
+1. Install Node, Git and Google Drive for desktop, and let Drive restore the business folder.
+2. Clone the code from GitHub.
+3. Restore the crew from the newest release zip; its `RESTORE.md` says which files go where.
+4. Rebuild the secrets file. **Nothing else can do this for you.**
+5. Rebuild the crew scripts' libraries: copy `Crew\_Scripts\package.json` and `package-lock.json` into an empty folder, run `npm install`, and copy what is inside the new `node_modules` into `C:\Users\<you>\.node_modules`.
+6. Recreate the scheduled tasks from the release's `schedules.json`.
+7. Run the checks in [9.4](#9-4-the-checks-that-keep-it-honest).
+
+**A release is only as good as its date.** If the crew has changed since the last one and no release has been cut, that work exists in one place only.
+
+## 9.4 The checks that keep it honest
+
+| Check | Run | Proves |
+|---|---|---|
+| **Consistency** | `node scripts/check-consistency.js` | every task a document names exists; every script a brief runs exists; every Crew file is listed and every listed file exists; the console's tabs match this manual; the roster matches the schedules; no document has been pasted into itself; nothing Drive cannot sync is in the business folder; the recovery guide names the newest release |
+| **Manual freshness** | `node scripts/check-manual-fresh.js` | the PDF behind the **Manual** button matches this text |
+| **Tests** | the `scripts/test-*.js` files | pricing, add-ons, bookings, the board, triage rules and more each behave as intended |
+| **The morning output check** | run by Pearl every morning | nothing is hurting a guest right now: unpaid confirmed bookings, money not on the books, duplicates, missed confirmations |
+| **Health check** | `node scripts/health-check.js` | every outside service answers |
+
+All of them should be clean before a release.
+
+## 9.5 Setup: packages, add-ons and coupons
+
+**Setup → Packages & pricing.** Each package's pricing type and prices: per-package prices, per-guest rates, and the hourly grid for each boat, weekday and weekend. **Every change is logged in the price history.** This is the only place a price is ever changed: the website, the payment page and the checkout all read from here.
+
+**Setup → Add-ons.** Each extra's name, price and description. Which add-ons come free with which package is set in code (`lib/addOns.js`), and `scripts/test-addons.js` checks the pricing after any change.
+
+**Setup → Coupons.** Each code's discount (a percentage or a fixed amount), end date, usage limit and whether it is for returning guests only. A code with both an end date and a usage limit is one the tap-to-text messages can offer the whole contact list (see [5.1](#5-1-contacts)). Codes kept for particular people should have no end date or no limit, so they are never broadcast.
+
+## 9.6 Names that look out of date
+
+A few internal names still say "Jarvis", the system's original name, on purpose: the board's database table, the crew's service key and the board's web address. Renaming them would mean changing live infrastructure in exact step for no benefit to anyone. If you see one in an error message, nothing has been forgotten.
+
+# Part 10 — Troubleshooting
+
+## 10.1 Bookings and payments
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| A guest says they paid; the booking says unpaid | the payment notice from Stripe was missed or arrived before the booking existed | ask Claude to resync it ([3.13](#3-13-when-a-payment-and-the-console-disagree)) |
+| A guest paid and got no confirmation | no email on file, or a send failed | resync, which sends it; or run `send-missing-confirmations.js` |
+| **Text payment link** is missing on a row | the row has no package or no price | add both; the button appears |
+| A completed charter has no income | it had no price | add the price; the Overview stops flagging it |
+| Income shows twice for one Boatsetter charter | it is not a duplicate: Boatsetter pays in legs | nothing to fix |
+| The same guest is on the list twice | they were logged by hand and then booked online | judge the pair, then merge ([3.8](#3-8-when-the-same-guest-appears-twice)) |
+| A day shows partly booked but no window is shown | a booking on it has no start time | add the time to the booking |
+| A guest says the site told them a boat was not available | the day is blocked, full, or lacks the hours they asked for; or another guest is on the payment page for it | check **Availability**; offer fewer hours, another boat or another date ([2.7](#2-7-the-availability-check)) |
+| An **ACTION** email: a guest paid for a boat already taken | two guests got through at the same instant, or you logged a booking while they were paying | move them and mark the booking booked, or refund them in Stripe |
+| A refund made in Stripe did not change the booking | the site's webhook is not subscribed to `charge.refunded` | add that event in Stripe under Developers → Webhooks, then set this one by hand |
+| A gift certificate code is refused | it is unknown, voided, expired or used up; the message says which | check it in **Money → Gift certificates** |
+| A coupon's uses ran out faster than bookings | abandoned checkouts count as a use | raise the limit, or watch it |
+| A guest cannot book the seat-sale event; its page says the next date is coming | the night has passed, so sales closed by themselves | give the package its next date when you want to sell ([2.6](#2-6-seat-sale-events)) |
+| A guest was charged twice for one booking | two checkouts, both paid: a known, accepted limit | refund the second charge in Stripe, then cancel the extra row by hand ([2.2](#2-2-how-a-guest-books)) |
+| Undid a completion by mistake and income is still there | income is not removed when the status changes back | delete that ledger row by hand |
+
+## 10.2 Posts, comments and messages
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| An approved post never went out | it has no date | give it one with **Reschedule** |
+| A scheduled post never went out | more than five hashtags, no media, or a photo on TikTok | open **Discuss** on the card, or check the publisher's note |
+| The publishing service emails "your post has failed to publish" | often only the Story leg failed (a video that was not upright) | check the feed before worrying |
+| A comment or message stays red after you answered it | you answered in the app, which this screen cannot see | **I answered this elsewhere** |
+| A message has a red **Answered automatically** flag | the keyword auto-reply answered something it should not have | read what went out, then reply yourself |
+| TikTok comments are not in the console | the publishing service cannot read them | check them in the TikTok app |
+
+## 10.3 The crew
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| A card says **Stopped mid-run** | a permission prompt nobody answered, or the computer slept | **Run now** in the Claude app's scheduled routines |
+| A card says **failed** but the work got done | a logging artefact | read the card's detail; an artefact has a status word where the title belongs |
+| No runs at all this morning | the office computer was off or asleep | wake it; each task runs at its next time, or use **Run now** |
+| An agent ignores a new skill file you added | the file is not on her list | add it to her `SKILL.md` list; the consistency check reports unlisted files |
+
+## 10.4 Files, email and the system
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| A folder shows a red mark in Explorer | Google Drive cannot sync something in it: a code folder, or a file stuck mid-upload | see [9.2](#9-2-where-everything-lives); never write videos straight into Drive |
+| A reply sent to the bookings address vanished | that address can send but cannot receive | replies go to the business Gmail address |
+| A file's date looks wrong | names can record when a file was saved, not when it was shot | trust the date inside the file, not its name |
+| The bank balance looks old | it is a reading typed in, not a live figure; amber after a week | record a new reading |
+| The consistency check fails | a document, task or file no longer matches the system | read its message: it names the file and the line to fix |
+
+# Appendices
+
+## Appendix A — Quick reference
+
+| I want to… | Go to |
+|---|---|
+| see what needs me today | Overview → **Needs attention** |
+| log a booking from a text or call | Bookings → Bookings, or forward it to Claude |
+| send a guest a payment link | Bookings → Bookings → **Text payment link** (phone) |
+| record that a charter happened | Bookings → Bookings, set **completed** (writes the income) |
+| block a day | Bookings → Availability |
+| text a past guest about an offer | Bookings → Contacts (phone) |
+| log a receipt | Money → Income & expenses |
+| check a charter's money is on the books | Money → Reconciliation |
+| pull tax figures | Money → Tax Report |
+| approve, move or stop a post | Marketing → Media Drafts |
+| answer a comment or message | Marketing → Comments / Messages |
+| ask for a Google review | On the dock → Reviews (phone) |
+| send the gate code | On the dock → Arriving (phone) |
+| log hours, fuel or a service | On the dock → Boat log |
+| change a price | Setup → Packages & pricing |
+| make a coupon | Setup → Coupons |
+| change what an agent does | `AI & Website\Crew`, then the consistency check |
+
+## Appendix B — Glossary
+
+| Term | Meaning |
+|---|---|
+| **Inquiry** | someone asked about a charter; not yet booked |
+| **Booked** | confirmed and holding its date, paid or not |
+| **Lapsed** | an inquiry that never became a booking |
+| **Owed** | paid for, never sailed, no new date yet |
+| **Tentative seat** | a seat on a seat-sale event held by an inquiry, a lapsed inquiry or an owed charter: counted against capacity, shown apart from confirmed |
+| **Completed** | the charter ran; its income is written |
+| **Refunded** | it was a booking, and the money has gone back |
+| **Hold** | the 35 minutes a guest on the payment page keeps their boat and hours |
+| **Booking number** | `NY-YYYYMMDD-NN`; never changes |
+| **Mirror row** | the Bookings row created for a website booking, sharing its number with the inquiry |
+| **Lead source** | where the guest found you |
+| **Booking channel** | who took the booking: a platform, the website, or you directly |
+| **How paid / origin** | how the money arrived, on the booking and on each ledger row |
+| **Held, not earned** | money taken for a trip that has not happened |
+| **Draft** | a social post waiting for a decision |
+| **Scheduled** | an approved, dated post: publishes on its own |
+| **The Board** | the shared to-do list between you and the crew |
+| **T1 / T2 / T3** | how urgent a board item is: urgent, worth your attention, background |
+| **Launcher** | an agent's `SKILL.md`: the list of Crew files she reads |
+| **Release** | a numbered, backed-up version of the whole system |
+| **`_Old`** | a folder for retired files; history, never current fact |
+
+## Appendix C — This installation: The Nauti Yachti
+
+Everything in this appendix belongs to this one business. A new operator replaces it (see Appendix D).
+
+**The business.** The Nauti Yachti LLC runs captained charters on Lake Conroe, Texas. Registration numbers are in `01 Formation & Legal\Business Information - The Nauti Yachti LLC`.
+
+**The fleet.** Capacities include the captain. The live figures are in the database.
+
+| Boat | Type | Capacity (guests) | Dock | Hour meter |
+|---|---|---|---|---|
+| **Nauti Explorer** | Monterey Explorer deck boat, red, white and blue | 14 (13) | Pearl Bay, east side: a gated private dock | no |
+| **Nauti Yachti** | 2006 Sea Ray 290 Sundancer | 12 (11) | about three miles west-southwest of Pearl Bay | yes |
+| **Nauti Islander** | make and model not recorded yet | 8 (7) | with the Yachti | no |
+
+The Explorer's port side still carries its previous owner's name, "Canter Splash". It is our boat and its photos are fine to post. Dock addresses are private settings on the website, one per boat; the gate code is set the same way and sent only by text.
+
+**Packages.** Tubing / Wakeboarding (the default when no occasion is named), Birthday Party, Bachelor / Bachelorette, Corporate Outing, Night Cruise, Party Cove Package (all priced by the hour, by boat), Wake Surfing Lessons (priced by group size), and **Boatz & Glowz** (a glow-party night sold by the seat).
+
+**Add-ons**, as of October 2026 (live prices in Setup → Add-ons):
 
 | Add-on | Price | Free with |
 |---|---|---|
 | Balloon Package | $40 | Birthday Party |
 | Champagne on Ice | $25 | Bachelor / Bachelorette |
-| Full Decoration Package | $60 | — *(contains the balloons and the champagne)* |
-| Grill Service | $25 | Night Cruise |
+| Full Decoration Package | $60 | — (includes the balloons and the champagne) |
+| Grill Service | $25 | Night Cruise. Cooking only; the guest brings the food, and the boat must be at anchor. |
 
-The **Full Decoration Package is the other two plus table setup and themed
-decor**. Bought separately the balloons and champagne come to $65, so the bundle
-saves $5 — and a guest who ticks all three is charged $60, not $125. That is
-enforced in code, not by remembering.
+**The glow night.** Boatz & Glowz is this installation's seat-sale event ([2.6](#2-6-seat-sale-events)): 31 guest seats across the three boats. It meets at **Scott's Ridge boat ramp** for every boat. Check-in 4:30pm, lines off 5:00pm, back around midnight, 21 and over. The times live in `lib/glowEvent.js`; change them there and never in copy.
 
-**Grill Service is the cooking only — the guest brings the food.** It is a small
-electric grill, about two steaks at a time or four burgers at a time, and the
-boat has to be at anchor, so allow twenty to thirty minutes. It can be added to
-any charter; anchoring off mid-trip is normal.
+Seat sales closed after the night of 19 September 2026. There is no next date yet: the owner's call, possibly May. Until one is set, the page collects crew-list signups only, and the crew offer no seats, prices or seat counts in posts or replies.
 
-**A charter with no stated occasion is a Tubing / Wakeboarding charter.** That is
-the default, not a guess.
+**The lake.** Charters stop at three places, which are different places: **Party Cove** (the raft-up), **the Island** (beaching and swimming) and **the Dam**.
 
-**A per-seat event takes no add-ons at all.** Boatz & Glowz sells one seat on a
-boat carrying a dozen strangers, so there is no table to decorate and no way to
-set up for two people in the middle of somebody else's night. The booking form
-hides the add-on list for it, and the server refuses to charge for one even if
-the request arrives anyway. It is keyed on the pricing type rather than a list of
-packages, so the next per-seat event inherits the rule the day it is created.
+**Media rules specific to this business:**
 
-This cost real money first: a guest checked out for two glow seats on 18 September
-and the form let him add the Full Decoration Package, taking $100 to $160 for
-balloons and champagne nobody could have delivered. He had to be texted and
-refunded, and Stripe keeps its fee on a refund.
+- The **Lake Bryan charters of June 2026 are under a confidentiality agreement**: no media from them, ever.
+- One glow clip from September 2025 is withdrawn for nudity, and another is held. Both are on the `doNotUse` list.
+- The sold **Nauti Lexi** may appear in old footage but is never offered as a boat to book.
+- All faces are allowed, strangers included.
 
-These rules live in `lib/addOns.js` and are the single source for the booking
-form, the price quoted and the FAQ. Change them there, not in the copy, and run
-`node scripts/test-addons.js` afterwards — 51 assertions cover the pricing.
+**Accounts.**
 
----
+- Instagram posts tag the owner's personal accounts as collaborators, set in `lib/socialPosting.js`.
+- The automatic message reply is two automations in the publishing service.
+- `bookings@thenautiyachti.com` sends but cannot receive. Replies go to the business Gmail address.
+- Banking is moving to a new business checking account in October 2026; see the board for the console's account warning, which needs updating to match.
 
-# The top bar
+**Prices on the booking platforms** are managed on the platforms themselves, separately from the website's prices.
 
-| Button | What it is |
+## Appendix D — Setting this up for another business
+
+This system is built to be handed to another charter operator. **What transfers is the machinery**: the website, the console, the booking and payment logic, the ledger, the media pipeline and the AI crew. **What does not transfer is the business**: boats, prices, photos, guests and accounts.
+
+**What a new operator replaces:**
+
+| Replace | Where |
 |---|---|
-| **The version badge** | The version of the whole system, top left beside OWNER CONSOLE. The same number appears under the **Owner console** button on the public site. Both read it from `package.json`, so they cannot disagree with each other. See **Versions and going back** below. |
-| **🔊 what Pearl last said** | Appears only when she has said something. The words are shown; the speaker button reads them aloud in her voice, and pressing it again stops her. The **×** dismisses that message — the next one brings the strip back. There used to be an **Enable Pearl** button here whose only job was to satisfy the browser's rule that audio needs a click first. Any click now does that, so it is gone. |
-| **📱 On the dock** | The phone page: ask for reviews, log engine hours. Everything on it needs a phone — a text link has nothing to open on a desktop, and an hour reading is taken at the boat. Worth adding to your home screen. |
-| **📖 Manual** | This document. |
-| **← Back to site** | The public website. |
-| **Log out** | Ends the session. |
+| name, domain, lake, phone | `business.config.json`, then `node setup.js` (dry run) and `node setup.js --apply` |
+| boats, packages, prices | the database seed, then **Setup** in the console |
+| the words on the site | `lib/packageContent.js` and `lib/faqContent.js` |
+| photos | the Photos library, tagged rather than re-filed |
+| keys and accounts | a new secrets file and the website's private settings |
+| this manual's Appendix C | rewritten for their business |
+| the crew's business pages | `Crew\_Global Rules\20 The business.md` and `21 The owner…` |
+| crew names and voices | optional: the setup step can rename them |
 
-The waiver draft link is gone. The Release and Waiver is published in the
-**Terms & Conditions** tab on the public site, and booking now records that a
-guest accepted it.
+**What never goes with it:** guest data, database backups, release archives of this business, and this business's photographs. The distribution build leaves all of these out and refuses any file that contains a key.
 
----
+**Before a new operator takes a booking:** run the consistency check and the health check. Both should be clean.
 
-# A booking that came in by text
+**Known spots that still carry this business's details in code**, to clear before distributing: the gate-code text's signature and one Overview footnote. Both are on the board.
 
-Most bookings do not arrive through the website. They arrive on WhatsApp, by
-text, or on the phone — and that channel is the biggest and the worst tracked.
-The 8 Aug 2025 charter was never written down at all and had to be reconstructed
-from photographs a year later.
-
-This is the route that stops it happening again.
-
-1. **Send the message to Claude** — a screenshot is enough.
-2. **It gets logged straight away** as an inquiry with a real reference
-   (`NY-YYYYMMDD-NN`), before anything is promised. Availability, boat capacity
-   and the price are checked against the live data, not from memory.
-3. **You get a reply to send**, written for what that guest actually asked.
-4. **If they say yes**, you get a link: `thenautiyachti.com/pay/<id>`. It shows
-   them the charter on our own site and hands off to Stripe from there. Never
-   paste a raw `checkout.stripe.com` link into a text — it looks exactly like a
-   scam, and the more careful the customer the less likely they are to tap it.
-5. **When they pay, the rest happens on its own:** the booking is marked paid,
-   the calendar closes that day for that boat, and a confirmation goes to the
-   guest with you copied in. A website inquiry also gets a booking row created
-   at this point; a booking taken by text already is one, so nothing is
-   duplicated.
-
-## Doing it yourself, from the phone
-
-From v2.4.0 you do not need to ask for the link. Open **Bookings** on your phone
-and each row carries the text it needs:
-
-- **Text payment link** — a lead with a price on it. Sends them their own
-  `/pay/<id>`, already filled in.
-- **Text to confirm** — a lead with no price yet. Asks them to confirm so you can
-  price it and send the link after.
-- **Text reminder** — a booking that is already **paid**. Day, departure time and
-  where to meet. It is only ever offered once the money is in: a guest who has
-  not paid needs the link, not directions.
-- **Text payment link** — anyone who owes, whether the row says inquiry or
-  booked. Until 18 September this button appeared on inquiries only, so a
-  booked-but-unpaid charter offered a reminder instead and the only way to send
-  the link was to put the booking back to inquiry first. On the glow night that
-  was five bookings out of six.
-- **Text about the declined card** — replaces both of the above the moment a
-  card is refused, on an inquiry or a booking alike, and disappears again when
-  a payment succeeds. Boatz & Glowz says Scott's Ridge by name; every other charter
-  meets wherever that one was arranged, so it stays general.
-- **Text about owed** — a charter paid for that never sailed.
-
-These only work on a phone. A desktop has nothing to hand an `sms:` link to, so
-it tells you that rather than appearing to send.
-
-**A lead only gets a payment link if its row has a package and a price.** That is
-what the link charges for. A booking logged by text with neither falls back to
-*Text to confirm* until you add them.
-
-**The one gap to know about.** Between "yes" and "paid", nothing holds the date.
-The calendar only closes on a real booking, so a second party could still take
-that boat. If the charter is soon or the date is in demand, block it by hand in
-**Bookings → Availability** and unblock it if they never pay.
-
-## Capacity counts the captain
-
-The vessel capacities INCLUDE the captain. The Nauti Yachti's 12 seats **11
-guests**. A party of 12 needs the Explorer. This is the easiest thing on the
-whole site to get wrong when quoting quickly.
-
-## If a payment and the console ever disagree
-
-A guest says they paid and the booking still reads unpaid — ask Claude to resync
-it. That re-reads Stripe's own record and repairs whatever is missing. It only
-ever copies from Stripe, so it cannot invent a payment that did not happen.
-
----
-
-# Versions and going back
-
-The number beside OWNER CONSOLE says which release you are looking at. It exists
-for one moment: something is wrong and you need to know what to go back to.
-
-## What earns a new number
-
-**The crew doing their job is not a revision.** Coral drafting posts, Siren
-publishing, Pearl filing a brief, a booking landing, a photograph being tagged —
-none of that moves the version. That is the system running, not changing.
-
-| Size | Moves | What it means |
-|---|---|---|
-| **Small** | 1.5.0 → **1.5.1** | Formatting, wording, a colour, a label. Nothing behaves differently. |
-| **Moderate** | 1.5.1 → **1.6.0** | The logic of an agent, or a workflow. A status meaning something new. |
-| **Large** | 1.6.0 → **2.0.0** | A whole layout changed, or a completely new large-scale idea. |
-
-Three numbers, always — `1.5.1`, never `1.5`. Unsure between two sizes? **Take
-the smaller one.** A small change that turns out to have been moderate costs
-nothing; a moderate one recorded as large makes the history lie about how much
-moved, and the history is the entire point.
-
-## Nobody cuts a release without asking you
-
-A revision draws a line under a batch of work, and only you know where the batch
-ends. The rule is to finish the work, say what changed, say what size it looks
-like, and **ask** — because it was broken twice on the day it was written.
-
-**This manual is re-read at every release.** Two checks stand behind that. One
-compares the tab names in it against the tabs the console actually has, so a
-rename can't quietly leave this document describing a screen that no longer
-exists. The other records which version the manual was last read against, and
-complains as soon as the code moves past it.
-
-The second one exists because the first cannot do everything. On 13 September
-this manual said *"The guest gets nothing"* about a declined payment. That was
-true when it was written at one in the morning and false by six that evening,
-when the Text button arrived — and no checker reads English for truth. A
-sentence that quietly stops being true is caught by a person re-reading it, and
-the release is the moment anyone reliably does.
-
-## What you actually get
-
-One `.zip` in `AI & Website/releases/`, and only ever the newest one: the crew
-briefs and the Crew folder they read from, the schedules, the permission rules, the hand-written
-skills and the shared scripts — everything git does not version. Older *release
-folders* are deleted; **every git tag is kept forever**, so the code for each
-version is still on GitHub.
-
-The skills were added on 14 September 2026 and had been missing the whole time.
-They live in `.claude\skills`, a different folder from the crew's
-`.claude\scheduled-tasks`, so nothing was picking them up — which meant
-**`/watch`**, the tool that turns a video into timestamped frames and a
-transcript, would simply not have existed after a restore, despite the whole
-media pipeline being built on it. Skills synced down from claude.ai are skipped:
-those are somebody else's copy and come back on their own.
-
-## Where the files live, and why it is split
-
-Two places, and the split is about what Google Drive can back up.
-
-| | Where | Backed up by |
-|---|---|---|
-| **Business files** — Photos, Finance, Legal, releases, this manual | `Documents\_MyFiles\_The Nauti Yachti LLC` | **Google Drive**, which mirrors that folder |
-| **The app** — code, dependencies, build output | `Documents\Nauti-yachti-app` | **GitHub**, off-machine and stronger for code |
-
-**Drive cannot sync a working tree.** Until 15 September 2026 the app lived
-inside the mirrored folder, and Drive had quietly given up on the whole thing
-and marked it with a red X — 1.5 GB of build output and 755 MB of dependencies
-were more than it would take. Nothing announced it. The folder looked normal
-while nothing in it was being backed up, and it holds 53 GB of charter footage.
-
-So the app moved to the local disk. **This is not a gap in your backups.** The
-code is on GitHub, tagged at every version, which is better protection than
-Drive gives it. Drive still holds everything git does not version — the photo
-library, the finance records, the release zips, this manual.
-
-**A checker enforces it now.** `check-consistency.js` walks the business folder
-for `.git`, `node_modules`, `.next` and `.turbo`, and refuses to let a release
-through if it finds any. It is deliberately about backup coverage rather than
-correctness: the point is that nothing can drift back in unnoticed. It found
-three stale pointers in old distributable test builds the day it was written.
-
-One consequence worth knowing: a file that git ignores AND that lives on the
-local disk is in no backup at all. There is one — `conf\token.txt`. Its
-contents were exposed in a working session on 15 September 2026, and the file
-now holds a note saying so rather than a token. 
-
-**It turned out not to be a credential, and nothing needs rotating.** This
-manual said it did, for three days. What was in that file was a 32-character
-hex string, a millisecond timestamp and the word `NORMAL` — a state artefact,
-not a key. Nothing in this repository, in the crew scripts, or in any agent
-brief reads it: it was searched for by name across all three and has no
-readers. It was never on GitHub either, because `.gitignore` has covered
-`conf/` throughout. **The file can simply be deleted** if nothing has
-recreated it. Nothing is broken by it sitting there — which is exactly why it would be forgotten.
-
-`CHANGELOG.md` carries one entry per version, written to be read on a bad day.
-If an entry cannot tell you whether to restore that version, it was not written
-properly.
-
-The full reasoning, including why this is deliberately **not** SemVer, is in
-`AI & Website/VERSIONING.md`.
-
----
-
-# Boat
-
-## Maintenance
-
-Service items per vessel against elapsed months or engine hours, plus engine-hour
-readings and fuel fill-ups. Items flip to overdue automatically.
-
-**Nothing here can judge anything until engine hours are logged.** Thirteen items
-are configured against hour intervals and the panel will keep reporting "nothing
-overdue" while it has no readings — which looks identical to a healthy fleet. Log
-a reading after each outing from **On the dock** (see below); the intervals then
-work on their own.
-
-**Logging fuel writes the expense for you** — the one other place besides
-completed bookings where the ledger fills itself in.
-
----
-
-# What runs on its own
-
-Nine scheduled tasks: eight named crew members and the standup that files their
-status. **None of them post, spend or send anything to a guest without you.**
-Only one acts outside the business at all.
-
-They run in dependency order, so the summary comes after the things it
-summarises:
-
-| When | Who | What she does |
-|---|---|---|
-| Daily 8:19 | **Nauti Penny** · Accounts Receivable | Money in. Payouts against the ledger, and anything paid for that never ran. |
-| Daily 8:38 | **Nauti Coral** · Content Producer | Drafts a post from real fleet photos, audits the queue, and checks what Siren actually published. |
-| Daily 9:04 | **Nauti Siren** · Publishing & Brand Safety | The last gate before anything is public, then publishes what passes. Drafts replies for unanswered comments and for the DMs the auto-reply held back. |
-| Mon 9:26 | **Nauti Joy** · Guest Relations | Who to ask for a review, and who was left hanging without one. |
-| Mon 9:41 | **Nauti Reef** · Revenue Growth | Money the business is not collecting. |
-| Mon 10:04 | **Nauti Shelly** · Accounts Payable | What is being paid for against what is actually used. |
-| Mon 10:29 | **Nauti Nova** · Market Research | The outside world. Reports nothing most weeks, by design. |
-| Daily 10:51 | Crew Standup | Files a one-screen status for all eight. |
-| Daily 11:18 | **Nauti Pearl** · Chief of Staff | Reads everything, decides what reaches you. |
-
-## The email the site sends
-
-Four things a guest can do on the website send mail, and **every one of them now
-emails both the guest and you**. Three of the four used to be one-sided: an
-inquiry and a crew-list signup told only you, and a gift certificate told only
-the recipient — so a guest who typed their details into the form got silence,
-and a certificate could be bought without the business hearing about it.
-
-| What the guest did | They get | You get |
-|---|---|---|
-| Sent an inquiry | acknowledgement, "we'll come back to you personally" | CC of the same message |
-| Paid for a charter | booking confirmation with the details | CC of the same message |
-| Joined the crew list | welcome, with the unsubscribe line | CC of the same message |
-| Bought a gift certificate | the certificate and how to redeem it, and so does the person it is for when their email is given | one notice: code, value, and who it reached |
-
-**You are CC'd on the guest's copy rather than sent a separate notification.**
-That is deliberate, and it is a workaround. On 7 September a crew-list signup
-was accepted by Resend, returned an ID, and never arrived — the business's own
-sending domain silently stopped delivering while everything else kept working.
-Being on the guest's copy means you see the message they actually got, and it
-travels by the route that demonstrably works.
-
-**`bookings@thenautiyachti.com` cannot receive mail.** The domain has no MX
-record, so anything sent to it is accepted and evaporates. It is still fine as a
-*from* address, and replies go to the Gmail address instead. This is unfixed —
-if anything ever assumes a reply can reach that address, it will fail.
-
-### Where the confirmation tells them to go
-
-The booking confirmation is the one message a guest keeps, forwards, and drives
-by. It now names **where their boat is** and **what time it leaves** — and until
-18 September it reliably got one of those wrong and never said the other at all.
-
-| Their booking | Where the email sends them |
-|---|---|
-| **Boatz & Glowz**, any boat | **Scott's Ridge boat ramp** — check in 4:30, lines off 5:00, back around midnight |
-| **Nauti Explorer**, anything else | the Pearl Bay dock, with "we'll text your gate code on the morning" |
-| **Nauti Islander** or **Nauti Yachti** | *"we'll be in touch with the meeting point"* — see below |
-
-**The glow night beats the boat.** Your words, 18 September: *"The glow party,
-all pickup locations will be at scotts ridge."* So the package decides, for all
-three boats, including the Explorer — whose own dock address is the one that
-would otherwise win.
-
-**There is more than one dock, and the email finally knows it.** The Explorer
-sits at Pearl Bay on the east side; the Islander and the Yachti are three miles
-west-south-west. The console has known this for as long as the weather has been
-forecast per boat — a single position *"would have routed two of the three fleet
-to the wrong shore"*. The address never got the same treatment. One value went
-out on every confirmation whichever boat was booked, so **two thirds of the
-fleet had been mailing guests to a house on the wrong side of the lake**, from 5
-September until it was found. It produced no complaint only because nobody on
-those two boats had paid by card in that window.
-
-**Both docks are set.** The Explorer's is `DOCK_ADDRESS`; the Islander's and the
-Yachti's are `DOCK_ADDRESS_ISLANDER` and `DOCK_ADDRESS_YACHTI`, added 18
-September. A boat whose address is missing is **never** given the Explorer's
-instead — its guest is told the meeting point is coming, which is true and costs
-one text. Falling back would silently restore the exact fault this replaced, and
-a confidently wrong address is the one mistake a guest cannot catch before they
-are already driving.
-
-**The gate code is still never emailed**, and is now only *promised* for a dock
-that actually has a gate. An email is forwarded and kept forever, so mailing the
-code would leave every guest the business has ever had holding working access to
-a private residence indefinitely. It goes by text on the morning, from the
-Arriving tab.
-
-**What went wrong on 18 September.** A guest paid for two glow seats at 06:55
-and was emailed the Pearl Bay address — a gated residence across the lake from
-the ramp his boat was leaving from — with a gate code promised that does not
-exist there. The booking was right and the payment was right; the single fact
-the email exists to deliver was wrong. He was told by text, and the code was
-changed so it cannot happen to the next one.
-
-### A booking taken by text gets the same paperwork
-
-When a guest pays through a link you texted them, **Stripe's checkout collects
-their email and it is written onto the booking**, then the confirmation goes out
-and the send is recorded. You do not have to have their address to start; you
-have to have it by the time they pay, and the payment is what supplies it.
-
-That has been true for website bookings since 5 September and for texted-link
-bookings since the 11th. What was missing was any way to *see* whether it had
-happened.
-
-**`ExternalBooking` had no record of the send.** Every booking taken by text —
-most of them, and the whole reason that table exists — was invisible to the
-morning check, because the check can only ask a question the table can answer.
-Jim Gonzalez paid $100 for two glow seats, was emailed nothing at all, and sat
-paid-and-silent for a week without appearing on a single list. He was found
-because you asked.
-
-Both tables now carry the same column, and the morning check asks both. One
-charter written as two rows is counted once: a website booking's confirmation
-is sent and recorded against the inquiry, and its mirror is not reported as a
-forgotten guest.
-
-**If a payment and the console ever disagree**, *Re-read from Stripe* pulls the
-truth back: the email address, the phone number, whether it was really paid, and
-the terms acceptance. It now works for **both** kinds of booking. Until 18
-September it looked only at website inquiries — so the one tool built to recover
-a missed payment could not touch the channel most likely to need it.
-
-It also **sends the confirmation by default now**. It used to need asking, which
-meant a repair could put the money right and leave the guest exactly as
-uninformed as before. It will not send twice: a booking already recorded as told
-is left alone.
-
-It only ever copies *from* Stripe. It cannot mark something paid that Stripe
-does not say is paid.
-
-### Why a confirmation sometimes did not arrive
-
-For a fortnight this looked random. Slade paid and got his email. Carlyn, Jim,
-Josh and Stephen paid and got nothing. Same code, same kind of payment, and the
-booking itself always came out right — which sent everyone looking at Resend and
-at the template, because those were the only moving parts anyone could see.
-
-The webhook was **not waiting** for the email. It started the send and moved on.
-The site runs on functions that are frozen the instant they answer Stripe, so
-the request to Resend was cut off in mid-air perhaps four times in five, with no
-error written anywhere. The booking survived because *that* write was waited for.
-
-It is now waited for, and it cannot fail a payment: a mail outage is caught and
-logged, exactly as before.
-
-**It was in four places, not one.** The same mistake was silently dropping the
-declined-card notice to you, and both gift certificate emails — the second of
-which matters most, because a certificate is usually bought for somebody else
-and the email is the thing that gets forwarded. Money taken, nothing delivered.
-
-`scripts/test-webhook-awaits.js` now fails the moment any of them is started and
-not waited for. It is a source check rather than a behaviour one on purpose:
-this bug is invisible at runtime, invisible in review, and only shows up as a
-guest who never heard from you.
-
-If one is ever missed again, `node scripts/send-missing-confirmations.js` lists
-everyone who has paid and never been told, and `--apply` sends them.
-
-### How they sign off
-
-Every one closes as **The Nauti Yachti LLC**, through a single setting, so the
-four cannot drift apart. A templated email is sent by the business, and a first
-name on it promises a named human is waiting at the other end of a reply.
-
-The text messages are the opposite and stay that way: the review asks and the
-owed-charter messages read **"Austin & Brooke"**, because you paste those into a
-thread and send them from your own phone. The rule is who is really doing the
-thing, not which channel it went down.
-
-### Crew list
-
-A phone number is now **required** to join. Corey signed up on 7 September with
-no number, which left email as the only way to reach him about a seat.
-
-Joy also reads the signups on every run and puts new names in her status,
-because an email you cannot see fail is not a notification.
-
-## Why some things still say "Jarvis"
-
-The Jarvis tab was retired on 3 September 2026. Six of its seven panels had
-become worse copies of what the Overview already showed; the seventh was the
-media pipeline, which moved to **Marketing -> Media Drafts** where it belonged.
-Speaking aloud moved to the top bar, where her last message appears with a
-speaker on it. Pearl is the one you talk to now. (There was briefly an
-**Enable Pearl** button; it is gone — see the top bar above.)
-
-Nothing you can see says Jarvis any more. Three things under the floor still do,
-and they were left alone deliberately:
-
-| Still called | What it is | Why it stays |
-|---|---|---|
-| `JarvisTodo` | the database table behind The Board | renaming it means a migration against the live database to change a word |
-| `JARVIS_SERVICE_KEY` / `x-jarvis-key` | how the crew scripts prove who they are | it is set in Vercel and in the secrets store; renaming means changing both in exact step or every agent stops being able to write |
-| `/api/jarvis-todos` | the address The Board reads from | an address only has to be stable, not pretty |
-
-Same rule as the task folders below: **rename what people read, leave what
-machines depend on.** If you see one of these in an error message, it is not a
-leftover anyone forgot.
-
-## Why the routines are named as they are
-
-All eight now carry their crew member's name — `nauti-pearl`, `nauti-coral`,
-`nauti-siren`, `nauti-joy`, `nauti-penny`, `nauti-reef`, `nauti-shelly` and
-`nauti-nova`, alongside `crew-standup`. The renaming is finished; what follows is
-why it had to be done carefully, and it still applies to any future one.
-
-A task ID cannot be renamed — only deleted and recreated — and connector
-approvals are stored **on the task**. Siren publishes through Blotato, so
-recreating her throws that approval away and her next run stops, waiting for a
-permission nobody is there to give. She is the one agent whose silence is
-invisible until an event has already gone unannounced.
-
-So she was renamed only just after a publish run, when nothing was due and a
-**Run now** to bank the approval was a harmless no-op. Renaming her before one
-either loses that morning's posts to a prompt, or fires them at whatever hour
-you pressed the button.
-
-Coral and Penny were renamed this way on 4 Sep 2026 — rename, **Run now**,
-approve once. Their approvals are Blotato and Gmail respectively. **If a routine
-ever starts skipping, a missing approval is the first thing to check.**
-
-A folder name never tells you a cadence. `nauti-penny` runs daily and
-`nauti-shelly` runs weekly, and nothing in either name says so. **The schedule
-table above is what is true.**
-
-## Who checks whom
-
-Everything routes through Pearl. Coral reports to Siren, and Siren reports to
-Pearl. The one loop that runs backwards is Coral auditing what Siren actually
-published the day before.
-
-That loop exists because **Siren is the only agent that acts outside the
-business.** Everyone else proposes, so a mistake costs a line on the board;
-hers is live on three platforms. Joy, Reef and Nova are deliberately *not*
-checked by anyone — putting a reviewer in front of an agent that only proposes
-buys delay and no safety.
-
-## The Board (To-do List)
-
-The centre panel on Overview. It is the shared workspace between you and the
-crew, not just your list — they write to it, read each other's items, and hand
-work over by naming another agent in an item.
-
-Items are ranked **High / Medium / Low**, not listed by date. Crew items carry
-their own priority; the ones you typed yourself are ranked by what they say —
-money being held, security, legal and overdue all go high. Anything falling due
-within two days is promoted regardless of wording. Only High is expanded when
-the page loads; Medium and Low fold open when you want them.
-
-**Long items fold.** The claim and its first two lines show; anything more
-sits behind *+ N more lines*, and the dated notes behind *N notes*, the way
-they always have. One item was rendering as twenty bullets on 17 September
-and its own verdict — Coral writing "Both halves dealt with" — was at the
-bottom where nobody would see it. Nothing is dropped; it is a reading
-transform only.
-
-**Pearl keeps the board.** She closes what the data shows is done, folds
-duplicates into the older entry, and rewrites anything Low that has sat
-untouched. She never edits or closes an item you wrote unless it is genuinely
-finished.
-
-## Their status cards
-
-Each agent files a status every morning **even on days she does not run**, so a
-card is never blank. A card that shows a date instead means she has not filed
-today.
-
-**Click her face to hear her read it.** The small speaker mark on an avatar
-means she has something filed; clicking plays it in her own voice, clicking
-again stops her, and clicking again starts her from the beginning. Clicking a
-different agent stops whoever is talking first, so you never get two at once.
-Hovering enlarges the face, which is only there so you can see it properly.
-
-Nothing in the console ever speaks on its own. If you did not click it, it will
-not make a sound.
-
-**Each click costs a little money.** Speech is billed per character to
-ElevenLabs — roughly 350 characters a click, and $10 buys about ten thousand.
-Clicking the same unchanged status twice is free; it replays from memory rather
-than being bought again.
-
-A card reading **"Stopped mid-run"** means the run was killed partway, usually
-by a permission prompt nobody was there to answer. Open Routines and hit **Run
-now** to clear it.
-
-### When a card says an agent failed and she did not
-
-A card is a row in the activity log, and that row carries one of four values.
-Three are what you would expect. The fourth is not a state at all:
-
-| Value | Means |
-|---|---|
-| `running` | started and has not closed yet |
-| `completed` | finished |
-| `failed` | genuinely went wrong |
-| `status` | **not a lifecycle state** — the daily status card the standup files for each agent, even on days she does not run |
-
-`status` is why the table holds far more rows than there have been runs: eight
-agents filing one card a day. They are correct and should never be "cleaned up".
-
-**A card can report a failure that never happened.** On 14 September Nauti Joy's
-card read failed for a day over a run that had succeeded four minutes earlier.
-The cause was in how agents record themselves: the script read its arguments by
-position, and the closing command passes an empty `""` for the title. PowerShell
-silently drops an empty argument to a program, so every later value slid one
-slot left and the status word landed in the title column.
-
-Two things now stop it. The script refuses any status it does not recognise
-rather than writing a row it cannot vouch for, and closing a row uses named
-flags — `--status`, `--detail`, `--id` — so nothing has to survive being empty.
-
-**A card can also say an agent is STOPPED MID-RUN when she is not.** On
-17 September both Siren and Penny were reported stopped. Siren had published
-all three of that evening's posts ten minutes earlier with a URL recorded
-against every one. Both rows were status cards whose arguments had slid, so
-the word `status` sat in the task-title column and the status column kept its
-default `running` — the row never closes, and the console reports a death
-that did not happen. The logger now detects the slide, shifts every argument
-back and writes the row correctly, with a warning in the run transcript.
-
-**So if a card says failed, read its detail before believing it.** A real
-failure explains what went wrong. An artefact usually has a status word sitting
-where the task title belongs, or says outright that it was a duplicate. Four
-such rows existed and were repaired on 16 September 2026; one of them had also
-had a genuine accounts-payable report overwritten on top of it, which was
-recovered from the duplicate before that duplicate was deleted.
-
-## The eight voices, and how each one writes
-
-Every agent has her own voice and her own register, so you can tell who is
-speaking without looking at the name.
-
-| | Voice | How she writes |
-|---|---|---|
-| **Pearl** | Alice | Dry and unhurried. She tells you the thing you would rather not hear |
-| **Coral** | Jessica | Keen, and hardest on her own work — she audits the queue she built |
-| **Siren** | Charlotte | Flat and literal on purpose. She is the gate |
-| **Joy** | Lily | Warm, and a little wounded on the guests' behalf |
-| **Penny** | Matilda | Charming and teasing, openly proprietary about the books |
-| **Reef** | Laura | The enthusiast. She is selling you an idea |
-| **Shelly** | Sarah | Dry and sceptical — she asks why you pay for things you do not use |
-| **Nova** | River | Sparse. She speaks rarely and it should feel like it cost her something |
-
-**There is one hard limit on all of it: tone lives in the framing, never in the
-finding.** Anything serious — money held for a charter that never ran, a booking
-at risk, anything with a legal, insurance or safety edge — is said straight,
-with no colour at all. That contrast is deliberate. A voice you enjoy, that goes
-flat the instant something is genuinely wrong, is a voice you look up for.
-
-Their statuses are also now written to be **heard**, not only skimmed: full
-month names rather than "Sept", "4 September" rather than "9/4", "7pm" rather
-than "19:00", and no raw database ids or file paths. A checker runs whenever any
-of them files and warns her if she slips; it never blocks, because a badly
-written status is still worth more than no status.
-
-## What none of them may do
-
-Every brief forbids the same things, and the shared protocol overrides any
-brief that disagrees:
-
-- No agent writes to any table except the todo board and its own activity log.
-- No agent contacts a guest. (The automatic DM reply is a Blotato platform
-  feature, not a crew member — see *Messages answer themselves*.)
-- No agent spends, refunds or changes a price.
-- No agent publishes except Siren, and only drafts you have already scheduled.
-
-The full rulebook lives in the Crew folder, at
-`_The Nauti Yachti LLC\AI & Website\Crew\_Global Rules`. If a rule is not in
-there, it is not a rule.
-
-## Where the crew's instructions live
-
-Since 1 October 2026 everything the crew reads is in one folder you can open,
-read and edit: **`_The Nauti Yachti LLC\AI & Website\Crew`**. Google Drive backs
-it up.
-
-- **`_Global Rules`** — the rulebook every agent reads first, plus pages on the
-  business, on you and how you write, on releases, and on files and Drive.
-- **One folder per agent** — `Nauti Pearl`, `Nauti Coral` and the rest. Each
-  holds a **Briefing** (what she does, when, and why), her **Voice**, her
-  **Skills** (one file per part of the job) and her **References**.
-- **`_Routines`** — the morning standup and the hourly comment watch.
-
-Each agent's scheduled task still has a `SKILL.md`, but it is now only a list:
-which Crew files to read every run, and which only when the run needs them.
-**To change what an agent does, edit her file in the Crew folder.** The split
-moved every line word for word, and a script checked that none was lost.
-
----
-
-## Quick reference — where do I…
-
-| I want to… | Go to |
-|---|---|
-| See a new lead, from anywhere | Bookings |
-| Log a Boatsetter/GetMyBoat charter | Bookings → Bookings |
-| Record that a charter happened *(this logs the income too)* | Bookings → Bookings, set to completed |
-| Block a day off | Bookings → Availability |
-| Log a receipt | Money → Income & expenses |
-| Check a charter's money is on the books | Money → Reconciliation |
-| Pull tax numbers, or see per-charter and per-hour | Money → Tax Report |
-| Add a photo to the public gallery | Marketing → Media |
-| Approve or reschedule a social post | Marketing → Media Drafts |
-| Say what is wrong with a post, or stop one | Marketing → Media Drafts → **Discuss** |
-| See when a partly-booked day is actually taken | Bookings → Availability |
-| Reply to a Facebook or Instagram comment | Marketing → Comments |
-| Ask a past guest for a Google review | **On the dock** → Reviews *(phone)* |
-| Change a price | Setup → Packages & pricing |
-| Log engine hours after an outing | **On the dock** → Engine hours *(phone)* |
-| Log fuel, or set service intervals | Boat → Maintenance |
-
----
-
-## Things that are easy to get wrong
-
-- **A tab with no number is not empty.** The number means "waiting on you".
-- **Two income rows on one Boatsetter charter is correct** — boat leg and captain
-  fee.
-- **The review "Text it" link does nothing on a desktop.** Use a phone.
-- **A completed booking with no price gets no income row.** Fill the price in.
-- **Filenames lie about dates.** A file named `19:43` may have been *saved* then
-  and shot at midday. Trust the timestamp inside the file, not the name.
-- **The Lake Bryan charters of 6 and 13 June 2026 are under NDA.** No media from
-  those may be posted, ever.
-- **The 27 September 2025 charter now sits in The Dam, where it was shot.** It
-  spent a year filed under Party Cove, and the theme folder is the only thing
-  that records where a clip was taken — the filenames are bare timestamps — so
-  the folder was not merely untidy, it was asserting something false. It was
-  believed once: those clips supplied the opener *and* the closer of a Party
-  Cove compilation, 15.5 seconds of 49, and you caught it rather than the
-  system. Moved on 18 September 2026: 4 videos and a photo into `The Dam`, 18
-  stills into `The Dam/_from video`, nothing left behind. **This entry used to
-  say "treat that date as The Dam", which only worked while somebody
-  remembered to read it.**
-- **A block can cover part of a file, not all of it.** `doNotUse` blocks a whole
-  file; `timeRestricted` names the seconds to avoid and leaves the rest usable.
-  Search results carry the range with them. That distinction exists because an
-  all-or-nothing block on a mostly-good video gets overridden rather than obeyed
-  — which happened twice, by different people, each with a fair reason.
-- **Neon in a night shot is usually the speakers.** The Explorer's speaker rings
-  are lit whenever the radio is on, so colour in an evening shot on that boat is
-  ordinary. Glow nights are scheduled events; the test is the date, never the
-  lighting. Reading the lighting instead cost a usable clip a wrong nudity flag
-  AND a wrong misfiling claim on the same day.
-- **The blocked-media list is in `write-tags.js`, not only in the tags file.**
-  That script REBUILDS the list wholesale rather than adding to it, so a block
-  recorded only in `_media-tags.json` disappears the next time anybody runs
-  the tagger — silently, with searches simply starting to return the file
-  again. On 18 September the script held three entries and the live list held
-  seven. Four files would have been unblocked, two of them with a confirmed
-  topless woman.
-- **A block on a file is not always a block on every second of it.** The
-  20 September 2025 glow video is blocked for a figure at 4.5–6.5s; an excerpt
-  from 42–54s was reviewed and cleared. Where that has happened the doNotUse
-  entry names the seconds and says who cleared what, so the block keeps
-  meaning something instead of being re-argued every time.
-- **One glow clip is withdrawn for nudity:** `Boatz and Glowz / 2025-09-20 First
-  run - promo event / 20250920_211850_303ad61a.mp4`. The whole clip, not just the
-  part that was used, because it cannot be reviewed reliably at any size that
-  makes screening practical.
-- **"Don't post" does not delete.** It moves the draft to Rejected, and *Back to
-  review* brings it back. Deleting is a separate button behind a confirm.
-- **Six hashtags is a failed post, not a style note.** The publisher rejects it
-  outright and the draft still looks scheduled. Five, on every platform.
-- **A photo on Instagram or TikTok is untested.** Both accounts have only ever
-  published video. Facebook takes either.
-- **"I posted it myself" is only for posts you published by hand.** Siren marks
-  her own and records the link.
-- **`bookings@thenautiyachti.com` cannot receive mail.** Fine to send *from*,
-  never somewhere to expect a reply.
-- **A reply under a DM may not be yours.** Most are answered automatically
-  within seconds. Do not read one as a conversation you have had.
-- **Boatz & Glowz ropes off at 5, not 7, and runs to around midnight.**
-  Check-in 4:30, seven hours. It moved twice on 17 September — the finish
-  first, then the departure — and every time it moves, fourteen captions, two
-  DM automations, the package row, the public FAQ and the live bookings all
-  have to follow. **The times live in `lib/glowEvent.js`**: `GLOW_CHECK_IN_TIME`,
-  `GLOW_START_TIME`, `GLOW_RETURN_TIME`, and `GLOW_TIMING_LINE`, which is the
-  whole sentence already written. Change them there, never in the copy.
-- **The glow page counts its own seats** as confirmed, tentative and available,
-  like a Facebook event: *12 confirmed · 18 tentative · 10 available.*
-  Confirmed is booked or completed. Tentative is an inquiry, a lapsed one or an
-  owed charter, and it still counts against the 31: available is capacity minus
-  both. The same count shows beside the Reserve button, on the Seats card, on
-  the Events page and under the glow package in Setup → Packages & pricing,
-  so none of them can disagree. It refreshes every 60 seconds.
-- **Glow seat sales close by themselves once the night has passed**, and
-  reopen only when the package is given its next date. Closed (since 1 October
-  2026, no next date yet): the glow page says *next date coming soon*, every
-  button goes to the crew list, the booking form does not offer the night, and
-  the checkout refuses it. The crew list stays open. Setting a date reopens
-  sales the moment it is saved, so do not set one before you want to sell.
-- **A post that has already published cannot be edited by anything here.**
-  Blotato has no route for it — four posts had to be corrected by hand in
-  each app when the time moved. Facebook shows "Edited"; Instagram does not;
-  TikTok cannot be edited at all.
-- **The console cannot see a reply you sent from the Facebook app.** Press
-  *I answered this elsewhere* or the thread keeps its red flag forever.
-- **A red flag on a message thread means a machine answered something it
-  should not have.** Read what went out before you reply.
-- **The bank balance is typed in, not fetched.** If it says `9d ago` in amber,
-  nobody has looked in nine days and the figure is a guess with a date on it.
-- **A Wells Fargo warning does not stop you filing the row.** File it if it is
-  true. The thing to act on is whatever is still charging that account.

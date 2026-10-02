@@ -1,4 +1,5 @@
 const { NextResponse } = require("next/server");
+const { rememberBookingId } = require("../../../../lib/bookingId");
 const { prisma } = require("../../../../lib/db");
 const {
   STATUSES,
@@ -139,6 +140,9 @@ async function DELETE(req, { params }) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const { id } = await params;
+  // Its number is retired, not freed: see lib/bookingId.js.
+  const row = await prisma.externalBooking.findUnique({ where: { id }, select: { bookingId: true } });
+  if (row && row.bookingId) await rememberBookingId(row.bookingId);
   await prisma.externalBooking.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

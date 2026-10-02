@@ -46,6 +46,7 @@ const { HOLDS_THE_DAY } = require(APP + "/lib/bookingStatus");
 // re-parsing by hand here is how the booking form and the server came to
 // disagree about a price once already.
 const { parsePackage } = require(APP + "/lib/serialize");
+const { generateBookingId } = require(APP + "/lib/bookingId");
 
 const argv = process.argv.slice(2);
 const APPLY = argv.includes("--apply");
@@ -169,12 +170,10 @@ function e164(raw) {
       return;
     }
 
-    const prefix = "NY-" + date.replace(/-/g, "") + "-";
-    const used = [
-      ...(await db.externalBooking.findMany({ where: { bookingId: { startsWith: prefix } }, select: { bookingId: true } })),
-      ...(await db.inquiry.findMany({ where: { bookingId: { startsWith: prefix } }, select: { bookingId: true } })),
-    ].map((r) => parseInt(r.bookingId.slice(prefix.length), 10)).filter((n) => !Number.isNaN(n));
-    const bookingId = prefix + String(Math.max(0, ...used) + 1).padStart(2, "0");
+    // The app's own generator, with this script's client, so a booking added
+    // here draws from the same sequence and never reuses a deleted number.
+    // This used to be its own copy of the old "highest + 1" rule.
+    const bookingId = await generateBookingId(date, db);
 
     const data = {
       guestName: name.trim(),

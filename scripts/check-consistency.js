@@ -679,10 +679,21 @@ try {
   }
 
   // The manual's layout table, read by group name.
+  //
+  // The heading may carry a section number since the manual became an
+  // operations manual (1 Oct 2026): "## 1.4 How the console is laid out".
+  // And the table is read only up to the NEXT heading. It used to read to the
+  // end of the file, which was harmless while that section came last and is not
+  // now: a glossary or appendix row in bold whose first cell happened to be a
+  // group name would have silently replaced the real row.
   const rows = {};
-  const secAt = manual.indexOf("## How the console is laid out");
+  const head = manual.match(/^## (?:[\d.]+\s+)?How the console is laid out\s*$/m);
+  const secAt = head ? head.index : -1;
   if (secAt >= 0) {
-    for (const line of manual.slice(secAt).split(/\r?\n/)) {
+    const after = manual.slice(secAt + head[0].length);
+    const next = after.search(/^#{1,2} /m);
+    const section = next >= 0 ? after.slice(0, next) : after;
+    for (const line of section.split(/\r?\n/)) {
       const m = line.match(/^\|\s*\*\*([^*]+)\*\*\s*\|\s*(.+?)\s*\|\s*$/);
       if (m) rows[m[1].trim()] = m[2].trim();
     }

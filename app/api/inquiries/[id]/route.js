@@ -1,4 +1,5 @@
 const { NextResponse } = require("next/server");
+const { rememberBookingId } = require("../../../../lib/bookingId");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 const { recordCompletedBookingIncome } = require("../../../../lib/bookingLedger");
@@ -132,6 +133,9 @@ async function DELETE(req, { params }) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const { id } = await params;
+  // Its number is retired, not freed: see lib/bookingId.js.
+  const row = await prisma.inquiry.findUnique({ where: { id }, select: { bookingId: true } });
+  if (row && row.bookingId) await rememberBookingId(row.bookingId);
   try {
     await prisma.inquiry.delete({ where: { id } });
   } catch (e) {
