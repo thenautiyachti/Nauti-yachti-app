@@ -5,6 +5,9 @@ const { sendInquiryEmail, sendInquiryAckEmail } = require("../../../lib/email");
 const { generateBookingId } = require("../../../lib/bookingId");
 const { clean: cleanSource } = require("../../../lib/referralSource");
 const { eventBookingRefusal } = require("../../../lib/eventSeats");
+const { availabilityProblem } = require("../../../lib/availabilityQuery");
+const { checkGiftCertificate } = require("../../../lib/giftCertificates");
+const { parsePackage } = require("../../../lib/serialize");
 const {
   DUPLICATE_WINDOW_MINUTES,
   UNTOUCHED_STATUS,
@@ -43,6 +46,17 @@ async function POST(req) {
   const eventRefusal = eventBookingRefusal(pkgRow, body.date);
   if (eventRefusal) {
     return NextResponse.json(eventRefusal, { status: 400 });
+  }
+
+  // A boat that is already taken is said so now, not after the owner has
+  // replied "yes" to somebody he then has to un-invite. See lib/availability.js.
+  const slot = await availabilityProblem({
+    pkg: pkgRow ? parsePackage(pkgRow) : null,
+    vesselId: body.vesselId, vesselName: body.vesselName,
+    date: body.date, hours: body.hours, partySize: body.partySize,
+  });
+  if (slot) {
+    return NextResponse.json({ error: slot.message, unavailable: true, reason: slot.reason }, { status: 409 });
   }
 
   // THE SAME CHARTER ASKED FOR TWICE.
@@ -108,6 +122,12 @@ async function POST(req) {
     });
   }
 
+  let giftCode = null;
+  if (body.giftCertificateCode) {
+    const g = await checkGiftCertificate(body.giftCertificateCode);
+    if (g.ok) giftCode = g.certificate.code;
+  }
+
   const bookingId = await generateBookingId(body.date || null);
 
   const created = await prisma.inquiry.create({
@@ -133,6 +153,10 @@ async function POST(req) {
       // one module that knows the shape, so a hand-rolled payload cannot put a
       // redirect chain into a column that ends up on a console card.
       referralSource: cleanSource(body.referralSource),
+      // A certificate they mean to pay with, kept so the owner sees it and the
+      // payment link can fill it in. Only a real one, and never spent here:
+      // an inquiry takes no money.
+      giftCertificateCode: giftCode,
     },
   });
 

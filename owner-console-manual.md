@@ -488,6 +488,26 @@ When they pick a date, set it back to **booked**. Owed is a waiting room, not a
 destination. The standing rule when you contact them is to offer a weekend, not a
 refund — if they want the money back they will ask.
 
+## A charter that was refunded
+
+**Refunded** is the seventh status, added on 1 October 2026 at your request: *"We
+need to have a refunded status if that ever happens."* It closes what
+**cancelled** leaves open. Cancelled says a repayment may be owed; refunded says
+it has been made and nothing is owed either way.
+
+- **A full refund made in Stripe sets it on its own.** The booking is marked
+  refunded, its payment shows refunded, and you get an email saying so.
+- **A partial refund leaves the status alone.** The amount is recorded on the
+  booking and you get the same email.
+- **A cash, Zelle or other refund is set by hand** from the status dropdown.
+- It holds no day, no seat and no income, and it is never an owed charter.
+- If the charter had already been marked **completed**, its income row is still
+  on the books: the email says so, and the row has to be corrected by hand.
+
+**Stripe has to be told to send refunds.** The webhook only hears about a refund
+if, in the Stripe dashboard under Developers → Webhooks, the site's endpoint is
+subscribed to the event `charge.refunded`. Without it, mark refunds by hand.
+
 ### Where to see them: Overview → Guests → "Charters we owe"
 
 Each one shows the guest, what you are holding, how long it has been, and which
@@ -571,6 +591,30 @@ twice. Marking an inquiry booked is now enough.
 
 Nothing else changed: an inquiry still blocks nothing, and a charter paid by card
 is counted once rather than twice even though it exists in both lists.
+
+**The server now checks the boat is free** (1 October 2026, your words: *"We need
+to check for availability when a guest books or pays"*). Until then the calendar
+only displayed availability: the date box on the booking form accepted any day,
+and two guests could have paid for the same boat on the same day. Now:
+
+- **When a guest books** (either button on the form), the boat's day must not be
+  blocked and must have the hours they asked for left. A day holds eight hours,
+  the same figure that turns a calendar square from partial to full. If it does
+  not fit, the guest is told on the spot how many hours are left.
+- **When a payment link is opened** for a booking that does not yet hold its day,
+  the same check runs. A booking you have already marked booked is yours and is
+  not re-checked.
+- **While a guest is on Stripe's payment page** their boat and hours are held for
+  35 minutes, and the page itself expires after 30, so a second guest cannot slip
+  in behind them.
+- **When the money arrives** it is checked once more. If two guests got through
+  at the same instant, the second is marked paid but **not booked**, is sent no
+  confirmation, and you get an email headed **ACTION** telling you to move them
+  or refund them.
+- On a glow night the question is seats, not hours: a party bigger than the
+  seats available is refused.
+
+A booking you add yourself in the console is not checked. That is your call.
 
 ---
 
@@ -697,8 +741,19 @@ state. A certificate that has been paid for and not yet redeemed is a
 is the same shape as a charter someone paid for and never took, and it should be
 read the same way.
 
-To redeem one, apply its code at checkout or against a booking. Partial
-redemptions leave the remainder on the certificate.
+**Guests redeem one themselves** (since 1 October 2026; your words: *"We
+definitely have to fix the gift certificates"*). The booking form has a gift
+certificate box beside the coupon box, and every payment page you text has a
+**Have a gift certificate?** link. The balance comes off the total; it is spent
+only once the rest is paid, or straight away when it covers everything. A code
+given on the form travels with the inquiry: you see it in the inquiry email, and
+the payment link fills it in. Partial redemptions leave the remainder on the
+certificate.
+
+**When one is bought**, it is emailed to the buyer and, when they give it, to the
+person it is for. You get one notice with the code, the value and who it reached.
+Before this, the person it was for was never emailed, and your notice came twice
+with a dash where the amount should be.
 
 **They do not expire on their own.** Nothing in this system voids one for age,
 so an old certificate is still owed unless you decide otherwise — and that is a
@@ -1542,7 +1597,7 @@ and a certificate could be bought without the business hearing about it.
 | Sent an inquiry | acknowledgement, "we'll come back to you personally" | CC of the same message |
 | Paid for a charter | booking confirmation with the details | CC of the same message |
 | Joined the crew list | welcome, with the unsubscribe line | CC of the same message |
-| Bought a gift certificate | the certificate and how to redeem it | your own copy |
+| Bought a gift certificate | the certificate and how to redeem it, and so does the person it is for when their email is given | one notice: code, value, and who it reached |
 
 **You are CC'd on the guest's copy rather than sent a separate notification.**
 That is deliberate, and it is a workaround. On 7 September a crew-list signup

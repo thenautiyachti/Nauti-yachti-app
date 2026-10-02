@@ -450,7 +450,7 @@ try {
 // --- 11. the status vocabulary must cover what the API accepts --------------
 {
   const vocab = read(path.join(APP, "lib/bookingStatus.js")) || "";
-  for (const st of ["inquiry", "lapsed", "booked", "owed", "completed", "cancelled"]) {
+  for (const st of ["inquiry", "lapsed", "booked", "owed", "completed", "cancelled", "refunded"]) {
     if (!vocab.includes('"' + st + '"')) fail("booking status", "lib/bookingStatus.js no longer defines " + st);
   }
   // The inquiry-side list was hand-kept in two places and drifted the instant a

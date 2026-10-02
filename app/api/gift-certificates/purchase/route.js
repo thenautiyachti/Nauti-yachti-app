@@ -67,6 +67,9 @@ async function POST(req) {
         purchaserEmail: String(body.purchaserEmail || "").slice(0, 200),
         purchaserPhone: String(body.purchaserPhone || "").slice(0, 40),
         recipientName: String(body.recipientName || "").slice(0, 200),
+        // So the person it is for receives it directly. Optional: a buyer who
+        // wants to hand it over in person leaves it blank.
+        recipientEmail: String(body.recipientEmail || "").trim().slice(0, 200),
         message: String(body.message || "").slice(0, 450),
       },
     });

@@ -137,7 +137,13 @@ export default async function PayPage({ params }) {
         </div>
       </div>
 
-      <PayButton bookingId={booking.id} amount={booking.amount} />
+      {/* A certificate the guest named on the booking form is filled in and
+          checked for them; they can still clear it. */}
+      <PayButton
+        bookingId={booking.id}
+        amount={booking.amount}
+        initialGiftCode={(booking.row && booking.row.giftCertificateCode) || ""}
+      />
 
       <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, marginTop: 22, textAlign: "center" }}>
         Something not right? Call or text{" "}

@@ -77,9 +77,11 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
   const [prefill, setPrefill] = useState(null);
   const [toast, setToast] = useState(null);
 
-  function flashToast(msg) {
+  // Longer for a refusal the guest has to read and act on ("only 4 hours left
+  // on that date") than for a "sent".
+  function flashToast(msg, ms = 2600) {
     setToast(msg);
-    setTimeout(() => setToast(null), 2600);
+    setTimeout(() => setToast(null), ms);
   }
 
   // Deep link support: /?package=glowz#inquire preselects that package in the
@@ -131,7 +133,8 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       // passed still offers it, and "something went wrong" would send them
       // round again.
       const data = await res.json().catch(() => ({}));
-      flashToast(data.salesClosed || data.wrongDate ? data.error : "Something went wrong sending that — please try again or call us directly.");
+      if (data.salesClosed || data.wrongDate || data.unavailable) flashToast(data.error, 8000);
+      else flashToast("Something went wrong sending that — please try again or call us directly.");
       return false;
     }
     flashToast("Inquiry sent — we'll be in touch soon.");
@@ -170,7 +173,8 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
       if (checkoutRes.status !== 503) {
         const data = await checkoutRes.json().catch(() => ({}));
-        flashToast(data.salesClosed || data.wrongDate ? data.error : "Something went wrong starting checkout — please try again or call us directly.");
+        if (data.salesClosed || data.wrongDate || data.unavailable) flashToast(data.error, 8000);
+        else flashToast("Something went wrong starting checkout — please try again or call us directly.");
         return false;
       }
       // else: 503 "not configured" — fall through to the plain inquiry flow below.
@@ -962,8 +966,29 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
   const [form, setForm] = useState({
     name: "", email: "", phone: "", packageId: defaultPackageId || packages[0]?.id,
     vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 1, couponCode: "",
-    addOnIds: [], agreeTerms: false,
+    giftCertificateCode: "", addOnIds: [], agreeTerms: false,
   });
+  // What the gift certificate field found, shown under it. Only a preview: the
+  // server reads the balance again and spends it once payment succeeds.
+  const [giftNote, setGiftNote] = useState(null); // { ok, text }
+
+  async function checkGiftCode(raw) {
+    const code = String(raw || "").trim();
+    if (!code) { setGiftNote(null); return; }
+    try {
+      const res = await fetch("/api/gift-certificates/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setGiftNote(data.valid
+        ? { ok: true, text: "$" + Number(data.balance).toFixed(2) + " on this certificate. It comes off the total when you book and pay." }
+        : { ok: false, text: data.reason || "That code was not recognised." });
+    } catch {
+      setGiftNote({ ok: false, text: "We could not check that code just now. It will still be checked when you book." });
+    }
+  }
   const [sent, setSent] = useState(false);
   // WHAT SHE SENT, kept so the confirmation can repeat it back to her.
   //
@@ -1099,7 +1124,8 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           priceQuoted,
         });
       }
-      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 1, couponCode: "", addOnIds: [], agreeTerms: false });
+      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 1, couponCode: "", giftCertificateCode: "", addOnIds: [], agreeTerms: false });
+      setGiftNote(null);
       setTimeout(() => setSent(false), 3500);
     } else {
       setSubmitting(false);
@@ -1259,6 +1285,25 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
             onChange={(e) => setForm({ ...form, couponCode: e.target.value.toUpperCase() })}
             style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
           />
+        </label>
+
+        {/* GIFT CERTIFICATE. The certificate email has always told guests to
+            "enter the code at checkout", and until 1 Oct 2026 there was nowhere
+            to enter it. The server applied a code if one arrived; nothing sent
+            one. */}
+        <label style={{ display: "block" }}>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Gift certificate code <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span></div>
+          <input
+            type="text"
+            value={form.giftCertificateCode}
+            placeholder="NY-GIFT-…"
+            onChange={(e) => { setForm({ ...form, giftCertificateCode: e.target.value.toUpperCase() }); setGiftNote(null); }}
+            onBlur={(e) => checkGiftCode(e.target.value)}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
+          />
+          {giftNote && (
+            <div style={{ fontSize: 12, marginTop: 4, color: giftNote.ok ? "var(--text)" : "var(--pink)" }}>{giftNote.text}</div>
+          )}
         </label>
 
         {/* A per-seat event takes no add-ons and must not offer any. Boatz &

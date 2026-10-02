@@ -878,6 +878,9 @@ model GiftCertificate {
   purchaserEmail  String?
   purchaserPhone  String?
   recipientName   String?
+  // Added 1 Oct 2026: the person it is for is emailed the certificate too.
+  // Until then only their name was asked for, and nothing ever reached them.
+  recipientEmail  String?
   message         String? // the note that goes on the printed certificate
   status          String   @default("active") // "active" | "redeemed" | "void"
   expiresAt       String? // "YYYY-MM-DD"; null means no expiry

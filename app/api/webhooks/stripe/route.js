@@ -1,8 +1,60 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { redeem: redeemGiftCertificate, generateUniqueCode: generateGiftCode } = require("../../../../lib/giftCertificates");
-const { sendGiftCertificateEmail, sendGiftCertificateOwnerEmail, sendBookingConfirmationEmail, sendPaymentFailedEmail } = require("../../../../lib/email");
+const { sendGiftCertificateEmail, sendGiftCertificateOwnerEmail, sendBookingConfirmationEmail, sendPaymentFailedEmail, sendSlotConflictEmail, sendRefundRecordedEmail } = require("../../../../lib/email");
 const { describeFailure } = require("../../../../lib/paymentFailure");
+const { availabilityProblem } = require("../../../../lib/availabilityQuery");
+const { holdsTheDay, INQUIRY_STATUS_BUCKET } = require("../../../../lib/bookingStatus");
+const { parsePackage } = require("../../../../lib/serialize");
+const { isFullRefund, refundUpdate, alreadyRecorded } = require("../../../../lib/refunds");
+
+// IS THE BOAT STILL FREE, NOW THAT THE MONEY HAS ARRIVED?
+//
+// Owner, 1 Oct 2026: "We need to check for availability when a guest books or
+// pays." It is checked when the booking is made and when a payment link is
+// opened; this is the last look, for two guests who got through at the same
+// instant. Only for a row that does not already hold its day: a booking the
+// owner confirmed is his decision, and was checked when it was made.
+//
+// Never throws. A problem is returned for the caller to act on.
+async function slotStillFree(row, kind) {
+  const bucket = kind === "inquiry" ? (INQUIRY_STATUS_BUCKET[row.status] || row.status) : row.status;
+  if (holdsTheDay(bucket)) return null;
+  const pkgRow = row.packageId
+    ? await prisma.package.findUnique({ where: { id: row.packageId } }).catch(() => null)
+    : null;
+  return availabilityProblem({
+    pkg: pkgRow ? parsePackage(pkgRow) : null,
+    vesselId: row.vesselId, vesselName: row.vesselName,
+    date: row.date, hours: row.hours, partySize: row.partySize,
+    exclude: { ids: [row.id], bookingId: row.bookingId },
+    includeHolds: false,
+  });
+}
+
+// SPEND A GIFT CERTIFICATE, once the card part has actually been paid.
+//
+// Two ways a code arrives: on the Inquiry row (the website's booking form has
+// always written it there) or in the session's metadata (the payment link,
+// since 1 Oct 2026, which may be paying a booking row with no gift columns).
+// Guarded against Stripe delivering the same event twice.
+async function spendGiftCertificate({ code, amount, bookingId, note }) {
+  const value = Number(amount);
+  if (!code || !(value > 0)) return;
+  try {
+    const cert = await prisma.giftCertificate.findUnique({ where: { code } });
+    if (!cert) return;
+    const already = await prisma.giftCertificateRedemption.findFirst({
+      where: { certificateId: cert.id, bookingId: bookingId || null },
+    });
+    if (already) return;
+    await redeemGiftCertificate(cert.id, value, { bookingId: bookingId || null, note });
+  } catch (giftErr) {
+    // The charter is paid for either way — surface this rather than failing
+    // the webhook, since the balance can be corrected by hand.
+    console.error("[webhooks/stripe] Gift certificate redemption failed:", giftErr);
+  }
+}
 
 // A payment that succeeds AFTER one that failed must not leave the decline
 // behind. Every success path sets these alongside paymentStatus, so "paid" and
@@ -122,6 +174,100 @@ async function POST(req) {
     return NextResponse.json({ received: true });
   }
 
+  // MONEY WENT BACK.
+  //
+  // Owner, 1 Oct 2026: "We need to have a refunded status if that ever
+  // happens." Stripe sends this for every refund made in its dashboard. A full
+  // refund marks the booking refunded; a partial one records the amount and
+  // leaves the status alone (see lib/refunds.js). The owner is told either way.
+  //
+  // THIS ONLY ARRIVES IF THE WEBHOOK IS SUBSCRIBED TO charge.refunded in the
+  // Stripe dashboard. Without that, nothing here ever runs and a refund made
+  // in Stripe has to be marked by hand from the status dropdown.
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object;
+    try {
+      const charged = (charge.amount || 0) / 100;
+      const refunded = (charge.amount_refunded || 0) / 100;
+      const full = isFullRefund({ charged, refunded, stripeSaysFull: charge.refunded });
+      const day = new Date().toISOString().slice(0, 10);
+
+      let session = null;
+      if (charge.payment_intent) {
+        try {
+          const found = await stripe.checkout.sessions.list({ payment_intent: charge.payment_intent, limit: 1 });
+          session = (found && found.data && found.data[0]) || null;
+        } catch (listErr) {
+          console.error("[webhooks/stripe] refund: could not look up the session:", listErr.message);
+        }
+      }
+      const meta = (session && session.metadata) || {};
+
+      // A gift certificate bought and then refunded is voided in full. A
+      // partial refund of one is left for the owner: which part of a
+      // certificate is still good is his call.
+      if (meta.kind === "gift-certificate") {
+        const cert = session ? await prisma.giftCertificate.findFirst({ where: { stripeSessionId: session.id } }) : null;
+        if (cert && full && cert.status !== "void") {
+          await prisma.giftCertificate.update({ where: { id: cert.id }, data: { status: "void", balance: 0 } });
+        }
+        if (cert && (!full || cert.status !== "void")) {
+          await sendRefundRecordedEmail({
+            name: cert.purchaserName, charged, refunded, full, matched: true,
+            giftCertificate: full ? cert.code : null,
+          }).catch(() => {});
+        }
+        return NextResponse.json({ received: true });
+      }
+
+      const sessionId = session && session.id;
+      const inquiryWhere = [
+        meta.inquiryId ? { id: meta.inquiryId } : null,
+        sessionId ? { stripeSessionId: sessionId } : null,
+        charge.payment_intent ? { stripePaymentIntentId: charge.payment_intent } : null,
+      ].filter(Boolean);
+      const bookingWhere = [
+        meta.externalBookingId ? { id: meta.externalBookingId } : null,
+        sessionId ? { stripeSessionId: sessionId } : null,
+        sessionId ? { platformRef: sessionId } : null,
+      ].filter(Boolean);
+      const [inquiries, bookings] = await Promise.all([
+        inquiryWhere.length ? prisma.inquiry.findMany({ where: { OR: inquiryWhere } }) : [],
+        bookingWhere.length ? prisma.externalBooking.findMany({ where: { OR: bookingWhere } }) : [],
+      ]);
+      const rows = [
+        ...inquiries.map((row) => ({ row, kind: "inquiry" })),
+        ...bookings.map((row) => ({ row, kind: "external" })),
+      ];
+
+      const fresh = rows.filter((r) => !alreadyRecorded({ row: r.row, kind: r.kind, refunded, full }));
+      for (const r of fresh) {
+        const data = refundUpdate({ row: r.row, kind: r.kind, charged, refunded, full, day });
+        const table = r.kind === "inquiry" ? prisma.inquiry : prisma.externalBooking;
+        await table.update({ where: { id: r.row.id }, data });
+      }
+
+      // Told once per new running total, not once per Stripe retry.
+      if (fresh.length || !rows.length) {
+        const any = (rows[0] && rows[0].row) || {};
+        await sendRefundRecordedEmail({
+          name: any.name || any.guestName || (charge.billing_details && charge.billing_details.name) || null,
+          bookingId: any.bookingId || null,
+          date: any.date || null,
+          charged, refunded, full,
+          matched: rows.length > 0,
+          wasCompleted: rows.some((r) => r.row.status === "completed"),
+          giftCode: (inquiries.find((i) => i.giftCertificateCode) || {}).giftCertificateCode || meta.giftCertificateCode || null,
+        }).catch((e) => console.error("[webhooks/stripe] refund notice threw:", e.message));
+      }
+    } catch (err) {
+      // Logged, not thrown: a refund that could not be recorded here can be
+      // marked by hand, and failing the webhook only makes Stripe retry.
+      console.error("[webhooks/stripe] Failed to record a refund:", err);
+    }
+    return NextResponse.json({ received: true });
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     const meta = session.metadata || {};
@@ -148,6 +294,7 @@ async function POST(req) {
               purchaserEmail: meta.purchaserEmail || session.customer_email || null,
               purchaserPhone: meta.purchaserPhone || null,
               recipientName: meta.recipientName || null,
+              recipientEmail: meta.recipientEmail || null,
               message: meta.message || null,
               stripeSessionId: session.id,
               note: "Purchased online",
@@ -193,10 +340,14 @@ async function POST(req) {
           //
           // .catch keeps a failed send from failing the purchase, which is what
           // best-effort was meant to mean.
-          await sendGiftCertificateEmail(cert).catch(() => {});
-          // And tell the business. Until 8 Sep 2026 nothing did, so the first
-          // anyone heard of a certificate was somebody turning up to redeem it.
-          await sendGiftCertificateOwnerEmail(cert).catch(() => {});
+          //
+          // Buyer and recipient first, so the owner's one notice can say
+          // whether the certificate actually reached them.
+          const delivery = await sendGiftCertificateEmail(cert).catch(() => null);
+          // And tell the business, once. Until 8 Sep 2026 nothing did, so the
+          // first anyone heard of a certificate was somebody turning up to
+          // redeem it; until 1 Oct 2026 he was told twice.
+          await sendGiftCertificateOwnerEmail(cert, delivery).catch(() => {});
         }
       } catch (err) {
         console.error("[webhooks/stripe] Failed to mint gift certificate:", err);
@@ -219,6 +370,24 @@ async function POST(req) {
         // Stripe paying IS the assertion -- the one payment method this
         // system can know without being told. See lib/channels.js.
         const data = { paymentStatus: "paid", status: "booked", paymentMethod: "Stripe (card)", ...CLEAR_FAILURE };
+
+        // Still free? Only asked of a row that did not already hold its day
+        // (a platform inquiry being sent a link). See slotStillFree.
+        const before = await prisma.externalBooking.findUnique({ where: { id: externalBookingId } });
+        const conflict = before ? await slotStillFree(before, "external") : null;
+        if (conflict) {
+          // Paid, but NOT booked: it stays what it was, so it is not shown
+          // as a charter on a boat that belongs to somebody else.
+          delete data.status;
+        }
+        const giftCode = meta.giftCertificateCode || null;
+        const giftAmount = Number(meta.giftAmount) || 0;
+        if (giftCode && giftAmount > 0 && before) {
+          const line = "Gift certificate " + giftCode + " paid $" + giftAmount.toFixed(2) + " of this.";
+          if (!String(before.note || "").includes(line)) {
+            data.note = ((before.note || "") + "\n" + line).trim();
+          }
+        }
         // Stripe verifies these, so they beat whatever we had -- but only
         // overwrite when it actually returned one, so a blank never clobbers a
         // good number or address already on the record.
@@ -233,6 +402,23 @@ async function POST(req) {
         const paid = await prisma.externalBooking.update({
           where: { id: externalBookingId }, data,
         });
+
+        // The card part is paid, so the certificate part is spent now.
+        await spendGiftCertificate({
+          code: giftCode, amount: giftAmount, bookingId: paid.bookingId,
+          note: "Applied to booking " + (paid.bookingId || paid.id) + " on its payment page",
+        });
+
+        if (conflict) {
+          await sendSlotConflictEmail({
+            name: paid.guestName, email: paid.email, phone: paid.phone,
+            date: paid.date, hours: paid.hours, vesselName: paid.vesselName,
+            packageName: paid.packageName, bookingId: paid.bookingId,
+            amount: typeof session.amount_total === "number" ? session.amount_total / 100 : null,
+            problem: conflict.message,
+          }).catch((e) => console.error("[webhooks/stripe] conflict notice threw:", e.message));
+          return NextResponse.json({ received: true });
+        }
 
         // AWAITED. It used to be fired and forgotten, with .then() attached, on
         // the reasoning that a mail outage must never make Stripe retry a
@@ -318,13 +504,41 @@ async function POST(req) {
         data.termsAcceptedAt = new Date();
       }
 
+      // Still free? Asked before the row is marked booked, of the row as it
+      // was. A clash leaves it paid but NOT booked, creates no booking row,
+      // sends the guest nothing, and tells the owner. See slotStillFree.
+      const before = inquiryId
+        ? await prisma.inquiry.findUnique({ where: { id: inquiryId } })
+        : (session.id ? await prisma.inquiry.findFirst({ where: { stripeSessionId: session.id } }) : null);
+      const conflict = before ? await slotStillFree(before, "inquiry") : null;
+      if (conflict) delete data.status;
+
+      // A certificate named in the metadata (the payment link) is recorded on
+      // the row as well, so the inquiry says how it was paid.
+      if (meta.giftCertificateCode && Number(meta.giftAmount) > 0) {
+        data.giftCertificateCode = meta.giftCertificateCode;
+        data.giftAmount = Number(meta.giftAmount);
+      }
+
       let paidInquiry = null;
-      if (inquiryId) {
-        paidInquiry = await prisma.inquiry.update({ where: { id: inquiryId }, data });
-      } else if (session.id) {
-        // Fallback lookup in case metadata is ever missing.
-        await prisma.inquiry.updateMany({ where: { stripeSessionId: session.id }, data });
-        paidInquiry = await prisma.inquiry.findFirst({ where: { stripeSessionId: session.id } });
+      if (before) {
+        paidInquiry = await prisma.inquiry.update({ where: { id: before.id }, data });
+      }
+
+      if (paidInquiry && conflict) {
+        await spendGiftCertificate({
+          code: paidInquiry.giftCertificateCode, amount: paidInquiry.giftAmount,
+          bookingId: paidInquiry.bookingId,
+          note: "Applied to booking " + (paidInquiry.bookingId || paidInquiry.id),
+        });
+        await sendSlotConflictEmail({
+          name: paidInquiry.name, email: paidInquiry.email, phone: paidInquiry.phone,
+          date: paidInquiry.date, hours: paidInquiry.hours, vesselName: paidInquiry.vesselName,
+          packageName: paidInquiry.packageName, bookingId: paidInquiry.bookingId,
+          amount: typeof session.amount_total === "number" ? session.amount_total / 100 : null,
+          problem: conflict.message,
+        }).catch((e) => console.error("[webhooks/stripe] conflict notice threw:", e.message));
+        return NextResponse.json({ received: true });
       }
 
       // A paid website booking used to stop here, as an Inquiry marked "paid".
@@ -454,28 +668,12 @@ async function POST(req) {
       // If a gift certificate part-paid this booking, draw it down now —
       // payment has actually succeeded. Doing it at checkout instead would let
       // an abandoned session silently spend someone's certificate.
-      if (paidInquiry && paidInquiry.giftCertificateCode && paidInquiry.giftAmount > 0) {
-        try {
-          const cert = await prisma.giftCertificate.findUnique({
-            where: { code: paidInquiry.giftCertificateCode },
-          });
-          // Guard against a duplicate webhook delivery redeeming twice.
-          const already = cert
-            ? await prisma.giftCertificateRedemption.findFirst({
-                where: { certificateId: cert.id, bookingId: paidInquiry.bookingId },
-              })
-            : null;
-          if (cert && !already) {
-            await redeemGiftCertificate(cert.id, paidInquiry.giftAmount, {
-              bookingId: paidInquiry.bookingId,
-              note: `Applied to booking ${paidInquiry.bookingId || paidInquiry.id}`,
-            });
-          }
-        } catch (giftErr) {
-          // The charter is paid for either way — surface this rather than
-          // failing the webhook, since the balance can be corrected by hand.
-          console.error("[webhooks/stripe] Gift certificate redemption failed:", giftErr);
-        }
+      if (paidInquiry) {
+        await spendGiftCertificate({
+          code: paidInquiry.giftCertificateCode, amount: paidInquiry.giftAmount,
+          bookingId: paidInquiry.bookingId,
+          note: `Applied to booking ${paidInquiry.bookingId || paidInquiry.id}`,
+        });
       }
     } catch (err) {
       // Don't let a lookup/update failure make Stripe retry forever on a bad

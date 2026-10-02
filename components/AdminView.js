@@ -1031,10 +1031,10 @@ const INQUIRY_STATUSES = Object.keys(INQUIRY_BUCKET_MAP)
 // the owner ask why Brian King "came in as New not inquiry" (11 Sep 2026), and
 // "New inquiry" was not the fix he wanted either — the word "new" is what reads
 // wrong, because the column next to it never says it.
-const INQUIRY_STATUS_LABEL = { new: "Inquiry", lapsed: "Lapsed", pending: "Pending", booked: "Booked", owed: "Owed", completed: "Completed", cancelled: "Cancelled" };
+const INQUIRY_STATUS_LABEL = { new: "Inquiry", lapsed: "Lapsed", pending: "Pending", booked: "Booked", owed: "Owed", completed: "Completed", cancelled: "Cancelled", refunded: "Refunded" };
 // "owed" borrows the same amber as "pending" on purpose: both mean the ball is
 // in our court. The difference is that this one has already been paid for.
-const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pending: "#E8934A", booked: "#4FA8E8", owed: "#E8934A", completed: "#7FE0B8", cancelled: "#F0559C" };
+const INQUIRY_STATUS_COLOR = { new: "var(--purple)", lapsed: "var(--muted)", pending: "#E8934A", booked: "#4FA8E8", owed: "#E8934A", completed: "#7FE0B8", cancelled: "#F0559C", refunded: "#9C8FD6" };
 const REFUND_TYPES = ["full", "partial", "none"];
 const REFUND_TYPE_LABEL = { full: "Full refund", partial: "Partial refund", none: "No refund" };
 
@@ -2807,6 +2807,12 @@ const NEVER_SAILED = /^(inquiry|inquiry|cancelled|canceled|declined|expired|no.?
 
 function matchBookingToLedger(booking, incomeRows) {
   const price = booking.pricePaid;
+
+  // Refunded: the money went back, so there is nothing that should be on the
+  // books for it, whatever price the row still carries.
+  if (String(booking.status || "").trim() === "refunded") {
+    return { tier: "nosail", row: null };
+  }
 
   if (NEVER_SAILED.test(String(booking.status || "").trim()) && (price == null || price === 0)) {
     return { tier: "nosail", row: null };

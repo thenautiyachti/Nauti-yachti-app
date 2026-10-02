@@ -1,6 +1,6 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../lib/db");
-const { sendInquiryEmail, sendInquiryAckEmail } = require("../../../lib/email");
+const { sendInquiryEmail, sendInquiryAckEmail, sendBookingConfirmationEmail } = require("../../../lib/email");
 const { checkCoupon, discountedAmount } = require("../../../lib/coupons");
 const { checkGiftCertificate, applicableAmount, redeem: redeemGiftCertificate } = require("../../../lib/giftCertificates");
 const { generateBookingId } = require("../../../lib/bookingId");
@@ -9,6 +9,7 @@ const { parsePackage } = require("../../../lib/serialize");
 const { clean: cleanSource } = require("../../../lib/referralSource");
 const { isPartnerReferralRow } = require("../../../lib/partners");
 const { eventBookingRefusal } = require("../../../lib/eventSeats");
+const { availabilityProblem } = require("../../../lib/availabilityQuery");
 
 // Public: customer clicks "Book this" / submits the booking form and is sent
 // to Stripe's hosted Checkout for the exact quoted price. We still create the
@@ -89,6 +90,18 @@ async function POST(req) {
       error: "That package is not available on that boat.",
       vesselNotAllowed: true,
     }, { status: 400 });
+  }
+
+  // IS THE BOAT ACTUALLY FREE? Owner, 1 Oct 2026: "We need to check for
+  // availability when a guest books or pays." The calendar on the page only
+  // shows it; the date box accepts any day. See lib/availability.js.
+  const slot = await availabilityProblem({
+    pkg: parsePackage(pkgRow),
+    vesselId: body.vesselId, vesselName: body.vesselName,
+    date: body.date, hours: body.hours, partySize: body.partySize,
+  });
+  if (slot) {
+    return NextResponse.json({ error: slot.message, unavailable: true, reason: slot.reason }, { status: 409 });
   }
 
   const addOnRows = await prisma.addOn.findMany();
@@ -218,10 +231,18 @@ async function POST(req) {
         bookingId: created.bookingId,
         note: `Covered booking ${created.bookingId || created.id} in full`,
       });
-      await prisma.inquiry.update({
+      const paidRow = await prisma.inquiry.update({
         where: { id: created.id },
-        data: { paymentStatus: "paid", status: "booked" },
+        data: { paymentStatus: "paid", status: "booked", paymentMethod: "Gift certificate" },
       });
+      // THE CONFIRMATION a card payment gets from the webhook. This path never
+      // reaches the webhook — there is no card payment — so until 1 Oct 2026 a
+      // guest whose certificate covered everything was booked and told
+      // nothing: no dock, no time. Not allowed to fail the booking.
+      const sent = await sendBookingConfirmationEmail(paidRow).catch((e) => ({ sent: false, reason: e.message }));
+      if (sent && sent.sent) {
+        await prisma.inquiry.update({ where: { id: created.id }, data: { confirmationSentAt: new Date() } }).catch(() => {});
+      }
       const origin = new URL(req.url).origin;
       return NextResponse.json({
         url: `${origin}/booking-success?gift=1`,
@@ -258,6 +279,11 @@ async function POST(req) {
       success_url: `${origin}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/#packages`,
       metadata: { inquiryId: created.id },
+      // THE SHORTEST LIFE STRIPE ALLOWS, 30 minutes (plus one for the clock).
+      // While this session is open the boat is held for this guest — see
+      // HOLD_MINUTES in lib/availability.js — and a slot held for the default
+      // 24 hours by somebody who closed the tab is a slot nobody else can book.
+      expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
       // Ask Stripe for a phone number as well. The review flow texts guests
       // rather than emailing them, because a phone number is the contact
       // detail people actually hand over — so a booking without one is a

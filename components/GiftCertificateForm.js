@@ -29,6 +29,7 @@ export default function GiftCertificateForm() {
     purchaserEmail: "",
     purchaserPhone: "",
     recipientName: "",
+    recipientEmail: "",
     message: "",
   });
   const [busy, setBusy] = useState(false);
@@ -108,6 +109,8 @@ export default function GiftCertificateForm() {
       <div style={{ fontSize: 13, color: "var(--muted)", margin: "8px 0", fontWeight: 600 }}>Who it&rsquo;s for</div>
       <input type="text" placeholder="Recipient's name (optional)" value={form.recipientName}
         onChange={(e) => setForm({ ...form, recipientName: e.target.value })} style={INPUT} />
+      <input type="email" placeholder="Recipient's email (optional, we'll send it to them too)" value={form.recipientEmail}
+        onChange={(e) => setForm({ ...form, recipientEmail: e.target.value })} style={INPUT} />
       <textarea rows={3} placeholder="A short message to print on it (optional)"
         value={form.message}
         onChange={(e) => setForm({ ...form, message: e.target.value })}

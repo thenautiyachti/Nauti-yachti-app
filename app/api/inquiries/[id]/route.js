@@ -45,7 +45,9 @@ async function PATCH(req, { params }) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
     data.status = body.status;
-    if (body.status !== "cancelled") {
+    // The refund record belongs to a cancellation or a refund. Moving to
+    // anything else clears it, so a rebooked guest does not carry one.
+    if (body.status !== "cancelled" && body.status !== "refunded") {
       data.refundType = null;
       data.refundAmount = null;
     }
