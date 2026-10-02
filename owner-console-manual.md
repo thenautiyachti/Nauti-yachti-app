@@ -363,7 +363,7 @@ Every booking with a booking number has its own page for the guest: `thenautiyac
 | When | The page leads with |
 |---|---|
 | before the day, and on it | the charter, how to get there and when to arrive, payment, what to bring, the photo box, messages, and the common questions |
-| afterwards | **our photos of their trip** (the ones you approved), the photo box, a **Leave a Google review** button, then the charter and payment |
+| afterwards | **our photos of their trip** (from the charter's `Completed` folder), the photo box, a **Leave a Google review** button, then the charter and payment |
 | cancelled or refunded | that it was cancelled, and how to reach you |
 | not yet confirmed | that the date is not held until it is paid, with the payment button |
 
@@ -384,7 +384,7 @@ Every booking with a booking number has its own page for the guest: `thenautiyac
 
 **Photos.** The photo box is there from the moment the booking is confirmed, before the trip as well as after; most photos arrive afterwards. It is not shown on a cancelled booking or one not yet confirmed. Anyone with the link can send photos and video, up to 2 GB a file, after ticking the same permission as the share page; the exact words they agreed to are kept with each file. Uploads land with the share page's ([6.2](#6-2-photos-guests-send-you)), already attached to the booking, and the group can see what has been sent so far.
 
-**Our photos of their trip.** After the trip the page shows the photos you approved for that booking, to view full size and download. Coral proposes the best stills from each completed charter and you approve them in **Marketing → Photo Requests → Photos for guests** ([5.4](#5-4-photo-requests)); nothing appears until you do. Until then the page says the photos are being picked, so a guest knows to look back. Photos only for now: videos wait for more storage.
+**Our photos of their trip.** After the trip the page shows the photos in that charter's **`Completed`** folder, to view full size and download ([6.1](#6-1-the-photo-library)). Coral curates that folder, and whatever she puts in it goes up on its own: asked whether each photo should wait for your yes, you said *"Folder is enough."* You can take any photo down in **Marketing → Photo Requests** ([5.4](#5-4-photo-requests)), and one you take down never goes back up by itself. Raw glasses recordings and `_from video` stills are never shown. Until a charter has photos up, the page says they are being picked, so a guest knows to look back. Photos only for now: videos wait for more storage.
 
 **Messages.** A guest can write to you from the page. You are emailed straight away and answer in **Marketing → Messages** ([6.7](#6-7-messages)). Your reply appears on their page and, when the booking has an email address, is emailed to them as well.
 
@@ -775,7 +775,7 @@ On Testimonials, four filters: **Still to ask**, **Already asked**, **Not asking
 - The button opens a message with the greeting written. **Paste the album link yourself**: the files are on your computer, not in the database.
 - Marking it sent clears it from the queue.
 
-Underneath, **Photos for guests** is where you approve **our** photos for guests' trip pages. Coral proposes the best stills from each recently completed charter, at most two charters a run. Each charter shows who will see its photos; every photo starts ticked, so untick any you do not want, then **Approve** (the rest can be rejected in one tap). **Take it down** removes an approved photo from the page. Photos waiting on you count toward this tab's number. Approved photos are copied into the charter folder's `_for guests` folder, so the library shows the same set.
+Underneath, **On guests' trip pages** shows **our** photos that are up on each booking's trip page: every photo in a charter's `Completed` folder, put up by Coral's sync each run. Each charter shows whose page its photos are on, with a warning when two private charters share a date. Tick any you would rather a guest did not have and **Take down**; it stays down.
 
 Below that, **Photos guests sent us** shows the photos and video guests have uploaded to you ([6.2](#6-2-photos-guests-send-you)).
 
@@ -803,12 +803,11 @@ All charter photos and video live in the `Photos` folder of the business folder,
 |---|---|
 | `00 Inbox` | where new footage lands from the phone and the camera glasses. The content agent files it every run. Its `Imported from Website` folder holds what guests sent through the site: the only copy, never deleted ([6.2](#6-2-photos-guests-send-you)). |
 | `02 Charters\_By charter` | one folder per charter, named `YYYY-MM-DD Guest Name`. **This is the main library.** |
-| `02 Charters\<theme>` | finished cuts and stills grouped by theme or place (tubing, birthday, the cove, and so on). The folder name is the classification. |
+| `02 Charters\<theme>` | footage grouped by theme or place (tubing, birthday, the cove, and so on), **laid out like a charter folder**: finished cuts and stills in its `Completed`, raw clips and dated event folders around it. The folder name is the classification. |
 | `_from video` | stills pulled from video |
-| `_for guests` | copies of the photos you approved for that charter's guests ([2.8](#2-8-the-trip-page)). Kept in step automatically; never edit it by hand. |
 | `_originals` | the uncropped original of a cropped file. Never post both. |
-| `compilation video` | recap cuts of a charter. These are finished, postable content. |
-| `_Unsorted` | footage that is not a charter, such as maintenance or errands |
+| `Completed` | **the charter's finished set**: the good photos, the good videos and the compilations. Called `compilation video` until 2 Oct 2026. Its photos are what that charter's guests see on their trip page, and it is the first place the crew looks for a post. Coral curates it; raw recordings and `_from video` stills never go in. The montages Coral cuts land here, and mix in up to six of its good photos with a slow push-in and the same transitions as the clips. |
+| `_Unsorted` | your sorting pile: footage the crew cannot tell is the business's, or cannot place in a charter or theme. **Never a source for anything published.** You go through it and clear it yourself. |
 
 **Filenames carry what a folder cannot.** A file keeps its name when it moves, and loses its folder. So a finished cut carries its date, its subject, its shape and, where known, its place:
 
@@ -1022,7 +1021,7 @@ Eight agents and two routines run on a schedule on the office computer. **None o
 | When | Who | What she does |
 |---|---|---|
 | Daily, 8am | **Nauti Penny** · Accounts Receivable | money in: payouts against the ledger, and money held for trips that never ran. Keeps the business inbox in order. |
-| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | pulls what guests sent from the website, files new footage, proposes photos for guests' trip pages, drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
+| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | pulls what guests sent from the website, files new footage, curates each charter's `Completed` folder (which the guests see), drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
 | Fri–Mon, 9am | **Nauti Joy** · Guest Relations | who to ask for a review, new crew-list signups, guests owed a charter |
 | Fri–Mon, 9:30am | **Nauti Reef** · Revenue Growth | money the business is not collecting, as one to four ideas |
 | Fri–Mon, 10am | **Nauti Shelly** · Accounts Payable | what is paid for against what is used |

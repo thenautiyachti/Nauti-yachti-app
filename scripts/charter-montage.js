@@ -4,6 +4,10 @@
 //   node scripts/charter-montage.js --day 20260906 --seconds 45 --mute
 //   node scripts/charter-montage.js --day 20260906 --dry
 //
+//   Photos from the charter's Completed folder are mixed in by default (up to
+//   6, 2.5s each, with a slow push-in, through the same transitions):
+//   --max-photos N   --photo-seconds S   --photos-dir <folder>   --no-photos
+//
 // WHY. The owner shoots roughly a minute per clip and ends up with fifteen or
 // twenty of them per charter — 16 minutes of footage from Oscar's trip on
 // 6 September. Turning that into one postable minute is twenty minutes in
@@ -425,9 +429,11 @@ if (/\[NDA/i.test(dir)) {
 //
 // Same shape of bug as harvest-stills had, and the same fix: recurse, and stop
 // asking the filename to prove something the folder already establishes.
-// "_from video" and "compilation video" are skipped so a second run cannot
-// feed on its own output.
-const SKIP_DIRS = new Set(["_from video", "compilation video"]);
+// "_from video" and "Completed" are skipped so a second run cannot feed on its
+// own output. ("Completed" was "compilation video" until 2 Oct 2026, when the
+// owner made it the folder for everything finished; the old name is kept here
+// for any folder the rename could not reach.)
+const SKIP_DIRS = new Set(["_from video", "Completed", "compilation video"]);
 
 // FOOTAGE THE OWNER HAS ALREADY REJECTED, and the folder name says so.
 //
@@ -615,17 +621,50 @@ if (SCORE && !PICKED) {
   }
 }
 
+// PHOTOS IN THE MONTAGE. Owner, 2 Oct 2026: "Compilation videos don't have to
+// just include videos. We can also insert really good taken photos and still
+// perform our transition effects." The good photos are the ones in the
+// charter's Completed folder -- that is what the folder is for -- so they are
+// the default source, and --photos-dir points somewhere else for a one-off.
+//
+// Each photo becomes a short shot of its own with a slow push-in (a still that
+// sits dead between moving clips reads as a mistake), and goes through the same
+// xfade joins as everything else. Silent, because a photo has no sound: with
+// --music that is invisible, with clip audio it is a breath between shots.
+// Placed by the time in its filename where it has one, spread evenly where not.
+const NO_PHOTOS = has("no-photos");
+const PHOTO_S = Math.max(1.5, Math.min(4, Number(arg("photo-seconds", 2.5)) || 2.5));
+const MAX_PHOTOS = Math.max(0, Math.min(20, Number(arg("max-photos", 6)) || 0));
+const PHOTO_DIR = (() => {
+  const o = arg("photos-dir");
+  if (o) return path.isAbsolute(o) ? o : path.join(dir, o);
+  return inInbox ? null : path.join(dir, "Completed");
+})();
+const photoFiles = !NO_PHOTOS && MAX_PHOTOS && PHOTO_DIR && fs.existsSync(PHOTO_DIR)
+  ? fs.readdirSync(PHOTO_DIR).filter((f) => /\.(jpe?g|png)$/i.test(f) && !FORBIDDEN_DIR.test(f)).sort()
+  : [];
+// An even spread across the day rather than the first few: the folder sorts by
+// time, and the first six would all be the dock.
+const photos = (photoFiles.length <= MAX_PHOTOS
+  ? photoFiles
+  : Array.from({ length: MAX_PHOTOS }, (_, k) => photoFiles[Math.floor((k + 0.5) * photoFiles.length / MAX_PHOTOS)]))
+  .map((f) => ({ photo: true, file: f, full: path.join(PHOTO_DIR, f), len: PHOTO_S }));
+// The photos spend part of the length that was asked for, so the clips get
+// the rest -- otherwise "--seconds 60" quietly becomes 75.
+const CLIP_TARGET = Math.max(10, TARGET - photos.length * (PHOTO_S - (NO_TRANS ? 0 : TRANS_D)));
+if (photos.length) console.log(`  ${photos.length} photo(s) from ${path.basename(PHOTO_DIR)}, ${PHOTO_S}s each\n`);
+
 // How long each clip gets. Spread the target across everything available, but
 // keep the slices between 2 and 4.5 seconds: under two and it is a strobe,
 // over five and a minute only holds a dozen moments.
-const per = Math.max(2, Math.min(4.5, TARGET / Math.max(1, pool.length)));
+const per = Math.max(2, Math.min(4.5, CLIP_TARGET / Math.max(1, pool.length)));
 const used = PICKED ? [] : pool.filter((c) => c.seconds >= per + 0.5);
 // Each transition OVERLAPS two shots, so N slices joined by N-1 transitions
 // run for N*L - (N-1)*D, not N*L. Ignoring that quietly delivers a 54-second
 // video when 60 was asked for — the slices have to grow to pay for the joins.
 const nUsed = Math.max(1, used.length);
 const overlap = NO_TRANS ? 0 : (nUsed - 1) * TRANS_D;
-const slice = Math.max(2, Math.min(5.5, (TARGET + overlap) / nUsed));
+const slice = Math.max(2, Math.min(5.5, (CLIP_TARGET + overlap) / nUsed));
 
 if (!PICKED) {
   console.log(`  using ${used.length}, ${slice.toFixed(1)}s each -> about ${Math.round(used.length * slice)}s\n`);
@@ -698,7 +737,21 @@ const rows = PICKED || used.map((c) => {
   };
 });
 
-for (const r of rows) {
+// Photos into the running order. By the time in the filename (YYYYMMDD_HHMMSS)
+// when both sides have one; otherwise spread evenly between the clips.
+const timeKey = (name) => { const m = /(\d{8})_(\d{6})/.exec(name); return m ? m[1] + m[2] : null; };
+const seq = rows.slice();
+const untimed = [];
+for (const p of photos) {
+  const k = timeKey(p.file);
+  if (!k) { untimed.push(p); continue; }
+  const at = seq.findIndex((r) => !r.photo && timeKey(r.file) && timeKey(r.file) > k);
+  if (at === -1) seq.push(p); else seq.splice(at, 0, p);
+}
+untimed.forEach((p, k) => seq.splice(Math.round((k + 1) * seq.length / (untimed.length + 1)), 0, p));
+
+for (const r of seq) {
+  if (r.photo) { console.log("    photo  " + r.file + "   " + r.len + "s"); continue; }
   console.log("    " + r.file.slice(9, 15).replace(/(\d\d)(\d\d)(\d\d)/, "$1:$2") +
     "  " + String(Math.round(r.seconds)).padStart(3) + "s clip  ->  from " +
     String(r.start).padStart(5) + "s  " + r.w + "x" + r.h +
@@ -708,7 +761,10 @@ for (const r of rows) {
 const stamp = `${DAY.slice(0, 4)}-${DAY.slice(4, 6)}-${DAY.slice(6, 8)}`;
 const outName = `montage-${stamp}${NAME ? "-" + NAME.replace(/[^A-Za-z0-9]+/g, "-") : ""}.mp4`;
 // dir is the charter's own folder when one was found, and the inbox otherwise.
-const OUT_DIR = OUT_OVERRIDE || (dir === INBOX ? INBOX : path.join(dir, "compilation video"));
+// The finished cut goes into Completed: owner, 2 Oct 2026, the folder for "all
+// the good pictures, good videos, and compilation videos". It was "compilation
+// video" before that.
+const OUT_DIR = OUT_OVERRIDE || (dir === INBOX ? INBOX : path.join(dir, "Completed"));
 const outPath = path.join(OUT_DIR, outName);
 
 if (DRY) {
@@ -727,8 +783,30 @@ const renderPath = path.join(work, outName);
 console.log(`\n  normalising to ${W}x${H} @ ${FPS}fps${KEEP_AUDIO ? " with audio" : ", muted"}…\n`);
 
 const parts = [];
-rows.forEach((r, i) => {
+seq.forEach((r, i) => {
   const seg = path.join(work, `seg${String(i).padStart(3, "0")}.mp4`);
+  if (r.photo) {
+    // A slow push-in to 1.12x over the shot, centred. zoompan works on ONE
+    // input frame and emits d frames from it, which is why the image is read
+    // once and not looped. Scaled up first so the zoom has pixels to spend.
+    // yuv420p to match the clips: xfade refuses to join two pixel formats.
+    const frames = Math.round(r.len * FPS);
+    const bw = Math.round(W * 1.25 / 2) * 2, bh = Math.round(H * 1.25 / 2) * 2;
+    const vf = `scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh},` +
+      `zoompan=z='min(zoom+${(0.12 / frames).toFixed(5)},1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS},` +
+      `setsar=1,format=yuv420p`;
+    const args = ["-hide_banner", "-loglevel", "error", "-y", "-i", r.full];
+    // A silent track, so the audio crossfades still have two inputs to join.
+    if (KEEP_AUDIO) args.push("-f", "lavfi", "-t", String(r.len), "-i", "anullsrc=channel_layout=stereo:sample_rate=48000");
+    args.push("-vf", vf, "-frames:v", String(frames), ...videoArgs({ ffmpeg: FFMPEG, crf: CRF, quality: "fast" }));
+    if (KEEP_AUDIO) args.push("-map", "0:v", "-map", "1:a", "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2", "-shortest");
+    else args.push("-an");
+    args.push(seg);
+    execFileSync(FFMPEG, args, { stdio: ["ignore", "ignore", "pipe"] });
+    parts.push(seg);
+    process.stdout.write(`    ${i + 1}/${seq.length}\r`);
+    return;
+  }
   // Scale so the frame is covered, then centre-crop. -2 keeps the dimension
   // even, which h264 requires.
   const vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS},setsar=1`;
@@ -759,7 +837,7 @@ rows.forEach((r, i) => {
     // With transitions on, acrossfade already fades each join — adding a
     // 0.12s fade underneath a 0.35s crossfade digs a hole in the audio at
     // every single join.
-    const hardCuts = NO_TRANS || rows.length < 2;
+    const hardCuts = NO_TRANS || seq.length < 2;
     const af = hardCuts
       ? [`afade=t=in:st=0:d=0.12`, `afade=t=out:st=${Math.max(0, (r.len || slice) - 0.12).toFixed(2)}:d=0.12`]
       : [];
@@ -772,7 +850,7 @@ rows.forEach((r, i) => {
   args.push(seg);
   execFileSync(FFMPEG, args, { stdio: ["ignore", "ignore", "pipe"] });
   parts.push(seg);
-  process.stdout.write(`    ${i + 1}/${rows.length}\r`);
+  process.stdout.write(`    ${i + 1}/${seq.length}\r`);
 });
 
 const listFile = path.join(work, "list.txt");
@@ -808,7 +886,7 @@ if (NO_TRANS || parts.length < 2) {
     // different lengths, and a uniform stride would drift further out of
     // place with every join until the last transitions landed inside the
     // wrong shot entirely.
-    acc += (rows[i - 1].len || slice);
+    acc += (seq[i - 1].len || slice);
     const offset = (acc - i * TRANS_D).toFixed(3);
     const vOut = `v${i}`;
     vChain.push(`[${vPrev}][${i}:v]xfade=transition=${transitionAt(i - 1)}:duration=${TRANS_D}:offset=${offset}[${vOut}]`);

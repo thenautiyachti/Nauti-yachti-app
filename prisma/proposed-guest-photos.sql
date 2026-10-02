@@ -1,5 +1,6 @@
 -- Our photos of a guest's trip, approved by the owner (2 Oct 2026).
--- NOT APPLIED until the owner says yes.
+-- APPLIED 2 Oct 2026 on the owner's yes ("Yes you can update the database change"),
+-- as Supabase migration "guest_trip_photos", before the code that needs it shipped.
 --
 -- A live schema change needs his explicit OK and goes in BEFORE the code that
 -- needs it. Additive only: one new table, nothing existing touched. Safe to run

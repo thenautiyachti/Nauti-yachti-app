@@ -6,17 +6,20 @@ const {
   MAX_PER_CHARTER, isRestricted, refsField, photoPathFor, acceptableName,
 } = require("../../../lib/tripPhotos");
 
-// Coral's side of "our photos of your trip".
+// The crew's side of "our photos of your trip".
 //
-// GET  ?status=approved|proposed&folder=...  -- what has been proposed or approved
-//                                              (mirror-guest-photos.js reads approved).
-// POST action:"sign"    {charterDate, folder, fileName, bytes} -- a proposal: writes the
-//                        row and hands back a one-shot upload URL for the web-sized copy.
-// POST action:"confirm" {id} -- the copy landed; it becomes a proposal he can see.
+// GET  ?status=...&folder=...  -- what is on the trip pages, or was taken down.
+// POST action:"sign"    {charterDate, folder, fileName, bytes} -- a photo from a
+//                        charter's Completed folder: writes the row and hands back
+//                        a one-shot upload URL for its web-sized copy.
+// POST action:"confirm" {id} -- the copy landed; it is now on the trip page.
+// POST action:"remove"  {id} -- it left the Completed folder; take it down.
 //
-// THE CREW PROPOSES, HE DECIDES. Nothing here makes a photo visible to a guest.
-// That happens only in /api/admin/trip-photos, behind his console session.
-// Owner, 2 Oct 2026: "Coral picks, I approve."
+// THE COMPLETED FOLDER IS THE DECISION. Owner, 2 Oct 2026, asked whether a photo
+// in a charter's curated folder should wait for his yes: "Folder is enough." So
+// confirm makes it visible, and Coral's choice of what goes into Completed is the
+// check. He can still take any photo down from the console, and one he took down
+// stays down: sign refuses a file that already has a row, whatever its status.
 
 async function authorized(req) {
   const key = req.headers.get("x-jarvis-key");
@@ -55,8 +58,19 @@ async function POST(req) {
     if (!row) return NextResponse.json({ error: "Unknown photo" }, { status: 404 });
     const size = await storedSize(row.storagePath);
     if (size == null) return NextResponse.json({ ok: false, error: "Storage cannot see that file yet." });
-    await prisma.tripPhoto.update({ where: { id }, data: { status: "proposed", bytes: size || row.bytes } });
-    return NextResponse.json({ ok: true, status: "proposed" });
+    await prisma.tripPhoto.update({ where: { id }, data: { status: "approved", bytes: size || row.bytes, decidedAt: new Date() } });
+    return NextResponse.json({ ok: true, status: "approved" });
+  }
+
+  if (body.action === "remove") {
+    const id = clean(body.id, 40);
+    const row = id ? await prisma.tripPhoto.findUnique({ where: { id } }) : null;
+    if (!row) return NextResponse.json({ error: "Unknown photo" }, { status: 404 });
+    // Only what the folder put up is the folder's to take down. A photo the
+    // owner removed is already off the page, and stays recorded as his call.
+    if (row.status !== "approved") return NextResponse.json({ ok: true, status: row.status });
+    await prisma.tripPhoto.update({ where: { id }, data: { status: "removed", note: "left the Completed folder", decidedAt: new Date() } });
+    return NextResponse.json({ ok: true, status: "removed" });
   }
 
   // ---- sign -----------------------------------------------------------------
@@ -68,12 +82,14 @@ async function POST(req) {
   if (!acceptableName(fileName)) return NextResponse.json({ error: "photos only: .jpg or .png" }, { status: 400 });
   if (isRestricted(folder, fileName)) return NextResponse.json({ error: "that folder or file is marked as never to be published" }, { status: 400 });
 
+  // Any status counts, so a photo the owner took down is never put back up by
+  // the next sync, and one that left the folder and came back needs his hand.
   const existing = await prisma.tripPhoto.findFirst({ where: { folder, fileName, status: { not: "pending" } } });
   if (existing) return NextResponse.json({ error: "already " + existing.status, id: existing.id, status: existing.status }, { status: 409 });
 
-  const already = await prisma.tripPhoto.count({ where: { charterDate, status: { in: ["proposed", "approved"] } } });
+  const already = await prisma.tripPhoto.count({ where: { charterDate, status: "approved" } });
   if (already >= MAX_PER_CHARTER) {
-    return NextResponse.json({ error: "this charter already has " + already + " photos proposed or approved; the limit is " + MAX_PER_CHARTER }, { status: 429 });
+    return NextResponse.json({ error: "this charter already has " + already + " photos on its trip page; the limit is " + MAX_PER_CHARTER }, { status: 429 });
   }
 
   // Who may see it: every completed booking on that date that carries a number.

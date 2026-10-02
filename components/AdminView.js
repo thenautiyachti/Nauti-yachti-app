@@ -446,17 +446,6 @@ export default function AdminView({
   }, []);
   const waitingAllMessages = waitingMessages + waitingTripMessages;
 
-  // Photos Coral proposed for guests' trip pages, waiting on his yes. Counted on
-  // the Photo Requests tab, where he approves them.
-  const [waitingTripPhotos, setWaitingTripPhotos] = useState(0);
-  useEffect(() => {
-    let alive = true;
-    readBadgeSummary("/api/admin/trip-photos")
-      .then((r) => { if (alive && r.summary) setWaitingTripPhotos(r.summary.waiting || 0); })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, []);
-
   // The tab counter has to agree with the list under it. A card-paid booking
   // exists in both tables by design — see toUnifiedRows — so a straight
   // inquiries + externalBookings sum counts it twice, and the number on the tab
@@ -537,7 +526,7 @@ export default function AdminView({
         { id: "testimonials", label: tabLabel("Testimonials", needsReviewCount(testimonials)), count: needsReviewCount(testimonials) },
         // Badged on the OUTSTANDING count, not the total: this is a queue of
         // promises still owed, and once it is empty it should say nothing.
-        { id: "photoRequests", label: tabLabel("Photo Requests", photoRequestsOwed + waitingTripPhotos), count: photoRequestsOwed + waitingTripPhotos },
+        { id: "photoRequests", label: tabLabel("Photo Requests", photoRequestsOwed), count: photoRequestsOwed },
       ],
     },
     {
@@ -843,10 +832,10 @@ export default function AdminView({
               onMarkSent={onMarkPhotoRequestSent}
               onDelete={onDeletePhotoRequest}
             />
-            {/* Our photos of their trips, waiting on his yes before they reach
-                the guests' trip pages. Then the other direction: photos guests
-                sent US. Same tab, because it is the same subject. */}
-            <TripPhotosPanel onWaiting={setWaitingTripPhotos} />
+            {/* Our photos on guests' trip pages (from each charter's Completed
+                folder), where he can take one down. Then the other direction:
+                photos guests sent US. Same tab, because it is the same subject. */}
+            <TripPhotosPanel />
             <GuestUploadsPanel />
           </>
         )}
