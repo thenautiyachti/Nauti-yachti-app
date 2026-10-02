@@ -13,6 +13,8 @@ import {
   GLOW_RETURN_TIME,
   formatGlowDate,
 } from "../../lib/glowEvent";
+import { eventSalesOpen } from "../../lib/eventSeats";
+import { seatsOnTheNight } from "../../lib/eventSeatsQuery";
 
 // This page reads the event date from the database and decides server-side
 // whether the featured block has expired, so it can't be frozen at build
@@ -103,10 +105,16 @@ async function FeaturedGlowEvent() {
   const eventDate = pkgRow?.eventDate || GLOW_EVENT_DATE;
 
   // Retire the block automatically once the date is behind us rather than
-  // leaving a dead event advertised at the top of the page.
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  if (eventDate < todayKey) return null;
+  // leaving a dead event advertised at the top of the page. Same rule, and the
+  // same lake-time "today", as the booking form and the checkout use.
+  if (!eventSalesOpen({ eventDate })) return null;
+
+  let vesselIds = ["explorer", "islander", "yachti"];
+  try {
+    const v = JSON.parse(pkgRow?.vesselsJson || "[]");
+    if (Array.isArray(v) && v.length) vesselIds = v;
+  } catch {}
+  const seats = await seatsOnTheNight(eventDate, vesselIds);
 
   const perGuest = pkgRow?.pricePerGuest ?? null;
   const hours = durationText(pkgRow) || "7 hours";
@@ -115,7 +123,11 @@ async function FeaturedGlowEvent() {
     ["When", `${formatGlowDate(eventDate)} · ${GLOW_START_TIME}`],
     ["How long", `${hours} — back ${GLOW_RETURN_TIME}`],
     ["Price", perGuest != null ? `${currency(perGuest)} per guest` : "Ask us"],
-    ["Seats", "30 across all 3 boats"],
+    ["Seats", seats
+      ? (seats.available === 0
+          ? "Sold out"
+          : seats.available + " available" + (seats.tentative ? " (" + seats.confirmed + " confirmed, " + seats.tentative + " tentative)" : ""))
+      : "31 across all 3 boats"],
     ["Departs", GLOW_MEETING_POINT],
   ];
 

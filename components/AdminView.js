@@ -14,6 +14,7 @@ import { isLinked, earnedIncome, unearnedTotal } from "../lib/ledgerLinks";
 import { hoursByVessel, fleetHours as fleetHoursOf, currentHours, isMetered } from "../lib/engineHours";
 import { byVessel as maintByVessel, summarise as maintSummarise, statusFor as maintStatusFor } from "../lib/maintenance";
 import { isCrewListRow, isGuestContactRow, isRealInquiry, mailableCrewList, CREW_LIST_UNSUBSCRIBED_STATUS } from "../lib/crewList";
+import { countSeats, eventSalesOpen } from "../lib/eventSeats";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { version as APP_VERSION } from "../package.json";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
@@ -690,6 +691,9 @@ export default function AdminView({
                     / guest · {durationText(p)} · {new Date(p.eventDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </div>
                 )}
+                {p.pricingType === "per-guest" && p.eventDate && (
+                  <EventSeatsLine pkg={p} vessels={vessels} inquiries={inquiries} externalBookings={externalBookings} />
+                )}
 
                 {p.pricingType === "hourly-by-vessel" && (
                   <div style={{ display: "grid", gap: 10 }}>
@@ -861,6 +865,41 @@ export default function AdminView({
 // which split that channel in two for anything grouping across both.
 const BOOKING_PLATFORMS = BOOKING_CHANNELS;
 const BOOKING_REFERRAL_SOURCES = LEAD_SOURCES;
+
+// THE SAME SEAT COUNT THE PUBLIC /glow PAGE SHOWS, in the console.
+//
+// Owner, 1 Oct 2026: show confirmed, tentative and available separately
+// "wherever seats are shown, public page and console". Same function as the
+// public page (lib/eventSeats.js) over the rows the console already holds, so
+// the two cannot disagree about a night.
+//
+// Once the night has passed it says so instead, because that is the state that
+// needs explaining: the package is still here, and nobody can buy it.
+function EventSeatsLine({ pkg, vessels, inquiries, externalBookings }) {
+  if (!eventSalesOpen(pkg)) {
+    return (
+      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+        <strong style={{ color: "#E8934A" }}>Not on sale</strong> · the night has passed. It reopens on the website
+        the moment the package is given its next date.
+      </div>
+    );
+  }
+  const seats = countSeats({
+    vessels,
+    vesselIds: pkg.vessels && pkg.vessels.length ? pkg.vessels : vessels.map((v) => v.id),
+    eventDate: pkg.eventDate,
+    bookings: externalBookings || [],
+    inquiries: inquiries || [],
+  });
+  if (!seats) return null;
+  return (
+    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+      Seats: <strong style={{ color: "var(--text)" }}>{seats.confirmed}</strong> confirmed ·{" "}
+      <strong style={{ color: "var(--text)" }}>{seats.tentative}</strong> tentative ·{" "}
+      <strong style={{ color: seats.available <= 6 ? "#E8934A" : "var(--text)" }}>{seats.available}</strong> available, of {seats.capacity}
+    </div>
+  );
+}
 
 // Merges Inquiry rows (site-originated) and ExternalBooking rows (logged
 // from third-party platforms) into one shape for the unified table below.

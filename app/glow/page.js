@@ -18,6 +18,8 @@ import NavBar from "../../components/NavBar";
 import PageFooter from "../../components/PageFooter";
 import GlowCountdown from "../../components/GlowCountdown";
 import CrewListForm from "../../components/CrewListForm";
+import { eventSalesOpen } from "../../lib/eventSeats";
+import { seatsOnTheNight } from "../../lib/eventSeatsQuery";
 
 // A short, memorable URL for the campaign: thenautiyachti.com/glow.
 // This is the one link that goes in every Instagram/TikTok bio and every
@@ -69,10 +71,14 @@ function Stat({ label, value, sub }) {
   );
 }
 
-function BookButton({ children = "Reserve your seat", style }) {
+// Where the button goes once the night is over: the crew-list form at the
+// foot of this page, which stays open between seasons.
+const CREW_LIST_HREF = "#crew-list";
+
+function BookButton({ children = "Reserve your seat", href = BOOK_HREF, style }) {
   return (
     <a
-      href={BOOK_HREF}
+      href={href}
       style={{
         display: "inline-block",
         background: "linear-gradient(135deg, var(--purple), var(--pink))",
@@ -102,65 +108,19 @@ function BookButton({ children = "Reserve your seat", style }) {
 // 11 Sep 2026 they were simply wrong — the Explorer seats 14 and had 9 people
 // on it. A seat count that cannot go stale has to be counted.
 //
-// EVERY SEAT SOMEBODY IS EXPECTING COUNTS AS TAKEN — a paid booking, an unpaid
-// one, a website inquiry, and the crew riding free. An unpaid inquiry holds
-// nothing internally and that rule is right for the console, but this is a
-// public page: promising a seat to a second person because the first has not
-// paid yet is how somebody gets turned away at the ramp. Cancelled and lapsed
-// rows are not expecting anything and are excluded.
-async function seatsOnTheNight(eventDate, vesselIds) {
-  try {
-    const [vessels, bookings, inquiries] = await Promise.all([
-      prisma.vessel.findMany({ select: { id: true, capacity: true } }),
-      prisma.externalBooking.findMany({
-        where: { date: eventDate, status: { notIn: ["cancelled"] } },
-        select: { partySize: true, bookingId: true },
-      }),
-      prisma.inquiry.findMany({
-        where: { date: eventDate, status: { notIn: ["cancelled", "lapsed"] } },
-        select: { partySize: true, bookingId: true },
-      }),
-    ]);
-
-    // The captain occupies a seat on every boat, so guest capacity is one less
-    // per hull. Getting this wrong oversells the fleet by three.
-    const capacity = vessels
-      .filter((v) => vesselIds.includes(v.id))
-      .reduce((n, v) => n + Math.max(0, (v.capacity || 0) - 1), 0);
-
-    // ONE CHARTER, TWO ROWS — COUNT IT ONCE.
-    //
-    // A website checkout writes a row in BOTH tables under the same booking
-    // number: the inquiry the guest filled in, and the mirror booking that
-    // blocks the date. That is by design and the console's toUnifiedRows has
-    // always deduped it. This did not, so on the morning of 18 Sep 2026 Slade
-    // Deliberto's two seats were counted twice and the page told the public
-    // "4 seats left" when there were 6.
-    //
-    // It errs toward under-selling rather than overselling, which is the safer
-    // direction and is exactly why it could have sat there unnoticed for weeks
-    // — every website booking makes it worse by the size of that party.
-    //
-    // Deduped on bookingId, the same key the console uses. A row without one
-    // cannot be a duplicate of anything, so it keeps its own identity.
-    const seen = new Set();
-    let taken = 0;
-    for (const r of [...bookings, ...inquiries]) {
-      const key = r.bookingId;
-      if (key) {
-        if (seen.has(key)) continue;
-        seen.add(key);
-      }
-      taken += Number(r.partySize) || 0;
-    }
-
-    if (!capacity) return null;
-    return { capacity, taken, left: Math.max(0, capacity - taken) };
-  } catch {
-    // A seat count is worth having and is not worth taking the page down for.
-    // Returning null falls back to naming the fleet's size and nothing more.
-    return null;
-  }
+// EVERY SEAT SOMEBODY IS EXPECTING COUNTS AGAINST CAPACITY — a paid booking, an
+// unpaid one, a website inquiry, an owed charter, and the crew riding free.
+// Since 1 Oct 2026 the page says which are which: confirmed, tentative and
+// available, the owner's "like a Facebook event". The counting itself, and the
+// one-charter-two-rows rule, live in lib/eventSeats.js so the console can run
+// the same count; the query is lib/eventSeatsQuery.js, shared with /events.
+// "12 confirmed · 18 tentative · 10 available". Tentative is left out when there
+// is none, rather than announcing "0 tentative" to every visitor.
+function seatBreakdown(seats) {
+  const parts = [seats.confirmed + " confirmed"];
+  if (seats.tentative) parts.push(seats.tentative + " tentative");
+  parts.push(seats.available + " available");
+  return parts.join(" · ");
 }
 
 export default async function GlowPage() {
@@ -185,7 +145,13 @@ export default async function GlowPage() {
   // exactly when nobody is watching. It must move whenever fixedHours does.
   const GLOW_VESSEL_IDS = (pkg && Array.isArray(pkg.vessels) && pkg.vessels.length)
     ? pkg.vessels : GLOW_VESSEL_IDS_FALLBACK;
-  const seats = await seatsOnTheNight(eventDate, GLOW_VESSEL_IDS);
+  // Closed once the night has passed; reopened by giving the package its next
+  // date. See eventSalesOpen. While closed, nothing on this page sells: the
+  // buttons go to the crew list and the seat count is not shown, because
+  // "31 available" for a night that already happened is an invitation to buy
+  // something that does not exist.
+  const salesOpen = eventSalesOpen({ eventDate });
+  const seats = salesOpen ? await seatsOnTheNight(eventDate, GLOW_VESSEL_IDS) : null;
   const hours = durationText(pkg) || "7 hours";
 
   return (
@@ -225,7 +191,7 @@ export default async function GlowPage() {
               margin: "16px 0 12px",
             }}
           >
-            {formatGlowDate(eventDate)} · {GLOW_START_TIME}
+            {salesOpen ? `${formatGlowDate(eventDate)} · ${GLOW_START_TIME}` : "Next date coming soon"}
           </div>
           <GlowCountdown eventDate={eventDate} style={{ marginBottom: 20 }} />
           <p style={{ fontSize: 17, color: "var(--text)", opacity: 0.88, lineHeight: 1.65, maxWidth: 640, margin: "0 auto 26px" }}>
@@ -234,8 +200,9 @@ export default async function GlowPage() {
             there and back — you just show up. Thirty-one seats across three boats,
             and that's the whole night.
           </p>
-          <BookButton />
+          {salesOpen ? <BookButton /> : <BookButton href={CREW_LIST_HREF}>Get the next date first</BookButton>}
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 14 }}>
+            {!salesOpen && "This season's glow nights are done. "}
             {perGuest != null ? `${currency(perGuest)} per guest · ${hours} on the water` : `${hours} on the water`}
             {/* THE SCARCITY BESIDE THE BUTTON, not a scroll below it.
                 Same figure as the Seats card — both read seatsOnTheNight, so
@@ -245,7 +212,7 @@ export default async function GlowPage() {
                 amber every day of a slow week teaches people to ignore the
                 colour, and then it says nothing on the night it matters. */}
             {seats && (
-              seats.left === 0 ? (
+              seats.available === 0 ? (
                 <>
                   {" · "}
                   <strong style={{ color: "#E2685F" }}>Sold out</strong>
@@ -253,8 +220,8 @@ export default async function GlowPage() {
               ) : (
                 <>
                   {" · "}
-                  <strong style={{ color: seats.left <= 6 ? "#E8934A" : "var(--text)" }}>
-                    {seats.left === 1 ? "1 seat left" : seats.left + " seats left"}
+                  <strong style={{ color: seats.available <= 6 ? "#E8934A" : "var(--text)" }}>
+                    {seats.available === 1 ? "1 seat available" : seats.available + " seats available"}
                   </strong>
                 </>
               )
@@ -267,7 +234,11 @@ export default async function GlowPage() {
       <div style={{ background: "var(--ink-soft)", padding: "44px 24px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px,1fr))", gap: 14 }}>
-            <Stat label="When" value={formatGlowDate(eventDate)} sub={`Board at ${GLOW_CHECK_IN_TIME}, lines off at ${GLOW_START_TIME}`} />
+            <Stat
+              label="When"
+              value={salesOpen ? formatGlowDate(eventDate) : "Next date to be announced"}
+              sub={`Board at ${GLOW_CHECK_IN_TIME}, lines off at ${GLOW_START_TIME}`}
+            />
             <Stat label="How long" value={hours} sub={`Back ${GLOW_RETURN_TIME}, ${GLOW_END_NOTE}`} />
             <Stat
               label="Price"
@@ -276,11 +247,9 @@ export default async function GlowPage() {
             />
             <Stat
               label="Seats"
-              value={seats ? (seats.left === 0 ? "Sold out" : seats.left + " left") : "31 total"}
+              value={seats ? (seats.available === 0 ? "Sold out" : seats.available + " available") : "31 per night"}
               sub={seats
-                ? (seats.left === 0
-                    ? "All " + seats.capacity + " taken across the three boats"
-                    : seats.taken + " of " + seats.capacity + " taken across the three boats")
+                ? seatBreakdown(seats) + ", of " + seats.capacity + " across the three boats"
                 : "Split across all three vessels"}
             />
             <Stat label="Where from" value={GLOW_MEETING_POINT} sub="We're your taxi both ways — leave the truck parked" />
@@ -387,15 +356,17 @@ export default async function GlowPage() {
           Thirty-one seats. Twice a year.
         </h2>
         <p style={{ fontSize: 15, color: "var(--muted)", margin: "0 auto 24px", maxWidth: 520, lineHeight: 1.6 }}>
-          Book a single seat or take a whole boat for your group. Questions? Call
-          or text 832-948-2912 — we answer.
+          {salesOpen
+            ? "Book a single seat or take a whole boat for your group."
+            : "The next date isn't set yet. Join the crew list and you'll hear the moment it is."}{" "}
+          Questions? Call or text 832-948-2912 — we answer.
         </p>
-        <BookButton />
+        {salesOpen ? <BookButton /> : <BookButton href={CREW_LIST_HREF}>Get the next date first</BookButton>}
       </div>
 
       {/* CREW LIST — the after-the-event play, live before it too */}
-      <div style={{ background: "var(--ink-soft)", padding: "20px 24px 60px" }}>
-        <CrewListForm source={`Glow page — ${eventDate}`} />
+      <div id="crew-list" style={{ background: "var(--ink-soft)", padding: "20px 24px 60px", scrollMarginTop: 80 }}>
+        <CrewListForm source={salesOpen ? `Glow page — ${eventDate}` : "Glow page — between seasons"} />
       </div>
 
       <PageFooter />

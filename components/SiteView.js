@@ -73,7 +73,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
   const [testimonials] = useState(initialTestimonials || []);
   const [addOns] = useState(initialAddOns || []);
   const [selectedVessel, setSelectedVessel] = useState(initialVessels[0]?.id);
-  const [activePackage, setActivePackage] = useState(initialPackages[0]?.id || null);
+  const [activePackage, setActivePackage] = useState((initialPackages.find((p) => p.salesOpen !== false) || initialPackages[0])?.id || null);
   const [prefill, setPrefill] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -88,7 +88,10 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
   // page with eight package cards to scroll past. Read once on mount.
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("package");
-    if (!wanted || !initialPackages.some((p) => p.id === wanted)) return;
+    // Only a package that is on sale. A closed glow night's old link (it is in
+    // every bio and every post from the run-up) lands on the page instead of
+    // opening a form for a night that has already happened.
+    if (!wanted || !initialPackages.some((p) => p.id === wanted && p.salesOpen !== false)) return;
     setActivePackage(wanted);
     // The hash alone won't scroll reliably here — the form is below a lot of
     // server-rendered content and the browser has usually already given up on
@@ -124,7 +127,11 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       body: JSON.stringify({ ...form, referralSource: getReferralSource() }),
     });
     if (!res.ok) {
-      flashToast("Something went wrong sending that — please try again or call us directly.");
+      // A closed glow night says so: a page left open from before the night
+      // passed still offers it, and "something went wrong" would send them
+      // round again.
+      const data = await res.json().catch(() => ({}));
+      flashToast(data.salesClosed || data.wrongDate ? data.error : "Something went wrong sending that — please try again or call us directly.");
       return false;
     }
     flashToast("Inquiry sent — we'll be in touch soon.");
@@ -162,7 +169,8 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       }
 
       if (checkoutRes.status !== 503) {
-        flashToast("Something went wrong starting checkout — please try again or call us directly.");
+        const data = await checkoutRes.json().catch(() => ({}));
+        flashToast(data.salesClosed || data.wrongDate ? data.error : "Something went wrong starting checkout — please try again or call us directly.");
         return false;
       }
       // else: 503 "not configured" — fall through to the plain inquiry flow below.
@@ -833,7 +841,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
             </select>
           </div>
           <div className="mono" style={{ fontSize: 11.5, color: "var(--purple)", lineHeight: 1.6 }}>
-            One date only this year: {formatGlowDate(pkg.eventDate)}
+            {pkg.salesOpen === false ? "Next date to be announced" : <>One date only this year: {formatGlowDate(pkg.eventDate)}</>}
             <div style={{ color: "var(--muted)", marginTop: 2 }}>
               Board {GLOW_CHECK_IN_TIME} · lines off {GLOW_START_TIME} · {durationText(pkg)}
             </div>
@@ -874,6 +882,15 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
             style={{ background: "var(--purple)", color: "#0A0612", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}
           >
             Book with {pkg.linkLabel ? pkg.linkLabel.replace(/\.$/, "") : "the operator"} ↗
+          </a>
+        ) : pkg.salesOpen === false ? (
+          // A dated night that has passed. Nothing to book until the next one
+          // is set, so the button collects the guest for that one instead.
+          <a
+            href="/glow#crew-list"
+            style={{ background: "var(--purple)", color: "#0A0612", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}
+          >
+            Get the next date first
           </a>
         ) : (
           <button
@@ -1174,7 +1191,8 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
                 would have paid us through our own Stripe checkout for a lesson
                 YOLO Lake Conroe delivers. It is still on the page as a card
                 with a link straight to them. */}
-            {packages.filter((p) => !isPartnerReferral(p)).map((p) => (
+            {/* Nor a dated night that has passed: see eventSalesOpen. */}
+            {packages.filter((p) => !isPartnerReferral(p) && p.salesOpen !== false).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
                 {p.pricingType === "flat" ? ` — ${currency(p.price)}` : p.pricingType === "per-guest" ? ` — ${currency(p.pricePerGuest)}/guest` : p.pricingType === "tiered-by-guests" ? ` — from ${currency(p.tiers[0].price)}` : ""}

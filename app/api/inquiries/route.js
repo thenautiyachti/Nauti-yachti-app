@@ -4,6 +4,7 @@ const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 const { sendInquiryEmail, sendInquiryAckEmail } = require("../../../lib/email");
 const { generateBookingId } = require("../../../lib/bookingId");
 const { clean: cleanSource } = require("../../../lib/referralSource");
+const { eventBookingRefusal } = require("../../../lib/eventSeats");
 const {
   DUPLICATE_WINDOW_MINUTES,
   UNTOUCHED_STATUS,
@@ -29,6 +30,19 @@ async function POST(req) {
     if (!body[field]) {
       return NextResponse.json({ error: `Missing field: ${field}` }, { status: 400 });
     }
+  }
+
+  // A CLOSED NIGHT IS NOT ASKED ABOUT HERE EITHER.
+  //
+  // The checkout route refuses it, and this is the same booking form's other
+  // door: with Stripe unavailable, or a guest choosing to pay later, the form
+  // posts here instead. An inquiry for a night that has already happened is a
+  // seat nobody can sit in. Only dated events are looked up; an unknown package
+  // is left to behave as it always has.
+  const pkgRow = await prisma.package.findUnique({ where: { id: String(body.packageId) } });
+  const eventRefusal = eventBookingRefusal(pkgRow, body.date);
+  if (eventRefusal) {
+    return NextResponse.json(eventRefusal, { status: 400 });
   }
 
   // THE SAME CHARTER ASKED FOR TWICE.

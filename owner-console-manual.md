@@ -1990,13 +1990,19 @@ moved every line word for word, and a script checked that none was lost.
   have to follow. **The times live in `lib/glowEvent.js`**: `GLOW_CHECK_IN_TIME`,
   `GLOW_START_TIME`, `GLOW_RETURN_TIME`, and `GLOW_TIMING_LINE`, which is the
   whole sentence already written. Change them there, never in the copy.
-- **The glow page counts its own seats**, and says the number twice — beside
-  the Reserve button and again on the Seats card. Both read the same count,
-  so they cannot disagree. "31 seats" and "seats left" are
-  worked out from the bookings on the night, never typed in — every seat
-  somebody is expecting counts as taken, including unpaid inquiries and the
-  crew riding free, because a public page that promises a seat twice ends at
-  the ramp. It refreshes every 60 seconds.
+- **The glow page counts its own seats** as confirmed, tentative and available,
+  like a Facebook event: *12 confirmed · 18 tentative · 10 available.*
+  Confirmed is booked or completed. Tentative is an inquiry, a lapsed one or an
+  owed charter, and it still counts against the 31: available is capacity minus
+  both. The same count shows beside the Reserve button, on the Seats card, on
+  the Events page and under the glow package in Setup → Packages & pricing,
+  so none of them can disagree. It refreshes every 60 seconds.
+- **Glow seat sales close by themselves once the night has passed**, and
+  reopen only when the package is given its next date. Closed (since 1 October
+  2026, no next date yet): the glow page says *next date coming soon*, every
+  button goes to the crew list, the booking form does not offer the night, and
+  the checkout refuses it. The crew list stays open. Setting a date reopens
+  sales the moment it is saved, so do not set one before you want to sell.
 - **A post that has already published cannot be edited by anything here.**
   Blotato has no route for it — four posts had to be corrected by hand in
   each app when the time moved. Facebook shows "Edited"; Instagram does not;

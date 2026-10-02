@@ -4,6 +4,7 @@ import { parsePackage, groupBlockedDates, groupExternalBookingState, groupBooked
 import { occupyingRows } from "../lib/occupancy";
 import { getLakeConroeForecast } from "../lib/weather";
 import SiteView from "../components/SiteView";
+import { eventSalesOpen } from "../lib/eventSeats";
 import { pageMetadata } from "../lib/seo";
 
 // The home page targets the head term ("boat charter Lake Conroe") and the
@@ -63,7 +64,9 @@ export default async function HomePage() {
     prisma.addOn.findMany({ where: { active: true, archived: false }, orderBy: { sortOrder: "asc" } }),
   ]);
 
-  const packages = packageRows.map(parsePackage);
+  // salesOpen is decided here, on the server, so the booking form and the
+  // package cards agree with the checkout route, which refuses the same thing.
+  const packages = packageRows.map(parsePackage).map((p) => ({ ...p, salesOpen: eventSalesOpen(p) }));
   const blocked = groupBlockedDates(blockedRows);
   // Both tables, deduped -- a card booking exists in each and counting its
   // hours twice would show a half-day as full. See lib/occupancy.js.

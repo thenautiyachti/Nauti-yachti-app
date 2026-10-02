@@ -8,6 +8,7 @@ const { quoteTotal } = require("../../../lib/pricing");
 const { parsePackage } = require("../../../lib/serialize");
 const { clean: cleanSource } = require("../../../lib/referralSource");
 const { isPartnerReferralRow } = require("../../../lib/partners");
+const { eventBookingRefusal } = require("../../../lib/eventSeats");
 
 // Public: customer clicks "Book this" / submits the booking form and is sent
 // to Stripe's hosted Checkout for the exact quoted price. We still create the
@@ -60,6 +61,13 @@ async function POST(req) {
       partnerReferral: true,
       bookWith: pkgRow.linkUrl || null,
     }, { status: 400 });
+  }
+
+  // A dated night that has passed, or a date that is not the night's own.
+  // Owner, 1 Oct 2026: glow seat sales closed until the next date is set.
+  const eventRefusal = eventBookingRefusal(pkgRow, body.date);
+  if (eventRefusal) {
+    return NextResponse.json(eventRefusal, { status: 400 });
   }
 
   // The package has to actually run on the boat being booked.
