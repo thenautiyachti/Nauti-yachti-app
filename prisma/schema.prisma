@@ -623,6 +623,41 @@ model TripMessage {
   @@index([bookingId, createdAt])
 }
 
+// OUR PHOTOS OF A GUEST'S TRIP, shown on their trip page once he approves them.
+//
+// Owner, 2 Oct 2026: guests should "see their pictures and videos of their
+// completed trips but maybe not all of them. Maybe just the ones that are good
+// enough to publish." His choices: Coral picks, he approves; photos now, videos
+// later (the free storage plan holds 1 GB).
+//
+// The file here is a WEB-SIZED COPY in the private guest-uploads bucket, under
+// trip-photos/. The original stays in the charter folder on the PC; folder and
+// fileName say which, so an approved photo can be mirrored into that folder's
+// "For guests" subfolder.
+//
+// bookingRefs is ",NY-20260919-03,NY-20260919-04," -- every booking whose guests
+// may see it, comma-wrapped so a contains-match on ",<ref>," is exact. A charter
+// folder can hold several bookings (a glow night, or two parties on one day), and
+// the console shows him who will see each photo before he approves it.
+model TripPhoto {
+  id          String    @id @default(cuid())
+  charterDate String    // "2026-09-19"
+  folder      String    // the charter folder's name under 02 Charters\_By charter
+  fileName    String    // the original's name inside that folder (or _from video\)
+  storagePath String    @unique
+  bytes       Int       @default(0)
+  bookingRefs String
+  // "pending" until the copy is confirmed in storage, then "proposed" (waiting
+  // on him), "approved" (on the trip page) or "rejected".
+  status      String    @default("pending")
+  proposedBy  String    @default("Nauti Coral")
+  note        String?
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+
+  @@index([charterDate, status])
+}
+
 model FuelLog {
   id            String   @id @default(cuid())
   vesselId      String

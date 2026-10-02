@@ -182,6 +182,42 @@ function Review({ view }) {
   );
 }
 
+// Our photos of their trip: the ones the owner approved from what Coral picked.
+// After the trip, an empty gallery says they are coming rather than vanishing,
+// so a guest knows to look back.
+function OurPhotos({ view, photos }) {
+  const list = photos || [];
+  if (!list.length && view.phase !== "past") return null;
+  return (
+    <section style={CARD}>
+      <h2 style={H2}>Our photos from your trip</h2>
+      {!list.length ? (
+        <p style={{ ...P, margin: 0 }}>
+          We&rsquo;re picking the best shots from your day. They&rsquo;ll appear here once they&rsquo;re ready.
+        </p>
+      ) : (
+        <>
+          <p style={{ ...P, margin: "0 0 12px" }}>Yours to keep. Tap one to see it full size, or download it.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+            {list.map((p, i) => (
+              <div key={p.id}>
+                <a href={p.url} target="_blank" rel="noopener noreferrer"
+                  style={{ display: "block", aspectRatio: "4 / 3", borderRadius: 8, overflow: "hidden", background: "var(--ink-soft)" }}>
+                  <img src={p.url} alt={"Photo " + (i + 1) + " from your trip"} loading="lazy"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </a>
+                <a href={p.download} style={{ display: "block", textAlign: "center", fontSize: 12.5, color: "var(--purple)", marginTop: 4 }}>
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 function GoodToKnow({ view }) {
   if (!view.goodToKnow.length) return null;
   return (
@@ -197,7 +233,7 @@ function GoodToKnow({ view }) {
   );
 }
 
-export default function TripPageView({ view, tripRef, tripKey, demo = false }) {
+export default function TripPageView({ view, tripRef, tripKey, demo = false, ourPhotos = [] }) {
   const after = view.phase === "past";
   const off = view.phase === "cancelled";
   const photos = (
@@ -222,6 +258,7 @@ export default function TripPageView({ view, tripRef, tripKey, demo = false }) {
           <Banner view={view} />
           {after ? (
             <>
+              <OurPhotos view={view} photos={ourPhotos} />
               {photos}
               <Review view={view} />
               <Details view={view} />

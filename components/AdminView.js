@@ -47,6 +47,7 @@ import SocialCommentsTab from "./SocialCommentsTab";
 import SocialMessagesTab from "./SocialMessagesTab";
 import TripMessagesPanel from "./TripMessagesPanel";
 import GuestUploadsPanel from "./GuestUploadsPanel";
+import TripPhotosPanel from "./TripPhotosPanel";
 
 // Names only. The leading numbers came from a spreadsheet's sort order and had
 // started to do real damage: 05 was three different repair categories, 06 was
@@ -445,6 +446,17 @@ export default function AdminView({
   }, []);
   const waitingAllMessages = waitingMessages + waitingTripMessages;
 
+  // Photos Coral proposed for guests' trip pages, waiting on his yes. Counted on
+  // the Photo Requests tab, where he approves them.
+  const [waitingTripPhotos, setWaitingTripPhotos] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    readBadgeSummary("/api/admin/trip-photos")
+      .then((r) => { if (alive && r.summary) setWaitingTripPhotos(r.summary.waiting || 0); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   // The tab counter has to agree with the list under it. A card-paid booking
   // exists in both tables by design — see toUnifiedRows — so a straight
   // inquiries + externalBookings sum counts it twice, and the number on the tab
@@ -525,7 +537,7 @@ export default function AdminView({
         { id: "testimonials", label: tabLabel("Testimonials", needsReviewCount(testimonials)), count: needsReviewCount(testimonials) },
         // Badged on the OUTSTANDING count, not the total: this is a queue of
         // promises still owed, and once it is empty it should say nothing.
-        { id: "photoRequests", label: tabLabel("Photo Requests", photoRequestsOwed), count: photoRequestsOwed },
+        { id: "photoRequests", label: tabLabel("Photo Requests", photoRequestsOwed + waitingTripPhotos), count: photoRequestsOwed + waitingTripPhotos },
       ],
     },
     {
@@ -831,8 +843,10 @@ export default function AdminView({
               onMarkSent={onMarkPhotoRequestSent}
               onDelete={onDeletePhotoRequest}
             />
-            {/* The other direction: photos guests sent US, from the share page
-                and their trip pages. Same tab, because it is the same subject. */}
+            {/* Our photos of their trips, waiting on his yes before they reach
+                the guests' trip pages. Then the other direction: photos guests
+                sent US. Same tab, because it is the same subject. */}
+            <TripPhotosPanel onWaiting={setWaitingTripPhotos} />
             <GuestUploadsPanel />
           </>
         )}

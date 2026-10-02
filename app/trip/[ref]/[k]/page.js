@@ -4,6 +4,30 @@ import TripPageView from "../../../../components/TripPageView";
 import { verifyTripKey, normalizeRef } from "../../../../lib/tripLink";
 import { findTrip } from "../../../../lib/tripBooking";
 import { tripView } from "../../../../lib/tripInfo";
+import { prisma } from "../../../../lib/db";
+import { signedReadUrls } from "../../../../lib/guestUploads";
+import { refNeedle } from "../../../../lib/tripPhotos";
+
+// Our approved photos of this trip (Coral proposes, the owner approves), with a
+// one-hour link to view and one to download. A failure here never takes the trip
+// page down: the gallery simply does not appear.
+async function ourPhotosFor(ref) {
+  try {
+    const rows = await prisma.tripPhoto.findMany({
+      where: { status: "approved", bookingRefs: { contains: refNeedle(ref) } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, storagePath: true },
+    });
+    const urls = await signedReadUrls(rows.map((r) => r.storagePath));
+    return rows.filter((r) => urls[r.storagePath]).map((r, i) => ({
+      id: r.id,
+      url: urls[r.storagePath],
+      download: urls[r.storagePath] + "&download=" + encodeURIComponent("nauti-yachti-" + ref + "-" + (i + 1) + ".jpg"),
+    }));
+  } catch {
+    return [];
+  }
+}
 
 // thenautiyachti.com/trip/NY-20260919-03/<key> -- a guest's own trip page.
 //
@@ -53,5 +77,5 @@ export default async function TripPage({ params }) {
   const trip = await findTrip(ref);
   if (!trip) return <NotFound />;
 
-  return <TripPageView view={tripView(trip)} tripRef={ref} tripKey={k} />;
+  return <TripPageView view={tripView(trip)} tripRef={ref} tripKey={k} ourPhotos={await ourPhotosFor(ref)} />;
 }
