@@ -3,7 +3,7 @@ const { prisma } = require("../../../lib/db");
 const { isAdminAuthenticated } = require("../../../lib/auth-guard");
 const { storageConfigured, signUploadUrl, storedSize } = require("../../../lib/guestUploads");
 const {
-  MAX_PER_CHARTER, isRestricted, refsField, photoPathFor, acceptableName,
+  MAX_PER_CHARTER, isRestricted, refsField, photoPathFor, acceptableName, bookingsForFolder,
 } = require("../../../lib/tripPhotos");
 
 // The crew's side of "our photos of your trip".
@@ -96,20 +96,23 @@ async function signOne(item) {
   // Pending ones from the last hour count too, so one batch cannot sail past the
   // limit before any of it is confirmed. An older pending row is an upload that
   // never finished, and does not hold a place.
+  // Per charter FOLDER, not per date: two charters on one day are two trip pages.
   const already = await prisma.tripPhoto.count({
-    where: { charterDate, OR: [{ status: "approved" }, { status: "pending", createdAt: { gt: new Date(Date.now() - 3600000) } }] },
+    where: { folder, OR: [{ status: "approved" }, { status: "pending", createdAt: { gt: new Date(Date.now() - 3600000) } }] },
   });
   if (already >= MAX_PER_CHARTER) {
     return { status: 429, body: { ...echo, error: "this charter already has " + already + " photos on its trip page; the limit is " + MAX_PER_CHARTER } };
   }
 
-  // Who may see it: every completed booking on that date that carries a number.
+  // Who may see it: the completed bookings on that date that carry a number --
+  // and when there are several, only the ones the folder names (two separate
+  // charters on one day each have their own folder; see bookingsForFolder).
   // A charter that never completed has no guests to show it to.
   const bookings = await prisma.externalBooking.findMany({
     where: { date: charterDate, status: "completed", bookingId: { not: null } },
-    select: { bookingId: true },
+    select: { bookingId: true, guestName: true },
   });
-  const refs = refsField(bookings.map((b) => b.bookingId));
+  const refs = refsField(bookingsForFolder(folder, bookings).map((b) => b.bookingId));
   if (!refs) return { status: 400, body: { ...echo, error: "no completed booking with a number on " + charterDate } };
 
   const row = await prisma.tripPhoto.create({

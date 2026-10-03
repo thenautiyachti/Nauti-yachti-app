@@ -12,7 +12,7 @@ const { spawnSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const CLI = "C:/Users/immex/.node_modules/capcut-cli/dist/index.js";
-const DIR = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-09-06 Oscar RoblesGil R";
+const DIR = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-09-06 Oscar RoblesGil R (tubing, wakeboarding)";
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i > -1 ? process.argv[i + 1] : d; };
 const NAME = arg("name", "Oscar recap (Claude draft)");
 const DRAFTS = arg("drafts", null);

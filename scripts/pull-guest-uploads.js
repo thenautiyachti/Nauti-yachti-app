@@ -45,7 +45,9 @@ const IMPORTED = path.join(INBOX, "Imported from Website");
 //                  a claim (parties book on one person's phone), so it says so.
 //   otherwise   -> "2026-09-19 boatz-glowz", the charter they picked.
 //
-// The date stays first either way: file-inbox.js files by it. Who SENT each
+// The date stays first either way, for a person reading the folder, but
+// file-inbox.js files by the booking number when there is one, never by the
+// date (owner, 3 Oct 2026: a photo's date can be wrong). Who SENT each
 // file is in its own name (guest_<name>_...), because a forwarded trip link
 // means the sender is often not the person who booked.
 const bookerName = new Map();

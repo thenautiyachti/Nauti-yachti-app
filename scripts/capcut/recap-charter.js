@@ -27,7 +27,11 @@ const run = (cmd, args) => spawnSync(cmd, args, { cwd: HERE, encoding: "utf8", e
 
 const want = process.argv[2];
 if (!want) say(1, { error: "usage: node recap-charter.js \"<charter folder>\"" });
-const matches = fs.readdirSync(CHARTERS).filter((f) => f.toLowerCase().includes(want.toLowerCase()) && !/NDA/i.test(f));
+// The crew's restricted-folder guard (Crew\_Scripts\media-guard.js), anchored:
+// a bare /NDA/ matched "KuykeNDAll" and kept Sara Kuykendall's charter from ever
+// getting a recap.
+const RESTRICTED = /\bNDA\b|NO MEDIA|DO NOT POST|NOT FOR (?:POST|PUBLIC|USE)|\bNOT USED?\b/i;
+const matches = fs.readdirSync(CHARTERS).filter((f) => f.toLowerCase().includes(want.toLowerCase()) && !RESTRICTED.test(f));
 if (matches.length !== 1) say(1, { error: matches.length ? "more than one charter matches: " + matches.join(" | ") : "no charter folder matches " + want });
 const folder = matches[0];
 

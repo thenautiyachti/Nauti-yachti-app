@@ -59,7 +59,7 @@ export default function GuestUploadsPanel() {
       </div>
       <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, maxWidth: 640, marginBottom: 12 }}>
         From the share-your-photos page and from guests&rsquo; trip pages. Every one came with a ticked consent to
-        use it in posts and advertising. The pull script on the office PC brings them into Photos\00 Inbox; nothing here is posted.
+        use it in posts and advertising. The pull script on the office PC brings them into Photos\00 Inbox, and Coral files each into its charter&apos;s folder; the good ones go on that trip page. Nothing here is posted.
         {data.configured === false && <span style={{ color: "#ff4d5e" }}> Storage is not configured on this deployment.</span>}
         {data.error && <span style={{ color: "#ff4d5e" }}> {data.error}</span>}
         {" "}
@@ -86,7 +86,7 @@ export default function GuestUploadsPanel() {
                 <video src={u.url} preload="metadata" muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <span style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted)" }}>
-                  {u.url ? "open file" : u.onPcOnly ? "on the PC, in 00 Inbox" : "no preview"}
+                  {u.url ? "open file" : u.onPcOnly ? "on the PC" : "no preview"}
                 </span>
               )}
             </a>
@@ -99,8 +99,13 @@ export default function GuestUploadsPanel() {
               </div>
               <div>
                 {day(u.createdAt)} · {prettySize(u.sizeBytes)}
-                {u.status === "pulled" ? " · on the PC" : u.status === "rejected" ? " · thrown out" : " · new"}
+                {u.filedIn ? " · on the trip page" : u.status === "pulled" ? " · on the PC" : u.status === "rejected" ? " · thrown out" : " · new"}
               </div>
+              {u.filedIn && (
+                <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={u.filedIn + " / Completed / _guest media"}>
+                  in {u.filedIn}
+                </div>
+              )}
               <div title={u.consentText || "Consent ticked on the share page"}>consent {day(u.consentAt)}</div>
               <button type="button" disabled={busy === u.id}
                 onClick={() => setStatus(u, u.status === "rejected" ? "uploaded" : "rejected")}

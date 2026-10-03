@@ -10,6 +10,7 @@ matched to the trip; no song twice in a row.
 import os, re, sys, json, math, subprocess
 import numpy as np
 from PIL import Image, ImageOps
+from locate_moments import folder_dir  # _By charter or _outings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\02 Charters\_By charter"
@@ -145,7 +146,7 @@ def song_history():
     return used
 
 def shots_for(folder, moments):
-    base = os.path.join(ROOT, folder); done = os.path.join(base, "Completed")
+    base = folder_dir(folder); done = os.path.join(base, "Completed")
     out = []
     for m in moments:
         span = m["b"] - m["a"]

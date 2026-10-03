@@ -10,7 +10,7 @@ const { spawnSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const CLI = "C:/Users/immex/.node_modules/capcut-cli/dist/index.js";
-const DIR = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-09-06 Oscar RoblesGil R";
+const DIR = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter/2026-09-06 Oscar RoblesGil R (tubing, wakeboarding)";
 const PROJ = process.argv[2];
 const APPLY = process.argv.includes("--apply");
 const WC = 1080, HC = 1920;

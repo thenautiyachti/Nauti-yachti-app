@@ -4,3 +4,5 @@ plans/
 *.log
 oscar-draft-backup-*/
 patch_*.py
+moments.before-rename.json
+themes-built.json

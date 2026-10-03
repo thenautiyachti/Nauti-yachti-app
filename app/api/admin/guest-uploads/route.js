@@ -1,7 +1,7 @@
 const { NextResponse } = require("next/server");
 const { prisma } = require("../../../../lib/db");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
-const { signedReadUrls, previewKind, storageConfigured } = require("../../../../lib/guestUploads");
+const { signedReadUrls, previewKind, storageConfigured, localFileNameFor } = require("../../../../lib/guestUploads");
 
 // Photos and video guests have sent in, for the console.
 //
@@ -38,7 +38,27 @@ async function GET(req) {
   // Rejected files are listed for the record but not re-signed: there is no
   // reason to keep handing out links to something he threw out. Nor are files
   // the pull script has already moved to the PC and removed from storage.
-  const urls = await signedReadUrls(rows.filter((r) => r.status !== "rejected" && !onPcOnly(r)).map((r) => r.storagePath));
+  // Once Coral approves a pulled photo she moves it into its charter's
+  // Completed/_guest media, and the next sync puts a web copy on that trip page.
+  // That copy is the preview here, and its folder is where the file now is
+  // (3 Oct 2026: Tyler's card still said "in 00 Inbox" after it had been filed).
+  // The PC copy's name ends with the upload's own id, so the match is exact.
+  const pulled = rows.filter((r) => r.status !== "rejected" && onPcOnly(r)).map((r) => ({ id: r.id, name: localFileNameFor(r) }));
+  const onTrip = {};
+  if (pulled.length) {
+    const copies = await prisma.tripPhoto.findMany({
+      where: { status: "approved", OR: pulled.map((p) => ({ fileName: { endsWith: "/" + p.name } })) },
+      select: { folder: true, fileName: true, storagePath: true },
+    });
+    for (const p of pulled) {
+      const c = copies.find((x) => x.fileName.endsWith("/" + p.name));
+      if (c) onTrip[p.id] = c;
+    }
+  }
+  const urls = await signedReadUrls([
+    ...rows.filter((r) => r.status !== "rejected" && !onPcOnly(r)).map((r) => r.storagePath),
+    ...Object.values(onTrip).map((c) => c.storagePath),
+  ]);
   const fresh = await prisma.guestUpload.count({ where: { status: "uploaded" } });
 
   return NextResponse.json({
@@ -60,7 +80,10 @@ async function GET(req) {
       createdAt: r.createdAt,
       pulledAt: r.pulledAt,
       onPcOnly: onPcOnly(r),
-      url: urls[r.storagePath] || null,
+      // Filed and on its trip page: the charter folder it lives in, and a
+      // preview of the trip-page copy (the original stays on the PC).
+      filedIn: onTrip[r.id] ? onTrip[r.id].folder : null,
+      url: onTrip[r.id] ? urls[onTrip[r.id].storagePath] || null : urls[r.storagePath] || null,
     })),
   });
 }

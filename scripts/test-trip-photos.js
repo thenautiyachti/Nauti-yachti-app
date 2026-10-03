@@ -5,6 +5,7 @@
 // which trip pages a photo can reach. No database, no network.
 const {
   isRestricted, refsField, refsList, refNeedle, photoPathFor, acceptableName, sharingWarning, PREFIX,
+  bookingsForFolder,
 } = require("../lib/tripPhotos");
 
 let pass = 0, fail = 0;
@@ -24,10 +25,22 @@ ok("a booking NOT on it does not", field.includes(refNeedle("NY-20260919-05")), 
 ok("a prefix of a real number does not match", ",NY-20260919-031,".includes(refNeedle("NY-20260919-03")), false);
 ok("no bookings: empty, so nobody sees it", refsField([]), "");
 
+// Two separate charters on one day (3 Oct 2026: Chance and Ivy, 15 Aug 2026).
+const day = [{ bookingId: "NY-20260815-01", guestName: "Chance Example" }, { bookingId: "NY-20260815-02", guestName: "Ivy Sample" }];
+const ids = (l) => l.map((b) => b.bookingId);
+ok("two charters, one day: Chance's folder -> Chance only", ids(bookingsForFolder("2026-08-15 Chance (birthday,party cove, tubing)", day)), ["NY-20260815-01"]);
+ok("two charters, one day: ivy's folder (any case) -> Ivy only", ids(bookingsForFolder("2026-08-15 ivy (night cruise)", day)), ["NY-20260815-02"]);
+ok("a tag word is not a name", ids(bookingsForFolder("2026-08-15 Somebody (ivy)", day)), ["NY-20260815-01", "NY-20260815-02"]);
+ok("a folder naming both -> both", ids(bookingsForFolder("2026-08-15 Chance + Ivy ()", day)), ["NY-20260815-01", "NY-20260815-02"]);
+const glow = [{ bookingId: "A", guestName: "Josh Ramirez" }, { bookingId: "B", guestName: "Crew - Austin, Brooke" }, { bookingId: "C", guestName: "Derek" }];
+ok("a glow night's folder names nobody -> every seat", ids(bookingsForFolder("2026-09-19 Boatz and Glowz second run (glow, party cove)", glow)), ["A", "B", "C"]);
+ok("one booking -> that booking, whatever the folder", ids(bookingsForFolder("2026-08-29 Ashlea (tubing)", [day[0]])), ["NY-20260815-01"]);
+
 console.log("\n  what is never offered");
 ok("an NDA charter folder", isRestricted("2026-06-14 Lake Bryan [NDA]", "a.jpg"), true);
 ok("a not-for-use subfolder", isRestricted("2025-08-02 Christina Coronado", "_not for use/x.jpg"), true);
 ok("Kuykendall is not an NDA (anchored)", isRestricted("2026-07-04 Sara Kuykendall", "a.jpg"), false);
+ok("the owner's own Not used subfolder", isRestricted("2025-08-09 Nauti Yachti Kickoff party", "Not used/x.jpg"), true);
 ok("an ordinary still", isRestricted("2026-09-06 Oscar RoblesGil R", "_from video/a.jpg"), false);
 ok("photos only: jpg", acceptableName("_from video/x.JPG"), true);
 ok("photos only: png", acceptableName("x.png"), true);

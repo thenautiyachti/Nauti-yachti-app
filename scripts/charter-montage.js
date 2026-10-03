@@ -396,8 +396,14 @@ function readPicks(dir) {
 function sourceDir() {
   if (NAME) {
     const y = DAY.slice(0, 4), m = DAY.slice(4, 6), d = DAY.slice(6, 8);
-    const folder = path.join(CHARTERS, `${y}-${m}-${d} ${NAME}`);
-    if (fs.existsSync(folder)) return folder;
+    // Since 3 Oct 2026 a charter folder carries its tags after the name,
+    // "2026-09-06 Oscar RoblesGil R (tubing, wakeboarding)", so match the date
+    // and name and ignore the brackets. Exactly one match, or none.
+    const want = `${y}-${m}-${d} ${NAME}`.toLowerCase();
+    const hits = (fs.existsSync(CHARTERS) ? fs.readdirSync(CHARTERS) : [])
+      .filter((f) => f.replace(/\s*\([^)]*\)\s*$/, "").trim().toLowerCase() === want);
+    if (hits.length === 1) return path.join(CHARTERS, hits[0]);
+    if (hits.length > 1) { console.error("more than one charter folder matches " + want + ": " + hits.join(" | ")); process.exit(1); }
   }
   return INBOX;
 }
@@ -442,7 +448,8 @@ const SKIP_DIRS = new Set(["_from video", "Completed", "compilation video"]);
 // montage — and worse, presented the result as a fresh suggestion. Kept as the
 // same vocabulary harvest-stills uses so a marker that stops one tool stops
 // both.
-const FORBIDDEN_DIR = /\bNDA\b|NO MEDIA|DO NOT POST|NOT FOR (?:POST|PUBLIC|USE)/i;
+// 3 Oct 2026: and the kickoff party's "Not used" (Crew\_Scripts\media-guard.js).
+const FORBIDDEN_DIR = /\bNDA\b|NO MEDIA|DO NOT POST|NOT FOR (?:POST|PUBLIC|USE)|\bNOT USED?\b/i;
 
 function clipFilesUnder(root, depth = 0) {
   const out = [];

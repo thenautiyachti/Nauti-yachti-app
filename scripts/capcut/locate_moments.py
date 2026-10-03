@@ -14,6 +14,19 @@ import numpy as np
 from PIL import Image, ImageOps
 
 ROOT = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\02 Charters\_By charter"
+# Since 3 Oct 2026 the days with no charter (his own outings, the 2025 glow promo
+# nights) live beside the charters in 02 Charters\_outings, tagged the same way.
+# They may be posted, each post approved by him ("It can be used for posts too.
+# I'll be able to stage gate it"), so theme cuts draw on them, after the
+# charters, and their moments are found here as well. Recaps stay charter-only.
+OUTINGS = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\02 Charters\_outings"
+ROOTS = (ROOT, OUTINGS)
+# The crew's one guard (Crew\_Scripts\media-guard.js), copied: never a source.
+RESTRICTED = re.compile(r"\bNDA\b|NO MEDIA|DO NOT POST|NOT FOR (?:POST|PUBLIC|USE)|\bNOT USED?\b", re.I)
+
+def folder_dir(folder):
+    """A dated folder's full path, in _By charter or _outings."""
+    return next((os.path.join(r, folder) for r in ROOTS if os.path.isdir(os.path.join(r, folder))), os.path.join(ROOT, folder))
 HERE = os.path.dirname(os.path.abspath(__file__))
 FPS, SZ = 4, 40
 VIDEO = re.compile(r"\.(mp4|mov|m4v)$", re.I)
@@ -34,7 +47,9 @@ def frames(clip):
 
 def find_clip(folder, stem):
     for dp, dns, fns in os.walk(folder):
-        dns[:] = [d for d in dns if d not in SKIP_DIRS]
+        # A "Not used" / "NOT FOR USE" subfolder is the owner's own rejection (the
+        # 2025-08-09 kickoff party has one): never a source, same as media-guard.js.
+        dns[:] = [d for d in dns if d not in SKIP_DIRS and not RESTRICTED.search(d)]
         for f in fns:
             if VIDEO.search(f) and os.path.splitext(f)[0] == stem:
                 return os.path.join(dp, f)
@@ -42,10 +57,11 @@ def find_clip(folder, stem):
 
 def main(filters):
     out = {}
-    folders = sorted(f for f in os.listdir(ROOT) if re.match(r"\d{4}-\d{2}-\d{2} ", f) and "NDA" not in f.upper())
+    folders = sorted(f for r in ROOTS if os.path.isdir(r) for f in os.listdir(r)
+                     if re.match(r"\d{4}-\d{2}-\d{2} ", f) and not RESTRICTED.search(f) and os.path.isdir(os.path.join(r, f)))
     if filters: folders = [f for f in folders if any(x.lower() in f.lower() for x in filters)]
     for folder in folders:
-        base = os.path.join(ROOT, folder); done = os.path.join(base, "Completed")
+        base = folder_dir(folder); done = os.path.join(base, "Completed")
         if not os.path.isdir(done): continue
         by_clip = {}
         for f in sorted(os.listdir(done)):
@@ -93,6 +109,10 @@ def main(filters):
         print("%-60s %3d moments (%d rider)" % (folder[:60], len(moments), sum(m["kind"] == "rider" for m in moments)), flush=True)
     path = os.path.join(HERE, "moments.json")
     old = json.load(open(path)) if os.path.exists(path) and filters else {}
+    # A renamed folder (3 Oct 2026: every charter gained its tags) leaves its old
+    # key behind with clip paths that no longer exist. Drop any key that is no
+    # longer a folder, so nothing plans from a dead path.
+    old = {k: v for k, v in old.items() if os.path.isdir(folder_dir(k))}
     old.update(out)
     json.dump(old, open(path, "w"), indent=1)
 

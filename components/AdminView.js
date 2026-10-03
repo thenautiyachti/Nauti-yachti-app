@@ -7600,20 +7600,25 @@ function PhotoRequestsTab({ photoRequests, onMarkSent, onDelete }) {
 
   return (
     <div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
-          Photo requests ({pending.length} outstanding)
+      {/* One line when nothing is waiting (owner, 3 Oct 2026: trip pages now
+          hand guests their photos, so an empty request list is just clutter).
+          The QR code on the boat still asks, so the full list comes back the
+          moment somebody does. */}
+      {queue.length === 0 ? (
+        <div style={{ color: "var(--muted)", fontSize: 12.5, marginBottom: 12 }}>
+          <span style={{ fontWeight: 700, color: "var(--text)" }}>Photo requests</span> from the QR code on the boat: none waiting.
+          {sent.length > 0 && ` ${sent.length} sent.`}
         </div>
-        <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, maxWidth: 620 }}>
-          From the QR code on the boat. Every one of these is somebody who was told
-          their photos were coming. Nothing marks itself sent — tick it once you have
-          actually sent them.
-        </div>
-      </div>
-
-      {queue.length === 0 && (
-        <div style={{ color: "var(--muted)", fontSize: 13.5, marginBottom: 16 }}>
-          Nothing outstanding. {sent.length > 0 && `${sent.length} sent.`}
+      ) : (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+            Photo requests ({pending.length} outstanding)
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, maxWidth: 620 }}>
+            From the QR code on the boat. Every one of these is somebody who was told
+            their photos were coming. Nothing marks itself sent — tick it once you have
+            actually sent them.
+          </div>
         </div>
       )}
 
