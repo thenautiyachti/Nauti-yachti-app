@@ -150,7 +150,7 @@ const toMin = (hhmm) => { const [h, m] = String(hhmm).split(":").map(Number); re
       note: [p.platform + " booking " + ref + ", added " + added + " from the platform's confirmation email.",
         "Payout to us $" + payout.toFixed(2) + (val("renter-paid") ? "; the guest paid " + p.platform + " $" + Number(val("renter-paid")).toFixed(2) + "." : "."),
         val("listing") ? "Listing: " + val("listing") : null,
-        p.platform + " shares no phone or email: ask the guest on the day, or they can never be asked for a review.",
+        (p.platform === "GetMyBoat" ? "GetMyBoat shows the guest's phone and email on its trip page once the booking is confirmed (not in the email): copy them onto this booking." : p.platform + " shares no phone or email: ask the guest on the day, or they can never be asked for a review."),
         val("note")].filter(Boolean).join("\n"),
     };
     console.log("\n  " + bookingId + "   " + data.guestName + "   " + p.platform + " " + ref);

@@ -521,7 +521,7 @@ A platform booking is entered in **Bookings → Bookings** with its channel set 
 **Known limit:** a booking from a GetMyBoat listing the system does not know yet is reported, not added, until you say which boat it is.
 
 - The platform takes the payment and pays you later: **Boatsetter in legs** (the boat, then the captain fee, sometimes add-ons, days apart), **GetMyBoat in one sum.**
-- The platforms do not share guest phone numbers or emails. Ask the guest on the day and add them, or they can never be asked for a review.
+- Boatsetter does not share guest phone numbers or emails: ask the guest on the day and add them, or they can never be asked for a review. **GetMyBoat does**, once the booking is confirmed: they are under **Contact Details** on the trip's page at getmyboat.com (not in the confirmation email). Copy them onto the booking.
 - The price on the booking is what you are paid, not what the guest paid the platform.
 
 ## 3.7 Charging a booking and payment links
