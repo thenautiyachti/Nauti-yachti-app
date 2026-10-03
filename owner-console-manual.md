@@ -516,6 +516,10 @@ node scripts/add-booking.js --name "Guest Name" --phone "(555) 555-0100" \
 
 A platform booking is entered in **Bookings → Bookings** with its channel set to the platform and the platform's reference.
 
+**GetMyBoat bookings are added for you.** Every morning the accounts agent reads GetMyBoat's *Booking Confirmed!* emails and adds any that are not on the books yet: the date, start, length, party, boat and payout come straight from the email, and the boat from which GetMyBoat listing was booked. It only ever adds; it never changes or cancels a booking. Her status names each one. **Boatsetter bookings are still entered by hand.**
+
+**Known limit:** a booking from a GetMyBoat listing the system does not know yet is reported, not added, until you say which boat it is.
+
 - The platform takes the payment and pays you later: **Boatsetter in legs** (the boat, then the captain fee, sometimes add-ons, days apart), **GetMyBoat in one sum.**
 - The platforms do not share guest phone numbers or emails. Ask the guest on the day and add them, or they can never be asked for a review.
 - The price on the booking is what you are paid, not what the guest paid the platform.
@@ -1035,7 +1039,7 @@ Eight agents and two routines run on a schedule on the office computer. **None o
 
 | When | Who | What she does |
 |---|---|---|
-| Daily, 8am | **Nauti Penny** · Accounts Receivable | money in: payouts against the ledger, and money held for trips that never ran. Keeps the business inbox in order. |
+| Daily, 8am | **Nauti Penny** · Accounts Receivable | money in: payouts against the ledger, and money held for trips that never ran. Adds new GetMyBoat bookings from their confirmation email ([3.6](#3-6-platform-bookings-boatsetter-and-getmyboat)). Keeps the business inbox in order. |
 | Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | pulls what guests sent from the website, files new footage, curates each charter's `Completed` folder (which the guests see), builds each new charter's recap in your CapCut library ([6.4](#6-4-social-posts-from-draft-to-published)), drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
 | Fri–Mon, 9am | **Nauti Joy** · Guest Relations | who to ask for a review, new crew-list signups, guests owed a charter |
 | Fri–Mon, 9:30am | **Nauti Reef** · Revenue Growth | money the business is not collecting, as one to four ideas |
