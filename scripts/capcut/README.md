@@ -45,3 +45,10 @@ one-off re-cut of Oscar's draft to "REFLECTION".
 - `register --materials --apply` before the song goes on (so the song's cache
   file is not registered as an imported clip), plain `register --apply` after.
 - `render` ignores keyframes; check zoom framing by simulating the crop.
+
+## Known gap (3 Oct 2026)
+
+`plan_themes.py` still reads the old theme folders, which are gone. Before the
+next theme rebuild, source each theme from the folder-name tags instead
+(`find-media.js --package/--location`), across `_By charter` and the dated
+folders in `06 General and Atmosphere`.

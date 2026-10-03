@@ -802,12 +802,13 @@ All charter photos and video live in the `Photos` folder of the business folder,
 | Folder | What goes there |
 |---|---|
 | `00 Inbox` | where new footage lands from the phone and the camera glasses. The content agent files it every run. Its `Imported from Website` folder holds what guests sent through the site: the only copy, never deleted ([6.2](#6-2-photos-guests-send-you)). |
-| `02 Charters\_By charter` | one folder per charter, named `YYYY-MM-DD Guest Name`. **This is the main library.** |
-| `02 Charters\<theme>` | footage grouped by theme or place (tubing, birthday, the cove, and so on), **laid out like a charter folder**: finished cuts and stills in its `Completed`, raw clips and dated event folders around it. The folder name is the classification. |
+| `02 Charters\_By charter` | one folder per charter, named `YYYY-MM-DD Guest Name (tags)`, the tags being its themes and place, e.g. `2026-06-20 Andrew Mason (tubing, the dam)`. **This is the main library, and the only home of charter media.** |
+| `02 Charters\_Compilations` | finished videos cut from many charters (the theme compilations). Never raw media. |
+| `06 General and Atmosphere` | the boat out with no charter aboard, including days with media but no booking (your own outings, friends, promo nights), each in a dated, tagged folder such as `2026-06-27 Outing (party cove)`. |
 | `_from video` | every usable frame pulled from a charter's video: the pile Coral picks the best photos from. The pile itself is never shown or posted as a whole |
 | `_originals` | the uncropped original of a cropped file. Never post both. |
 | `Completed` | **the charter's finished set**: the good photos, the good videos and the compilations. Called `compilation video` until 2 Oct 2026. Its photos are what that charter's guests see on their trip page, and it is the first place the crew looks for a post. Coral curates it: mostly the best frames from the charter's video, plus any good photos actually taken. Raw recordings, soft or duplicate frames, and shots that are not about the guests (a dashboard, an empty wake) never go in. Frames from a CapCut recap may, when the footage is thin, with the mark cropped off. The montages Coral cuts land here, and mix in up to six of its good photos with a slow push-in and the same transitions as the clips. |
-| `_Unsorted` | your sorting pile: footage the crew cannot tell is the business's, or cannot place in a charter or theme. **Never a source for anything published.** You go through it and clear it yourself. |
+| `_Unsorted` | your sorting pile: footage the crew cannot tell is the business's, or cannot place in a charter or a dated day. **Never a source for anything published.** You go through it and clear it yourself. |
 
 **Filenames carry what a folder cannot.** A file keeps its name when it moves, and loses its folder. So a finished cut carries its date, its subject, its shape and, where known, its place:
 
