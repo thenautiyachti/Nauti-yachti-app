@@ -941,6 +941,20 @@ Then **Keep it — send back for changes** (it moves to *Needs work*) or **Don't
 
 **Every card records where its media came from**: which charter folder, which file, which second.
 
+### Trip recaps waiting in CapCut
+
+After each completed charter, once its `Completed` folder is curated, the content agent also builds a **recap as a project in your CapCut desktop library**, named after the charter with "(Claude)" on the end. Open it, change anything you like, and export it; it is not a post until you do, and it then goes through the queue like anything else.
+
+- **Shots** are the charter's own vetted photos, found in their clips and held only while the camera stays on that scene. Riders are zoomed in on.
+- **Music** comes only from your Music shelf: a CapCut project called *media shelf* holding tracks you added from **Commercial only**. The agent picks one that fits the trip (from the charter's tags), never the same song twice running, and cuts every shot on its beat. Add tracks to the shelf whenever it feels stale.
+- The agent never opens or closes CapCut. **If CapCut is open when it runs, the recap waits** for the next run.
+
+Theme compilations (tubing and wakeboarding, night cruise, Party Cove and so on) are built the same way, but only when you ask.
+
+**Known limit:** CapCut has no official way in, so the projects are written in CapCut's own file format. A CapCut update could change that format and stop new recaps being built until the tools are updated; recaps already in your library are not affected.
+
+**Known limit:** a 720p clip zoomed onto a rider is noticeably softer than the rest. That is the trade for seeing the rider at all.
+
 ## 6.5 What each platform will take
 
 | | Photo | Video | Story |
@@ -1021,7 +1035,7 @@ Eight agents and two routines run on a schedule on the office computer. **None o
 | When | Who | What she does |
 |---|---|---|
 | Daily, 8am | **Nauti Penny** · Accounts Receivable | money in: payouts against the ledger, and money held for trips that never ran. Keeps the business inbox in order. |
-| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | pulls what guests sent from the website, files new footage, curates each charter's `Completed` folder (which the guests see), drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
+| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | pulls what guests sent from the website, files new footage, curates each charter's `Completed` folder (which the guests see), builds each new charter's recap in your CapCut library ([6.4](#6-4-social-posts-from-draft-to-published)), drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
 | Fri–Mon, 9am | **Nauti Joy** · Guest Relations | who to ask for a review, new crew-list signups, guests owed a charter |
 | Fri–Mon, 9:30am | **Nauti Reef** · Revenue Growth | money the business is not collecting, as one to four ideas |
 | Fri–Mon, 10am | **Nauti Shelly** · Accounts Payable | what is paid for against what is used |

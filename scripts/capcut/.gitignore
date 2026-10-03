@@ -1,0 +1,6 @@
+moments.json
+shelf.json
+plans/
+*.log
+oscar-draft-backup-*/
+patch_*.py
