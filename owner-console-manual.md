@@ -914,37 +914,40 @@ needs work ──────┘          rejected  (Back to review restores it)
 - **Approved with no date never goes out.** The content agent gives each of these a date every morning and says which dates she chose, so you can move one with **Reschedule**.
 - Nothing else is ever published: not a proposed draft, not one that needs work, not a rejected one.
 
-So the queue is safe to leave alone until a post's date arrives. **To stop a post, press Don't post.** That is the only thing that takes it out of the publisher's way.
+So the queue is safe to leave alone until a post's date arrives. **To stop a post, press Deny.** That is the only thing that takes it out of the publisher's way.
 
 ### On a card
 
 - The photo or clip, or **No media attached** with a link to add one. A scheduled post with no media fails on the day.
 - The caption in full, so you approve the words against the picture.
 - The platform and the time.
-- **Discuss**, **I posted it myself**, **Don't post**.
+- **Approve**, **Discuss** and **Deny** while it waits for you; **Discuss**, **Reschedule**, **Deny** and **Copy caption** once it is approved or scheduled.
 
 Posted, rejected and past drafts sit in a collapsed group, as a record.
 
-### Saying what is wrong with a post
+### The three review buttons
 
-**Discuss** is on every card at every stage, including after scheduling. Pick a reason, then decide whether the post survives:
+- **Approve**: the post goes ahead as it is. It is dated (by you, or by the content agent next morning) and publishes on its own.
+- **Discuss**: you want the post, but something in it needs fixing. Pick what, add a note if you like, and press **Send back to Coral to fix**. It moves to *Needs work*; she fixes it and it comes back to you to approve. Discuss stays on the card after scheduling too, which is when "not that clip" tends to get noticed.
+- **Deny**: the whole post is off. Pick why and press **Deny the whole post**. It moves to *Rejected* and never goes out. Nothing is deleted: **Back to review** on a rejected card brings it back.
 
-| Reason | Means |
-|---|---|
-| **Wrong photo or clip** | the media does not match the post |
-| **Find a better one** | right footage, weak shot |
-| **Caption needs work** | wording, tone, hashtags or a wrong detail |
-| **Wrong day or time** | right post, wrong slot |
-| **Too similar to another post** | repeats something already queued |
-| **Guest or privacy problem** | someone in it should not be, or it names the wrong guest |
-| **Not right for us** | wrong message for the business |
-| **Something else** | say what in the note |
+| Under | Reason | Means |
+|---|---|---|
+| Discuss | **Wrong photo or clip** | the media does not match the post |
+| Discuss | **Find a better one** | right footage, weak shot |
+| Discuss | **Caption needs work** | wording, tone, hashtags or a wrong detail |
+| Discuss | **Audio problem** | no sound, too loud or quiet, a song that could be flagged, or language that should not be heard |
+| Discuss | **Wrong day or time** | right post, wrong slot |
+| Deny | **Too similar to another post** | repeats something already queued |
+| Deny | **Guest or privacy problem** | someone in it should not be, or it names the wrong guest |
+| Deny | **Not right for us** | wrong message for the business |
+| both | **Something else** | say what in the note |
 
-Then **Keep it — send back for changes** (it moves to *Needs work*) or **Don't post it at all** (it moves to *Rejected*). Both wrong-media reasons offer **Swap the media now**.
+Under Discuss, both photo-or-clip reasons also offer **Swap the media now**. For an audio problem Coral checks the sound, then re-exports the clip with its own audio, makes the post a Story (borderline audio goes to Stories), or uses a different clip.
 
-> **Why it works this way.** The reasons are a fixed list so they can be counted. "Six of the last ten were rejected for the wrong clip" changes what the content agent does next week; ten free-text notes saying roughly that do not.
+> **Why it works this way.** The reasons are a fixed list so they can be counted. "Six of the last ten were rejected for the wrong clip" changes what the content agent does next week; ten free-text notes saying roughly that do not. Until 3 October 2026 both buttons opened the same list with both outcomes; you asked for Discuss to mean "fix it" and Deny to mean "deny the whole post together", and for an audio option.
 
-**I posted it myself** is only for a post you put out by hand. The publisher marks her own posts and records their links.
+There is no **I posted it myself** button any more (removed 3 October 2026): posting is automated, and the publisher marks her own posts and records their links.
 
 **Every card records where its media came from**: which charter folder, which file, which second.
 

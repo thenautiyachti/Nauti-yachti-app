@@ -18,7 +18,7 @@ import { countSeats, eventSalesOpen } from "../lib/eventSeats";
 import { CREW, AGENT_STATUS, toSpokenForm, isStatusRow, crewInitials, latestRun, latestStatus, statusLines, isToday, isStale, isStalled } from "../lib/crew";
 import { version as APP_VERSION } from "../package.json";
 import { PRIORITY, parseItem, priorityOf, sortBoard } from "../lib/board";
-import { REVIEW_REASONS, reviewReasonLabel } from "../lib/reviewReasons";
+import { REVIEW_REASONS, reviewReasonLabel, reasonsFor } from "../lib/reviewReasons";
 import {
   STATUSES as BOOKING_STATUSES,
   LABELS as BOOKING_LABELS,
@@ -4167,8 +4167,17 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostT
   const [feedback, setFeedback] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  // Discuss and Deny each open their own list (owner, 3 Oct 2026: Discuss is
+  // for a post worth fixing, "Deny just means deny the whole post together").
+  // A saved reason carries over only if it belongs to the list being opened.
   function openFeedback(mode) {
-    setFeedback({ mode, reason: d.reviewReason || "", note: d.reviewNote || "" });
+    const keepReason = reasonsFor(mode).some((r) => r.id === d.reviewReason);
+    setFeedback({ mode, reason: keepReason ? d.reviewReason : "", note: d.reviewNote || "" });
+  }
+  // The same button closes its own panel, and switches over from the other's.
+  function toggleFeedback(mode) {
+    if (feedback && feedback.mode === mode) setFeedback(null);
+    else openFeedback(mode);
   }
 
   // Same write either way; only the stage differs. The reason is required and
@@ -4290,15 +4299,15 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostT
                     Approve
                   </button>
                   <button type="button"
-                    onClick={() => (feedback ? setFeedback(null) : openFeedback("revise"))}
-                    style={{ flex: 1, background: feedback ? "#e86aa8" : "transparent", color: feedback ? "#0A0612" : "#e86aa8", border: "1px solid #e86aa8", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
-                    {feedback ? "Close" : "Discuss"}
+                    onClick={() => toggleFeedback("revise")}
+                    style={{ flex: 1, background: feedback?.mode === "revise" ? "#e86aa8" : "transparent", color: feedback?.mode === "revise" ? "#0A0612" : "#e86aa8", border: "1px solid #e86aa8", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    {feedback?.mode === "revise" ? "Close" : "Discuss"}
                   </button>
-                  {/* Goes to the form rather than straight to rejected. A killed
-                      post used to leave no trace of what was wrong with it. */}
-                  <button type="button" onClick={() => openFeedback("kill")}
-                    style={{ flex: 1, background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
-                    Deny
+                  {/* Goes to a short "why" first rather than straight to
+                      rejected. A killed post used to leave no trace of why. */}
+                  <button type="button" onClick={() => toggleFeedback("kill")}
+                    style={{ flex: 1, background: feedback?.mode === "kill" ? "var(--pink)" : "transparent", color: feedback?.mode === "kill" ? "#0A0612" : "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    {feedback?.mode === "kill" ? "Close" : "Deny"}
                   </button>
                 </div>
               )}
@@ -4309,29 +4318,23 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostT
                       screens do not disagree about what can be done to a post. */}
                   {/* Discuss stays available after scheduling — that is exactly
                       when "not that clip" tends to get noticed. */}
-                  <button type="button" onClick={() => (feedback ? setFeedback(null) : openFeedback("revise"))}
-                    style={{ flex: "1 1 46%", background: feedback ? "#e86aa8" : "transparent", color: feedback ? "#0A0612" : "#e86aa8", border: "1px solid #e86aa8", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
-                    {feedback ? "Close" : "Discuss"}
+                  <button type="button" onClick={() => toggleFeedback("revise")}
+                    style={{ flex: "1 1 46%", background: feedback?.mode === "revise" ? "#e86aa8" : "transparent", color: feedback?.mode === "revise" ? "#0A0612" : "#e86aa8", border: "1px solid #e86aa8", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
+                    {feedback?.mode === "revise" ? "Close" : "Discuss"}
                   </button>
-                  {/* "Not sure the purpose of this button if it auto uploads
-                      due to Siren, she marks it posted." Correct — she PATCHes
-                      the draft to posted and records the live URL, so for
-                      anything she publishes this button is never touched. It
-                      exists for the posts that go out by hand, which is still
-                      most of TikTok. The old label "Mark posted" did not say
-                      that; this one does. */}
-                  <button type="button" onClick={() => onUpdateStatus(d.id, "posted")}
-                    title="Only for posts you published yourself. Siren marks her own as posted and records the link."
-                    style={{ flex: "1 1 46%", background: "#7FE0B8", color: "#0A0612", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
-                    I posted it myself
-                  </button>
+                  {/* "I posted it myself" lived here until 3 Oct 2026. Owner: "I
+                      don't think we need the 'I already posted this myself'
+                      button anymore because this is all automated now." Siren
+                      marks her own posts and records the link. */}
                   <button type="button" onClick={() => reschedule()}
                     style={{ flex: "1 1 46%", background: "transparent", color: "#4ff3ff", border: "1px solid #4ff3ff", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700 }}>
                     Reschedule
                   </button>
-                  <button type="button" onClick={() => openFeedback("kill")}
-                    style={{ flex: "1 1 46%", background: "transparent", color: "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
-                    Don&apos;t post
+                  {/* Same button and meaning as on a proposed card: the whole
+                      post comes off the schedule (it was "Don't post" here). */}
+                  <button type="button" onClick={() => toggleFeedback("kill")}
+                    style={{ flex: "1 1 46%", background: feedback?.mode === "kill" ? "var(--pink)" : "transparent", color: feedback?.mode === "kill" ? "#0A0612" : "var(--pink)", border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 600 }}>
+                    {feedback?.mode === "kill" ? "Close" : "Deny"}
                   </button>
                   {/* Copying moved out of the preview panel that used to hold
                       it — nothing posts itself yet, so the caption still has to
@@ -4419,12 +4422,12 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostT
                   did. */}
               {feedback && (
                 <div style={{ marginTop: 8, padding: "10px 11px", borderRadius: 6, background: "rgba(232,106,168,0.08)", border: "1px solid rgba(232,106,168,0.4)" }}>
-                  <div style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "#e86aa8", fontWeight: 700, marginBottom: 8 }}>
-                    What&apos;s wrong with it?
+                  <div style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: feedback.mode === "kill" ? "var(--pink)" : "#e86aa8", fontWeight: 700, marginBottom: 8 }}>
+                    {feedback.mode === "kill" ? "Why not post it at all?" : "What needs fixing?"}
                   </div>
 
                   <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                    {REVIEW_REASONS.map((reason) => {
+                    {reasonsFor(feedback.mode).map((reason) => {
                       const picked = feedback.reason === reason.id;
                       return (
                         <button key={reason.id} type="button"
@@ -4464,30 +4467,33 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostT
                   />
 
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {/* Keeping the post is the first button, because it is the
-                        answer most of these have. */}
-                    <button type="button" disabled={!feedback.reason}
-                      onClick={() => submitFeedback("revise")}
-                      style={{
-                        flex: "1 1 100%", background: "#e86aa8", color: "#0A0612", border: "none",
-                        borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700,
-                        opacity: feedback.reason ? 1 : 0.4,
-                      }}>
-                      Keep it — send back for changes
-                    </button>
-                    <button type="button" disabled={!feedback.reason}
-                      onClick={() => submitFeedback("kill")}
-                      style={{
-                        flex: "1 1 46%", background: "transparent", color: "var(--pink)",
-                        border: "1px solid var(--pink)", borderRadius: 6, padding: "7px 9px",
-                        fontSize: 12, fontWeight: 600, opacity: feedback.reason ? 1 : 0.4,
-                      }}>
-                      Don&apos;t post it at all
-                    </button>
+                    {/* One outcome per button: Discuss keeps the post and sends
+                        it back to Coral to fix; Deny takes the whole post out. */}
+                    {feedback.mode === "kill" ? (
+                      <button type="button" disabled={!feedback.reason}
+                        onClick={() => submitFeedback("kill")}
+                        style={{
+                          flex: "1 1 100%", background: "var(--pink)", color: "#0A0612", border: "none",
+                          borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700,
+                          opacity: feedback.reason ? 1 : 0.4,
+                        }}>
+                        Deny the whole post
+                      </button>
+                    ) : (
+                      <button type="button" disabled={!feedback.reason}
+                        onClick={() => submitFeedback("revise")}
+                        style={{
+                          flex: "1 1 100%", background: "#e86aa8", color: "#0A0612", border: "none",
+                          borderRadius: 6, padding: "7px 9px", fontSize: 12, fontWeight: 700,
+                          opacity: feedback.reason ? 1 : 0.4,
+                        }}>
+                        Send back to Coral to fix
+                      </button>
+                    )}
                     {/* When the problem is the clip — wrong one or just a weak
                         one — the fix is right here rather than two screens
                         away. */}
-                    {(feedback.reason === "wrong-media" || feedback.reason === "better-shot") && (
+                    {feedback.mode !== "kill" && (feedback.reason === "wrong-media" || feedback.reason === "better-shot") && (
                       <button type="button"
                         onClick={() => { setFeedback(null); onAttachMedia(d); }}
                         style={{
@@ -4508,9 +4514,14 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostT
                       button people are afraid of is a button that does not
                       work. */}
                   <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.45, marginTop: 7 }}>
-                    Neither of these deletes anything. <strong>Send back</strong> keeps it in the
-                    queue for a rewrite; <strong>Don&apos;t post</strong> moves it to Rejected,
-                    where <strong>Back to review</strong> returns it.
+                    {feedback.mode === "kill" ? (
+                      <>Nothing is deleted: the post moves to Rejected and never goes out.
+                        <strong> Back to review</strong> there returns it. To keep the post and
+                        change something instead, use <strong>Discuss</strong>.</>
+                    ) : (
+                      <>The post stays wanted: it moves to <em>Needs work</em>, and Coral fixes what
+                        you picked and sends it back to you for approval.</>
+                    )}
                   </div>
                 </div>
               )}
