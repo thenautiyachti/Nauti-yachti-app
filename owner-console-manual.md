@@ -183,7 +183,7 @@ A routine that keeps everything current with the least effort.
 | `/gift-certificates` | buying a gift certificate |
 | `/share-your-photos` | anyone uploads photos and video from a trip; it points booked guests to Guest Login. No longer in the menu |
 | `/trip/<booking number>/<key>` | the guest's own trip page: times, meeting point, payment, photo box, review and messages. See [2.8](#2-8-the-trip-page) |
-| `/trip` | **Guest Login**, in the menu on every page: a guest signs in with their booking number and phone and lands on their trip page |
+| `/trip` | **Guest Login**, in the menu on every page: a guest signs in with their booking number and phone and lands on their trip page, or picks from all their trips if they have been out more than once |
 | `/thanks` | after a trip, from the on-boat QR code: ask for photos, leave a review |
 | `/pay/<id>` | the payment page you text a guest, see [3.7](#3-7-charging-a-booking-and-payment-links) |
 | `/booking-success` | where a guest lands after paying |
@@ -368,6 +368,10 @@ Every booking with a booking number has its own page for the guest: `thenautiyac
 | not yet confirmed | that the date is not held until it is paid, with the payment button |
 
 **How a guest gets in.** Two ways, and neither needs a password. The link in the booking confirmation email and in **Text reminder** signs them straight in. Or **Guest Login** in the website's menu, on every page, asks for their booking number and the phone number on the booking. Any number on the booking works. After five wrong tries from one connection it makes them wait, and the wait doubles with each further try.
+
+**A returning guest sees all their trips.** When the phone they sign in with is on more than one booking, Guest Login lists every trip on it, newest first, marking the upcoming ones and the one they asked for; each opens its own trip page with its own photos. Cancelled trips, enquiries that never booked and unpaid website requests are left out. A trip page itself never lists the others: its link is often forwarded to the whole party, who were not all on the booker's other trips, so every trip page carries the same line pointing to Guest Login instead.
+
+**Known limit:** trips are matched by phone. A booking with no phone on file, or a different one, does not join the list; add the phone to the booking and it does.
 
 > **Why it works this way.** A booking number is the date and a counter, so anyone could guess the next one. The key on the end of the link is what keeps the page closed, and the phone number does the same job for a guest without the link. A password nobody remembers at a boat ramp would lock out more guests than strangers.
 

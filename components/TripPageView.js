@@ -282,6 +282,13 @@ export default function TripPageView({ view, tripRef, tripKey, demo = false, our
               <GoodToKnow view={view} />
             </>
           )}
+          {/* The same line on every trip page, whether or not this guest has
+              other trips: a forwarded link must not reveal the booker's other
+              bookings. Guest Login, with the phone, lists them (3 Oct 2026). */}
+          <p style={{ ...SMALL, margin: "18px 0 0", textAlign: "center" }}>
+            Been out with us more than once?{" "}
+            <a href="/trip" style={{ color: "var(--purple)" }}>Guest Login</a> with the phone you booked with shows all your trips.
+          </p>
         </div>
       </div>
       <PageFooter />

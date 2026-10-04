@@ -57,5 +57,28 @@ ok("last four digits are not enough", phoneMatches("6135", ["+17135156135"]), fa
 ok("a different number fails", phoneMatches("7135156136", ["+17135156135"]), false);
 ok("a booking with no phone cannot be opened by phone", phoneMatches("7135156135", []), false);
 
+// A RETURNING GUEST (3 Oct 2026): every trip on the phone they signed in with.
+console.log("\n  a returning guest\n");
+const { tripsSharingPhone } = require("../lib/guestTrips");
+const ext = [
+  { bookingId: "NY-20250729-01", status: "completed", phone: "(281) 555-2044", date: "2025-07-29" },
+  { bookingId: "NY-20250807-01", status: "completed", phone: "+12815552044", date: "2025-08-07" },
+  { bookingId: "NY-20250901-01", status: "cancelled", phone: "2815552044", date: "2025-09-01" },
+  { bookingId: "NY-20250902-01", status: "inquiry", phone: "2815552044", date: "2025-09-02" },
+  { bookingId: "NY-20250903-01", status: "completed", phone: "7135550000", phonesJson: JSON.stringify([{ number: "281-555-2044", label: "sister" }]), date: "2025-09-03" },
+  { bookingId: "NY-20250904-01", status: "completed", phone: "2815559999", date: "2025-09-04" },
+];
+const inq = [
+  { bookingId: "NY-20250807-01", status: "booked", phone: "2815552044", date: "2025-08-07" },
+  { bookingId: "NY-20250905-01", status: "new", phone: "2815552044", date: "2025-09-05" },
+];
+const refs = (l) => l.map((t) => t.ref);
+ok("both of her trips, newest first, any phone format", refs(tripsSharingPhone(ext.slice(0, 2), [], "281 555 2044")), ["NY-20250807-01", "NY-20250729-01"]);
+ok("not a cancelled trip, an enquiry, or an unpaid website request", refs(tripsSharingPhone(ext.slice(0, 4), inq, "2815552044")), ["NY-20250807-01", "NY-20250729-01"]);
+ok("a trip where her number is a second phone counts", refs(tripsSharingPhone(ext, [], "2815552044")).includes("NY-20250903-01"), true);
+ok("a different phone sees nothing of hers", refs(tripsSharingPhone(ext, inq, "2815559999")), ["NY-20250904-01"]);
+ok("a short number matches nothing", tripsSharingPhone(ext, inq, "2044"), []);
+ok("a booking in both tables appears once", refs(tripsSharingPhone(ext.slice(1, 2), inq, "2815552044")), ["NY-20250807-01"]);
+
 console.log("\n  " + pass + " passed, " + fail + " failed\n");
 process.exit(fail ? 1 : 0);

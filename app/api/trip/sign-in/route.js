@@ -1,7 +1,35 @@
 const { NextResponse } = require("next/server");
 const { findTrip } = require("../../../../lib/tripBooking");
-const { normalizeRef, phoneMatches, tripPath } = require("../../../../lib/tripLink");
+const { normalizeRef, phoneMatches, tripPath, lastTen } = require("../../../../lib/tripLink");
 const { createThrottle } = require("../../../../lib/loginThrottle");
+const { prisma } = require("../../../../lib/db");
+const { tripsSharingPhone } = require("../../../../lib/guestTrips");
+
+// A RETURNING GUEST sees every trip booked on the phone they signed in with
+// (owner, 3 Oct 2026: "For repeat guests do they have to log in separately on
+// each one or is there a way we can combine it?"). See lib/guestTrips.js for
+// why that opens nothing the phone did not already open. Candidates are fetched
+// by the last four digits, then matched exactly on all ten.
+async function otherTrips(phone) {
+  const ten = lastTen(phone);
+  if (!ten) return [];
+  const last4 = ten.slice(-4);
+  try {
+    const [externals, inquiries] = await Promise.all([
+      prisma.externalBooking.findMany({
+        where: { bookingId: { not: null }, OR: [{ phone: { contains: last4 } }, { phonesJson: { contains: last4 } }] },
+        select: { bookingId: true, status: true, phone: true, phonesJson: true, guestName: true, date: true, packageName: true, vesselName: true },
+      }),
+      prisma.inquiry.findMany({
+        where: { bookingId: { not: null }, phone: { contains: last4 } },
+        select: { bookingId: true, status: true, phone: true, date: true, packageName: true, vesselName: true },
+      }),
+    ]);
+    return tripsSharingPhone(externals, inquiries, phone);
+  } catch {
+    return []; // never let the list stop someone getting into the trip they asked for
+  }
+}
 
 // The way in for a guest who has lost their link: booking number plus the phone
 // number on the booking. Answers with the link itself, and the page goes there.
@@ -44,7 +72,14 @@ async function POST(req) {
     return NextResponse.json({ error: "Trip pages are not switched on yet. Call or text us on (832) 948-2912." }, { status: 503 });
   }
   throttle.recordSuccess(req);
-  return NextResponse.json({ path });
+  // More than one trip on this phone: the page offers them all. The one they
+  // asked for is always in the list, even if it is not a status listed there.
+  const trips = (await otherTrips(phone)).filter((t) => t.ref !== ref);
+  if (!trips.length) return NextResponse.json({ path });
+  const all = [{ ref, date: trip.date, packageName: trip.packageName, vesselName: trip.vesselName, status: trip.status }, ...trips]
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .map((t) => ({ ref: t.ref, date: t.date, packageName: t.packageName, vesselName: t.vesselName, path: tripPath(t.ref), asked: t.ref === ref }));
+  return NextResponse.json({ path, trips: all });
 }
 
 module.exports = { POST };
