@@ -32,6 +32,10 @@ export default function SocialMessagesTab() {
   const [drafts, setDrafts] = useState({});
   const [sending, setSending] = useState("");
   const [marking, setMarking] = useState("");
+  // Waiting / Answered, the same two lists as Comments (owner, 3 Oct 2026:
+  // "those messages have already been answered and I no longer need to see
+  // them").
+  const [showAnswered, setShowAnswered] = useState(false);
 
   const load = useCallback(() => {
     fetch("/api/admin/social-messages")
@@ -128,9 +132,30 @@ export default function SocialMessagesTab() {
 
   const threads = data.threads || [];
   const s = data.summary || {};
+  const waitingList = threads.filter((t) => t.waiting);
+  const answeredList = threads.filter((t) => !t.waiting);
+  const shown = showAnswered ? answeredList : waitingList;
 
   return (
     <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        {[["waiting", "Waiting (" + waitingList.length + ")"], ["answered", "Answered (" + answeredList.length + ")"]].map(([id, label]) => {
+          const active = (id === "answered") === showAnswered;
+          return (
+            <button key={id} type="button" onClick={() => setShowAnswered(id === "answered")}
+              style={{
+                padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                border: "1px solid var(--purple)",
+                background: active ? "var(--purple)" : "transparent",
+                color: active ? "#0A0612" : "var(--text)",
+              }}>{label}</button>
+          );
+        })}
+        <button type="button" onClick={load}
+          style={{ padding: "8px 12px", borderRadius: 8, fontSize: 13, border: "1px solid rgba(203,108,230,0.3)", background: "transparent", color: "var(--muted)" }}>
+          Refresh
+        </button>
+      </div>
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
           {data.error ? (
@@ -151,14 +176,20 @@ export default function SocialMessagesTab() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 11 }}>
-        {threads.map((t) => {
+      {threads.length > 0 && shown.length === 0 && (
+        <div style={{ color: "var(--muted)", fontSize: 13.5, marginBottom: 10 }}>
+          {showAnswered ? "Nothing answered yet." : "Nothing waiting. Every message has an answer."}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gap: 11, gridTemplateColumns: "minmax(0, 1fr)" }}>
+        {shown.map((t) => {
           const level = urgency(t);
           const colour = URGENCY_COLOUR[level];
           return (
             <div key={t.id} style={{
               border: "1px solid rgba(203,108,230,0.22)", borderLeft: "3px solid " + colour,
-              borderRadius: 8, padding: "11px 13px", background: "rgba(0,0,0,0.18)",
+              borderRadius: 8, padding: "11px 13px", background: "rgba(0,0,0,0.18)", minWidth: 0,
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
                 <span style={{
@@ -176,7 +207,7 @@ export default function SocialMessagesTab() {
               <div style={{ display: "grid", gap: 7, marginBottom: 10 }}>
                 {t.messages.map((m) => (
                   <div key={m.id} style={{
-                    fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap",
+                    fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere",
                     color: m.direction === "outgoing" ? "var(--muted)" : "var(--text)",
                     paddingLeft: m.direction === "outgoing" ? 22 : 0,
                   }}>

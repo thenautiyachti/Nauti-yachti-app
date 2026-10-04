@@ -993,7 +993,7 @@ Straight after a recap, the content agent keeps **one compilation per theme** cu
 
 ## 6.6 Comments
 
-**Marketing → Comments** is the queue of Facebook and Instagram comments nobody has answered.
+**Marketing → Comments** is the queue of Facebook and Instagram comments nobody has answered, in two lists: **Waiting** (what still needs you) and **Answered**.
 
 | Colour | Waiting |
 |---|---|
@@ -1004,7 +1004,7 @@ Straight after a recap, the content agent keeps **one compilation per theme** cu
 **Nothing here posts on its own.** The crew writes a suggested reply into the box; you send it, edit it, or write your own. A comment reply is public, immediate and attributed to the business, so a person sends it.
 
 - **Each comment shows the post it is on**, with a link. A comment on a post you put up by hand reads **post not identified**.
-- **I answered this elsewhere** clears a comment you answered in the Facebook or Instagram app, which this screen cannot see. **Put it back** undoes it.
+- **I answered this elsewhere**, beside **Post reply**, moves a comment you answered in the Facebook or Instagram app (which this screen cannot see) into **Answered** and out of the count. **Put it back** undoes it, and if they write again it comes back to Waiting by itself. The crew stops drafting for it too.
 - **Every reply leaves a record**: what was said, under which post, and whether the suggested wording was changed.
 - **TikTok comments are not here**: the publishing service cannot read them. Check them in the TikTok app.
 
@@ -1012,7 +1012,7 @@ A classifier is being built to decide which comments a machine could safely answ
 
 ## 6.7 Messages
 
-**Marketing → Messages** is the direct-message inbox from Facebook and Instagram, built the same way as Comments.
+**Marketing → Messages** is the direct-message inbox from Facebook and Instagram, built the same way as Comments, with the same **Waiting** and **Answered** lists (Trip page messages sit above them).
 
 ### Messages answer themselves; comments do not
 
@@ -1036,7 +1036,7 @@ These are always held for you, and the reason shows on the card:
 
 Long messages, ones asking more than two questions, and ones nothing in the system can answer are held too. **An unrecognised message is not a safe message.**
 
-The crew drafts a reply for each held thread; you send it or write over it. If the guest writes again first, the draft is marked stale and not pre-filled. **I answered this elsewhere** works here as on Comments, and re-opens on its own if they write again. It has no effect on the automatic reply, which can only be switched off in the publishing service.
+The crew drafts a reply for each held thread; you send it or write over it. If the guest writes again first, the draft is marked stale and not pre-filled. **I answered this elsewhere** works here as on Comments: the thread moves to **Answered**, the crew stops drafting for it, and it re-opens on its own if they write again. It has no effect on the automatic reply, which can only be switched off in the publishing service.
 
 ### Trip page messages
 

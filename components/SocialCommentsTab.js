@@ -16,11 +16,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { urgency, URGENCY_COLOUR, shortAge } from "../lib/socialComments";
 
+// minWidth 0 matters on a phone (3 Oct 2026): a grid item will not shrink below
+// its content's min-content width by default, and the post caption is one
+// unwrapped line, so cards ran off the right edge of the screen.
 const CARD = {
   background: "var(--card)",
   border: "1px solid rgba(203,108,230,0.2)",
   borderRadius: 10,
   padding: 14,
+  minWidth: 0,
 };
 
 export default function SocialCommentsTab() {
@@ -28,6 +32,7 @@ export default function SocialCommentsTab() {
   const [showAnswered, setShowAnswered] = useState(false);
   const [drafts, setDrafts] = useState({});
   const [sending, setSending] = useState("");
+  const [marking, setMarking] = useState("");
 
   const load = useCallback(() => {
     fetch("/api/admin/social-comments")
@@ -103,6 +108,35 @@ export default function SocialCommentsTab() {
     }
   }
 
+  // "I answered this in the Facebook app." Owner, 3 Oct 2026: "all the comments
+  // under Waiting have actually been answered and I don't see a place where I
+  // can mark them answered either." The route had it; the card never offered
+  // it. Sends nothing to anybody. If they write again, it re-opens by itself.
+  async function markAnswered(thread, answered) {
+    setMarking(thread.comment.id);
+    try {
+      const theirs = [thread.comment, ...(thread.replies || [])].filter((c) => !c.isAuthor);
+      const last = theirs[theirs.length - 1] || thread.comment;
+      const res = await fetch("/api/admin/social-comments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commentId: thread.comment.id,
+          platform: thread.platform,
+          answeredCommentId: last.id,
+          answeredWhere: answered ? "outside the console" : null,
+          answered,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "failed");
+      load();
+    } catch (e) {
+      window.alert("Could not update that.\n\n" + (e.message || e));
+    } finally {
+      setMarking("");
+    }
+  }
+
   if (!data) return <div style={{ color: "var(--muted)", fontSize: 13.5 }}>Reading comments…</div>;
 
   const threads = data.threads || [];
@@ -163,7 +197,7 @@ export default function SocialCommentsTab() {
         </div>
       )}
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(0, 1fr)" }}>
         {shown.map((t) => {
           const level = urgency(t);
           const colour = URGENCY_COLOUR[level];
@@ -227,14 +261,14 @@ export default function SocialCommentsTab() {
                 </div>
               )}
 
-              <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+              <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
                 {t.comment.text}
               </div>
 
               {t.replies.length > 0 && (
                 <div style={{ marginTop: 9, paddingLeft: 11, borderLeft: "2px solid rgba(203,108,230,0.2)", display: "grid", gap: 7 }}>
                   {t.replies.map((r) => (
-                    <div key={r.id} style={{ fontSize: 12.5, lineHeight: 1.45, color: r.isAuthor ? "var(--text)" : "var(--muted)", whiteSpace: "pre-wrap" }}>
+                    <div key={r.id} style={{ fontSize: 12.5, lineHeight: 1.45, color: r.isAuthor ? "var(--text)" : "var(--muted)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
                       <span style={{ fontWeight: 700, color: r.isAuthor ? "var(--purple)" : "var(--muted)" }}>
                         {r.isAuthor ? "Us" : "Them"}
                       </span>
@@ -284,22 +318,48 @@ export default function SocialCommentsTab() {
                     value={draftOf(t)}
                     onChange={(e) => setDrafts((d) => ({ ...d, [t.comment.id]: e.target.value }))}
                     style={{
-                      width: "100%", padding: "9px 10px", borderRadius: 7, fontSize: 13.5, lineHeight: 1.45,
+                      width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 7, fontSize: 13.5, lineHeight: 1.45,
                       border: "1px solid rgba(203,108,230,0.3)", background: "var(--card)", color: "var(--text)",
                       resize: "vertical", fontFamily: "inherit",
                     }}
                   />
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 7, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      disabled={sending === t.comment.id || !String(draftOf(t) || "").trim()}
+                      onClick={() => send(t)}
+                      style={{
+                        padding: "9px 16px", borderRadius: 7, fontSize: 13, fontWeight: 700, border: "none",
+                        background: String(draftOf(t) || "").trim() ? "var(--purple)" : "rgba(203,108,230,0.2)",
+                        color: String(draftOf(t) || "").trim() ? "#0A0612" : "var(--muted)",
+                      }}
+                    >
+                      {sending === t.comment.id ? "Posting…" : "Post reply"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={marking === t.comment.id}
+                      onClick={() => markAnswered(t, true)}
+                      title="You replied in the Facebook or Instagram app. The console cannot see those, so tell it yourself. If they write again, this comes back by itself."
+                      style={{ background: "none", border: "none", padding: 0, color: "var(--muted)", fontSize: 12, textDecoration: "underline", cursor: "pointer" }}
+                    >
+                      {marking === t.comment.id ? "…" : "I answered this elsewhere"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {t.answeredElsewhere && (
+                <div style={{ marginTop: 9, fontSize: 11.5, color: "var(--muted)" }}>
+                  <span style={{ color: "#7FE0B8" }}>you answered this elsewhere</span>
+                  {" · "}
                   <button
                     type="button"
-                    disabled={sending === t.comment.id || !String(draftOf(t) || "").trim()}
-                    onClick={() => send(t)}
-                    style={{
-                      marginTop: 7, padding: "9px 16px", borderRadius: 7, fontSize: 13, fontWeight: 700, border: "none",
-                      background: String(draftOf(t) || "").trim() ? "var(--purple)" : "rgba(203,108,230,0.2)",
-                      color: String(draftOf(t) || "").trim() ? "#0A0612" : "var(--muted)",
-                    }}
+                    disabled={marking === t.comment.id}
+                    onClick={() => markAnswered(t, false)}
+                    style={{ background: "none", border: "none", padding: 0, color: "var(--purple)", fontSize: 11.5, textDecoration: "underline", cursor: "pointer" }}
                   >
-                    {sending === t.comment.id ? "Posting…" : "Post reply"}
+                    {marking === t.comment.id ? "…" : "put it back"}
                   </button>
                 </div>
               )}

@@ -1,7 +1,7 @@
 // Built from the real 6 Sep thread, because the edge cases in it are the ones
 // that matter: a follow-up arriving after an answer, and a comment sitting
 // unanswered for a day.
-const { threadsFrom, needsReply, urgency, shortAge, summarise, isOurs } =
+const { threadsFrom, needsReply, urgency, shortAge, summarise, isOurs, applyAnswers, summariseThreads } =
   require("../lib/socialComments");
 
 let pass = 0, fail = 0;
@@ -100,6 +100,23 @@ ok("but Jack is the one closest to it", urgency(q[0]), "waiting");
 ok("oldest waiting is 19 hours", s.oldestHours, 19);
 ok("one is a follow-up", s.followUps, 1);
 ok("nothing at all is zeroes", summarise([], NOW), { total: 0, open: 0, overdue: 0, oldestHours: 0, followUps: 0 });
+
+console.log("\n  ANSWERED IN THE FACEBOOK APP (3 Oct 2026)\n");
+// "All the comments under Waiting have actually been answered and I don't see a
+// place where I can mark them answered either."
+const lone = [{ id: "p", parentCommentId: null, isAuthor: false, status: "posted", createdAt: ago(10) }];
+let lt = applyAnswers(threadsFrom(lone, NOW), new Map([["p", { answeredAt: ago(2) }]]));
+ok("a mark newer than their comment answers the thread", [lt[0].answered, lt[0].answeredElsewhere], [true, true]);
+ok("and the badge stops counting it", summariseThreads(lt).open, 0);
+lt = applyAnswers(threadsFrom(lone, NOW), new Map([["p", { answeredAt: ago(12) }]]));
+ok("a mark OLDER than their comment does not", lt[0].answered, false);
+const cameBack = [
+  { id: "q", parentCommentId: null, isAuthor: false, status: "posted", createdAt: ago(10) },
+  { id: "qr", parentCommentId: "q", isAuthor: false, status: "posted", createdAt: ago(1) },
+];
+lt = applyAnswers(threadsFrom(cameBack, NOW), new Map([["q", { answeredAt: ago(5) }]]));
+ok("they wrote again after the mark: it re-opens", [lt[0].answered, summariseThreads(lt).open], [false, 1]);
+ok("no marks: same counts as before", summariseThreads(threadsFrom(THREAD, NOW)), summarise(THREAD, NOW));
 
 console.log("\n  READABLE AT A GLANCE\n");
 ok("under an hour", shortAge(0), "just now");

@@ -1,7 +1,7 @@
 const { NextResponse } = require("next/server");
 const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 const { prisma } = require("../../../../lib/db");
-const { threadsFrom, summarise, PLATFORMS } = require("../../../../lib/socialComments");
+const { threadsFrom, summarise, PLATFORMS, applyAnswers, summariseThreads } = require("../../../../lib/socialComments");
 
 // Comments on our published posts, and replying to them.
 //
@@ -168,25 +168,21 @@ async function GET() {
     // on his phone, and a reply typed there is invisible to this queue — the
     // thread sits here looking open for ever. Same problem MessageThreadAnswer
     // already solves for DMs, so the same shape solves it here.
+    // Until 3 Oct 2026 this only labelled the thread; it stayed in Waiting and
+    // in the badge. applyAnswers marks it answered (until they write again).
     try {
       const answered = await prisma.commentThreadAnswer.findMany({
         select: { commentId: true, answeredAt: true, answeredWhere: true },
       });
-      const byId = new Map(answered.map((a) => [a.commentId, a]));
-      for (const t of threads) {
-        const hit = t.comment && byId.get(t.comment.id);
-        if (!hit) continue;
-        t.answeredElsewhere = true;
-        t.answeredElsewhereAt = hit.answeredAt;
-        t.answeredElsewhereWhere = hit.answeredWhere || null;
-      }
+      applyAnswers(threads, new Map(answered.map((a) => [a.commentId, a])));
     } catch (e) {
       console.error("[social-comments] answered-elsewhere skipped:", e.message);
     }
 
     return NextResponse.json({
       threads,
-      summary: summarise(items),
+      // From the adjusted threads, so the badge agrees with the list.
+      summary: summariseThreads(threads),
       platforms: PLATFORMS,
       fetchedAt: Date.now(),
     });
