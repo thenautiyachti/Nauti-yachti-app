@@ -2,7 +2,7 @@
 
 How to run a charter business on this system: the public website, the owner console at thenautiyachti.com/admin, and the AI crew that watches over both.
 
-Edition for version 3.1.0 · October 2026
+Edition for version 3.1.1 · October 2026
 
 [[TOC]]
 
@@ -895,7 +895,7 @@ Once a file has been pulled, the console and the guest's trip page show it as re
 
 ## 6.4 Social posts: from draft to published
 
-The content agent drafts posts from real fleet media; you approve them; the publishing agent puts them out. Every post is a card in **Marketing → Media Drafts**, boxed by the day it goes out, soonest first.
+The content agent drafts posts from real fleet media; you approve them; the publishing agent puts them out. Every post is a card in **Marketing → Media Drafts**, boxed by the day it goes out, soonest first. Drafts with no date sit above them in two boxes, one each: **Waiting on you** (approve, discuss or deny), then **Approved, still needs a date** (the content agent dates these on her next run).
 
 ```
             Approve                         on its date
