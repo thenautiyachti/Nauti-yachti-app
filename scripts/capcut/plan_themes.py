@@ -45,10 +45,11 @@ tubed out on open water, not in the cove. So:
 Never: a restricted folder (NDA, NOT FOR USE, Not used...), a clip on the
 doNotUse list in _media-tags.json, _Unsorted, a previous compilation.
 
-WHEN. A theme is planned only when the set of trips contributing to it (tagged,
-with something usable in Completed) differs from its last build, which
-theme-compilations.js records in themes-built.json after the draft is built.
-Out of season nothing changes, so nothing is built.
+WHEN. A theme is planned only when the shots it would be cut from differ from
+its last build (signature(), recorded in themes-built.json by
+theme-compilations.js after the draft is built). A newly tagged charter with
+vetted moments changes them; an outing whose photos only round out thin themes
+usually does not. Out of season nothing changes, so nothing is built.
 """
 import os, re, sys, json, math, datetime, subprocess
 import plan_recaps as pr
@@ -192,12 +193,9 @@ def pick_song(names, used, avoid):
     return pr.SONG[name]
 
 
-def plan_theme(slug, title, tags, hook, songs, rule, moments, used, prev_song):
-    per = sources(tags, rule, moments)
-    song = pick_song(songs, used, {used.get("last"), prev_song})
-    beat = 60.0 / (song.get("bpm") or 100)
-    nb = max(2, int(round(pr.TARGET_SHOT / beat / 2)) * 2)  # beats per shot, even
-    max_shots = min(22, int(min(58.0, song["dur"] - 1) // (nb * beat)))
+def pool_for(per, rule, max_shots):
+    """The shots in cut order: charters first, round-robin, riders first in the
+    riding cut, photos only to round out a thin theme, the best hold first."""
     if rule == "riding":  # people shots only once the riders run out
         riders = {f: [s for s in c if s["kind"] == "rider"] for f, (c, _) in per.items()}
         fill = {f: [s for s in c if s["kind"] != "rider"] for f, (c, _) in per.items()}
@@ -224,6 +222,25 @@ def plan_theme(slug, title, tags, hook, songs, rule, moments, used, prev_song):
     if clips:  # open on the best thing: the longest-held rider, else the longest hold
         hook_s = max(clips, key=lambda s: (s["kind"] == "rider" if rule != "place" else 0, s["b"] - s["a"]))
         pool = [hook_s] + [s for s in pool if s is not hook_s]
+    return pool
+
+
+def signature(per, rule):
+    """What the cut would be made of, whatever song it gets: the pool at the
+    longest a cut can run (22 shots). Unchanged means a rebuild would give the
+    same shots, so none is made. Compared rather than the list of trips,
+    because an outing whose photos only fill thin themes can join a theme's
+    trips without changing a single shot of it."""
+    return [os.path.basename(s["file"]) + ("@%s" % s["t"] if "t" in s else "") for s in pool_for(per, rule, 22)]
+
+
+def plan_theme(slug, title, tags, hook, songs, rule, moments, used, prev_song):
+    per = sources(tags, rule, moments)
+    song = pick_song(songs, used, {used.get("last"), prev_song})
+    beat = 60.0 / (song.get("bpm") or 100)
+    nb = max(2, int(round(pr.TARGET_SHOT / beat / 2)) * 2)  # beats per shot, even
+    max_shots = min(22, int(min(58.0, song["dur"] - 1) // (nb * beat)))
+    pool = pool_for(per, rule, max_shots)
     if len(pool) < 4:
         return None, {"theme": slug, "charters": len(per), "shots": len(pool)}
     times, i0, b = pr.song_grid(song, len(pool) * nb * beat)
@@ -252,6 +269,7 @@ def plan_theme(slug, title, tags, hook, songs, rule, moments, used, prev_song):
         return None, {"theme": slug, "charters": len(per), "shots": len(shots)}
     name = "%s compilation %s (Claude)" % (title, datetime.date.today().isoformat())
     return {"name": name, "kind": "theme", "theme": slug, "charters": sorted(per), "used": used_charters,
+            "signature": signature(per, rule),
             "song": {"id": song["id"], "name": song["name"], "start": round(t0, 3), "length": round(times[k] - t0, 3)},
             "hook": hook, "endText": pr.END, "trans": pr.TRANS, "shots": shots}, None
 
@@ -266,7 +284,7 @@ if __name__ == "__main__":
     out = {"plans": [], "unchanged": [], "thin": []}
     for slug, title, tags, hook, songs, rule in THEMES:
         if args and slug not in args: continue
-        if not force and sorted(sources(tags, rule, moments)) == state.get(slug, {}).get("charters"):
+        if not force and signature(sources(tags, rule, moments), rule) == state.get(slug, {}).get("signature"):
             out["unchanged"].append(slug); continue
         p, thin = plan_theme(slug, title, tags, hook, songs, rule, moments, used, state.get(slug, {}).get("song"))
         if thin: out["thin"].append(thin); continue

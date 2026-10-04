@@ -51,12 +51,18 @@ const built = [], failed = [];
 for (const p of out.plans) {
   const plan = JSON.parse(fs.readFileSync(p.file, "utf8"));
   const record = () => {
-    state[p.theme] = { charters: plan.charters, song: String(plan.song.name).split("\uff08")[0].trim(), draft: plan.name, built: new Date().toISOString().slice(0, 10) };
+    state[p.theme] = { charters: plan.charters, signature: plan.signature, song: String(plan.song.name).split("\uff08")[0].trim(), draft: plan.name, built: new Date().toISOString().slice(0, 10) };
     fs.writeFileSync(STATE, JSON.stringify(state, null, 1));
   };
-  // Already built today under this name (a second run the same day): keep his
-  // copy, which he may have opened and changed, and just record it.
-  if (fs.existsSync(path.join(STORE, plan.name))) { record(); continue; }
+  // A second build the same day (its shots changed since the first): never
+  // touch the first, which he may have opened and changed. Number the new one,
+  // "Party Cove compilation 2026-10-03 v2 (Claude)".
+  if (fs.existsSync(path.join(STORE, plan.name))) {
+    let n = 2, name;
+    do { name = plan.name.replace(/ \(Claude\)$/, ` v${n++} (Claude)`); } while (fs.existsSync(path.join(STORE, name)));
+    plan.name = name;
+    fs.writeFileSync(p.file, JSON.stringify(plan, null, 1));
+  }
   const b = run(process.execPath, [path.join(HERE, "build-from-plan.js"), p.file]);
   const r = b.status === 0 ? lastJson(b.stdout) : null;
   if (!r) { failed.push({ theme: p.theme, error: (b.stderr || b.stdout).slice(-200) }); continue; }

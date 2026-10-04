@@ -25,8 +25,11 @@ Coral does not run these by hand. Her two one-step wrappers:
 
 `theme-compilations.js --all` rebuilds every theme regardless (only when he
 asks). It records each built theme in `themes-built.json` (gitignored): the
-trips it drew on and its song, so the next build is judged against that and does
-not repeat the song. Out of season nothing changes and nothing is built.
+trips it drew on, its song, and its **signature**, the shots it would be cut
+from at full length. A theme rebuilds only when that signature changes, so an
+outing whose photos only fill thin themes can be tagged without producing a
+duplicate draft. A second build on the same day is named "... v2 (Claude)";
+the first is never touched. Out of season nothing changes and nothing is built.
 
 `build-from-plan.js` builds one plan; `snap-to-beats.mjs` snaps an existing
 draft's cuts to the beats of a song he added himself; `recut-to-song.js` was the
