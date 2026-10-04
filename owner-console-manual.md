@@ -2,7 +2,7 @@
 
 How to run a charter business on this system: the public website, the owner console at thenautiyachti.com/admin, and the AI crew that watches over both.
 
-Edition for version 2.16.0 · October 2026
+Edition for version 3.0.0 · October 2026
 
 [[TOC]]
 
@@ -87,7 +87,7 @@ A booking shows the whole chain:
 3. You agree the details and send a payment link. The guest pays through Stripe.
 4. Stripe tells the site. The site marks the booking paid, blocks the date on the calendar and emails a confirmation.
 5. After the trip you mark it **completed**. The income is written into the ledger on its own.
-6. The next morning the crew checks the money arrived, asks the guest for a review, and suggests a post from the photos.
+6. The next morning the crew checks the money arrived, lists the guest among those to ask for a review (you send the request), and suggests a post from the photos.
 
 Nothing in that chain needs you to copy a number from one screen to another. Where you do have to step in, the console tells you: that is what the numbers on the tabs are for.
 
@@ -153,7 +153,7 @@ A routine that keeps everything current with the least effort.
 1. Open **Overview**. Work down **Needs attention** from the top.
 2. Read Pearl's summary, or click her face to hear it.
 3. Glance at **The Board** for anything marked High.
-4. Open **Marketing → Media Drafts** if the badge shows posts waiting for approval, and approve, reschedule or reject them.
+4. Open **Marketing → Media Drafts** if the badge shows posts waiting for approval, and approve, discuss or deny them (once approved, a post can also be rescheduled).
 
 **On a charter day:**
 
@@ -298,7 +298,7 @@ On the booking you get a **Text** button whose message says the seat is still he
 | a guest writes on their trip page | nothing until you reply | a notice, saying whether a reply has been drafted |
 | you reply on a trip page | your reply, by email, when the booking has an address | nothing |
 
-**The confirmation tells the guest where to go and when.** The meeting point is chosen by package first, then by boat: an event with its own meeting point uses it for every boat; otherwise each boat's own dock address is used. A boat with no address set is never given another boat's. Its guest is told the meeting point is coming, which costs one text and cannot send anyone to the wrong shore. **The dock gate code is never emailed**, because emails are forwarded and kept forever. It goes by text on the morning (see [8.3](#8-3-arriving-guests-and-the-gate-code)).
+**The confirmation tells the guest where to go and when.** The meeting point is chosen by package first, then by boat: an event with its own meeting point uses it for every boat; otherwise each boat's own dock address is used. A boat with no address set is never given another boat's. Its guest is told the meeting point is coming, which costs one text and cannot send anyone to the wrong shore. Guests may also be picked up anywhere on the lake by arrangement; the business suggests its own dock, and an agreed pickup goes in the booking's note. **The dock gate code is never emailed**, because emails are forwarded and kept forever. It goes by text on the morning (see [8.3](#8-3-arriving-guests-and-the-gate-code)).
 
 **The confirmation links to the guest's trip page** ([2.8](#2-8-the-trip-page)), which carries everything in the email plus the photo box and the message board.
 
@@ -306,7 +306,7 @@ On the booking you get a **Text** button whose message says the seat is still he
 
 If confirmations ever stop arriving, see [Troubleshooting](#part-10-troubleshooting).
 
-**Known limit:** no email goes out when a booking's status changes, when a charter completes, or for photo requests and guest uploads.
+**Known limit:** no email goes out when a booking's status changes (except a full refund through Stripe, which emails you), when a charter completes, or for photo requests and guest uploads.
 
 ## 2.6 Seat-sale events
 
@@ -390,7 +390,7 @@ Every booking with a booking number has its own page for the guest: `thenautiyac
 
 **Known limit:** a booking with no number (an inquiry with no date) has no trip page.
 
-**Known limit:** which booking sees a photo is decided by name. When a date has more than one completed booking, a photo goes to the bookings whose guest's first or last name is in the charter folder's name (`2026-08-15 Chance (...)` → Chance's booking only), and a folder that names none of them goes to all of them, which is right for a glow night. So each private charter's folder must carry its booking's guest name; if it does not, the console warns that two private charters would share the photos, before you approve.
+**Known limit:** which booking sees a photo is decided by name. When a date has more than one completed booking, a photo goes to the bookings whose guest's first or last name is in the charter folder's name (`2026-08-15 Pat Example (...)` → that guest's booking only), and a folder that names none of them goes to all of them, which is right for a glow night. So each private charter's folder must carry its booking's guest name. If it does not, **Marketing → Photo Requests → On guests' trip pages** warns that two private charters share the photos, and you can take them down there.
 
 **Known limit:** no videos on the trip page yet. The free storage plan holds 1 GB, and recap videos would fill it within a season.
 
@@ -805,15 +805,16 @@ All charter photos and video live in the `Photos` folder of the business folder,
 
 | Folder | What goes there |
 |---|---|
-| `00 Inbox` | where new footage lands from the phone and the camera glasses. The content agent files it every run. Its `Imported from Website` folder holds what guests sent through the site: the only copy, never deleted ([6.2](#6-2-photos-guests-send-you)). |
-| `02 Charters\_By charter` | one folder per charter, named `YYYY-MM-DD Guest Name (tags)`, the tags being its themes and place, e.g. `2026-06-20 Andrew Mason (tubing, the dam)`. Tags are the themes posted on the website (the Island, the Dam, Party Cove, a birthday, a bachelorette, tubing, wakeboarding, a swim stop, glow, night cruise), never the dock or cruising shots almost every charter has; `()` means no themes on purpose, `(tags needed)` that nobody has said yet. Every charter folder holds `_from video`, `Completed` and `Completed\_guest media`. **This is the main library, and the only home of charter media.** |
+| `00 Inbox` | where new footage lands from the phone and the camera glasses. The content agent files it every run. Its `Imported from Website` folder is where what guests sent through the site lands: the only copy, never deleted. Coral files each into its charter's folder by the booking number it came with; anything she cannot place waits there for you ([6.2](#6-2-photos-guests-send-you)). |
+| `01 Fleet` | one folder per boat (and `Retired Vessels`, `_Maintenance and helm`): the boats themselves, for listings and the website. |
+| `02 Charters\_By charter` | one folder per charter, named `YYYY-MM-DD Guest Name (tags)`, the tags being its themes and place, e.g. `2026-06-20 Pat Example (tubing, the dam)`. Tags are the themes posted on the website (the Island, the Dam, Party Cove, a birthday, a bachelor or bachelorette, tubing, wakeboarding, a swim stop, glow, night cruise, corporate; also photo shoot and jetski rentals where those were the booking), never the dock or cruising shots almost every charter has; `()` means no themes on purpose, `(tags needed)` that nobody has said yet. Every charter folder holds `_from video`, `Completed` and `Completed\_guest media`. **This is the main library, and the only home of charter media.** |
 | `Completed\_guest media` | inside every charter's `Completed`: the photos and clips guests sent that Coral approved. Shown on that charter's trip page with the rest of Completed. |
 | `02 Charters\_Compilations` | finished videos cut from many charters (the theme compilations). Never raw media. |
-| `02 Charters\_outings` | your own outings and days with media but no booking (friends, promo nights), each in a dated, tagged folder such as `2026-06-27 Outing (party cove)`; undated strays in `_undated`. Called `06 General and Atmosphere` until 3 October 2026. **The crew may draft posts from it**, never captioned as a charter, and you approve or turn down each one as usual. |
+| `02 Charters\_outings` | your own outings and days with media but no booking (friends, promo nights), each in a dated, tagged folder such as `2026-06-27 Outing (party cove)`; undated strays in `_undated`. Every outing folder holds `_from video` and `Completed`. Called `06 General and Atmosphere` until 3 October 2026. **The crew may draft posts from it**, never captioned as a charter, and you approve or turn down each one as usual. |
 | `_not for use` | inside a charter or outing: a clip you called bad in a review note, moved there by Coral and kept. Nothing is ever taken from it. Media that can never be used (nudity, nothing to do with the boat) is not kept like this: you delete it. |
 | `_from video` | every usable frame pulled from a charter's video: the pile Coral picks the best photos from. The pile itself is never shown or posted as a whole |
-| *(no `_originals`)* | since 3 October 2026 the uncropped original of a cropped file sits in the trip folder itself, with the raw footage; the cropped one is in `Completed`. Never post both. Every outing folder holds `_from video` and `Completed`. |
-| `Completed` | **the charter's finished set**: the good photos, the good videos and the compilations. Called `compilation video` until 2 Oct 2026. Its photos are what that charter's guests see on their trip page, and it is the first place the crew looks for a post. Coral curates it: mostly the best frames from the charter's video, plus any good photos actually taken. Raw recordings, soft or duplicate frames, and shots that are not about the guests (a dashboard, an empty wake) never go in. Frames from a CapCut recap may, when the footage is thin, with the mark cropped off. The montages Coral cuts land here, and mix in up to six of its good photos with a slow push-in and the same transitions as the clips. |
+| *(no `_originals`)* | since 3 October 2026 the uncropped original of a cropped file sits in the trip folder itself, with the raw footage; the cropped one is in `Completed`. Never post both. |
+| `Completed` | **the charter's finished set**: the good photos, the good videos and that charter's own montage. (Compilations across many charters live in `_Compilations`.) Called `compilation video` until 2 Oct 2026. Its photos are what that charter's guests see on their trip page, and it is the first place the crew looks for a post. Coral curates it: mostly the best frames from the charter's video, plus any good photos actually taken. Raw recordings, soft or duplicate frames, and shots that are not about the guests (a dashboard, an empty wake) never go in. Frames from a CapCut recap may, when the footage is thin, with the mark cropped off. The montages Coral cuts land here, and mix in up to six of its good photos with a slow push-in and the same transitions as the clips. |
 | `_Unsorted` | your sorting pile: footage the crew cannot tell is the business's, or cannot place in a charter or a dated day. **Never a source for anything published.** You go through it and clear it yourself. |
 
 **Filenames carry what a folder cannot.** A file keeps its name when it moves, and loses its folder. So a finished cut carries its date, its subject, its shape and, where known, its place:
@@ -845,11 +846,13 @@ Tags live in `Photos\_media-tags.json`. Tag a charter folder and every file in i
 
 ### Media that must not be used
 
-Three things are never posted, and the index and the publishing checks enforce all three:
+These are never posted, and the index and the publishing checks enforce them:
 
 - anything on the **`doNotUse`** list in the tags file. Some entries block a whole file; others (`timeRestricted`) block only certain seconds of it.
 - anything in a folder whose name contains **`[NDA]`**
 - a boat the business does not own presented as one a guest can book
+- anything in a `_not for use` / `Not used` folder, or in `_Unsorted`
+- **a file that has disappeared from the library.** You delete what is not good enough, so a missing file was deleted on purpose (your words: *"If they are missing, it's because I deleted them because they weren't good."*). The crew never brings one back, and the publisher holds a post built from one and sends it back to the content agent for a better shot.
 
 **Everything else is a candidate.** A watermark from the editing app, another company's boat in the background, a recognisable stranger: none of these is a reason to reject a picture. The crew has been far more often wrong in rejecting good material than in letting bad material through.
 
@@ -870,7 +873,7 @@ Both take up to 2 GB a file into private cloud storage. Nothing is ever posted f
 
 > **Why it works this way.** The free storage plan holds 1 GB across the whole account, and one glow night of guest video came to 2.4 GB. Left in storage, a single busy night would put the account over its limit, and the provider may then restrict the project. Your choice on 2 October 2026, over paying for a bigger plan, "for now at least".
 
-Once a file has been pulled, the console and the guest's trip page show it as received but no longer preview it.
+Once a file has been pulled, the console and the guest's trip page show it as received but no longer preview it, until Coral approves it into its charter's `Completed\_guest media`: then the console card says **on the trip page**, names the charter folder and previews the trip-page copy.
 
 **Known limit:** no email arrives when a guest uploads. Look at the panel, or run the pull script.
 
@@ -891,11 +894,17 @@ Once a file has been pulled, the console and the guest's trip page show it as re
 The content agent drafts posts from real fleet media; you approve them; the publishing agent puts them out. Every post is a card in **Marketing → Media Drafts**, boxed by the day it goes out, soonest first.
 
 ```
-proposed ──► approved ──► scheduled ──► posted
-    │            ▲             │
-    ▼            │             ▼
-needs work ──────┘          rejected  (Back to review restores it)
+            Approve                         on its date
+proposed ──────────► approved ──► scheduled ──────────► posted
+   │  ▲                 │             │
+   │  └── fixed ─────┐  │ Discuss     │ Discuss
+   │ Discuss         │  ▼             ▼
+   ├────────────► needs work ◄────────┘
+   │
+   └── Deny (from any of the above) ──► rejected  (Back to review restores it)
 ```
+
+A post sent back with **Discuss** returns to you as *proposed* once it is fixed, and you approve it again (you can also approve it straight from *Needs work*).
 
 | State | Means |
 |---|---|
@@ -914,7 +923,7 @@ needs work ──────┘          rejected  (Back to review restores it)
 - **Approved with no date never goes out.** The content agent gives each of these a date every morning and says which dates she chose, so you can move one with **Reschedule**.
 - Nothing else is ever published: not a proposed draft, not one that needs work, not a rejected one.
 
-So the queue is safe to leave alone until a post's date arrives. **To stop a post, press Deny.** That is the only thing that takes it out of the publisher's way.
+So the queue is safe to leave alone until a post's date arrives. **To stop a post for good, press Deny.** To hold it for a fix instead, press **Discuss**: a post needing work never publishes until you approve it again.
 
 ### On a card
 
@@ -953,7 +962,7 @@ There is no **I posted it myself** button any more (removed 3 October 2026): pos
 
 ### Trip recaps waiting in CapCut
 
-After each completed charter, once its `Completed` folder is curated, the content agent also builds a **recap as a project in your CapCut desktop library**, named after the charter with "(Claude)" on the end. Open it, change anything you like, and export it; it is not a post until you do, and it then goes through the queue like anything else.
+After each completed charter, once its `Completed` folder is curated, the content agent also builds a **recap as a project in your CapCut desktop library**, named after the charter, such as "2026-06-20 Pat Example recap (Claude)". Open it, change anything you like, and export it; it is not a post until you do, and it then goes through the queue like anything else.
 
 - **Shots** are the charter's own vetted photos, found in their clips and held only while the camera stays on that scene. Riders are zoomed in on.
 - **Music** comes only from your Music shelf: a CapCut project called *media shelf* holding tracks you added from **Commercial only**. The agent picks one that fits the trip (from the charter's tags), never the same song twice running, and cuts every shot on its beat. Add tracks to the shelf whenever it feels stale.
@@ -961,7 +970,7 @@ After each completed charter, once its `Completed` folder is curated, the conten
 
 ### Theme compilations waiting in CapCut
 
-Straight after a recap, the content agent keeps **one compilation per theme** current in your CapCut library: tubing and wakeboarding, Party Cove, the Dam, the Island, swim stop, birthday, bachelor and bachelorette, Boatz & Glowz, night cruise, corporate. Each is cut from every folder whose tags name that theme (your words: *"a Party Cove collaboration of all charters we've had that have gone to Party Cove, pulling the best moments of each one of them"*), charters first, each charter before any gets a second shot, then your outings. A riding shot never goes in a place cut, because tubing happens out on open water, not in the cove; the night and glow cuts take only footage shot after 7:30pm. A theme is rebuilt only when a newly tagged charter has joined it, under a new dated name ("Party Cove compilation 2026-10-03 (Claude)"), so one you have edited is never overwritten. **Export the ones you like into `Photos\02 Charters\_Compilations`**: the crew drafts posts from there, through the queue as usual.
+Straight after a recap, the content agent keeps **one compilation per theme** current in your CapCut library: tubing and wakeboarding, Party Cove, the Dam, the Island, swim stop, birthday, bachelor and bachelorette, Boatz & Glowz, night cruise, corporate. Each is cut from every folder whose tags name that theme (your words: *"a Party Cove collaboration of all charters we've had that have gone to Party Cove, pulling the best moments of each one of them"*), charters first, each charter before any gets a second shot, then your outings. A riding shot never goes in a place cut, because tubing happens out on open water, not in the cove; the night and glow cuts take only footage shot after 7:30pm. A theme is rebuilt only when the shots it would use change (a newly tagged charter, usually; an outing whose photos only fill thin themes, usually not), under a new dated name (a second the same day is "v2") ("Party Cove compilation 2026-10-03 (Claude)"), so one you have edited is never overwritten. **Export the ones you like into `Photos\02 Charters\_Compilations`**: the crew drafts posts from there, through the queue as usual.
 
 **Known limit:** a theme with fewer than four usable shots is not built. On 3 October 2026 that was night cruise (three usable night shots) and corporate (nothing tagged yet).
 
@@ -1049,7 +1058,7 @@ Eight agents and two routines run on a schedule on the office computer. **None o
 | When | Who | What she does |
 |---|---|---|
 | Daily, 8am | **Nauti Penny** · Accounts Receivable | money in: payouts against the ledger, and money held for trips that never ran. Adds new GetMyBoat bookings from their confirmation email ([3.6](#3-6-platform-bookings-boatsetter-and-getmyboat)). Keeps the business inbox in order. |
-| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | pulls what guests sent from the website, files new footage, curates each charter's `Completed` folder (which the guests see), builds each new charter's recap in your CapCut library ([6.4](#6-4-social-posts-from-draft-to-published)), drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass repairs anything that failed to publish. |
+| Daily, 8:30am and 2:30pm | **Nauti Coral** · Content Producer | pulls what guests sent from the website, files new footage, curates each charter's `Completed` folder (which the guests see), builds each new charter's recap in your CapCut library and keeps the theme compilations current ([6.4](#6-4-social-posts-from-draft-to-published)), drafts posts from real fleet media, audits the post queue, dates approved posts. The afternoon pass fixes any post that failed to publish, for the publisher to put out on her next run. |
 | Fri–Mon, 9am | **Nauti Joy** · Guest Relations | who to ask for a review, new crew-list signups, guests owed a charter |
 | Fri–Mon, 9:30am | **Nauti Reef** · Revenue Growth | money the business is not collecting, as one to four ideas |
 | Fri–Mon, 10am | **Nauti Shelly** · Accounts Payable | what is paid for against what is used |
@@ -1063,7 +1072,7 @@ Times are when each run is scheduled; a run can start up to about a quarter of a
 
 ## 7.2 What none of them may do
 
-- Write to any table except the to-do board and their own activity log.
+- Write anywhere their own job in [7.1](#7-1-who-they-are-and-when-they-run) does not name. Every agent writes the to-do board and its activity log; beyond that, only the named jobs: the bookkeeping agent adds platform bookings, the content agent drafts and dates posts and keeps trip-page photos matching `Completed`, the publisher records what she published, and an agent records bank readings. No agent edits a booking's details, a price or a guest's record.
 - Contact a guest. (The automatic message reply in [6.7](#6-7-messages) is a feature of the publishing service, not a crew member.)
 - Spend, refund or change a price.
 - Publish anything, except Siren publishing posts **you** have approved and dated.
@@ -1437,7 +1446,7 @@ Seat sales closed after the night of 19 September 2026. There is no next date ye
 **Media rules specific to this business:**
 
 - The **Lake Bryan charters of June 2026 are under a confidentiality agreement**: no media from them, ever.
-- One glow clip from September 2025 is withdrawn for nudity, and another is held. Both are on the `doNotUse` list.
+- One glow clip from September 2025 is withdrawn for nudity, and another is held. Both are on the `doNotUse` list until you decide; media that can never be used is yours to delete.
 - The sold **Nauti Lexi** may appear in old footage but is never offered as a boat to book.
 - All faces are allowed, strangers included.
 
