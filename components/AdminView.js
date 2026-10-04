@@ -4071,17 +4071,28 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia, 
   // date order, so walking it preserves that without sorting again — and a draft
   // with no date lands in its own bucket rather than being silently grouped with
   // whatever happened to be first.
-  const upcomingByDay = [];
+  // ONE BOX PER BUCKET. This used to start a new box whenever the next draft's
+  // bucket differed from the last one, so undated drafts arriving interleaved
+  // ("waiting on you", then "needs a date", then "waiting on you" again) made
+  // two "Waiting on you" boxes (owner, 4 Oct 2026: "they definitely need to be
+  // grouped together"). Now each bucket is collected once: what is waiting on
+  // him first, then what is waiting on Coral for a date, then each day in date
+  // order (`upcoming` is already date-sorted, so first appearance is order).
+  const byKey = new Map();
   for (const d of upcoming) {
     // Two buckets, not one. A draft with no date is either waiting on HIM
     // (proposed, not yet approved) or waiting on CORAL (approved, never dated).
     // Only the second is a problem, and lumping them together made the first
     // look like one.
     const day = d.scheduledDate || (d.status === "approved" ? "needs-date" : "awaiting-you");
-    const last = upcomingByDay[upcomingByDay.length - 1];
-    if (last && last.day === day) last.items.push(d);
-    else upcomingByDay.push({ day, items: [d] });
+    if (!byKey.has(day)) byKey.set(day, { day, items: [] });
+    byKey.get(day).items.push(d);
   }
+  const FIRST = ["awaiting-you", "needs-date"];
+  const upcomingByDay = [
+    ...FIRST.filter((k) => byKey.has(k)).map((k) => byKey.get(k)),
+    ...[...byKey.values()].filter((g) => !FIRST.includes(g.day)),
+  ];
 
   return (
     <div>
@@ -4091,7 +4102,7 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia, 
       </div>
       <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 0, marginBottom: 12 }}>
         Soonest first. <strong style={{ color: "#E8934A" }}>Anything marked SCHEDULED goes out on its own</strong> —
-        the publisher runs each morning and posts whatever is due. Use <em>Don&rsquo;t post</em> to stop one.
+        the publisher runs twice a day and posts whatever is due. Use <em>Deny</em> to stop one for good, or <em>Discuss</em> to hold it for a fix.
         Nothing in any other status is ever posted.
       </p>
 
