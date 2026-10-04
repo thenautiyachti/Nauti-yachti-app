@@ -528,6 +528,12 @@ A platform booking is entered in **Bookings → Bookings** with its channel set 
 - Boatsetter does not share guest phone numbers or emails: ask the guest on the day and add them, or they can never be asked for a review. **GetMyBoat does**, once the booking is confirmed: they are under **Contact Details** on the trip's page at getmyboat.com (not in the confirmation email). Copy them onto the booking.
 - The price on the booking is what you are paid, not what the guest paid the platform.
 
+### Booking requests texted in by a trusted helper
+
+Since 4 October 2026 a helper you have authorised (Appendix C) can request a charter by text through your assistant line: guest name and phone, guest count, date, start time, hours, charter type and boat. The assistant checks the details and passes each request to the crew, but never quotes a price or checks the calendar; the helper hears that the price comes with the booking. On her morning run the bookkeeping agent checks everything again (charter type, boat, capacity counting the captain, hours, a clash on the calendar), prices it with the website's own pricing, and answers. **For now every request is held for you**: the answer says it is waiting for you, with the price, and it goes on the board; add it in **Bookings** if it is a yes. Requests for today or tomorrow are always held. A booking made this way is a direct booking, so it is paid through its `/pay/` link like any other.
+
+**Known limit:** answers come once a day, on the morning run, so a request texted at noon is answered the next morning.
+
 ## 3.7 Charging a booking and payment links
 
 **Text payment link** sends the guest their own page on your website: `thenautiyachti.com/pay/<id>`. It shows the charter and the total, then hands off to Stripe.
@@ -1446,6 +1452,8 @@ The Explorer's port side still carries its previous owner's name, "Canter Splash
 Seat sales closed after the night of 19 September 2026. There is no next date yet: the owner's call, possibly May. Until one is set, the page collects crew-list signups only, and the crew offer no seats, prices or seat counts in posts or replies.
 
 **The lake.** Charters stop at three places, which are different places: **Party Cove** (the raft-up), **the Island** (beaching and swimming) and **the Dam**.
+
+**Text booking requests** ([3.6](#3-6-platform-bookings-boatsetter-and-getmyboat)): Brooke is authorised to request charters by text through the assistant line (your decision, 4 October 2026).
 
 **Media rules specific to this business:**
 
