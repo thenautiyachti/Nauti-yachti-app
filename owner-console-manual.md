@@ -979,7 +979,9 @@ After each completed charter, once its `Completed` folder is curated, the conten
 - **Exporting** uses CapCut's own Export button, which the agent works the way you would, so the music stays licensed through CapCut. It does this only when CapCut is closed and nobody has touched the PC for ten minutes; otherwise it waits for the next run. It closes CapCut's promotion pop-ups, never uses "Share", and closes CapCut afterwards.
 - **Black bars:** most footage is 4:3, so in a 9:16 video it sits between bars. They are filled with a blurred copy of the same picture (your choice, 5 October 2026), which keeps everyone in the frame.
 
-**Known limit:** riders were meant to be zoomed in on, but the current CapCut version ignores the zoom the agent writes, so recaps show riders at their normal size until the builder is fixed.
+- **Riders are zoomed in.** A tubing or wakeboarding shot is punched in about four times and centred on the rider (your words: *"when wakeboarding or tubing we need a zoom on them"*), kept short so the rider stays in frame, and the riding shots lead the recap. Every other shot shows the whole picture. Coral finds the riders by following the tow rope to whatever is on the end of it, in every clip, and each rider becomes a zoomed photo on the guest's trip page too.
+
+**Known limit:** a rider is only zoomed in if Coral has made a rider photo from that clip. Older tubing charters are being caught up a few per run.
 
 ### Theme compilations made in CapCut
 

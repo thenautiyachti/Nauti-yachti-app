@@ -256,6 +256,10 @@ def plan_theme(slug, title, tags, hook, songs, rule, moments, used, prev_song):
         want = nb
         if s["kind"] in ("rider", "people"):
             fit = int((s["b"] - s["a"]) / b); want = max(2, min(nb, fit - fit % 2 if fit >= 2 else 2))
+        # A zoomed rider is framed for one moment: at 4x the camera's drift
+        # loses them within a couple of seconds (Nagdy's 4.6 s opener, 5 Oct
+        # 2026, showed mostly water). Four beats at most, centred on the moment.
+        if s["kind"] == "rider": want = min(want, 4)
         if k + want >= len(times): break
         dur = times[k + want] - times[k]; sh = {"at": round(times[k] - t0, 3), "dur": round(dur, 3)}
         if s["kind"] == "photo":
@@ -268,7 +272,7 @@ def plan_theme(slug, title, tags, hook, songs, rule, moments, used, prev_song):
         else:
             lo, hi = max(0.0, s["a"] - 0.25), min(s["dur_clip"], s["b"] + 0.25)
             frm = max(0.0, min(min(max(s["t"] - dur / 2, lo), max(lo, hi - dur)), s["dur_clip"] - dur - 0.05))
-            sc, x, y = pr.place(s["file"], *s["uv"], z=2.0) if s["kind"] == "rider" and s.get("uv") else pr.place(s["file"])
+            sc, x, y = pr.place(s["file"], *s["uv"], z=pr.RIDER_ZOOM) if s["kind"] == "rider" and s.get("uv") else pr.place(s["file"])
             sh.update({"file": s["file"], "from": round(frm, 3), "scale": sc, "x": x, "y": y, "kind": s["kind"]})
         shots.append(sh); k += want
         if s["charter"] not in used_charters: used_charters.append(s["charter"])

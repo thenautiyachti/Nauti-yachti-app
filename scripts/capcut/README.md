@@ -16,8 +16,16 @@ the last 10 minutes (4). CapCut is Qt/QML with no automation tree, so it clicks
 by position measured from CapCut's own window; promotions arrive as separate
 small windows and are closed with WM_CLOSE, but never during the export dialog
 (that is a small window too). capcut-cli's `bg-blur` writes a canvas CapCut 9.5
-does not render, and its zoom keyframes are ignored as well (riders come out
-unzoomed): both are known gaps, hence `blur-bars.js`.
+does not render, hence `blur-bars.js`. Its `uniform_scale` keyframe writes the
+key UNIFORM_SCALE, which CapCut 9.5 ignores too: build-from-plan.js writes
+scale_x + scale_y (KFTypeScaleX/Y) instead, and since 5 Oct 2026 only riders are
+zoomed (RIDER_ZOOM in plan_recaps.py, rider shots capped at four beats).
+
+    python find_riders.py "<charter>"                  # wake frames on gridded review sheets
+    python find_riders.py "<charter>" --make "<clip>@<s>@<u>,<v>" ...   # rider stills into Completed
+
+The eye picks the riders (follow the tow rope; tubes come in every colour), the
+script does the sampling, the sheets and the stills.
 
 The tool underneath is capcut-cli 0.26.0 (MIT, zero dependencies), reviewed and
 copied to `C:\Users\immex\.node_modules\capcut-cli`. Not installed from npm on

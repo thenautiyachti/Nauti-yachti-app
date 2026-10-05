@@ -60,13 +60,29 @@ def dims(path):
             _dims[path] = (h, w) if rot in (90, 270) else (w, h)
     return _dims[path]
 
+# How far a rider is punched in: times the scale that fills the frame, so 3.0
+# leaves the rider about a quarter of the frame's width (the trip-page stills
+# use 4.5x and he took the softness as the trade). Raised from 2.0 on 5 Oct
+# 2026, the first day the zoom rendered at all; at 2.0 a tube was a speck.
+RIDER_ZOOM = 3.0
+
 def cover(w, h):
     fit = min(WC / w, HC / h); return max(WC / (w * fit), HC / (h * fit)), fit
 
 def place(path, u=None, v=None, z=1.0):
-    """uniform scale and position for a shot; (u, v) = subject as source fractions."""
+    """uniform scale and position for a shot; (u, v) = subject as source fractions.
+
+    Scale is in CapCut's units, 1.0 = the whole picture fitted to the canvas.
+    Only a rider (u, v given) is zoomed: z times the scale that fills the frame,
+    centred on them. Everything else stays at 1.0, the whole picture, and the
+    bars a 4:3 shot leaves are filled with blur after export (blur-bars.js).
+    Owner, 5 Oct 2026: blurred background rather than cropping people off the
+    edges of group shots; "when wakeboarding or tubing we need a zoom on them".
+    Until then every shot was set to fill, but nothing was zoomed at all: the
+    scale went out under a key CapCut 9.5 does not read (see build-from-plan.js).
+    """
     w, h = dims(path); cv, fit = cover(w, h); s = cv * z
-    if u is None: return round(s, 4), 0.0, 0.0
+    if u is None: return 1.0, 0.0, 0.0
     Wd, Hd = w * fit * s, h * fit * s
     dx, dy = -(u - 0.5) * Wd, (0.45 - 0.5) * HC - (v - 0.5) * Hd
     mx, my = (Wd - WC) / 2, (Hd - HC) / 2
@@ -212,11 +228,19 @@ def plan(folder, moments, used):
     held = lambda s: s.get("b", 0) - s.get("a", 0)
     good_riders = [s for s in riders if held(s) >= shot_len]
     hook = max(good_riders or [s for s in pool if s["kind"] != "photo"] or pool, key=held)
-    pool = [hook] + [s for s in pool if s is not hook]
+    # Riders straight after the opener, then the rest of the day in order. Left
+    # in time order, a rider filmed late was the shot the song ran out before
+    # (Nagdy, 5 Oct 2026), and tubing is the main seller.
+    pool = [hook] + [s for s in riders if s is not hook] + [s for s in pool if s is not hook and s not in riders]
     need = sum(min(shot_len * (2 if s is hook else 1), max(2 * bpm_beat, (s.get("b", 99) - s.get("a", 0)))) for s in pool)
-    if need > song["dur"] - 1:
-        while pool and need > song["dur"] - 1:
-            pool.pop(); need -= shot_len
+    # Too long for the song: drop the shortest-held shot that is not a rider.
+    # This used to drop from the end of the day, which on 5 Oct 2026 threw out
+    # Nagdy's only usable rider (filmed at 8pm) and left a tubing recap with no
+    # one on a tube. Owner: "when wakeboarding or tubing we need a zoom on them".
+    while len(pool) > 1 and need > song["dur"] - 1:
+        rest = pool[1:]
+        victim = min([s for s in rest if s["kind"] != "rider"] or rest, key=held)
+        pool.remove(victim); need -= shot_len
     times, i0, beat = song_grid(song, need)
     t0 = times[i0]; at = 0.0; k = i0; shots = []
     for s in pool:
@@ -224,6 +248,10 @@ def plan(folder, moments, used):
         if s["kind"] != "photo":
             fit = int((s["b"] - s["a"]) / beat)
             want = max(2, min(want, fit - (fit % 2) if fit >= 2 else 2))
+        # A zoomed rider is framed for one moment: at 4x the camera's drift
+        # loses them within a couple of seconds (Nagdy's 4.6 s opener, 5 Oct
+        # 2026, showed mostly water). Four beats at most, centred on the moment.
+        if s["kind"] == "rider": want = min(want, 4)
         if k + want >= len(times): break
         dur = times[k + want] - times[k]
         sh = {"at": round(times[k] - t0, 3), "dur": round(dur, 3)}
@@ -234,7 +262,7 @@ def plan(folder, moments, used):
             lo, hi = max(0.0, s["a"] - 0.25), min(s["dur_clip"], s["b"] + 0.25)
             frm = min(max(s["t"] - dur / 2, lo), max(lo, hi - dur))
             frm = max(0.0, min(frm, s["dur_clip"] - dur - 0.05))
-            if s["kind"] == "rider": sc, x, y = place(s["file"], *s["uv"], z=2.0)
+            if s["kind"] == "rider": sc, x, y = place(s["file"], *s["uv"], z=RIDER_ZOOM)
             else: sc, x, y = place(s["file"])
             sh.update({"file": s["file"], "from": round(frm, 3), "scale": sc, "x": x, "y": y, "kind": s["kind"], "still": s.get("still")})
         shots.append(sh); k += want

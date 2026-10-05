@@ -37,15 +37,30 @@ for (const s of plan.shots) {
   // 9:16 frame; the owner chose a blurred background (5 Oct 2026). capcut-cli's
   // bg-blur writes a canvas CapCut 9.5 never renders, so blur-bars.js fills the
   // bars on the exported file instead.
-  const rows = [{ property: "uniform_scale", time: 0, value: s.scale }];
+  // Scale as scale_x + scale_y. capcut-cli's "uniform_scale" writes the key
+  // UNIFORM_SCALE, which CapCut 9.5 ignores: until 5 Oct 2026 no zoom in any
+  // recap or compilation ever rendered, riders included. KFTypeScaleX/Y is
+  // what CapCut itself writes.
+  const sc = (time, value) => [{ property: "scale_x", time, value }, { property: "scale_y", time, value }];
+  const rows = sc(0, s.scale);
   if (s.x || s.y) { rows.push({ property: "position_x", time: 0, value: s.x || 0 }, { property: "position_y", time: 0, value: s.y || 0 }); }
-  if (s.kb) rows.push({ property: "uniform_scale", time: Math.round((s.dur - 0.05) * 1e6), value: +(s.scale * s.kb).toFixed(4) });
+  if (s.kb) rows.push(...sc(Math.round((s.dur - 0.05) * 1e6), +(s.scale * s.kb).toFixed(4)));
   cc(["keyframe", PROJ, id, "--batch"], rows.map((r) => JSON.stringify(r)).join("\n"));
   ids.push(id);
 }
 ids.slice(0, -1).forEach((id, i) => cc(["transition", PROJ, id, plan.trans[i % plan.trans.length], "--duration", "0.3s"]));
 const first = plan.shots[0], last = plan.shots[plan.shots.length - 1];
-cc(["add-text", PROJ, "0s", Math.min(plan.song.length, Math.max(first.dur, 2.5)).toFixed(3) + "s", plan.hook, "--font-size", "13", "--color", "#FFFFFF", "--y", "0.62"]);
+// A long title runs off both edges at this size ("Day on the water, Lake Conroe"
+// did, 5 Oct 2026): over 22 characters it goes on two lines, broken at a comma
+// or at the space nearest the middle, as the closing card already is.
+const wrap = (s) => {
+  if (s.length <= 22 || s.includes("\n")) return s;
+  const c = s.indexOf(", ");
+  if (c > 0) return s.slice(0, c + 1) + "\n" + s.slice(c + 2);
+  const sp = [...s.matchAll(/ /g)].map((m) => m.index).sort((a, b) => Math.abs(a - s.length / 2) - Math.abs(b - s.length / 2))[0];
+  return sp ? s.slice(0, sp) + "\n" + s.slice(sp + 1) : s;
+};
+cc(["add-text", PROJ, "0s", Math.min(plan.song.length, Math.max(first.dur, 2.5)).toFixed(3) + "s", wrap(plan.hook), "--font-size", "13", "--color", "#FFFFFF", "--y", "0.62"]);
 const endDur = Math.min(plan.song.length, Math.max(last.dur, 2.5));
 cc(["add-text", PROJ, (plan.song.length - endDur).toFixed(3) + "s", endDur.toFixed(3) + "s", plan.endText, "--font-size", "11", "--color", "#FFFFFF", "--y", "-0.55"]);
 cc(["register", PROJ, "--materials", "--apply"]);
