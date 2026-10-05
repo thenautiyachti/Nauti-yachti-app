@@ -33,6 +33,10 @@ for (const s of plan.shots) {
   const add = cc(["add-video", PROJ, s.file, s.at.toFixed(3) + "s"].concat(s.image ? [s.dur.toFixed(3) + "s"] : []));
   const id = add.segment_id;
   if (!s.image) { cc(["trim", PROJ, id, s.from.toFixed(3) + "s", s.dur.toFixed(3) + "s"]); cc(["volume", PROJ, id, "0.2"]); }
+  // No background blur here. Most footage is 4:3 and sits between bars in the
+  // 9:16 frame; the owner chose a blurred background (5 Oct 2026). capcut-cli's
+  // bg-blur writes a canvas CapCut 9.5 never renders, so blur-bars.js fills the
+  // bars on the exported file instead.
   const rows = [{ property: "uniform_scale", time: 0, value: s.scale }];
   if (s.x || s.y) { rows.push({ property: "position_x", time: 0, value: s.x || 0 }, { property: "position_y", time: 0, value: s.y || 0 }); }
   if (s.kb) rows.push({ property: "uniform_scale", time: Math.round((s.dur - 0.05) * 1e6), value: +(s.scale * s.kb).toFixed(4) });

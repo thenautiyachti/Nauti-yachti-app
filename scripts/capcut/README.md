@@ -1,7 +1,23 @@
 # CapCut drafts: charter recaps and theme compilations
 
-Built 2 Oct 2026. Claude lays the cut into the owner's CapCut desktop library;
-he opens it, adjusts, and exports. Nothing here publishes anything.
+Built 2 Oct 2026. Claude lays the cut into the owner's CapCut desktop library.
+Since 5 Oct 2026 Coral also exports and finishes it (owner: "all this media
+editing you are doing should be applied to corals job"). Nothing here
+publishes anything.
+
+## Finishing (5 Oct 2026)
+
+    node theme-compilations.js --pick                          # the daily one: random theme, tubing x3, shuffled shots
+    powershell -File export-from-capcut.ps1 -Project "<name>"  # CapCut's own Export, driven by position
+    node blur-bars.js <export.mp4> <out.mp4>                   # fill the 4:3 bars with a blurred copy
+
+`export-from-capcut.ps1` refuses while CapCut is open (3) or the PC was used in
+the last 10 minutes (4). CapCut is Qt/QML with no automation tree, so it clicks
+by position measured from CapCut's own window; promotions arrive as separate
+small windows and are closed with WM_CLOSE, but never during the export dialog
+(that is a small window too). capcut-cli's `bg-blur` writes a canvas CapCut 9.5
+does not render, and its zoom keyframes are ignored as well (riders come out
+unzoomed): both are known gaps, hence `blur-bars.js`.
 
 The tool underneath is capcut-cli 0.26.0 (MIT, zero dependencies), reviewed and
 copied to `C:\Users\immex\.node_modules\capcut-cli`. Not installed from npm on

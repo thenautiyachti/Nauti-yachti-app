@@ -51,7 +51,7 @@ theme-compilations.js after the draft is built). A newly tagged charter with
 vetted moments changes them; an outing whose photos only round out thin themes
 usually does not. Out of season nothing changes, so nothing is built.
 """
-import os, re, sys, json, math, datetime, subprocess
+import os, re, sys, json, math, random, datetime, subprocess
 import plan_recaps as pr
 from locate_moments import RESTRICTED, OUTINGS, folder_dir
 
@@ -69,6 +69,10 @@ SHAPE = re.compile(r"_(\d{1,2}x\d{1,2})(?:_raw)?(?=\.)")
 SHAPE_PREF = {"9x16": 0, "4x5": 1, "3x4": 2, "1x1": 3, "16x9": 4}  # the cut is 9:16
 VIDEO = re.compile(r"\.(mp4|mov)$", re.I)
 MAX_PER_CHARTER = 3
+# --shuffle (Coral's daily random compilation, owner 5 Oct 2026: "They should be
+# created at random"): the longest holds still tend to win, but each build draws
+# a different mix of shots and trips, so a theme made twice is two cuts.
+SHUFFLE = "--shuffle" in sys.argv
 
 # slug, title, tags (any of), hook, songs (from his Music shelf), shot rule
 THEMES = [
@@ -169,8 +173,9 @@ def best_shots(folder, ms, rule, held):
     if rule == "place": clips = [s for s in clips if s["kind"] != "rider"]
     if rule in ("night", "glow"): clips = [s for s in clips if is_night(s["file"])]
     span = lambda s: s["b"] - s["a"]
-    if rule == "riding": clips.sort(key=lambda s: (s["kind"] != "rider", -span(s)))
-    else: clips.sort(key=lambda s: -span(s))
+    jitter = (lambda: random.uniform(0.4, 1.6)) if SHUFFLE else (lambda: 1.0)
+    if rule == "riding": clips.sort(key=lambda s: (s["kind"] != "rider", -span(s) * jitter()))
+    else: clips.sort(key=lambda s: -span(s) * jitter())
     for s in clips: s["charter"] = folder
     # Photos actually taken (not frames pulled from video) can fill a thin cut;
     # never on a night cruise, where the timestamp that keeps day footage out is
@@ -206,6 +211,8 @@ def pool_for(per, rule, max_shots):
     # full before any outing (paying guests lead).
     cap = max(MAX_PER_CHARTER, math.ceil(12 / max(1, len(per))))
     groups = [[f for f in per if os.path.isdir(os.path.join(pr.ROOT, f))], [f for f in per if not os.path.isdir(os.path.join(pr.ROOT, f))]]
+    if SHUFFLE:  # charters still lead outings; which charter comes first varies
+        for g in groups: random.shuffle(g)
     pool = []
     for group in groups:
         for bucket in (riders, fill):
