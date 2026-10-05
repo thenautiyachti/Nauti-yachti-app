@@ -4303,6 +4303,18 @@ function MediaDraftCard({ d, onUpdateStatus, onDelete, onAttachMedia, onSetPostT
                 </div>
               )}
 
+              {/* Coral answers a change she cannot make by appending
+                  " | <date>, <reason>: <answer>" to photoHint. Until 5 Oct 2026
+                  the card only showed photoHint when no media was attached, so
+                  on a video card her answer was invisible and the request
+                  looked ignored. */}
+              {d.status === "discussing" && d.photoHint && d.photoHint.includes(" | ") && (
+                <div style={{ fontSize: 11.5, lineHeight: 1.45, color: "var(--text)", background: "rgba(79,243,255,0.06)", border: "1px solid rgba(79,243,255,0.3)", borderRadius: 6, padding: "7px 9px", marginBottom: 8 }}>
+                  <strong style={{ color: "#4ff3ff" }}>Coral replied: </strong>
+                  {d.photoHint.split(" | ").pop()}
+                </div>
+              )}
+
               {["pending", "proposed", "discussing"].includes(d.status) && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button type="button" onClick={() => onUpdateStatus(d.id, "approved")}
