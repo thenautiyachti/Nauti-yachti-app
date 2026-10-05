@@ -10,7 +10,7 @@
 # specific enough that it is the first card). Prints one JSON line and exits:
 #   0  {"exported": "<path to mp4>"}       then run blur-bars.js on it
 #   3  {"skipped": "CapCut is open"}        he is using it; try next run
-#   4  {"skipped": "owner active"}          input in the last 10 minutes; try next run
+#   4  {"skipped": "owner active"}          input in the last 2 minutes; try again shortly
 #   1  {"error": "...", "shots": "<dir>"}   report it with the screenshots; never improvise clicks
 #
 # What it learned the hard way (5 Oct 2026):
@@ -25,7 +25,9 @@
 #   otherwise Windows silently refuses every cursor move (another window, e.g.
 #   GameInputSvc, holds the foreground).
 # - The "share it now" panel after an export is closed, never Shared.
-param([Parameter(Mandatory = $true)][string]$Project, [int]$IdleMinutes = 10,
+# Two idle minutes, not ten (owner, 5 Oct 2026: "10mins is too long to wait for
+# idle, just do a couple minutes").
+param([Parameter(Mandatory = $true)][string]$Project, [int]$IdleMinutes = 2,
       [string]$ShotDir = (Join-Path $env:TEMP "capcut-export"))
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing

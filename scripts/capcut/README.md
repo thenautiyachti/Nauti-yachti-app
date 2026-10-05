@@ -12,7 +12,7 @@ publishes anything.
     node blur-bars.js <export.mp4> <out.mp4>                   # fill the 4:3 bars with a blurred copy
 
 `export-from-capcut.ps1` refuses while CapCut is open (3) or the PC was used in
-the last 10 minutes (4). CapCut is Qt/QML with no automation tree, so it clicks
+the last 2 minutes (4). CapCut is Qt/QML with no automation tree, so it clicks
 by position measured from CapCut's own window; promotions arrive as separate
 small windows and are closed with WM_CLOSE, but never during the export dialog
 (that is a small window too). capcut-cli's `bg-blur` writes a canvas CapCut 9.5
