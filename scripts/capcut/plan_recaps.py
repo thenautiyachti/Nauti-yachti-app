@@ -33,7 +33,7 @@ TYPE = {
     "2025-08-07 Anari": "night", "2025-07-29 Anari": "night", "2025-08-06 John": "family",
 }
 SONGS = {
-    "riding": ["BLUE AURA FUNK", "MCE", "Ibiza Aura", "ESSA MINA PERIGOSA", "AIN'T GONNA STOP", "Unstoppable"],
+    "riding": ["MCE", "Ibiza Aura", "ESSA MINA PERIGOSA", "AIN'T GONNA STOP", "Unstoppable"],
     "party": ["Yes Daddy", "Ibiza Aura", "Tropical Beach Vibes", "All of Me", "MCE"],
     "bachelorette": ["Yes Daddy", "All of Me", "Milky Way", "Ibiza Aura"],
     "birthday": ["Milky Way", "Tropical Beach Vibes", "All of Me", "I'll Never Let You Go"],
@@ -47,6 +47,11 @@ CALM = {"Beauty Finds Its Way"}
 # Shelf songs CapCut will not export without Pro: its Export button turns into
 # "Join Pro to export" (the 5 Oct 2026 Birthday compilation, twice). Never chosen.
 PRO_ONLY = {"I'll Never Let You Go"}
+# Songs he has thrown out. Never chosen, even if one is still on the shelf or
+# creeps back into a list. Owner, 6 Oct 2026, on the tubing-wakeboarding v3
+# compilation: "whatever song was in tubing-wakeboarding v3 was terrible. Please
+# remove that song off the media shelf and use a different one."
+BANNED = {"BLUE AURA FUNK"}
 # Owner, 5 Oct 2026 (question 11): no song another cut used within the week,
 # while the list has another. A '(Claude)' draft modified in the last 7 days counts.
 RECENT_DAYS = 7
@@ -147,14 +152,15 @@ def song_grid(song, need):
 def choose_song(names, used, avoid=()):
     """A song from a list (his order), for a recap or a theme.
 
-    Never one in `avoid` (the song just used) while another is on the shelf; no
+    Never a BANNED or PRO_ONLY song. Never one in `avoid` (the song just used)
+    while another is on the shelf; no
     song a '(Claude)' draft used in the last RECENT_DAYS while the list has one
     that was not (question 11); a calm song only when nothing else is left
     (question 5); then the least used, list order breaking ties. When every
     song on the list was used this week, the one used longest ago.
     """
-    have = [n for n in names if n in SONG and n not in PRO_ONLY]
-    if not have: raise SystemExit("none of these songs is on his Music shelf (or exportable without Pro): " + ", ".join(names))
+    have = [n for n in names if n in SONG and n not in PRO_ONLY and n not in BANNED]
+    if not have: raise SystemExit("none of these songs is on his Music shelf (or exportable without Pro, or not banned): " + ", ".join(names))
     recent = used.setdefault("_recent", {})
     pool = [n for n in have if n not in avoid] or have
     fresh = [n for n in pool if n not in recent]
@@ -252,6 +258,58 @@ def shots_for(folder, moments):
 
 TAGS = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\_media-tags.json"
 
+# NO REPEATS WITHIN A CUT. Owner, 6 Oct 2026, on the Island v3 compilation: "in
+# the middle of the island video it also looks like the same media used twice".
+# It was: Coral's montage "2024-07-20_the-island_9x16.mp4" holds the same raw
+# footage as her cut "2024-07-20_island_rafted-at-the-shoreline_9x16.mp4", and
+# the one-moment-per-clip rule only compared file names. So, as each shot is
+# placed: no two shots of one clip whose source spans overlap or come within
+# REPEAT_GAP seconds, and no two shots of one trip whose frames look alike
+# (sibling cuts of one clip, a burst of near-identical photos). Riders are not
+# compared with riders by look (a day's tows all show a wake behind one boat);
+# two riders from one clip still meet the gap rule. A skipped shot makes the cut
+# shorter: never a repeat to fill the song.
+REPEAT_GAP = 3.0
+LOOKALIKE = 24.0  # mean |diff| of 24x24 grey frames, 0-255. Island repeat: ~12-20; other shots of a trip: 40+.
+
+def too_close(placed, file, frm, dur, gap=REPEAT_GAP):
+    """A placed shot of the same file whose source span overlaps [frm, frm+dur] or
+    comes within `gap` seconds of it."""
+    return any(p["file"] == file and frm < p["from"] + p["dur"] + gap and frm + dur > p["from"] - gap for p in placed)
+
+def trip_of(path):
+    """The charter or outing folder a file sits in (the folder under _By charter or _outings)."""
+    d = os.path.dirname(path)
+    while d and os.path.dirname(d) != d:
+        if os.path.basename(os.path.dirname(d)) in ("_By charter", "_outings"): return os.path.basename(d)
+        d = os.path.dirname(d)
+    return None
+
+def look(path, frm=0.0, dur=0.0, image=False, n=4):
+    """Small grey frames across a shot's source span (one for a photo)."""
+    out = []
+    for k in range(1 if image else n):
+        ss = [] if image else ["-ss", "%.3f" % (frm + dur * (k + 0.5) / n)]
+        r = subprocess.run(["ffmpeg", "-v", "error"] + ss + ["-i", path, "-frames:v", "1", "-vf", "scale=24:24,format=gray",
+                            "-f", "rawvideo", "-"], capture_output=True)
+        if len(r.stdout) == 576: out.append(np.frombuffer(r.stdout, np.uint8).astype(float))
+    return out
+
+def lookalike(a, b, th=LOOKALIKE):
+    return bool(a and b) and min(float(np.mean(np.abs(x - y))) for x in a for y in b) < th
+
+def repeats(placed, sh, kind):
+    """Why this shot would repeat one already placed in the cut, or None. `sh` is
+    the planned shot (file, from, dur, image); it gains its look for later shots."""
+    if too_close(placed, sh["file"], sh["from"], sh["dur"]): return "same clip within %.0fs" % REPEAT_GAP
+    trip = trip_of(sh["file"])
+    sh["_look"] = look(sh["file"], sh["from"], sh["dur"], sh.get("image"))
+    for p in placed:
+        if kind == "rider" and p.get("_kind") == "rider": continue
+        if trip and trip_of(p["file"]) == trip and lookalike(p.get("_look"), sh["_look"]):
+            return "looks like %s @%.1f" % (os.path.basename(p["file"]), p["from"])
+    return None
+
 def trip_kind(folder):
     """The trip's type from Coral's charter tags first; TYPE only when untagged.
 
@@ -325,7 +383,11 @@ def plan(folder, moments, used):
             if s["kind"] == "rider": sc, x, y = place(s["file"], *s["uv"], z=RIDER_ZOOM)
             else: sc, x, y = place(s["file"])
             sh.update({"file": s["file"], "from": round(frm, 3), "scale": sc, "x": x, "y": y, "kind": s["kind"], "still": s.get("still")})
-        shots.append(sh); k += want
+        why = repeats(shots, sh, s["kind"])  # owner, 6 Oct 2026: "the same media used twice"
+        if why:
+            print("  skip %s @%.1f: %s" % (os.path.basename(s["file"]), sh["from"], why), file=sys.stderr); continue
+        sh["_kind"] = s["kind"]; shots.append(sh); k += want
+    for sh in shots: sh.pop("_look", None); sh.pop("_kind", None)
     if len(shots) < 3: return None
     length = round(times[k] - t0, 3)
     date = folder[:10]; who = re.sub(r"\s*\(.*$", "", folder[11:]).split(" + ")[0].strip()

@@ -151,7 +151,8 @@ REBUILD = "--rebuild" in sys.argv
 # occasions last, which fill only with what no other cut took.
 THEMES = [
     ("tubing-wakeboarding", "Tubing & Wakeboarding", {"tubing", "wakeboarding"}, "Tubing & wakeboarding on Lake Conroe",
-     ["BLUE AURA FUNK", "MCE", "ESSA MINA PERIGOSA", "AIN'T GONNA STOP", "Unstoppable"], "riding"),
+     # BLUE AURA FUNK banned 6 Oct 2026 (plan_recaps.BANNED, owner: "was terrible")
+     ["MCE", "ESSA MINA PERIGOSA", "AIN'T GONNA STOP", "Unstoppable"], "riding"),
     ("night-cruise", "Night Cruise", NIGHT_TAGS, "Night cruise on Lake Conroe",
      ["DAT GAT", "Smoke", "FOCUS ON THE PROCESS", "Beauty Finds Its Way"], "night"),  # up-tempo first (question 5)
     ("party-cove", "Party Cove", {"party cove"}, "Party Cove, Lake Conroe",
@@ -167,7 +168,7 @@ THEMES = [
     # Owner, 5 Oct 2026: "i guess we need a cruising the lake theme (like a stop
     # swim) even though we dont really introduce it on our page as a package or place."
     ("cruising", "Cruising the lake", {"cruising"}, "Cruising Lake Conroe",
-     ["Ibiza Aura", "BLUE AURA FUNK", "Yes Daddy", "Tropical Beach Vibes", "AIN'T GONNA STOP"], "cruising"),
+     ["Ibiza Aura", "Yes Daddy", "Tropical Beach Vibes", "AIN'T GONNA STOP"], "cruising"),
     ("birthday", "Birthday", {"birthday"}, "Birthdays on the water",
      ["Milky Way", "Tropical Beach Vibes", "All of Me", "ESSA MINA PERIGOSA", "Unstoppable"], "occasion"),  # "I'll Never Let You Go" needs Pro to export
     ("bachelorette", "Bachelor & Bachelorette", {"bachelorette", "bachelor", "bachelor or bachelorette"}, "Bachelorette on Lake Conroe",
@@ -633,8 +634,15 @@ def plan_theme(slug, title, tags, hook, songs, rule, moments, used, prev_song, a
             frm = max(0.0, min(min(max(s["t"] - dur / 2, lo), max(lo, hi - dur)), s["dur_clip"] - dur - 0.05))
             sc, x, y = pr.place(s["file"], *s["uv"], z=pr.RIDER_ZOOM) if s["kind"] == "rider" and s.get("uv") else pr.place(s["file"])
             sh.update({"file": s["file"], "from": round(frm, 3), "scale": sc, "x": x, "y": y, "kind": s["kind"]})
-        shots.append(sh); k += want
+        # No repeats within a cut (pr.repeats): owner, 6 Oct 2026, on the Island
+        # v3: "in the middle of the island video it also looks like the same media
+        # used twice". A skipped shot makes the cut shorter, never a repeat.
+        why = pr.repeats(shots, sh, s["kind"])
+        if why:
+            print("  %s: skip %s @%.1f: %s" % (slug, os.path.basename(s["file"]), sh["from"], why), file=sys.stderr); continue
+        sh["_kind"] = s["kind"]; shots.append(sh); k += want
         if s["charter"] not in used_charters: used_charters.append(s["charter"])
+    for sh in shots: sh.pop("_look", None); sh.pop("_kind", None)
     if len(shots) < 4:
         return None, {"theme": slug, "charters": len(per), "shots": len(shots)}
     name = draft_name(title)
