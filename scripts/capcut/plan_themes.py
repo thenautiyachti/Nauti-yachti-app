@@ -43,7 +43,9 @@ tubed out on open water, not in the cove. So (owner's answers, 5 Oct 2026):
     with "tubing" (place_ok). A place
     cut opens on its best scenery moment, charters before outings (question 7):
     a still whose "files" entry has "role": "scenery" (or a "_scenery" name);
-  * the riding cut takes riders, and people shots only to fill it out;
+  * the riding cut takes riders, and people shots only to fill it out; a
+    wake-surf clip counts as riding (6 Oct 2026) and is zoomed less
+    (plan_recaps.rider_zoom: "just lessen it slightly");
   * night: the folder says where to look (questions 1, 6), the picture says
     what goes in. Owner, 5 Oct 2026: "ensure the video is actually nighttime
     within the media. Don't just use the date of the file and time." Every
@@ -121,6 +123,12 @@ DAY_LUMA = 80
 # Party Cove: luma 109, 0.06 lit). A place cut leaves out a frame under DARK_Y
 # (a glow night's neon at the cove: 57; its daytime clips 106-130).
 NIGHT_LIT, DUSK_WARM, NIGHT_Y, DARK_Y = 0.2, 25, 90, 70
+# A blue daytime sky vetoes the warm path (6 Oct 2026): the Night Cruise v4
+# build put a 12:44 Kickoff party clip in, a man sunning on the bow, because
+# sunlit skin and a beige deck read warm. The top third of a daylight frame is
+# bright and blue: that clip measured luma 112, blue over red by 54; blue hour
+# (Anari, 29 Jul) 48 and 30; a sunset sky 113 and -12 (red over blue).
+SKY_Y, SKY_BLUE = 80, 35
 # Which occasion an "occasion" still shows, when its entry says ("packages"):
 # a trip tagged both bachelorette and birthday has a bride and a cake.
 OCC_PKG = {"birthday": "birthday", "bachelorette": "bachelor-bachelorette", "corporate": "corporate"}
@@ -150,7 +158,7 @@ REBUILD = "--rebuild" in sys.argv
 # main seller, then night (rare footage), the places, glow, cruising, and the
 # occasions last, which fill only with what no other cut took.
 THEMES = [
-    ("tubing-wakeboarding", "Tubing & Wakeboarding", {"tubing", "wakeboarding"}, "Tubing & wakeboarding on Lake Conroe",
+    ("tubing-wakeboarding", "Tubing & Wakeboarding", {"tubing", "wakeboarding"} | pr.WAKESURF_WORDS, "Tubing & wakeboarding on Lake Conroe",
      # BLUE AURA FUNK banned 6 Oct 2026 (plan_recaps.BANNED, owner: "was terrible")
      ["MCE", "ESSA MINA PERIGOSA", "AIN'T GONNA STOP", "Unstoppable"], "riding"),
     ("night-cruise", "Night Cruise", NIGHT_TAGS, "Night cruise on Lake Conroe",
@@ -237,6 +245,13 @@ def cruise_file_folders():
             if "cruising" in v.get("activities", []) and len(k.split("/")) > 3}
 
 
+def wakesurf_folders():
+    """Folders holding a file whose own entry says wakesurfing: the riding cut
+    counts a wake surf as riding (6 Oct 2026), whatever the folder is named."""
+    return {k.split("/")[2] for k, v in media_tags().get("files", {}).items()
+            if "wakesurfing" in v.get("activities", []) and len(k.split("/")) > 3}
+
+
 def trips_for(tags, rule=None):
     """Folders carrying any of these tags: charters newest first, then outings
     newest first. The night cut also takes a fireworks folder (by its
@@ -244,11 +259,13 @@ def trips_for(tags, rule=None):
     cruising cut a folder whose entry or any of whose files says cruising."""
     out = []
     cruisers = cruise_file_folders() if rule == "cruising" else set()
+    surfers = wakesurf_folders() if rule == "riding" else set()
     for root in (pr.ROOT, OUTINGS):
         fs = [f for f in (os.listdir(root) if os.path.isdir(root) else []) if re.match(r"\d{4}-\d{2}-\d{2} ", f)
               and os.path.isdir(os.path.join(root, f)) and not RESTRICTED.search(f)
               and (folder_tags(f) & tags or rule == "night" and (night_folder(f) or firework_files(f))
-                   or rule == "cruising" and (cruise_folder(f) or f in cruisers))]
+                   or rule == "cruising" and (cruise_folder(f) or f in cruisers)
+                   or rule == "riding" and (f in surfers or pr.wakesurf_trip(f)))]
         out += sorted(fs, reverse=True)
     return out
 
@@ -328,7 +345,8 @@ def looks_night(path, t=None):
     under a warm sunset sky (dusk). Daylight, blue sky and bright water, is not.
     Only for candidates a night folder already put forward: sunlit brown water
     and skin read warm too."""
-    lit, warm, y = frame_look(path, t)
+    lit, warm, y, top_y, top_blue = frame_look(path, t)
+    if top_y > SKY_Y and top_blue > SKY_BLUE: return False  # a blue daytime sky
     return lit < NIGHT_LIT and y < NIGHT_Y or warm >= DUSK_WARM
 
 
@@ -353,9 +371,12 @@ def frame_look(path, t=None):
             y = a @ np.array([0.299, 0.587, 0.114], np.float32)
             lit = y > 140
             warm = float(a[lit][:, 0].mean() - a[lit][:, 2].mean()) if lit.any() else 0.0
-            _LOOK[key] = (float(lit.mean()), warm, float(y.mean()))
+            top = a[: max(1, a.shape[0] // 3)]  # the sky, in footage shot from the boat
+            top_y = float(y[: top.shape[0]].mean())
+            top_blue = float(top[..., 2].mean() - top[..., 0].mean())
+            _LOOK[key] = (float(lit.mean()), warm, float(y.mean()), top_y, top_blue)
         except Exception:
-            _LOOK[key] = (1.0, -999.0, 255.0)  # unreadable: neither night nor dark
+            _LOOK[key] = (1.0, -999.0, 255.0, 255.0, 0.0)  # unreadable: neither night nor dark
     return _LOOK[key]
 
 
@@ -442,8 +463,12 @@ def best_shots(folder, ms, rule, held, loc=None, slug=None):
         pics = [p for p in same_shot_once(one_shape_each(pics)) if named.search(os.path.basename(p))]
         # The picture decides, not the name or the clock (owner, 5 Oct 2026).
         at = lambda s: clip_seconds(s["file"]) * 0.4 if s["kind"] == "themeclip" else s.get("t")
-        clips = [s for s in clips if looks_night(s["file"], at(s))]
-        pics = [p for p in pics if looks_night(p)]
+        # A file whose own entry says "night": false is out whatever it measures:
+        # Coral's eye on the contact sheet overrules the meter (6 Oct 2026, a
+        # 2 a.m. kitchen at the Kickoff party read as a warm dusk).
+        not_night = lambda f: (file_entry(f) or {}).get("night") is False
+        clips = [s for s in clips if not not_night(s["file"]) and looks_night(s["file"], at(s))]
+        pics = [p for p in pics if not not_night(p) and looks_night(p)]
     if rule == "glow":
         clips += finished_clips(folder, held)
         pics = one_shape_each(pics)
@@ -632,7 +657,7 @@ def plan_theme(slug, title, tags, hook, songs, rule, moments, used, prev_song, a
         else:
             lo, hi = max(0.0, s["a"] - 0.25), min(s["dur_clip"], s["b"] + 0.25)
             frm = max(0.0, min(min(max(s["t"] - dur / 2, lo), max(lo, hi - dur)), s["dur_clip"] - dur - 0.05))
-            sc, x, y = pr.place(s["file"], *s["uv"], z=pr.RIDER_ZOOM) if s["kind"] == "rider" and s.get("uv") else pr.place(s["file"])
+            sc, x, y = pr.place(s["file"], *s["uv"], z=pr.rider_zoom(s["file"])) if s["kind"] == "rider" and s.get("uv") else pr.place(s["file"])
             sh.update({"file": s["file"], "from": round(frm, 3), "scale": sc, "x": x, "y": y, "kind": s["kind"]})
         # No repeats within a cut (pr.repeats): owner, 6 Oct 2026, on the Island
         # v3: "in the middle of the island video it also looks like the same media

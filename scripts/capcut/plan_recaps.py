@@ -84,6 +84,28 @@ def dims(path):
 # use 4.5x and he took the softness as the trade). Raised from 2.0 on 5 Oct
 # 2026, the first day the zoom rendered at all; at 2.0 a tube was a speck.
 RIDER_ZOOM = 3.0
+# A wake-surfer rides close behind the boat and is already big in the frame;
+# at RIDER_ZOOM the Kickoff party's surfer came out as a torso. Owner, 6 Oct
+# 2026: "if wakesurfing then we need not to zoom in 4x, just lessen it
+# slightly". 25% less: a portrait clip goes from 4x to 3x. Used for a rider
+# shot whose clip is tagged activity "wakesurfing" in its own "files" entry or
+# on its charter or outing (rider_zoom).
+WAKESURF_ZOOM = 2.25
+WAKESURF_WORDS = {"wakesurfing", "wake surfing", "wakesurf", "wake surf"}
+
+def wakesurf_trip(folder):
+    """A charter or outing tagged wakesurfing: its _media-tags.json entry, or its folder name."""
+    if not folder: return False
+    try: t = json.load(open(TAGS, encoding="utf-8"))["charters"].get(folder) or {}
+    except Exception: t = {}
+    groups = re.findall(r"\(([^)]*)\)", folder)
+    words = {w.strip().lower() for w in (groups[-1].split(",") if groups else [])}
+    return "wakesurfing" in t.get("activities", []) or bool(words & WAKESURF_WORDS)
+
+def rider_zoom(clip):
+    """RIDER_ZOOM, or WAKESURF_ZOOM when the rider's clip is a wake surf."""
+    if "wakesurfing" in (file_tag(clip).get("activities") or []): return WAKESURF_ZOOM
+    return WAKESURF_ZOOM if wakesurf_trip(trip_of(clip)) else RIDER_ZOOM
 
 def cover(w, h):
     fit = min(WC / w, HC / h); return max(WC / (w * fit), HC / (h * fit)), fit
@@ -333,7 +355,7 @@ def trip_kind(folder):
     if "bachelor-bachelorette" in pk: return "bachelorette"
     if "birthday" in pk: return "birthday"
     if pk & {"night-cruise", "boatz-and-glowz"} and not pk & {"tubing-wakeboarding"}: return "night"
-    if "tubing-wakeboarding" in pk or act & {"tubing", "wakeboarding"}: return "riding"
+    if "tubing-wakeboarding" in pk or act & {"tubing", "wakeboarding", "wakesurfing"}: return "riding"
     if "party-cove" in pk or "dancing" in act: return "party"
     if pk or act: return "family"
     return next((v for k, v in TYPE.items() if folder.startswith(k)), "family")
@@ -400,7 +422,7 @@ def plan(folder, moments, used):
             lo, hi = max(0.0, s["a"] - 0.25), min(s["dur_clip"], s["b"] + 0.25)
             frm = min(max(s["t"] - dur / 2, lo), max(lo, hi - dur))
             frm = max(0.0, min(frm, s["dur_clip"] - dur - 0.05))
-            if s["kind"] == "rider": sc, x, y = place(s["file"], *s["uv"], z=RIDER_ZOOM)
+            if s["kind"] == "rider": sc, x, y = place(s["file"], *s["uv"], z=rider_zoom(s["file"]))
             else: sc, x, y = place(s["file"])
             sh.update({"file": s["file"], "from": round(frm, 3), "scale": sc, "x": x, "y": y, "kind": s["kind"], "still": s.get("still")})
         why = repeats(shots, sh, s["kind"])  # owner, 6 Oct 2026: "the same media used twice"

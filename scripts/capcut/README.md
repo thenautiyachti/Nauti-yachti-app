@@ -39,7 +39,10 @@ capcut-cli's `bg-blur` writes a canvas CapCut 9.5
 does not render, hence `blur-bars.js`. Its `uniform_scale` keyframe writes the
 key UNIFORM_SCALE, which CapCut 9.5 ignores too: build-from-plan.js writes
 scale_x + scale_y (KFTypeScaleX/Y) instead, and since 5 Oct 2026 only riders are
-zoomed (RIDER_ZOOM in plan_recaps.py, rider shots capped at four beats).
+zoomed (RIDER_ZOOM in plan_recaps.py, rider shots capped at four beats; since
+6 Oct 2026 WAKESURF_ZOOM, 25% less, for a clip tagged activity `wakesurfing`:
+plan_recaps.rider_zoom). A night cut drops a file whose `files` entry says
+`"night": false`, and any frame under a bright blue sky (plan_themes.looks_night).
 
     python find_riders.py "<charter>"                  # wake frames on gridded review sheets
     python find_riders.py "<charter>" --make "<clip>@<s>@<u>,<v>" ...   # rider stills into Completed
