@@ -32,7 +32,14 @@ if (!want) say(1, { error: "usage: node recap-charter.js \"<charter folder>\"" }
 // a bare /NDA/ matched "KuykeNDAll" and kept Sara Kuykendall's charter from ever
 // getting a recap.
 const RESTRICTED = /\bNDA\b|NO MEDIA|DO NOT POST|NOT FOR (?:POST|PUBLIC|USE)|\bNOT USED?\b/i;
-const matches = fs.readdirSync(CHARTERS).filter((f) => f.toLowerCase().includes(want.toLowerCase()) && !RESTRICTED.test(f));
+// Outings too (owner, 6 Oct 2026): "If you ever decide to make media in the
+// _outings folder it should follow the same logic... keeping it in its
+// respective completed folder." An outing is named "<date> Outing (tags)", so
+// its draft is "<date> Outing recap (Claude)"; locate_moments and plan_recaps
+// already resolve either tree (folder_dir).
+const OUTINGS = path.join(path.dirname(CHARTERS), "_outings");
+const matches = [CHARTERS, OUTINGS].flatMap((d) => fs.readdirSync(d))
+  .filter((f) => f.toLowerCase().includes(want.toLowerCase()) && !RESTRICTED.test(f));
 if (matches.length !== 1) say(1, { error: matches.length ? "more than one charter matches: " + matches.join(" | ") : "no charter folder matches " + want });
 const folder = matches[0];
 
