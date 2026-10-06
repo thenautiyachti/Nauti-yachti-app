@@ -60,9 +60,20 @@ const wrap = (s) => {
   const sp = [...s.matchAll(/ /g)].map((m) => m.index).sort((a, b) => Math.abs(a - s.length / 2) - Math.abs(b - s.length / 2))[0];
   return sp ? s.slice(0, sp) + "\n" + s.slice(sp + 1) : s;
 };
-cc(["add-text", PROJ, "0s", Math.min(plan.song.length, Math.max(first.dur, 2.5)).toFixed(3) + "s", wrap(plan.hook), "--font-size", "13", "--color", "#FFFFFF", "--y", "0.62"]);
+// The title sits in the space ABOVE the picture and the end card in the space
+// BELOW it, not over the guests. Owner, 5 Oct 2026: "if its possible we can use
+// the caption in the black space either below or above the media." A 4:3 shot
+// leaves 240 px top and bottom. Both go in the TOP space: TikTok and Reels lay
+// their own caption and buttons over the bottom fifth of the screen, so text in
+// the bottom bar would be covered, and the top edge carries their tabs. y = 0.82
+// (CapCut's y is up, 1 = top edge) is inside the top bar and inside the
+// platforms' safe area. A shadow keeps white text readable over the blurred bars.
+const title = cc(["add-text", PROJ, "0s", Math.min(plan.song.length, Math.max(first.dur, 2.5)).toFixed(3) + "s", wrap(plan.hook), "--font-size", "13", "--color", "#FFFFFF", "--y", "0.82"]);
 const endDur = Math.min(plan.song.length, Math.max(last.dur, 2.5));
-cc(["add-text", PROJ, (plan.song.length - endDur).toFixed(3) + "s", endDur.toFixed(3) + "s", plan.endText, "--font-size", "11", "--color", "#FFFFFF", "--y", "-0.55"]);
+// The website is always written TheNautiYachti.com (owner, 5 Oct 2026).
+const endText = String(plan.endText).replace(/thenautiyachti\.com/i, "TheNautiYachti.com");
+const card = cc(["add-text", PROJ, (plan.song.length - endDur).toFixed(3) + "s", endDur.toFixed(3) + "s", endText, "--font-size", "11", "--color", "#FFFFFF", "--y", "0.82"]);
+for (const t of [title, card]) if (t && t.segment_id) cc(["text-style", PROJ, t.segment_id, "--shadow"]);
 cc(["register", PROJ, "--materials", "--apply"]);
 const song = JSON.parse(node("add-shelf-song.mjs", [PROJ, plan.song.id, String(plan.song.start), String(plan.song.length)]));
 cc(["audio-fade", PROJ, song.segment_id, "--fade-out", "1.2"]);
