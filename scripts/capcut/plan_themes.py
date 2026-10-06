@@ -116,7 +116,11 @@ DAY_LUMA = 80
 # warm sunset sky (red over blue by DUSK_WARM). Measured on the night folders'
 # 18 candidates, 5 Oct 2026: night 0.02-0.17 lit; daylight 0.29-0.61 lit and
 # blue to grey (red-blue -85 to -3); sunset 0.28-0.57 lit and warm (+28, +59).
-NIGHT_LIT, DUSK_WARM = 0.2, 25
+# The dark path also needs a mean luma under NIGHT_Y (night 18-79, daylight
+# 91-153): a dull, flat daytime frame has few lit pixels too (an outing at
+# Party Cove: luma 109, 0.06 lit). A place cut leaves out a frame under DARK_Y
+# (a glow night's neon at the cove: 57; its daytime clips 106-130).
+NIGHT_LIT, DUSK_WARM, NIGHT_Y, DARK_Y = 0.2, 25, 90, 70
 # Which occasion an "occasion" still shows, when its entry says ("packages"):
 # a trip tagged both bachelorette and birthday has a bride and a cake.
 OCC_PKG = {"birthday": "birthday", "bachelorette": "bachelor-bachelorette", "corporate": "corporate"}
@@ -320,7 +324,20 @@ def looks_night(path, t=None):
     own picture? Owner, 5 Oct 2026: "ensure the video is actually nighttime
     within the media. Don't just use the date of the file and time." Dark, with
     only lights, sparklers or fireworks lit, is night; bright is night only
-    under a warm sunset sky (dusk). Daylight, blue sky and bright water, is not."""
+    under a warm sunset sky (dusk). Daylight, blue sky and bright water, is not.
+    Only for candidates a night folder already put forward: sunlit brown water
+    and skin read warm too."""
+    lit, warm, y = frame_look(path, t)
+    return lit < NIGHT_LIT and y < NIGHT_Y or warm >= DUSK_WARM
+
+
+def looks_dark(path, t=None):
+    """Dark by its own picture (a glow night's neon), for keeping night out of a place cut."""
+    return frame_look(path, t)[2] < DARK_Y
+
+
+def frame_look(path, t=None):
+    """(share of the frame lit, warmth of the lit part: red minus blue, mean luma)."""
     key = (path, None if t is None else round(t, 2))
     if key not in _LOOK:
         try:
@@ -332,11 +349,12 @@ def looks_night(path, t=None):
                 im = Image.open(io.BytesIO(r.stdout)).convert("RGB")
             im.thumbnail((320, 320))
             a = np.asarray(im, np.float32)
-            lit = (a @ np.array([0.299, 0.587, 0.114], np.float32)) > 140
+            y = a @ np.array([0.299, 0.587, 0.114], np.float32)
+            lit = y > 140
             warm = float(a[lit][:, 0].mean() - a[lit][:, 2].mean()) if lit.any() else 0.0
-            _LOOK[key] = bool(lit.mean() < NIGHT_LIT or warm >= DUSK_WARM)
+            _LOOK[key] = (float(lit.mean()), warm, float(y.mean()))
         except Exception:
-            _LOOK[key] = False  # unreadable: not shown as night
+            _LOOK[key] = (1.0, -999.0, 255.0)  # unreadable: neither night nor dark
     return _LOOK[key]
 
 
@@ -405,9 +423,11 @@ def best_shots(folder, ms, rule, held, loc=None, slug=None):
     if rule == "riding": clips.sort(key=lambda s: (s["kind"] != "rider", -span(s) * jitter()))
     elif rule == "occasion": clips.sort(key=lambda s: (s.get("role") != "occasion", -span(s) * jitter()))
     else: clips.sort(key=lambda s: -span(s) * jitter())
-    if slug in PLACES:  # Coral's finished clips named for the place ("2024-06-01_the-island_9x16.mp4")
+    if slug in PLACES:  # Coral's finished clips named for the place ("2024-06-01_the-island_9x16.mp4"),
+        # in daylight: a place cut shows the place (a glow night's neon at the cove does not)
         clips += [c for c in finished_clips(folder, held) if re.search(PLACE_WORD[slug], os.path.basename(c["file"]), re.I)
-                  and not re.search(r"tub|wake", os.path.basename(c["file"]), re.I) and ok([file_entry(c["file"])])]
+                  and not re.search(r"tub|wake", os.path.basename(c["file"]), re.I) and ok([file_entry(c["file"])])
+                  and not looks_dark(c["file"], clip_seconds(c["file"]) * 0.4)]
     clips += [{"kind": "photo", "file": p, "role": roles[p]} for p in lead]
     for s in clips: s["charter"] = folder
     # Photos actually taken (not frames pulled from video) can fill a thin cut.

@@ -50,8 +50,10 @@ RECENT_DAYS = 7
 HOOK = {"riding": "Day on the water, Lake Conroe", "party": "Party day on Lake Conroe", "bachelorette": "Bachelorette on Lake Conroe",
         "birthday": "Birthday on the water", "family": "Family day on Lake Conroe", "night": "Night cruise on Lake Conroe"}
 # No "glitch" or "mosaic" (owner, 5 Oct 2026, question 13): they flash a black or
-# pixelated frame mid-video. plan_themes.py uses this list too.
-TRANS = ["pull-in", "white-flash", "split-iv", "slide", "whirlpool", "radial-blur", "shutter", "flip-ii", "blocks", "woosh"]
+# pixelated frame mid-video. Nor "blocks" (black strips and pixel noise) or
+# "flip-ii" (a small card on black), caught on the rebuilt theme cuts' contact
+# sheets the same evening, for the same reason. plan_themes.py uses this list too.
+TRANS = ["pull-in", "white-flash", "split-iv", "slide", "whirlpool", "radial-blur", "shutter", "woosh"]
 END = "Book your day\nthenautiyachti.com"
 TARGET_SHOT, MAX_SHOTS, MAX_LEN = 2.6, 16, 45.0
 PHOTO = re.compile(r"\.(jpe?g|png)$", re.I)

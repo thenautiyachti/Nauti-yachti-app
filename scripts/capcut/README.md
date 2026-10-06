@@ -117,8 +117,9 @@ kept for their own cuts. Across themes: no song a '(Claude)' draft used in the
 last 7 days while the list has another, night songs up-tempo first [11, 5]; a
 clip another theme used in a draft built in the last 7 days (`clips` in
 themes-built.json) or planned earlier in the run never goes in ("no-repeat
-wins"), and within a cut one moment per clip comes first [12]; no "glitch" or
-"mosaic" transitions [13]. `--rebuild <slugs>` replaces those themes' cuts:
+wins"), and within a cut one moment per clip comes first [12]; no "glitch",
+"mosaic", "blocks" or "flip-ii" transitions, which flash black or pixelated
+frames [13]; a place cut's finished clips are daylight ones. `--rebuild <slugs>` replaces those themes' cuts:
 their own records and today's drafts stop counting. Themes are planned in
 THEMES order (tubing, night, places, glow, cruising, occasions last).
 doNotUse and timeRestricted files never go in. A theme with fewer than four
