@@ -84,6 +84,18 @@ if (picking) {
 
 let state = {};
 try { state = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch { /* first run */ }
+// A theme whose cut the owner approved is LOCKED ("locked": true in
+// themes-built.json): the change-driven run never rebuilds it; only naming its
+// slug does, and the daily --pick still makes fresh cuts of it. Owner, 5 Oct
+// 2026, on Boatz & Glowz: "looks good". Without this, the next plain run would
+// have rebuilt the cut he had just approved.
+if (!picking) {
+  const named = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+  const locked = out.plans.filter((p) => (state[p.theme] || {}).locked && !named.includes(p.theme)).map((p) => p.theme);
+  out.plans = out.plans.filter((p) => !locked.includes(p.theme));
+  out.locked = locked;
+  if (!out.plans.length) say(2, { skipped: "nothing changed", unchanged: out.unchanged, thin: out.thin, locked });
+}
 const built = [], failed = [];
 for (const p of out.plans) {
   const plan = JSON.parse(fs.readFileSync(p.file, "utf8"));
