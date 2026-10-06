@@ -35,7 +35,8 @@ tubed out on open water, not in the cove. So (owner's answers, 5 Oct 2026):
     tubing only: every moment of a clip that has a rider moment (that clip is a
     tow). A tube or a mat at the stop is fine, and so are shots under way
     (questions 8, 9). A file with its own _media-tags.json "files" entry goes
-    only in the places it lists, and never with "tubing" (place_ok). A place
+    only in the places it lists, in swim stop only with "swimming", and never
+    with "tubing" (place_ok). A place
     cut opens on its best _scenery moment, charters before outings (question 7);
   * the riding cut takes riders, and people shots only to fill it out;
   * night: the folder decides, not the clock (questions 1, 6). Every clip in a
@@ -188,6 +189,7 @@ def sources(tags, rule, moments):
     is not counted until it does, and the theme is rebuilt then."""
     held = do_not_use()
     loc = next((PLACE_LOC[t] for t in tags if t in PLACE_LOC), None) if rule == "place" else None
+    if rule == "place" and "swim stop" in tags: loc = "swimming"  # the swim stop is an activity, not a place
     per = {f: best_shots(f, moments.get(f, []), rule, held, loc) for f in trips_for(tags, rule)}
     return {f: v for f, v in per.items() if v[0] or v[1]}
 
@@ -224,14 +226,18 @@ def file_entry(path):
 
 
 def place_ok(entries, loc):
-    """Per-file places (owner, 5 Oct 2026, on the Island cut): a folder tagged
-    with several places must not feed every clip into every place cut. A file
-    with its own entry goes only in the places its own "locations" list (the
-    still's entry first, then its clip's); "tubing" in its activities is active
-    tubing, never in a place or swim-stop cut. No entry: the folder decides."""
+    """Per-file places (owner, 5 Oct 2026, reviewing the Island and Dam cuts): a
+    folder tagged with several places must not feed every clip into every place
+    cut. A file with its own entry (the still's first, then its clip's) goes
+    only in the place cuts its own "locations" list ("open-water" is none of
+    them), and in the swim-stop cut (loc "swimming") only when its own
+    "activities" say swimming; a swim stop AT the Dam lists both and feeds both.
+    "tubing" in its activities is active tubing, never in a place or swim-stop
+    cut. No entry: the folder's tags decide."""
     entries = [e for e in entries if e]
     if any("tubing" in e.get("activities", []) for e in entries): return False
-    return not entries or loc is None or loc in entries[0].get("locations", [])
+    if not entries or loc is None: return True
+    return loc in entries[0].get("activities" if loc == "swimming" else "locations", [])
 
 
 def best_shots(folder, ms, rule, held, loc=None):

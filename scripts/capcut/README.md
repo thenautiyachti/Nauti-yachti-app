@@ -93,8 +93,9 @@ Coral's `Making videos by theme.md`): the riding cut takes riders; place cuts
 every moment of a clip that has a rider moment, while a tube or a mat at the
 stop and shots under way stay in [8, 9]; a file with its own entry in
 `_media-tags.json` "files" (a still's entry first, then its clip's) goes only in
-the places its own "locations" list, and "tubing" in its activities keeps it out
-of every place and swim-stop cut, so a folder tagged with several places no
+the places its own "locations" list, in the swim-stop cut only when its own
+"activities" say "swimming" (a swim stop at the Dam lists both and may feed
+both), and "tubing" in its activities keeps it out of every place and swim-stop cut, so a folder tagged with several places no
 longer feeds every clip into every place (his review of the Island cut, 5 Oct
 2026); without an entry the folder's tags decide; Party Cove, the Dam and the Island open
 on the place's best `_scenery` moment (a Completed still named
