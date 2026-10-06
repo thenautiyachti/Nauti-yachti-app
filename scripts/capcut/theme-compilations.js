@@ -4,6 +4,11 @@
 //   node theme-compilations.js --all    rebuild every theme (only when he asks)
 //   node theme-compilations.js swim-stop   rebuild one theme (its last song is avoided)
 //   node theme-compilations.js --pick   one theme at random, tubing weighted x3, a fresh shuffled cut
+//   node theme-compilations.js --rebuild party-cove the-dam
+//                                       replace those themes' cuts: owner, 5 Oct 2026, "a cut
+//                                       being replaced does not count", so their earlier
+//                                       drafts' clips and today's songs are free again; clips
+//                                       within this run still never repeat
 //
 // One CapCut draft per theme, "Party Cove compilation 2026-10-03 (Claude)", cut
 // from every charter carrying that tag and then his outings, to a song from his
@@ -49,7 +54,7 @@ if (shelf.status !== 0) say(1, { error: "read_shelf.py failed: " + (shelf.stderr
 // is a fresh cut even when its trips have not changed. A thin theme is set aside
 // and another drawn. Keep SLUGS in step with THEMES in plan_themes.py.
 const SLUGS = ["tubing-wakeboarding", "party-cove", "the-dam", "the-island", "swim-stop",
-  "birthday", "bachelorette", "boatz-and-glowz", "night-cruise", "corporate"];
+  "birthday", "bachelorette", "boatz-and-glowz", "night-cruise", "cruising", "corporate"];
 const WEIGHT = { "tubing-wakeboarding": 3 };
 const picking = process.argv.includes("--pick");
 let out = null;
@@ -70,7 +75,8 @@ if (picking) {
   // Theme slugs on the command line ("swim-stop") rebuild just those, as when he
   // asks for one theme again with a different song.
   const only = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-  const planned = run(PY, ["plan_themes.py"].concat(process.argv.includes("--all") ? ["--all"] : [], only));
+  const flags = ["--all", "--rebuild"].filter((f) => process.argv.includes(f));
+  const planned = run(PY, ["plan_themes.py"].concat(flags, only));
   out = planned.status === 0 ? lastJson(planned.stdout) : null;
   if (!out) say(1, { error: "plan_themes.py failed: " + (planned.stderr || planned.stdout).slice(-300) });
   if (!out.plans.length) say(2, { skipped: "nothing changed", unchanged: out.unchanged, thin: out.thin });
@@ -94,10 +100,13 @@ for (const p of out.plans) {
   // A second build the same day (its shots changed since the first): never
   // touch the first, which he may have opened and changed. Number the new one,
   // "Party Cove compilation 2026-10-03 v2 (Claude)".
+  // plan_themes.py numbers it already; this is the fallback. The renamed plan
+  // goes to its own file, so the first build's plan is kept.
   if (fs.existsSync(path.join(STORE, plan.name))) {
     let n = 2, name;
     do { name = plan.name.replace(/ \(Claude\)$/, ` v${n++} (Claude)`); } while (fs.existsSync(path.join(STORE, name)));
     plan.name = name;
+    p.file = path.join(path.dirname(p.file), name.replace(/[^\w.-]+/g, "_") + ".json");
     fs.writeFileSync(p.file, JSON.stringify(plan, null, 1));
   }
   const b = run(process.execPath, [path.join(HERE, "build-from-plan.js"), p.file]);

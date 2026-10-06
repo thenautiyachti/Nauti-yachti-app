@@ -162,7 +162,7 @@ def choose_song(names, used, avoid=()):
 def pick_song(kind, used):
     return choose_song(SONGS[kind], used, {used.get("last")})
 
-def song_history():
+def song_history(skip=()):
     """Songs already used by Claude-built drafts in his CapCut library.
 
     Each scheduled run plans one charter, so a per-run counter would pick the
@@ -170,13 +170,16 @@ def song_history():
     the shelf songs on every '(Claude)' draft, and note the newest one's song so
     it is not used twice in a row. "_recent" holds each song used by a draft
     modified in the last RECENT_DAYS, with that draft's time.
+
+    skip: draft-name prefixes left out, the drafts a rebuild replaces (owner,
+    5 Oct 2026: "a cut being replaced does not count").
     """
     store = os.path.join(os.environ["LOCALAPPDATA"], "CapCut", "User Data", "Projects", "com.lveditor.draft")
     used, newest, recent = {}, (0, None), {}
     since = time.time() - RECENT_DAYS * 86400
     for n in os.listdir(store) if os.path.isdir(store) else []:
         f = os.path.join(store, n, "draft_content.json")
-        if "(Claude)" not in n or not os.path.exists(f): continue
+        if "(Claude)" not in n or not os.path.exists(f) or n.startswith(tuple(skip)): continue
         try: d = json.load(open(f, encoding="utf-8"))
         except Exception: continue
         mt = os.path.getmtime(f)
@@ -190,6 +193,18 @@ def song_history():
     used["_recent"] = recent
     return used
 
+_FT = None
+def file_tag(path):
+    """A file's own entry in _media-tags.json "files" (keyed by its path under
+    Photos, forward slashes), or {}."""
+    global _FT
+    if _FT is None:
+        try: _FT = json.load(open(TAGS, encoding="utf-8")).get("files", {})
+        except Exception: _FT = {}
+    try: rel = os.path.relpath(path, os.path.dirname(TAGS)).replace("\\", "/")
+    except ValueError: return {}
+    return _FT.get(rel) or {}
+
 def shots_for(folder, moments):
     base = folder_dir(folder); done = os.path.join(base, "Completed")
     out = []
@@ -197,6 +212,13 @@ def shots_for(folder, moments):
         span = m["b"] - m["a"]
         if span < 1.0: continue
         sh = {"kind": m["kind"], "file": m["clip"], "t": m["t"], "a": m["a"], "b": m["b"], "dur_clip": m["dur"], "still": m["still"]}
+        # A still's "role" in its _media-tags.json entry (5 Oct 2026): "scenery",
+        # the place's wide shot a place cut opens on, or "occasion", the bride,
+        # the hats, the cake. Tagged rather than renamed, so the guests' trip
+        # pages keep their file names. "_scenery" in the name still counts.
+        role = file_tag(os.path.join(done, m["still"])).get("role")
+        if role: sh["role"] = role
+        if role == "scenery" and m["kind"] != "rider": sh["kind"] = "scenery"
         if m["kind"] == "rider":
             crop = os.path.join(done, m["still"]); b = m["still"].replace("_rider", "")
             basep = next((p for p in (os.path.join(done, b), os.path.join(base, "_from video", b)) if os.path.exists(p)), None)
@@ -209,8 +231,11 @@ def shots_for(folder, moments):
     merged = []
     for s in out:
         if merged and merged[-1]["file"] == s["file"] and abs(merged[-1]["t"] - s["t"]) < 2.5:
-            if (s["b"] - s["a"]) > (merged[-1]["b"] - merged[-1]["a"]) or s["kind"] == "rider" \
-                    or (s["kind"] == "scenery" and merged[-1]["kind"] == "people"): merged[-1] = s
+            cur = merged[-1]
+            if s["kind"] != "rider" and cur.get("role") and not s.get("role"): continue  # a tagged moment is kept
+            if (s["b"] - s["a"]) > (cur["b"] - cur["a"]) or s["kind"] == "rider" \
+                    or (s.get("role") and not cur.get("role") and cur["kind"] != "rider") \
+                    or (s["kind"] == "scenery" and cur["kind"] == "people"): merged[-1] = s
         else: merged.append(s)
     # photos that were taken, not pulled from video, fill thin charters
     # Stills fill thin charters: photos actually taken first, then the punched-in

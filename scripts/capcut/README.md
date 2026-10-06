@@ -98,19 +98,29 @@ the places its own "locations" list, in the swim-stop cut only when its own
 both), and "tubing" in its activities keeps it out of every place and swim-stop cut, so a folder tagged with several places no
 longer feeds every clip into every place (his review of the Island cut, 5 Oct
 2026); without an entry the folder's tags decide; Party Cove, the Dam and the Island open
-on the place's best `_scenery` moment (a Completed still named
-`<clip>_tNNNN_scenery.jpg`, kind "scenery" in moments.json, never zoomed),
-charters before outings [7]; the night cut takes everything in a folder tagged
-night cruise or fireworks (by name, or "fireworks" in `_media-tags.json`
-activities), its finished clips and its photos named as night shots, and any
-"firework" file elsewhere: the folder decides, not the clock [1, 4, 6]; the
-glow cut is the whole event, daytime pre-party first, then the night, by clip
-time or else brightness [15]; occasion cuts (birthday, bachelorette, corporate)
-take any shot. Across themes: no song a '(Claude)' draft used in the last 7 days
-while the list has another, night songs up-tempo first [11, 5]; clips another
-theme used in a draft built in the last 7 days (`clips` in themes-built.json)
-go to the back, other trips' clips first and a repeat only if the cut would be
-thin [12]; no "glitch" or "mosaic" transitions [13].
+on the place's best scenery moment (a Completed still whose "files" entry has
+`"role": "scenery"`, or one named `<clip>_tNNNN_scenery.jpg`; tagged, not
+renamed, so the trip pages keep their names; never zoomed), charters before
+outings [7], and may use Coral's finished clips named for the place; the night
+cut searches every folder tagged night cruise or fireworks (by name, or in
+`_media-tags.json`), its finished clips and its photos named as night shots,
+and any "firework" file elsewhere, and keeps only shots whose own frame reads
+as evening or night: dark, or bright under a warm sunset sky (`looks_night`;
+owner: "ensure the video is actually nighttime within the media") [1, 4, 6];
+the glow cut is the whole event, daytime pre-party first, then the night, by
+clip time or else brightness [15]; cruising takes folders and files tagged
+activity "cruising", never active tubing; occasion cuts (birthday,
+bachelorette, corporate) lead with stills whose entry has `"role": "occasion"`
+("packages" says which occasion on a two-occasion trip), then at most twice as
+many of those trips' other moments, never a tow. Scenery and occasion clips are
+kept for their own cuts. Across themes: no song a '(Claude)' draft used in the
+last 7 days while the list has another, night songs up-tempo first [11, 5]; a
+clip another theme used in a draft built in the last 7 days (`clips` in
+themes-built.json) or planned earlier in the run never goes in ("no-repeat
+wins"), and within a cut one moment per clip comes first [12]; no "glitch" or
+"mosaic" transitions [13]. `--rebuild <slugs>` replaces those themes' cuts:
+their own records and today's drafts stop counting. Themes are planned in
+THEMES order (tubing, night, places, glow, cruising, occasions last).
 doNotUse and timeRestricted files never go in. A theme with fewer than four
 usable shots is reported as thin and not built (Corporate, as of 5 Oct 2026).
 Drafts are dated, "Party Cove compilation 2026-10-03 (Claude)",
