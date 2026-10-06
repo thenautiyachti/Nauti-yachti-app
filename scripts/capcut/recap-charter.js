@@ -1,6 +1,9 @@
 // Coral's one-step CapCut recap for a single charter (added 2 Oct 2026).
 //
 //   node recap-charter.js "<charter folder, or a unique part of it>"
+//   node recap-charter.js "<charter folder>" --rebuild   a new "... recap vN (Claude)"
+//        draft beside the old one (the old draft is never touched), for a charter
+//        that gained stills or whose recap had to be redone; file it as _recap-vN.
 //
 // Run AFTER the charter's Completed folder is curated: the recap is built from
 // the stills Coral promoted there (found in their clips, held only while the
@@ -26,7 +29,8 @@ const CHARTERS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos
 const say = (code, obj) => { console.log(JSON.stringify(obj)); process.exit(code); };
 const run = (cmd, args) => spawnSync(cmd, args, { cwd: HERE, encoding: "utf8", env: { ...process.env, PYTHONIOENCODING: "utf-8" }, maxBuffer: 1 << 26 });
 
-const want = process.argv[2];
+const REBUILD = process.argv.includes("--rebuild");
+const want = process.argv.slice(2).find((a) => !a.startsWith("--"));
 if (!want) say(1, { error: "usage: node recap-charter.js \"<charter folder>\"" });
 // The crew's restricted-folder guard (Crew\_Scripts\media-guard.js), anchored:
 // a bare /NDA/ matched "KuykeNDAll" and kept Sara Kuykendall's charter from ever
@@ -49,8 +53,12 @@ if (!fs.existsSync(path.join(STORE, "media shelf", "draft_content.json")))
   say(1, { error: "the Music shelf project ('media shelf') is missing from CapCut" });
 
 const date = folder.slice(0, 10), who = folder.slice(11).replace(/\s*\(.*$/, "").split(" + ")[0].trim();
-const name = `${date} ${who} recap (Claude)`;
-if (fs.existsSync(path.join(STORE, name))) say(2, { skipped: "already built", draft: name });
+let name = `${date} ${who} recap (Claude)`;
+if (fs.existsSync(path.join(STORE, name))) {
+  if (!REBUILD) say(2, { skipped: "already built", draft: name });
+  for (let n = 2; fs.existsSync(path.join(STORE, name)); n++) name = `${date} ${who} recap v${n} (Claude)`;
+}
+process.env.RECAP_NAME = name;  // plan_recaps.py names the plan (and so the draft) after it
 
 for (const [script, args] of [["read_shelf.py", []], ["locate_moments.py", [folder]], ["plan_recaps.py", [folder]]]) {
   const r = run(PY, [script, ...args]);

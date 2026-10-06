@@ -270,7 +270,14 @@ TAGS = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\_media-t
 # two riders from one clip still meet the gap rule. A skipped shot makes the cut
 # shorter: never a repeat to fill the song.
 REPEAT_GAP = 3.0
+OTHER_RIDERS = 3  # rider shots at most in a recap of a trip that is not a riding trip (plan)
 LOOKALIKE = 24.0  # mean |diff| of 24x24 grey frames, 0-255. Island repeat: ~12-20; other shots of a trip: 40+.
+# Two PHOTOS of one trip are held to a looser bar, and a photo is also compared
+# by its centre square: Completed folders hold one picture under two names and
+# shapes (Alexis Guidry's "group-in-the-water" is a Facebook photo renamed: 0.4
+# by centre square; Toshia Mills's family photo as a 4x5 crop and in full: 33.5
+# full frame). Different photos of one day scored 39 and up (6 Oct 2026).
+PHOTO_LOOKALIKE = 38.0
 
 def too_close(placed, file, frm, dur, gap=REPEAT_GAP):
     """A placed shot of the same file whose source span overlaps [frm, frm+dur] or
@@ -286,13 +293,15 @@ def trip_of(path):
     return None
 
 def look(path, frm=0.0, dur=0.0, image=False, n=4):
-    """Small grey frames across a shot's source span (one for a photo)."""
+    """Small grey frames across a shot's source span (a photo: whole and centre square)."""
     out = []
+    vfs = ["scale=24:24,format=gray", "crop=min(iw\\,ih):min(iw\\,ih),scale=24:24,format=gray"] if image else ["scale=24:24,format=gray"]
     for k in range(1 if image else n):
         ss = [] if image else ["-ss", "%.3f" % (frm + dur * (k + 0.5) / n)]
-        r = subprocess.run(["ffmpeg", "-v", "error"] + ss + ["-i", path, "-frames:v", "1", "-vf", "scale=24:24,format=gray",
-                            "-f", "rawvideo", "-"], capture_output=True)
-        if len(r.stdout) == 576: out.append(np.frombuffer(r.stdout, np.uint8).astype(float))
+        for vf in vfs:
+            r = subprocess.run(["ffmpeg", "-v", "error"] + ss + ["-i", path, "-frames:v", "1", "-vf", vf,
+                                "-f", "rawvideo", "-"], capture_output=True)
+            if len(r.stdout) == 576: out.append(np.frombuffer(r.stdout, np.uint8).astype(float))
     return out
 
 def lookalike(a, b, th=LOOKALIKE):
@@ -306,7 +315,8 @@ def repeats(placed, sh, kind):
     sh["_look"] = look(sh["file"], sh["from"], sh["dur"], sh.get("image"))
     for p in placed:
         if kind == "rider" and p.get("_kind") == "rider": continue
-        if trip and trip_of(p["file"]) == trip and lookalike(p.get("_look"), sh["_look"]):
+        th = PHOTO_LOOKALIKE if sh.get("image") and p.get("image") else LOOKALIKE
+        if trip and trip_of(p["file"]) == trip and lookalike(p.get("_look"), sh["_look"], th):
             return "looks like %s @%.1f" % (os.path.basename(p["file"]), p["from"])
     return None
 
@@ -331,6 +341,16 @@ def trip_kind(folder):
 def plan(folder, moments, used):
     kind = trip_kind(folder)
     clips, photos = shots_for(folder, moments)
+    if kind != "riding":
+        # Riders lead a RIDING recap. On any other trip they are part of the day,
+        # not all of it: the Kickoff party's first recap (6 Oct 2026), titled for
+        # a bachelorette, spent 22 of its 35 seconds on one wake-surfer because
+        # every riding clip had a rider still. "An occasion cut must show the
+        # occasion, not the day" (owner, 5 Oct 2026). Keep the longest-held few.
+        riders = sorted((s for s in clips if s["kind"] == "rider"), key=lambda s: -(s["b"] - s["a"]))
+        extra = {id(s) for s in riders[OTHER_RIDERS:]}
+        clips = [s for s in clips if id(s) not in extra]
+        photos = [p for p in photos if "_rider" not in os.path.basename(p)]  # not back in as fill photos
     if len(clips) + len(photos) < 3: return None
     song = pick_song(kind, used)
     bpm_beat = 60.0 / (song["bpm"] or 100)
@@ -403,6 +423,7 @@ if __name__ == "__main__":
         if folder.startswith("2026-09-06 Oscar"): continue  # hand-built today
         p = plan(folder, moments[folder], used)
         if not p: print("skip (too little):", folder); continue
+        if os.environ.get("RECAP_NAME"): p["name"] = os.environ["RECAP_NAME"]  # recap-charter.js --rebuild: "... recap v2 (Claude)"
         fn = os.path.join(HERE, "plans", re.sub(r"[^\w.-]+", "_", p["name"]) + ".json")
         json.dump(p, open(fn, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
         print("%-44s %-12s %-22s %5.1fs %2d shots (%d rider, %d photo)" % (p["name"][:44], p["kind"], p["song"]["name"][:22], p["song"]["length"], len(p["shots"]),
