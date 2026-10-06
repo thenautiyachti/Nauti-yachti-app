@@ -136,7 +136,9 @@ so a rebuild never overwrites one he has edited. He exports them into
 - In: riders, group shots, anything exciting, people having fun. Out: phones,
   dash close-ups, the swing away.
 - Music only from his shelf (CapCut Commercial only), copied as CapCut's own
-  entry so the licence travels with it. Fun, energetic or trending, matched to
+  entry so the licence travels with it. A shelf song CapCut will not export
+  without Pro (its Export button reads "Join Pro to export"; "I'll Never Let You
+  Go", 5 Oct 2026) goes in `PRO_ONLY` in plan_recaps.py and is never chosen. Fun, energetic or trending, matched to
   the trip. Every cut on the song's beat; the video is cut to the song.
 - Never: a restricted folder (NDA, NOT FOR USE, Not used), `_Unsorted`, a file
   on doNotUse (the held nudity clips among them), or a previous compilation.

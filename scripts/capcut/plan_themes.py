@@ -169,7 +169,7 @@ THEMES = [
     ("cruising", "Cruising the lake", {"cruising"}, "Cruising Lake Conroe",
      ["Ibiza Aura", "BLUE AURA FUNK", "Yes Daddy", "Tropical Beach Vibes", "AIN'T GONNA STOP"], "cruising"),
     ("birthday", "Birthday", {"birthday"}, "Birthdays on the water",
-     ["Milky Way", "Tropical Beach Vibes", "All of Me", "I'll Never Let You Go"], "occasion"),
+     ["Milky Way", "Tropical Beach Vibes", "All of Me", "ESSA MINA PERIGOSA", "Unstoppable"], "occasion"),  # "I'll Never Let You Go" needs Pro to export
     ("bachelorette", "Bachelor & Bachelorette", {"bachelorette", "bachelor", "bachelor or bachelorette"}, "Bachelorette on Lake Conroe",
      ["Yes Daddy", "All of Me", "Milky Way", "Ibiza Aura"], "occasion"),
     ("corporate", "Corporate", {"corporate"}, "Team day on Lake Conroe",

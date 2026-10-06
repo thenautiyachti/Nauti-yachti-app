@@ -44,6 +44,9 @@ SONGS = {
     "night": ["DAT GAT", "Smoke", "FOCUS ON THE PROCESS", "Beauty Finds Its Way"],
 }
 CALM = {"Beauty Finds Its Way"}
+# Shelf songs CapCut will not export without Pro: its Export button turns into
+# "Join Pro to export" (the 5 Oct 2026 Birthday compilation, twice). Never chosen.
+PRO_ONLY = {"I'll Never Let You Go"}
 # Owner, 5 Oct 2026 (question 11): no song another cut used within the week,
 # while the list has another. A '(Claude)' draft modified in the last 7 days counts.
 RECENT_DAYS = 7
@@ -150,8 +153,8 @@ def choose_song(names, used, avoid=()):
     (question 5); then the least used, list order breaking ties. When every
     song on the list was used this week, the one used longest ago.
     """
-    have = [n for n in names if n in SONG]
-    if not have: raise SystemExit("none of these songs is on his Music shelf: " + ", ".join(names))
+    have = [n for n in names if n in SONG and n not in PRO_ONLY]
+    if not have: raise SystemExit("none of these songs is on his Music shelf (or exportable without Pro): " + ", ".join(names))
     recent = used.setdefault("_recent", {})
     pool = [n for n in have if n not in avoid] or have
     fresh = [n for n in pool if n not in recent]
