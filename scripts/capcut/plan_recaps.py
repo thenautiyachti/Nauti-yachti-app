@@ -7,7 +7,7 @@ a vetted moment (a Completed still found in its clip) held only as long as the
 camera stays on it; riders punched in; fun/energetic/trending shelf songs only,
 matched to the trip; no song twice in a row.
 """
-import os, re, sys, json, math, subprocess
+import os, re, sys, json, math, time, subprocess
 import numpy as np
 from PIL import Image, ImageOps
 from locate_moments import folder_dir  # _By charter or _outings
@@ -38,11 +38,20 @@ SONGS = {
     "bachelorette": ["Yes Daddy", "All of Me", "Milky Way", "Ibiza Aura"],
     "birthday": ["Milky Way", "Tropical Beach Vibes", "All of Me", "I'll Never Let You Go"],
     "family": ["Tropical Beach Vibes", "Milky Way", "I'll Never Let You Go", "Unstoppable"],
-    "night": ["Smoke", "DAT GAT", "FOCUS ON THE PROCESS", "Beauty Finds Its Way"],
+    # Up-tempo first. Owner, 5 Oct 2026 (question 5): "Sometimes the sunset
+    # cruises are more of a 'lets get drunk on a boat at night' so calm music may
+    # not work." The calm one (CALM) is only taken when nothing else is left.
+    "night": ["DAT GAT", "Smoke", "FOCUS ON THE PROCESS", "Beauty Finds Its Way"],
 }
+CALM = {"Beauty Finds Its Way"}
+# Owner, 5 Oct 2026 (question 11): no song another cut used within the week,
+# while the list has another. A '(Claude)' draft modified in the last 7 days counts.
+RECENT_DAYS = 7
 HOOK = {"riding": "Day on the water, Lake Conroe", "party": "Party day on Lake Conroe", "bachelorette": "Bachelorette on Lake Conroe",
         "birthday": "Birthday on the water", "family": "Family day on Lake Conroe", "night": "Night cruise on Lake Conroe"}
-TRANS = ["pull-in", "white-flash", "split-iv", "mosaic", "slide", "whirlpool", "radial-blur", "shutter", "glitch", "flip-ii", "blocks", "woosh"]
+# No "glitch" or "mosaic" (owner, 5 Oct 2026, question 13): they flash a black or
+# pixelated frame mid-video. plan_themes.py uses this list too.
+TRANS = ["pull-in", "white-flash", "split-iv", "slide", "whirlpool", "radial-blur", "shutter", "flip-ii", "blocks", "woosh"]
 END = "Book your day\nthenautiyachti.com"
 TARGET_SHOT, MAX_SHOTS, MAX_LEN = 2.6, 16, 45.0
 PHOTO = re.compile(r"\.(jpe?g|png)$", re.I)
@@ -130,13 +139,28 @@ def song_grid(song, need):
     start = best[1] if best else (downs[0] if downs else 0)
     return times, start, beat
 
-def pick_song(kind, used):
-    for name in SONGS[kind]:
-        if name in SONG and name != used.get("last"):
-            n = used.setdefault(name, 0)
-    order = sorted([n for n in SONGS[kind] if n in SONG and n != used.get("last")], key=lambda n: used.get(n, 0))
-    name = order[0]; used[name] = used.get(name, 0) + 1; used["last"] = name
+def choose_song(names, used, avoid=()):
+    """A song from a list (his order), for a recap or a theme.
+
+    Never one in `avoid` (the song just used) while another is on the shelf; no
+    song a '(Claude)' draft used in the last RECENT_DAYS while the list has one
+    that was not (question 11); a calm song only when nothing else is left
+    (question 5); then the least used, list order breaking ties. When every
+    song on the list was used this week, the one used longest ago.
+    """
+    have = [n for n in names if n in SONG]
+    if not have: raise SystemExit("none of these songs is on his Music shelf: " + ", ".join(names))
+    recent = used.setdefault("_recent", {})
+    pool = [n for n in have if n not in avoid] or have
+    fresh = [n for n in pool if n not in recent]
+    if fresh: name = sorted(fresh, key=lambda n: (n in CALM, used.get(n, 0)))[0]
+    else: name = min(pool, key=lambda n: (n in CALM, recent[n]))
+    used[name] = used.get(name, 0) + 1; used["last"] = name
+    recent[name] = time.time()  # a later cut in this same run counts it as used this week
     return SONG[name]
+
+def pick_song(kind, used):
+    return choose_song(SONGS[kind], used, {used.get("last")})
 
 def song_history():
     """Songs already used by Claude-built drafts in his CapCut library.
@@ -144,21 +168,26 @@ def song_history():
     Each scheduled run plans one charter, so a per-run counter would pick the
     first song on the list every time. The library itself is the memory: count
     the shelf songs on every '(Claude)' draft, and note the newest one's song so
-    it is not used twice in a row.
+    it is not used twice in a row. "_recent" holds each song used by a draft
+    modified in the last RECENT_DAYS, with that draft's time.
     """
     store = os.path.join(os.environ["LOCALAPPDATA"], "CapCut", "User Data", "Projects", "com.lveditor.draft")
-    used, newest = {}, (0, None)
+    used, newest, recent = {}, (0, None), {}
+    since = time.time() - RECENT_DAYS * 86400
     for n in os.listdir(store) if os.path.isdir(store) else []:
         f = os.path.join(store, n, "draft_content.json")
         if "(Claude)" not in n or not os.path.exists(f): continue
         try: d = json.load(open(f, encoding="utf-8"))
         except Exception: continue
+        mt = os.path.getmtime(f)
         for a in d.get("materials", {}).get("audios", []):
             key = (a.get("name") or "").split("\uff08")[0].strip()
             if key in SONG:
                 used[key] = used.get(key, 0) + 1
-                if os.path.getmtime(f) > newest[0]: newest = (os.path.getmtime(f), key)
+                if mt > newest[0]: newest = (mt, key)
+                if mt >= since: recent[key] = max(recent.get(key, 0), mt)
     if newest[1]: used["last"] = newest[1]
+    used["_recent"] = recent
     return used
 
 def shots_for(folder, moments):
@@ -180,7 +209,8 @@ def shots_for(folder, moments):
     merged = []
     for s in out:
         if merged and merged[-1]["file"] == s["file"] and abs(merged[-1]["t"] - s["t"]) < 2.5:
-            if (s["b"] - s["a"]) > (merged[-1]["b"] - merged[-1]["a"]) or s["kind"] == "rider": merged[-1] = s
+            if (s["b"] - s["a"]) > (merged[-1]["b"] - merged[-1]["a"]) or s["kind"] == "rider" \
+                    or (s["kind"] == "scenery" and merged[-1]["kind"] == "people"): merged[-1] = s
         else: merged.append(s)
     # photos that were taken, not pulled from video, fill thin charters
     # Stills fill thin charters: photos actually taken first, then the punched-in

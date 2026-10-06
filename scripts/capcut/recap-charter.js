@@ -7,7 +7,8 @@
 // camera stays on them), cut to a song from the owner's Music shelf.
 //
 // Prints ONE JSON line and exits:
-//   0  {"built": "<draft name>", seconds, shots, song}   tell him it is in CapCut
+//   0  {"built": "<draft name>", plan, seconds, shots, song}   tell him it is in CapCut
+//      plan is the plan file the draft was built from: blur-bars.js --plan reads it.
 //   2  {"skipped": "already built"}                       nothing to do
 //   3  {"skipped": "CapCut is open"}                      try again next run
 //   4  {"skipped": "too little footage"}                  say so; no recap
@@ -54,4 +55,4 @@ if (!fs.existsSync(planFile)) say(1, { error: "no plan written for " + name });
 const b = run(process.execPath, [path.join(HERE, "build-from-plan.js"), planFile]);
 if (b.status !== 0) say(1, { error: "build failed: " + (b.stderr || b.stdout).slice(-300) });
 const out = JSON.parse(b.stdout.trim().split("\n").pop());
-say(0, { built: out.name, seconds: out.seconds, shots: out.shots, song: out.song, lint: out.lint });
+say(0, { built: out.name, plan: planFile, seconds: out.seconds, shots: out.shots, song: out.song, lint: out.lint });

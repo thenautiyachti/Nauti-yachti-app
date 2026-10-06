@@ -15,7 +15,8 @@
 // Photos\02 Charters\_Compilations; it goes through the queue like anything else.
 //
 // Prints ONE JSON line and exits:
-//   0  {"built": [{theme, draft, seconds, shots, trips, song}], "unchanged", "thin"}
+//   0  {"built": [{theme, draft, plan, seconds, shots, trips, song}], "unchanged", "thin"}
+//      plan is the plan file the draft was built from: blur-bars.js --plan reads it.
 //   2  {"skipped": "nothing changed", "unchanged", "thin"}
 //   3  {"skipped": "CapCut is open"}            the next run tries again
 //   1  {"error": "..."}                          report it
@@ -84,7 +85,10 @@ for (const p of out.plans) {
     // A shuffled pick has a random signature; keep the last real one, or every
     // ordinary run afterwards would see the theme as changed and rebuild it.
     const sig = picking ? (state[p.theme] || {}).signature : plan.signature;
-    state[p.theme] = { charters: plan.charters, signature: sig, song: String(plan.song.name).split("\uff08")[0].trim(), draft: plan.name, built: new Date().toISOString().slice(0, 10) };
+    // clips: what this draft used, so other themes keep off them for a week
+    // (owner, 5 Oct 2026, question 12; plan_themes.recent_clips reads it).
+    const clips = [...new Set(plan.shots.map((s) => path.basename(s.file)))];
+    state[p.theme] = { charters: plan.charters, signature: sig, song: String(plan.song.name).split("\uff08")[0].trim(), draft: plan.name, built: new Date().toISOString().slice(0, 10), clips };
     fs.writeFileSync(STATE, JSON.stringify(state, null, 1));
   };
   // A second build the same day (its shots changed since the first): never
@@ -100,7 +104,7 @@ for (const p of out.plans) {
   const r = b.status === 0 ? lastJson(b.stdout) : null;
   if (!r) { failed.push({ theme: p.theme, error: (b.stderr || b.stdout).slice(-200) }); continue; }
   record();
-  built.push({ theme: p.theme, draft: r.name, seconds: r.seconds, shots: r.shots, trips: p.charters, song: r.song, lint: r.lint });
+  built.push({ theme: p.theme, draft: r.name, plan: p.file, seconds: r.seconds, shots: r.shots, trips: p.charters, song: r.song, lint: r.lint });
 }
 if (failed.length && !built.length) say(1, { error: "every build failed", failed });
 say(0, { built, failed, unchanged: out.unchanged, thin: out.thin });

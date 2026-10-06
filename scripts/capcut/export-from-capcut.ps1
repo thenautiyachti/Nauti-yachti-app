@@ -8,10 +8,15 @@
 #
 # -Project is the project name WITHOUT " (Claude)" (searched as typed, so make it
 # specific enough that it is the first card). Prints one JSON line and exits:
-#   0  {"exported": "<path to mp4>"}       then run blur-bars.js on it
+#   0  {"exported": "<path to mp4>", "shots": "<dir>"}   then run blur-bars.js on it
 #   3  {"skipped": "CapCut is open"}        he is using it; try next run
 #   4  {"skipped": "owner active"}          input in the last 2 minutes; try again shortly
 #   1  {"error": "...", "shots": "<dir>"}   report it with the screenshots; never improvise clicks
+#
+# Screenshots (5 Oct 2026): each run keeps its own folder,
+# %TEMP%\capcut-export\<yyyyMMdd-HHmmss>-<project>, named in the JSON, so a failed
+# export in a queue keeps its evidence when the next one runs. Run folders older
+# than 7 days are removed; no other run's folder is touched.
 #
 # What it learned the hard way (5 Oct 2026):
 # - CapCut is Qt/QML and exposes no buttons to Windows automation, so clicks are
@@ -28,7 +33,7 @@
 # Two idle minutes, not ten (owner, 5 Oct 2026: "10mins is too long to wait for
 # idle, just do a couple minutes").
 param([Parameter(Mandatory = $true)][string]$Project, [int]$IdleMinutes = 2,
-      [string]$ShotDir = (Join-Path $env:TEMP "capcut-export"))
+      [string]$ShotRoot = (Join-Path $env:TEMP "capcut-export"))
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 if (-not ([System.Management.Automation.PSTypeName]'CapEx.W').Type) {
@@ -52,8 +57,10 @@ public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
 '@
 }
 [CapEx.W]::SetProcessDPIAware() | Out-Null
-New-Item -ItemType Directory -Force $ShotDir | Out-Null
-Get-ChildItem $ShotDir -Filter *.png -ErrorAction SilentlyContinue | Remove-Item -Force
+# This run's own screenshot folder; it is made only when CapCut is started.
+$safe = ($Project -replace '[^A-Za-z0-9._-]+', '_').Trim('_')
+if ($safe.Length -gt 60) { $safe = $safe.Substring(0, 60) }
+$ShotDir = Join-Path $ShotRoot ("{0}-{1}" -f (Get-Date -Format "yyyyMMdd-HHmmss"), $safe)
 $step = 0
 function Say([int]$code, $obj) { Write-Output ($obj | ConvertTo-Json -Compress); exit $code }
 
@@ -127,6 +134,12 @@ if ($ms / 60000 -lt $IdleMinutes) { Say 4 @{ skipped = "owner active"; idleMinut
 
 $videos = Join-Path $env:LOCALAPPDATA "CapCut\Videos"
 $started = Get-Date
+New-Item -ItemType Directory -Force $ShotDir | Out-Null
+# A week of evidence is kept: older run folders go, and so do loose screenshots
+# from before runs had folders of their own.
+$cutoff = (Get-Date).AddDays(-7)
+Get-ChildItem $ShotRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{8}-\d{6}-' -and $_.LastWriteTime -lt $cutoff } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+Get-ChildItem $ShotRoot -File -Filter *.png -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt $cutoff } | Remove-Item -Force -ErrorAction SilentlyContinue
 try {
   Start-Process (Join-Path $env:LOCALAPPDATA "CapCut\Apps\CapCut.exe")
   $t = 0; while (-not (Big) -and $t -lt 60) { Start-Sleep -Seconds 2; $t += 2; ClosePopups }
@@ -160,7 +173,7 @@ try {
   Shot "after-export"
   EndCapCut
   if (-not $file) { throw "no exported file appeared within 5 minutes" }
-  Say 0 @{ exported = $file }
+  Say 0 @{ exported = $file; shots = $ShotDir }
 } catch {
   try { Shot "error" } catch {}
   EndCapCut

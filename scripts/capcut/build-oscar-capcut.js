@@ -62,7 +62,7 @@ const SHOTS = [
 ];
 // Cut-type transitions only: an overlap transition eats into both neighbours,
 // and on a 1-second rider beat there is nothing to eat.
-const TRANS = ["pull-in", "white-flash", "split-iv", "mosaic", "slide", "whirlpool", "radial-blur", "shutter", "glitch", "flip-ii", "blocks", "woosh"];
+const TRANS = ["pull-in", "white-flash", "split-iv", "slide", "whirlpool", "radial-blur", "shutter", "flip-ii", "blocks", "woosh"];
 
 const initArgs = ["init", NAME, "--ratio", "9:16", "--template", TEMPLATE];
 if (DRAFTS) initArgs.push("--drafts", DRAFTS);

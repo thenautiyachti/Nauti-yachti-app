@@ -9,13 +9,33 @@ publishes anything.
 
     node theme-compilations.js --pick                          # the daily one: random theme, tubing x3, shuffled shots
     powershell -File export-from-capcut.ps1 -Project "<name>"  # CapCut's own Export, driven by position
-    node blur-bars.js <export.mp4> <out.mp4>                   # fill the 4:3 bars with a blurred copy
+    node blur-bars.js <export.mp4> <out.mp4> --plan <plan.json> [--night]   # blur the bars shot by shot
 
 `export-from-capcut.ps1` refuses while CapCut is open (3) or the PC was used in
 the last 2 minutes (4). CapCut is Qt/QML with no automation tree, so it clicks
 by position measured from CapCut's own window; promotions arrive as separate
 small windows and are closed with WM_CLOSE, but never during the export dialog
-(that is a small window too). capcut-cli's `bg-blur` writes a canvas CapCut 9.5
+(that is a small window too). Each run writes its screenshots to its own
+folder, `%TEMP%\capcut-export\<yyyyMMdd-HHmmss>-<project>`, named in its JSON
+(`shots`), so a failed export in a queue keeps its evidence; folders older than
+7 days are removed.
+
+`blur-bars.js` takes the plan the draft was built from (`theme-compilations.js`
+and `recap-charter.js` print it as `plan`). Per shot it works out where the
+picture sits (the source's display size, rotation and EXIF respected, and its
+scale, 1.0 = fitted to 1080x1920); a shot that covers the frame, such as a zoomed
+rider, is left alone. One ffmpeg pass then blurs each distinct band only during
+its own shots, inset 2 px, and keys back whatever CapCut drew into the bars that
+is not black (the title, the end card, transitions). `--night` (night cruise and
+glow cuts) measures each shot and lifts the dark ones with harvest-stills.js's
+shadow curve in the same pass: under 45 mean luma hard, under 70 gently. Exit 2:
+no bars, file the export as it is. **Exit 3: unsure, file the unblurred export.**
+Without `--plan` it still detects, but exits 3 unless the frames agree on one
+standard band. The first version measured one band for the whole video and
+painted blur over picture on cuts mixing shapes (5 Oct 2026: the Island's title
+and end card, half of every Boatz & Glowz shot, the guests in a night recap).
+
+capcut-cli's `bg-blur` writes a canvas CapCut 9.5
 does not render, hence `blur-bars.js`. Its `uniform_scale` keyframe writes the
 key UNIFORM_SCALE, which CapCut 9.5 ignores too: build-from-plan.js writes
 scale_x + scale_y (KFTypeScaleX/Y) instead, and since 5 Oct 2026 only riders are
@@ -67,13 +87,32 @@ follow for every theme that we have as well."* Themes are the tags in folder
 names (there are no theme folders), so `plan_themes.py` takes every folder whose
 tags name the theme: charters in `_By charter` first, every one before any gets
 a second shot, then his outings in `02 Charters\_outings` (he may post those and
-approves each post). Per theme: the riding cut takes riders; place cuts (Party
-Cove, the Dam, the Island, swim stop) leave riders out, since tubing happens in
-open water; night and glow cuts take only clips shot from 7:30pm by their own
-timestamp; occasion cuts (birthday, bachelorette, corporate) take any shot.
+approves each post). Per theme (his answers of 5 Oct 2026 in brackets, from
+Coral's `Making videos by theme.md`): the riding cut takes riders; place cuts
+(Party Cove, the Dam, the Island, swim stop) leave out active tubing only,
+every moment of a clip that has a rider moment, while a tube or a mat at the
+stop and shots under way stay in [8, 9]; a file with its own entry in
+`_media-tags.json` "files" (a still's entry first, then its clip's) goes only in
+the places its own "locations" list, and "tubing" in its activities keeps it out
+of every place and swim-stop cut, so a folder tagged with several places no
+longer feeds every clip into every place (his review of the Island cut, 5 Oct
+2026); without an entry the folder's tags decide; Party Cove, the Dam and the Island open
+on the place's best `_scenery` moment (a Completed still named
+`<clip>_tNNNN_scenery.jpg`, kind "scenery" in moments.json, never zoomed),
+charters before outings [7]; the night cut takes everything in a folder tagged
+night cruise or fireworks (by name, or "fireworks" in `_media-tags.json`
+activities), its finished clips and its photos named as night shots, and any
+"firework" file elsewhere: the folder decides, not the clock [1, 4, 6]; the
+glow cut is the whole event, daytime pre-party first, then the night, by clip
+time or else brightness [15]; occasion cuts (birthday, bachelorette, corporate)
+take any shot. Across themes: no song a '(Claude)' draft used in the last 7 days
+while the list has another, night songs up-tempo first [11, 5]; clips another
+theme used in a draft built in the last 7 days (`clips` in themes-built.json)
+go to the back, other trips' clips first and a repeat only if the cut would be
+thin [12]; no "glitch" or "mosaic" transitions [13].
 doNotUse and timeRestricted files never go in. A theme with fewer than four
-usable shots is reported as thin and not built (Night Cruise and Corporate, as
-of 3 Oct 2026). Drafts are dated, "Party Cove compilation 2026-10-03 (Claude)",
+usable shots is reported as thin and not built (Corporate, as of 5 Oct 2026).
+Drafts are dated, "Party Cove compilation 2026-10-03 (Claude)",
 so a rebuild never overwrites one he has edited. He exports them into
 `Photos\02 Charters\_Compilations`.
 

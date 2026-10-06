@@ -7,7 +7,8 @@ of one of that charter's own clips. This finds the clip and the exact second
 (4 fps search, brightness-normalised so a brightened night frame still matches),
 then measures the STEADY span around it: how far either side the picture stays
 close to that frame before the camera swings to the helm or the tower. Writes
-moments.json: per charter, [{clip, t, a, b, kind, still}].
+moments.json: per charter, [{clip, t, a, b, kind, still}]; kind is "rider"
+(a _rider still), "scenery" (a _scenery still) or "people".
 """
 import os, re, sys, json, subprocess
 import numpy as np
@@ -82,7 +83,10 @@ def main(filters):
             if len(fr) < 4: continue
             for f in stills:
                 rest = FROM.match(f).group("rest").lower()
-                kind = "rider" if "_rider" in rest else "people"
+                # "_scenery" (5 Oct 2026, question 7): Coral's best wide shot of a
+                # place, "<clip>_t0123_scenery.jpg". A place cut opens on it, and
+                # it is never zoomed. It is a whole frame, matched like "people".
+                kind = "rider" if "_rider" in rest else "scenery" if "_scenery" in rest else "people"
                 # A rider crop is a zoomed piece of its base frame: match the base.
                 src = os.path.join(done, f)
                 if kind == "rider":

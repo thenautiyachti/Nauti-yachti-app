@@ -78,7 +78,7 @@ for (const t of draft.tracks) {
   for (const s of t.segments) cc(["remove", PROJ, s.id]);
 }
 
-const TRANS = ["pull-in", "white-flash", "split-iv", "mosaic", "slide", "whirlpool", "radial-blur", "shutter", "glitch"];
+const TRANS = ["pull-in", "white-flash", "split-iv", "slide", "whirlpool", "radial-blur", "shutter"];
 const ids = [];
 SHOTS.forEach(([stem, from, track, zoomOverCover], i) => {
   const file = src(stem);
