@@ -21,9 +21,23 @@ async function GET(req) {
   try {
     assertDemoDatabase();
     const { prisma } = require("../../../../lib/db");
-    const { seedDemo } = require("../../../../lib/demoSeed");
-    const counts = await seedDemo(prisma, { log: () => {} });
-    return NextResponse.json({ ok: true, ...counts });
+    const { seedDemo, LOCK_KEY } = require("../../../../lib/demoSeed");
+    // One reset at a time. On 7 Oct 2026 two runs nine seconds apart collided:
+    // the second wiped and re-seeded under the first and died on a unique key.
+    // The lock row survives the wipe (seedDemo skips it) and expires after
+    // two minutes, so a crashed run cannot block tomorrow's.
+    const lock = await prisma.consoleSetting.findUnique({ where: { key: LOCK_KEY } });
+    if (lock && Date.now() - new Date(lock.value).getTime() < 120000) {
+      return NextResponse.json({ ok: false, error: "A reset is already running." }, { status: 409 });
+    }
+    const now = new Date().toISOString();
+    await prisma.consoleSetting.upsert({ where: { key: LOCK_KEY }, update: { value: now }, create: { key: LOCK_KEY, value: now } });
+    try {
+      const counts = await seedDemo(prisma, { log: () => {} });
+      return NextResponse.json({ ok: true, ...counts });
+    } finally {
+      await prisma.consoleSetting.delete({ where: { key: LOCK_KEY } }).catch(() => {});
+    }
   } catch (e) {
     console.error("[demo reset] failed:", e.message);
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
