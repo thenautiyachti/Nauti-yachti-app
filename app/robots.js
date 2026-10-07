@@ -4,6 +4,8 @@
 const { SITE_URL } = require("../lib/seo");
 
 export default function robots() {
+  // The demo copy must never be crawled (see app/layout.js).
+  if (require("../lib/demo").isDemo()) return { rules: [{ userAgent: "*", disallow: "/" }] };
   return {
     rules: [
       {

@@ -42,6 +42,8 @@ import {
   monthlyAmount, needsAmount, isFree, isRunning, deductibleMonthly, summarise, overlappingDuplicates, isPersonal, money,
 } from "../lib/subscriptions";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
+import DemoOutbox from "./DemoOutbox";
+import { isDemo } from "../lib/demo";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
 import SocialMessagesTab from "./SocialMessagesTab";
@@ -787,6 +789,7 @@ export default function AdminView({
           </div>
         )}
 
+        {tab === "overview" && isDemo() && <DemoOutbox />}
         {tab === "overview" && (
           <OverviewTab
             externalBookings={externalBookings} inquiries={inquiries} ledger={ledger}

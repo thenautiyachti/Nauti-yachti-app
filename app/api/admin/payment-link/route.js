@@ -21,7 +21,7 @@ const { isAdminAuthenticated } = require("../../../../lib/auth-guard");
 //
 // Body: { bookingId: "NY-20260906-01", amount?: 850 }
 
-const SITE = "https://www.thenautiyachti.com";
+const SITE = require("../../../../lib/demo").siteBase();  // the demo links to itself
 
 async function POST(req) {
   if (!(await isAdminAuthenticated())) {

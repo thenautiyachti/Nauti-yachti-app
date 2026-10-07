@@ -1,0 +1,776 @@
+{
+  "exportedAt": "2026-10-07",
+  "packages": [
+    {
+      "id": "tubing",
+      "name": "Tubing / Wakeboarding",
+      "pricingType": "hourly-by-vessel",
+      "unit": "Includes fuel, tube, wakeboards, ice chest with water & ice.",
+      "blurb": "If you're just wanting to cruise on the open water, seeking the thrill of tubing/wakeboarding, or having lunch on the lake with family or friends, this is your package! We will take you to some of the known hotspots on Lake Conroe such as: The Dam, The Island, Margaritaville, or even just tearing up the water and making some waves. The Nauti Yachti is available to lead Lake Conroe excursions for any type of fun planned on the water.",
+      "bulletsIntro": null,
+      "bulletsJson": null,
+      "closing": null,
+      "linkLabel": null,
+      "linkUrl": null,
+      "image": "/tubing-hero.jpg",
+      "price": null,
+      "pricePerGuest": null,
+      "fixedHours": null,
+      "durationLabel": null,
+      "eventDate": null,
+      "tiersJson": null,
+      "hourlyJson": "{\"explorer\":{\"weekday\":{\"1\":200,\"2\":400,\"3\":570,\"4\":760,\"5\":900,\"6\":1080,\"7\":1225,\"8\":1400},\"weekend\":{\"1\":220,\"2\":440,\"3\":625,\"4\":830,\"5\":1000,\"6\":1200,\"7\":1350,\"8\":1540}},\"islander\":{\"weekday\":{\"1\":150,\"2\":300,\"3\":450,\"4\":540,\"5\":675,\"6\":810,\"7\":875,\"8\":1000},\"weekend\":{\"1\":165,\"2\":330,\"3\":495,\"4\":600,\"5\":750,\"6\":875,\"7\":975,\"8\":1100}},\"yachti\":{\"weekday\":{\"1\":300,\"2\":600,\"3\":855,\"4\":1140,\"5\":1375,\"6\":1650,\"7\":1855,\"8\":2120},\"weekend\":{\"1\":330,\"2\":660,\"3\":940,\"4\":1250,\"5\":1500,\"6\":1800,\"7\":2040,\"8\":2325}}}",
+      "vesselsJson": "[\"explorer\"]",
+      "sortOrder": 1
+    },
+    {
+      "id": "birthday",
+      "name": "Birthday Party",
+      "pricingType": "hourly-by-vessel",
+      "unit": "Includes decorations, fuel, tube, wakeboards, ice chest with water & ice.",
+      "blurb": "Celebrating a memorable moment for a birthday on the water? We have you setup with complimentary party supplies & an amazing atmosphere that will have you wanting to turn up, no matter the age group! We will be happy to assist with any party setup /surprises necessary to make the experience tailored to exactly what is needed. Let us go above and beyond for your birthday needs!",
+      "bulletsIntro": null,
+      "bulletsJson": null,
+      "closing": null,
+      "linkLabel": null,
+      "linkUrl": null,
+      "image": "/fleet/birthday-party-0d8c7003.jpg",
+      "price": null,
+      "pricePerGuest": null,
+      "fixedHours": null,
+      "durationLabel": null,
+      "eventDate": null,
+      "tiersJson": null,
+      "hourlyJson": "{\"explorer\":{\"weekday\":{\"1\":200,\"2\":400,\"3\":570,\"4\":760,\"5\":900,\"6\":1080,\"7\":1225,\"8\":1400},\"weekend\":{\"1\":220,\"2\":440,\"3\":625,\"4\":830,\"5\":1000,\"6\":1200,\"7\":1350,\"8\":1540}},\"islander\":{\"weekday\":{\"1\":150,\"2\":300,\"3\":450,\"4\":540,\"5\":675,\"6\":810,\"7\":875,\"8\":1000},\"weekend\":{\"1\":165,\"2\":330,\"3\":495,\"4\":600,\"5\":750,\"6\":875,\"7\":975,\"8\":1100}},\"yachti\":{\"weekday\":{\"1\":300,\"2\":600,\"3\":855,\"4\":1140,\"5\":1375,\"6\":1650,\"7\":1855,\"8\":2120},\"weekend\":{\"1\":330,\"2\":660,\"3\":940,\"4\":1250,\"5\":1500,\"6\":1800,\"7\":2040,\"8\":2325}}}",
+      "vesselsJson": "[\"explorer\",\"islander\",\"yachti\"]",
+      "sortOrder": 2
+    },
+    {
+      "id": "bachelor",
+      "name": "Bachelor / Bachelorette",
+      "pricingType": "hourly-by-vessel",
+      "unit": "Includes decorations, fuel, tube, wakeboards, ice chest with water & ice.",
+      "blurb": "If you're wanting to turn up and get a little wild you won’t forget on the lake, this is your package. We will be able to assist with providing party supplies or any other necessary setups/surprise to make this a once in a lifetime experience. We will take you to the known hotspots for partying such as Party Cove & The Dam. The Nauti Yachti can provide a unique option of booking a charter with female captains for special occasions. These captains are known for their ability to create a welcoming atmosphere. Male captains are also available to lead Lake Conroe excursions.",
+      "bulletsIntro": null,
+      "bulletsJson": null,
+      "closing": null,
+      "linkLabel": null,
+      "linkUrl": null,
+      "image": "/fleet/bachelor-bachelorette-8aad506a.jpg",
+      "price": null,
+      "pricePerGuest": null,
+      "fixedHours": null,
+      "durationLabel": null,
+      "eventDate": null,
+      "tiersJson": null,
+      "hourlyJson": "{\"explorer\":{\"weekday\":{\"1\":200,\"2\":400,\"3\":570,\"4\":760,\"5\":900,\"6\":1080,\"7\":1225,\"8\":1400},\"weekend\":{\"1\":220,\"2\":440,\"3\":625,\"4\":830,\"5\":1000,\"6\":1200,\"7\":1350,\"8\":1540}},\"islander\":{\"weekday\":{\"1\":150,\"2\":300,\"3\":450,\"4\":540,\"5\":675,\"6\":810,\"7\":875,\"8\":1000},\"weekend\":{\"1\":165,\"2\":330,\"3\":495,\"4\":600,\"5\":750,\"6\":875,\"7\":975,\"8\":1100}},\"yachti\":{\"weekday\":{\"1\":300,\"2\":600,\"3\":855,\"4\":1140,\"5\":1375,\"6\":1650,\"7\":1855,\"8\":2120},\"weekend\":{\"1\":330,\"2\":660,\"3\":940,\"4\":1250,\"5\":1500,\"6\":1800,\"7\":2040,\"8\":2325}}}",
+      "vesselsJson": "[\"explorer\",\"islander\",\"yachti\"]",
+      "sortOrder": 3
+    },
+    {
+      "id": "night",
+      "name": "Night Cruise",
+      "pricingType": "hourly-by-vessel",
+      "unit": "Includes dinner, fuel, ice chest with water & ice.",
+      "blurb": "Do you want to experience a night out under the stars and party like you're in the club, or make an unforgettable date night, this is your package then. We have plenty of lighting, party lights, glow sticks, and music to last all night. Champagne toast provided & complimentary, dinner can also be prepared and cooked on the boat. We can pace across the lake and enjoy the night sky or anchor off at a known hotspot on Lake Conroe nights.",
+      "bulletsIntro": null,
+      "bulletsJson": null,
+      "closing": null,
+      "linkLabel": null,
+      "linkUrl": null,
+      "image": "/fleet/night-cruise-e7b4b7f8.jpg",
+      "price": null,
+      "pricePerGuest": null,
+      "fixedHours": null,
+      "durationLabel": null,
+      "eventDate": null,
+      "tiersJson": null,
+      "hourlyJson": "{\"explorer\":{\"weekday\":{\"1\":200,\"2\":400,\"3\":570,\"4\":760,\"5\":900,\"6\":1080,\"7\":1225,\"8\":1400},\"weekend\":{\"1\":220,\"2\":440,\"3\":625,\"4\":830,\"5\":1000,\"6\":1200,\"7\":1350,\"8\":1540}},\"islander\":{\"weekday\":{\"1\":150,\"2\":300,\"3\":450,\"4\":540,\"5\":675,\"6\":810,\"7\":875,\"8\":1000},\"weekend\":{\"1\":165,\"2\":330,\"3\":495,\"4\":600,\"5\":750,\"6\":875,\"7\":975,\"8\":1100}},\"yachti\":{\"weekday\":{\"1\":300,\"2\":600,\"3\":855,\"4\":1140,\"5\":1375,\"6\":1650,\"7\":1855,\"8\":2120},\"weekend\":{\"1\":330,\"2\":660,\"3\":940,\"4\":1250,\"5\":1500,\"6\":1800,\"7\":2040,\"8\":2325}}}",
+      "vesselsJson": "[\"explorer\",\"islander\",\"yachti\"]",
+      "sortOrder": 4
+    },
+    {
+      "id": "partycove",
+      "name": "Party Cove Package",
+      "pricingType": "hourly-by-vessel",
+      "unit": "Includes fuel, tube, wakeboards, ice chest with water & ice.",
+      "blurb": "Experience Lake Conroe's party spot, Party Cove! Prepare for an epic party where many different groups come to party hard under the Lake Conroe sun. Great atmospheres for meeting new people! We can provide food, a loaded ice chest, and whatever else is needed to embark on this journey. Glow Party packages available too!",
+      "bulletsIntro": null,
+      "bulletsJson": null,
+      "closing": null,
+      "linkLabel": null,
+      "linkUrl": null,
+      "image": "/fleet/party-cove-package-13ef362f.jpg",
+      "price": null,
+      "pricePerGuest": null,
+      "fixedHours": null,
+      "durationLabel": null,
+      "eventDate": null,
+      "tiersJson": null,
+      "hourlyJson": "{\"explorer\":{\"weekday\":{\"1\":160,\"2\":320,\"3\":455,\"4\":610,\"5\":720,\"6\":865,\"7\":980,\"8\":1120},\"weekend\":{\"1\":175,\"2\":350,\"3\":500,\"4\":665,\"5\":800,\"6\":960,\"7\":1080,\"8\":1230}},\"islander\":{\"weekday\":{\"1\":120,\"2\":240,\"3\":360,\"4\":430,\"5\":540,\"6\":650,\"7\":700,\"8\":800},\"weekend\":{\"1\":130,\"2\":265,\"3\":395,\"4\":480,\"5\":600,\"6\":700,\"7\":780,\"8\":880}},\"yachti\":{\"weekday\":{\"1\":240,\"2\":480,\"3\":685,\"4\":910,\"5\":1100,\"6\":1320,\"7\":1485,\"8\":1695},\"weekend\":{\"1\":265,\"2\":530,\"3\":750,\"4\":1000,\"5\":1200,\"6\":1440,\"7\":1630,\"8\":1860}}}",
+      "vesselsJson": "[\"explorer\",\"islander\",\"yachti\"]",
+      "sortOrder": 5
+    },
+    {
+      "id": "glowz",
+      "name": "Boatz & Glowz Package",
+      "pricingType": "per-guest",
+      "unit": "Includes fuel, glow, ice chest with water & ice.",
+      "blurb": "This unique event occurs at the start of boat season and once more near the end. Party at night at Lake Conroe's party cove and escape reality. Let us be your taxi to & from Scott's Ridge. We provide storage, ice & ice chest, festivities, sober captains & much more. We take the entire fleet & crew out for this event to be able to split the 30 available seats between 3x vessels.",
+      "bulletsIntro": null,
+      "bulletsJson": null,
+      "closing": null,
+      "linkLabel": null,
+      "linkUrl": null,
+      "image": "/fleet/boatz-glowz-package-c30a9bce.jpg",
+      "price": null,
+      "pricePerGuest": 50,
+      "fixedHours": 7,
+      "durationLabel": "7 hours",
+      "eventDate": "2026-09-19",
+      "tiersJson": null,
+      "hourlyJson": null,
+      "vesselsJson": "[\"explorer\",\"islander\",\"yachti\"]",
+      "sortOrder": 6
+    },
+    {
+      "id": "corporate",
+      "name": "Corporate Outing",
+      "pricingType": "hourly-by-vessel",
+      "unit": "Includes fuel, tube, wakeboards, ice chest with water & ice.",
+      "blurb": "Team building events are an amazing idea to help make strong & lasting connections! Let the boss step down while we take charge on creating a fun filled environment! Have a client you want to impress? We can help turn heads by charting the perfect route for the amazing views offered on Lake Conroe. Let us host any of your business needs, we are on standby.",
+      "bulletsIntro": null,
+      "bulletsJson": null,
+      "closing": null,
+      "linkLabel": null,
+      "linkUrl": null,
+      "image": "/fleet/corporate-outing-70197e68.jpg",
+      "price": null,
+      "pricePerGuest": null,
+      "fixedHours": null,
+      "durationLabel": null,
+      "eventDate": null,
+      "tiersJson": null,
+      "hourlyJson": "{\"explorer\":{\"weekday\":{\"1\":200,\"2\":400,\"3\":570,\"4\":760,\"5\":900,\"6\":1080,\"7\":1225,\"8\":1400},\"weekend\":{\"1\":220,\"2\":440,\"3\":625,\"4\":830,\"5\":1000,\"6\":1200,\"7\":1350,\"8\":1540}},\"islander\":{\"weekday\":{\"1\":150,\"2\":300,\"3\":450,\"4\":540,\"5\":675,\"6\":810,\"7\":875,\"8\":1000},\"weekend\":{\"1\":165,\"2\":330,\"3\":495,\"4\":600,\"5\":750,\"6\":875,\"7\":975,\"8\":1100}},\"yachti\":{\"weekday\":{\"1\":300,\"2\":600,\"3\":855,\"4\":1140,\"5\":1375,\"6\":1650,\"7\":1855,\"8\":2120},\"weekend\":{\"1\":330,\"2\":660,\"3\":940,\"4\":1250,\"5\":1500,\"6\":1800,\"7\":2040,\"8\":2325}}}",
+      "vesselsJson": "[\"explorer\",\"islander\",\"yachti\"]",
+      "sortOrder": 7
+    },
+    {
+      "id": "wakesurf",
+      "name": "Wake Surfing Lessons",
+      "pricingType": "tiered-by-guests",
+      "unit": "3-hour private coaching session — partner experience",
+      "blurb": "Ready to learn wake surfing or take your skills to the next level? Join Yolo Lake Conroe for a private 3-hour coaching session featuring professional instruction, premium equipment, and one of the newest surf boats on Lake Conroe.\n\nWhether you're stepping onto a board for the first time or looking to improve your style, control, and tricks, we'll customize the session to match your skill level.",
+      "bulletsIntro": "What You’ll Get:",
+      "bulletsJson": "[\"3 hours on the water with personalized coaching\",\"Premium surf boards for all ages and skill levels\",\"A world-class surf wake designed for progression\",\"Beginner-friendly instruction with proven teaching techniques\"]",
+      "closing": "Yolo Lake Conroe specializes in helping first-time riders get up and surf with confidence. For experienced surfers, we deliver the clean, powerful wave you need to push your limits and have an unforgettable session.\n\nYour perfect wave is waiting. Let's ride.",
+      "linkLabel": "YOLO LAKE CONROE.",
+      "linkUrl": "https://www.yololakeconroe.com/",
+      "image": null,
+      "price": null,
+      "pricePerGuest": null,
+      "fixedHours": 3,
+      "durationLabel": null,
+      "eventDate": null,
+      "tiersJson": "[{\"max\":8,\"price\":720},{\"max\":11,\"price\":770},{\"max\":null,\"price\":820}]",
+      "hourlyJson": null,
+      "vesselsJson": "[]",
+      "sortOrder": 8
+    }
+  ],
+  "vessels": [
+    {
+      "id": "explorer",
+      "slip": "SLIP 01",
+      "name": "Nauti Explorer",
+      "capacity": 14,
+      "hasHourMeter": false,
+      "dockLat": 30.37274,
+      "dockLon": -95.54667,
+      "note": "Our flagship — best for tubing, wakeboarding, and longer charters. Newly upgraded with a full sound system, TV connections, a 3,000-watt inverter and an on-board electric grill, so you can cook and stay powered up all day without heading back in.",
+      "image": "/fleet/nauti-explorer-36467e9d.jpg",
+      "sortOrder": 1
+    },
+    {
+      "id": "islander",
+      "slip": "SLIP 02",
+      "name": "Nauti Islander",
+      "capacity": 8,
+      "hasHourMeter": false,
+      "dockLat": 30.359586,
+      "dockLon": -95.59536,
+      "note": "Captainless option, great for small parties, general cruises, and economical.",
+      "image": "/fleet/nauti-islander-PLACEHOLDER-ai.jpg",
+      "sortOrder": 2
+    },
+    {
+      "id": "yachti",
+      "slip": "SLIP 03",
+      "name": "Nauti Yachti",
+      "capacity": 12,
+      "hasHourMeter": true,
+      "dockLat": 30.359586,
+      "dockLon": -95.59536,
+      "note": "Our namesake boat — built for Party Cove, bachelor or bachelorette, and birthday parties.",
+      "image": "/fleet/nauti-yachti-PLACEHOLDER-ai.jpg",
+      "sortOrder": 3
+    }
+  ],
+  "addOns": [
+    {
+      "id": "balloon-package",
+      "name": "Balloon Package",
+      "price": 40,
+      "unit": "per charter",
+      "blurb": "A balloon arch or bundle set up on deck before you arrive. Included on birthday charters.",
+      "sortOrder": 1,
+      "active": true,
+      "archived": false
+    },
+    {
+      "id": "champagne-bottle",
+      "name": "Champagne on Ice",
+      "price": 25,
+      "unit": "per bottle",
+      "blurb": "A bottle of champagne on ice, ready for a toast. Included on bachelor and bachelorette charters.",
+      "sortOrder": 2,
+      "active": true,
+      "archived": false
+    },
+    {
+      "id": "decoration-package",
+      "name": "Full Decoration Package",
+      "price": 60,
+      "unit": "per charter",
+      "blurb": "Balloons, table setup, and themed decor for birthdays, bachelorette parties, and other celebrations.",
+      "sortOrder": 3,
+      "active": true,
+      "archived": false
+    },
+    {
+      "id": "dinner-grill",
+      "name": "Grill Service",
+      "price": 25,
+      "unit": "per charter · you bring the food",
+      "blurb": "We anchor up somewhere good and cook for you on the boat's electric grill. This is the cooking service only — you bring the food and we bring the grill, the crew and the cleanup. We do not supply food or drink. It is a small grill: about two steaks at a time, or four burgers at a time, so allow twenty to thirty minutes at anchor. Works on any charter and suits a sunset cruise best. Included on the Night Cruise.",
+      "sortOrder": 4,
+      "active": true,
+      "archived": false
+    }
+  ],
+  "gallery": [
+    {
+      "id": "g-bachelor-1",
+      "image": "/gallery/bachelor-the-crew-out-on-the-lake-8aad506a.jpg",
+      "caption": "The crew, out on the lake",
+      "category": "bachelor",
+      "sortOrder": 1,
+      "width": 1079,
+      "height": 1066
+    },
+    {
+      "id": "g-bachelor-2",
+      "image": "/gallery/bachelor-captain-hats-and-celebration-782514fc.jpg",
+      "caption": "Captain hats and celebration",
+      "category": "bachelor",
+      "sortOrder": 2,
+      "width": 1079,
+      "height": 1428
+    },
+    {
+      "id": "g-bachelor-3",
+      "image": "/gallery/bachelor-golden-hour-on-the-bow-119e6ec9.jpg",
+      "caption": "Golden hour on the bow",
+      "category": "bachelor",
+      "sortOrder": 3,
+      "width": 1079,
+      "height": 1101
+    },
+    {
+      "id": "g-bachelor-5",
+      "image": "/gallery/bachelor-the-whole-crew-on-the-bow-ccf6f582.jpg",
+      "caption": "The whole crew on the bow",
+      "category": "bachelor",
+      "sortOrder": 4,
+      "width": 1599,
+      "height": 1080
+    },
+    {
+      "id": "g-bachelor-6",
+      "image": "/gallery/bachelor-making-memories-on-the-water-3a7d3597.jpg",
+      "caption": "Making memories on the water",
+      "category": "bachelor",
+      "sortOrder": 5,
+      "width": 2400,
+      "height": 1616
+    },
+    {
+      "id": "g-bachelor-7",
+      "image": "/gallery/bachelorette-boarding-balloons.jpg",
+      "caption": "Bachelorette party boarding on Lake Conroe",
+      "category": "bachelor",
+      "sortOrder": 6,
+      "width": 1440,
+      "height": 2560
+    },
+    {
+      "id": "g-bachelor-8",
+      "image": "/gallery/bachelorette-crew-in-the-water.jpg",
+      "caption": "Matching pink and a captain's hat",
+      "category": "bachelor",
+      "sortOrder": 7,
+      "width": 1079,
+      "height": 1893
+    },
+    {
+      "id": "g-bachelor-9",
+      "image": "/gallery/bachelorette-party-aboard.jpg",
+      "caption": "The bachelorette party aboard",
+      "category": "bachelor",
+      "sortOrder": 8,
+      "width": 1079,
+      "height": 786
+    },
+    {
+      "id": "g-bachelor-popping-the-champagne",
+      "image": "/gallery/bachelorette-popping-the-champagne.jpg",
+      "caption": "Popping the champagne",
+      "category": "bachelor",
+      "sortOrder": 9,
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "g-birthday-1",
+      "image": "/gallery/birthday-balloons-on-deck-bffd65ab.jpg",
+      "caption": "Balloons on deck",
+      "category": "birthday",
+      "sortOrder": 1,
+      "width": 2048,
+      "height": 1536
+    },
+    {
+      "id": "g-birthday-2",
+      "image": "/gallery/birthday-birthday-girl-on-the-water-14f5f8b3.jpg",
+      "caption": "Birthday girl on the water",
+      "category": "birthday",
+      "sortOrder": 2,
+      "width": 1079,
+      "height": 1440
+    },
+    {
+      "id": "g-birthday-4",
+      "image": "/gallery/birthday-sunny-afternoon-with-the-family-86dc6e40.jpg",
+      "caption": "Sunny afternoon with the family",
+      "category": "birthday",
+      "sortOrder": 3,
+      "width": 1440,
+      "height": 1440
+    },
+    {
+      "id": "g-birthday-the-whole-party-aboard-5369de31",
+      "image": "/gallery/birthday-the-whole-party-aboard-5369de31.jpg",
+      "caption": "The whole party aboard",
+      "category": "birthday",
+      "sortOrder": 4,
+      "width": null,
+      "height": null
+    },
+    {
+      "id": "g-birthday-family-day-at-the-island-c27bc7b4",
+      "image": "/gallery/birthday-family-day-at-the-island-c27bc7b4.jpg",
+      "caption": "Family day at the Island",
+      "category": "birthday",
+      "sortOrder": 5,
+      "width": null,
+      "height": null
+    },
+    {
+      "id": "g-birthday-the-group-under-the-bridge-53efcca5",
+      "image": "/gallery/birthday-the-group-under-the-bridge-53efcca5.jpg",
+      "caption": "The group under the bridge",
+      "category": "birthday",
+      "sortOrder": 6,
+      "width": null,
+      "height": null
+    },
+    {
+      "id": "g-fleet-aboard-the-nauti-yachti-3f5b80b9",
+      "image": "/gallery/fleet-aboard-the-nauti-yachti-3f5b80b9.jpg",
+      "caption": "Aboard the Nauti Yachti",
+      "category": "birthday",
+      "sortOrder": 7,
+      "width": null,
+      "height": null
+    },
+    {
+      "id": "g-corporate-2",
+      "image": "/gallery/corporate-group-outing-on-lake-conroe-42da128e.jpg",
+      "caption": "Hanging out on Lake Conroe",
+      "category": "birthday",
+      "sortOrder": 8,
+      "width": 2400,
+      "height": 3200
+    },
+    {
+      "id": "g-fleet-nauti-yachti-profile",
+      "image": "/gallery/nauti-yachti-profile.jpg",
+      "caption": "The Nauti Yachti",
+      "category": "fleet",
+      "sortOrder": 1,
+      "width": 1600,
+      "height": 1200
+    },
+    {
+      "id": "g-fleet-nauti-yachti-cockpit",
+      "image": "/gallery/nauti-yachti-cockpit.jpg",
+      "caption": "Cockpit and sun pad",
+      "category": "fleet",
+      "sortOrder": 2,
+      "width": 1600,
+      "height": 1200
+    },
+    {
+      "id": "g-corporate-5",
+      "image": "/gallery/nauti-yachti-cabin-berth.jpg",
+      "caption": "Air-conditioned cabin below deck",
+      "category": "fleet",
+      "sortOrder": 3,
+      "width": 1600,
+      "height": 900
+    },
+    {
+      "id": "g-fleet-islander-1",
+      "image": "/gallery/islander-1.jpg",
+      "caption": "The Nauti Islander",
+      "category": "fleet",
+      "sortOrder": 4,
+      "width": 1296,
+      "height": 1728
+    },
+    {
+      "id": "g-islander-1",
+      "image": "/islander-2.jpg",
+      "caption": "The Nauti Islander at the dock",
+      "category": "fleet",
+      "sortOrder": 5,
+      "width": 1296,
+      "height": 1728
+    },
+    {
+      "id": "g-islander-2",
+      "image": "/islander-3.jpg",
+      "caption": "Aboard the Nauti Islander",
+      "category": "fleet",
+      "sortOrder": 6,
+      "width": 1296,
+      "height": 1728
+    },
+    {
+      "id": "g-fleet-nauti-explorer-towing",
+      "image": "/gallery/nauti-explorer-towing.jpg",
+      "caption": "The Nauti Explorer towing the tube",
+      "category": "fleet",
+      "sortOrder": 7,
+      "width": 1080,
+      "height": 1197
+    },
+    {
+      "id": "g-fleet-nauti-explorer-under-way",
+      "image": "/gallery/nauti-explorer-under-way.jpg",
+      "caption": "Out on the water",
+      "category": "fleet",
+      "sortOrder": 8,
+      "width": 1080,
+      "height": 1239
+    },
+    {
+      "id": "g-fleet-nauti-explorer-at-rest",
+      "image": "/gallery/nauti-explorer-at-rest.jpg",
+      "caption": "Anchored up for the afternoon",
+      "category": "fleet",
+      "sortOrder": 9,
+      "width": 1080,
+      "height": 1032
+    },
+    {
+      "id": "g-glowz-1",
+      "image": "/gallery/glowz-the-fleet-lit-up-for-boatz-glowz-4b2dd1d2.jpg",
+      "caption": "The fleet, lit up for Boatz & Glowz",
+      "category": "glowz",
+      "sortOrder": 1,
+      "width": 1719,
+      "height": 964
+    },
+    {
+      "id": "g-glowz-2",
+      "image": "/gallery/glowz-glowing-all-night-long-1ffaadd2.jpg",
+      "caption": "Glowing all night long",
+      "category": "glowz",
+      "sortOrder": 2,
+      "width": 1080,
+      "height": 1868
+    },
+    {
+      "id": "g-glowz-3",
+      "image": "/gallery/glowz-glow-sticks-and-good-vibes-ce60241c.jpg",
+      "caption": "Glow sticks and good vibes",
+      "category": "glowz",
+      "sortOrder": 3,
+      "width": 1079,
+      "height": 1575
+    },
+    {
+      "id": "g-glowz-4",
+      "image": "/gallery/glowz-glow-foam-party-at-night-1d2bd050.jpg",
+      "caption": "Glow foam party at night",
+      "category": "glowz",
+      "sortOrder": 4,
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "id": "g-glowz-5",
+      "image": "/gallery/glowz-lighting-up-party-cove-after-dark-c30a9bce.jpg",
+      "caption": "Lighting up Party Cove after dark",
+      "category": "glowz",
+      "sortOrder": 5,
+      "width": 1079,
+      "height": 1386
+    },
+    {
+      "id": "g-night-1",
+      "image": "/gallery/night-champagne-toast-under-the-stars-e7b4b7f8.jpg",
+      "caption": "Champagne toast under the stars",
+      "category": "night",
+      "sortOrder": 1,
+      "width": 1079,
+      "height": 1376
+    },
+    {
+      "id": "g-night-3",
+      "image": "/gallery/night-fireworks-over-lake-conroe-72f346dd.jpg",
+      "caption": "Fireworks over Lake Conroe",
+      "category": "night",
+      "sortOrder": 2,
+      "width": 1079,
+      "height": 1615
+    },
+    {
+      "id": "g-night-2",
+      "image": "/gallery/night-sparklers-on-the-night-cruise-5da96918.jpg",
+      "caption": "Sparklers on the night cruise",
+      "category": "night",
+      "sortOrder": 3,
+      "width": 1079,
+      "height": 1923
+    },
+    {
+      "id": "g-night-5",
+      "image": "/gallery/sunset-group-aboard.jpg",
+      "caption": "Golden hour on the water",
+      "category": "night",
+      "sortOrder": 4,
+      "width": 1600,
+      "height": 900
+    },
+    {
+      "id": "g-partycove-11",
+      "image": "/gallery/explorer-golden-hour-bow.jpg",
+      "caption": "Sunset on the bow of the Nauti Explorer",
+      "category": "night",
+      "sortOrder": 5,
+      "width": 1600,
+      "height": 2134
+    },
+    {
+      "id": "g-partycove-1",
+      "image": "/gallery/partycove-party-cove-in-the-thick-of-it-13ef362f.jpg",
+      "caption": "Party Cove, in the thick of it",
+      "category": "partycove",
+      "sortOrder": 1,
+      "width": 1080,
+      "height": 1432
+    },
+    {
+      "id": "g-partycove-2",
+      "image": "/gallery/partycove-the-foam-party-in-full-swing-8d20a3cc.jpg",
+      "caption": "The foam party in full swing",
+      "category": "partycove",
+      "sortOrder": 2,
+      "width": 1079,
+      "height": 1920
+    },
+    {
+      "id": "g-partycove-3",
+      "image": "/gallery/partycove-floating-with-the-crowd-55e4e851.jpg",
+      "caption": "Floating with the crowd",
+      "category": "partycove",
+      "sortOrder": 3,
+      "width": 1079,
+      "height": 1431
+    },
+    {
+      "id": "g-partycove-4",
+      "image": "/gallery/partycove-good-company-even-in-the-rain-nick-dia-8b8d25c8.jpg",
+      "caption": "Good company, even in the rain — Nick Diaz, far right, out at Party Cove",
+      "category": "partycove",
+      "sortOrder": 4,
+      "width": 1079,
+      "height": 808
+    },
+    {
+      "id": "g-partycove-5",
+      "image": "/gallery/partycove-climbing-back-aboard-c5d005ef.jpg",
+      "caption": "Climbing back aboard",
+      "category": "partycove",
+      "sortOrder": 5,
+      "width": 1079,
+      "height": 1450
+    },
+    {
+      "id": "g-partycove-6",
+      "image": "/gallery/partycove-meeting-new-people-at-the-cove-684cda8d.jpg",
+      "caption": "Meeting new people at the Cove",
+      "category": "partycove",
+      "sortOrder": 6,
+      "width": 1079,
+      "height": 1431
+    },
+    {
+      "id": "g-partycove-9",
+      "image": "/gallery/partycove-the-whole-group-all-smiles-0d8c7003.jpg",
+      "caption": "The whole group, all smiles",
+      "category": "partycove",
+      "sortOrder": 7,
+      "width": 1080,
+      "height": 2340
+    },
+    {
+      "id": "g-partycove-10",
+      "image": "/gallery/party-cove-group-aboard.jpg",
+      "caption": "Rafted up in Party Cove",
+      "category": "partycove",
+      "sortOrder": 8,
+      "width": 1600,
+      "height": 900
+    },
+    {
+      "id": "g-partycove-12",
+      "image": "/gallery/party-group-in-the-water.jpg",
+      "caption": "The whole party, in for a swim",
+      "category": "partycove",
+      "sortOrder": 9,
+      "width": 1079,
+      "height": 1883
+    },
+    {
+      "id": "g-tubing-1",
+      "image": "/gallery/tubing-full-speed-with-the-tube-up-d2ebc18b.jpg",
+      "caption": "Full speed with the tube up",
+      "category": "tubing",
+      "sortOrder": 1,
+      "width": 1080,
+      "height": 1239
+    },
+    {
+      "id": "g-tubing-2",
+      "image": "/gallery/tubing-watching-the-ride-from-the-back-deck-81bf8cdb.jpg",
+      "caption": "Watching the ride from the back deck",
+      "category": "tubing",
+      "sortOrder": 2,
+      "width": 1080,
+      "height": 2340
+    },
+    {
+      "id": "g-tubing-3",
+      "image": "/gallery/tubing-hands-up-on-the-tube-964b284d.jpg",
+      "caption": "Hands up on the tube",
+      "category": "tubing",
+      "sortOrder": 3,
+      "width": 1080,
+      "height": 2340
+    },
+    {
+      "id": "g-tubing-4",
+      "image": "/gallery/tubing-bouncing-across-the-wake-b2a8aa9f.jpg",
+      "caption": "Bouncing across the wake",
+      "category": "tubing",
+      "sortOrder": 4,
+      "width": 1536,
+      "height": 2048
+    },
+    {
+      "id": "g-tubing-5",
+      "image": "/gallery/tubing-carving-up-the-wake.jpg",
+      "caption": "Carving up the wake",
+      "category": "tubing",
+      "sortOrder": 5,
+      "width": 1080,
+      "height": 820
+    },
+    {
+      "id": "g-tubing-two-up-on-the-tube-b592b6ee",
+      "image": "/gallery/tubing-two-up-on-the-tube-b592b6ee.jpg",
+      "caption": "Two up on the tube",
+      "category": "tubing",
+      "sortOrder": 6,
+      "width": null,
+      "height": null
+    },
+    {
+      "id": "g-tubing-hanging-on-across-the-lake-c3bb05c5",
+      "image": "/gallery/tubing-hanging-on-across-the-lake-c3bb05c5.jpg",
+      "caption": "Hanging on across the lake",
+      "category": "tubing",
+      "sortOrder": 7,
+      "width": null,
+      "height": null
+    },
+    {
+      "id": "g-tubing-skipping-over-the-wake-cfce9b06",
+      "image": "/gallery/tubing-skipping-over-the-wake-cfce9b06.jpg",
+      "caption": "Skipping over the wake",
+      "category": "tubing",
+      "sortOrder": 8,
+      "width": null,
+      "height": null
+    },
+    {
+      "id": "g-tubing-wide-out-on-the-turn-7b20b66a",
+      "image": "/gallery/tubing-sandbar-with-the-tube.jpg",
+      "caption": "Pulled up at the sandbar",
+      "category": "tubing",
+      "sortOrder": 9,
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "id": "g-tubing-cutting-back-through-the-wash-c0957fae",
+      "image": "/gallery/tubing-wakeboarding-at-dusk.jpg",
+      "caption": "Wakeboarding into the evening",
+      "category": "tubing",
+      "sortOrder": 10,
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "g-tubing-holding-on-tight-c5e68d2d",
+      "image": "/gallery/tubing-down-the-rope.jpg",
+      "caption": "Two up, out behind the boat",
+      "category": "tubing",
+      "sortOrder": 11,
+      "width": 1536,
+      "height": 2048
+    },
+    {
+      "id": "g-corporate-3",
+      "image": "/gallery/corporate-team-time-on-the-water-70197e68.jpg",
+      "caption": "Making memories",
+      "category": "tubing",
+      "sortOrder": 12,
+      "width": 2048,
+      "height": 1536
+    }
+  ]
+}

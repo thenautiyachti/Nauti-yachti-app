@@ -60,7 +60,9 @@ async function GET() {
   if (!key()) {
     return NextResponse.json({
       threads: [], summary: summarise([]), platforms: PLATFORMS,
-      error: "BLOTATO_API_KEY is not set, so messages cannot be read.",
+      error: require("../../../../lib/demo").isDemo()
+        ? "Demo: on the live system, Facebook and Instagram messages appear here with a suggested reply drafted for each."
+        : "BLOTATO_API_KEY is not set, so messages cannot be read.",
     });
   }
 

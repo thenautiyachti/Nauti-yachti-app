@@ -23,7 +23,7 @@ const { sendBookingConfirmationEmail } = require("../../../../lib/email");
 // Both are resolved by lib/payableBooking, so a charter agreed by text can be
 // paid the same way as one booked on the site.
 
-const SITE = "https://www.thenautiyachti.com";
+const SITE = require("../../../../lib/demo").siteBase();  // the demo links to itself
 
 async function POST(req, { params }) {
   const { id } = await params;

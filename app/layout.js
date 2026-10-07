@@ -1,5 +1,7 @@
 import "./globals.css";
 import JsonLd from "../components/JsonLd";
+import DemoBanner from "../components/DemoBanner";
+import { isDemo } from "../lib/demo";
 import {
   SITE_URL,
   SITE_NAME,
@@ -34,7 +36,10 @@ export const metadata = {
     siteName: SITE_NAME,
     locale: "en_US",
   },
-  robots: {
+  // The demo deployment is a full copy of this site with invented data. If
+  // Google indexed it, it would compete with the real site for every search
+  // the real site ranks for. So in demo mode nothing is indexed, anywhere.
+  robots: isDemo() ? { index: false, follow: false, googleBot: { index: false, follow: false } } : {
     index: true,
     follow: true,
     googleBot: {
@@ -67,6 +72,7 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
+        {isDemo() && <DemoBanner />}
         {/* Sitewide business identity. Emitted once, in the server-rendered
             HTML, so crawlers that do not execute JavaScript still see it. */}
         <JsonLd data={[localBusinessJsonLd(), websiteJsonLd()]} />
