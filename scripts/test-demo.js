@@ -77,6 +77,12 @@ ok("the reset wipes every table (missing: " + missing.join(", ") + ")", !missing
   ok("only example.com addresses", JSON.stringify(rows).match(/[\w.+-]+@[\w-]+\.[\w.]+/g).every((e) => e.endsWith("@example.com")));
   ok("only 555 phone numbers", (JSON.stringify(rows).match(/\(\d{3}\) \d{3}-\d{4}/g) || []).every((p) => p.includes(") 555-")));
   ok("gallery is boat-only", (rows.galleryItem || []).every((g) => g.category === "fleet"));
+  const { CREW } = require(path.join(APP, "lib/crew.js"));
+  const act = rows.agentActivity || [];
+  ok("every crew card has a filed status", CREW.every((c) => act.some((a) => a.agentName === c.name && a.status === "status" && a.detail)));
+  ok("every crew card has a run with words", CREW.every((c) => act.some((a) => a.agentName === c.name && a.status === "completed" && a.detail)));
+  ok("no crew run is stamped in the future", act.every((a) => new Date(a.startedAt) <= new Date()));
+  ok("no placeholder crew text", !act.some((a) => /sample status/i.test(a.detail || "")));
 
   set({ DEMO_DATABASE_REF: "demoref1234567890abcd", DATABASE_URL: LIVE, DIRECT_URL: LIVE });
   let refused = false;
