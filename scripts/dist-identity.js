@@ -14,6 +14,11 @@
 // substring of "thenautiyachti.com", so the other way round turned
 // "thenautiyachti.com" into "Reef Runners.com". Most specific first, always.
 const FIELDS = [
+  // First, ahead of the business name (7 Oct 2026): it was asked for and never
+  // applied, and "/thenautiyachti/gi" then turned the business's public address
+  // into "Reef Runners@Gmail.com".
+  { key: "ownerEmail", q: "Owner email", example: "owner@example.com",
+    find: [/thenautiyachti@gmail\.com/gi] },
   { key: "domain", q: "Website domain (no https://)", example: "thenautiyachti.com",
     find: [/thenautiyachti\.com/gi] },
   { key: "businessName", q: "Business name", example: "The Nauti Yachti",
@@ -22,7 +27,6 @@ const FIELDS = [
     find: [/Lake Conroe/g] },
   { key: "town", q: "Nearest town, with state", example: "Conroe, TX",
     find: [/Conroe,?\s*(TX|Texas)/g] },
-  { key: "ownerEmail", q: "Owner email", example: "owner@example.com", find: [] },
   { key: "phone", q: "Business phone", example: "555-555-5555",
     find: [/\b\d{3}-\d{3}-\d{4}\b/g] },
   { key: "installRoot", q: "Where you unpacked this, full path", example: "C:/Users/sam/charter-platform",
@@ -52,7 +56,17 @@ const FIELDS = [
 //   - the LLC folder above that.
 //   - a RELATIVE reference, "Documents/_MyFiles/Jarvis-Voice-UI", with no drive
 //     letter at all, in the crew protocol's where-things-live table.
+//
+// 7 Oct 2026: the first four entries follow two moves the map had not caught up
+// with. The app left Google Drive for Documents\Nauti-yachti-app on 15 Sep, and
+// on 1 Oct the crew's scripts moved from Jarvis-Voice-UI into Crew\_Scripts and
+// every brief was split into the Crew folder. Without them a package's launchers
+// pointed at the old owner's disk for every file they tell an agent to read.
 const PATH_MAP = [
+  ["C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts", "/scripts"],
+  ["C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew", "/crew"],
+  ["C:/Users/immex/Documents/Nauti-yachti-app", "/app"],
+  ["C:/Users/immex/dev/Nauti-yachti-app.git", "/app/.git"],
   ["C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/nauti-yachti-app", "/app"],
   ["C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos", "/Photos"],
   ["C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website", ""],
@@ -66,6 +80,8 @@ const PATH_MAP = [
 // References with no drive letter. Rewritten to a path relative to the package,
 // because that is what they mean once the package is somewhere else.
 const RELATIVE_MAP = [
+  ["AI & Website/Crew/_Scripts", "scripts"],
+  ["AI & Website/Crew", "crew"],
   ["Documents/_MyFiles/Jarvis-Voice-UI", "scripts"],
   ["Documents/_MyFiles/_The Nauti Yachti LLC/Photos", "Photos"],
   ["Documents/_MyFiles/_The Nauti Yachti LLC", "."],

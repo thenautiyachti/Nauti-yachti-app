@@ -33,6 +33,18 @@ const path = require("path");
 const APP = path.join(__dirname, "..");
 const ROOT = path.join(APP, "..");
 const CREW = "C:/Users/immex/.claude/scheduled-tasks";
+// Since 1 Oct 2026 a launcher is only a list of files; the briefs, voices and
+// skills it lists live here. A package without this folder is a crew with
+// nothing to read.
+const CREW_FOLDER = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew";
+// The scheduled-tasks folder is shared by every project on this PC. Only THIS
+// crew's launchers travel: on 7 Oct 2026 a build carried Jarvis's sweep, a
+// school reunion watcher, a stock watchlist, and a one-off reminder that
+// described the owner's console passcode.
+const CREW_TASKS = new Set([
+  ...require("../lib/crew.js").CREW.map((a) => a.taskId),
+  "crew-standup", "nauti-comment-watch",
+]);
 // The shared crew scripts, which live outside the repository. paths.js there
 // already knows where everything is, so ask it rather than hardcoding a fourth
 // copy of the same string.
@@ -40,6 +52,14 @@ const SCRIPTS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & We
 
 const outFlag = process.argv.indexOf("--out");
 const OUT = outFlag !== -1 ? process.argv[outFlag + 1] : path.join(ROOT, "distributable", "charter-platform");
+
+// --no-crew: the website, console and setup wizard only. For the shared
+// C:\Users\Public\Documents copy, which every customer's Windows login can read
+// -- including charter businesses on the same lake. The crew's briefs are this
+// business's operating memory (real payouts, booking references, fees, what the
+// owner pays for), so they go only to someone the owner hands a package to.
+// The crew PATTERN is documented in the public Playbook instead.
+const NO_CREW = process.argv.includes("--no-crew");
 
 // --- what never leaves this business ----------------------------------------
 //
@@ -55,6 +75,10 @@ const EXCLUDE_DIRS = new Set([
                        // friend a crew roster with dead members in it.
   "releases",          // snapshots of this business
   "public/gallery",    // this fleet's photographs
+  "_Old",              // the Crew folder's history: superseded briefs, not instructions
+  "_Scripts",          // inside the Crew folder; copied on its own into scripts/
+  "References",        // each agent's learned notes: research logs, real payouts,
+                       // named bookings. This business's memory, not instructions.
 ]);
 
 const EXCLUDE_FILES = new Set([
@@ -76,6 +100,12 @@ const EXCLUDE_FILES = new Set([
 // The lesson is the extension, not the three files: anything that is data, a
 // backup, or a rendered copy of excluded content does not travel.
 const EXCLUDE_EXT = /\.(db|db-journal|sqlite3?|bak|orig|log|zip|pdf)$/i;
+
+// Data that LOOKS like source because it is .json. Found 7 Oct 2026 by scanning
+// a build against the guest list: the CapCut planners' "moments" files are a
+// rider list per clip, and facts-YYYY-MM-DD.json is the crew's whole-business
+// morning snapshot. Neither is code; both are this business's private record.
+const EXCLUDE_DATA = /^(moments.*\.json|facts-\d{4}-\d{2}-\d{2}\.json|screen-queue-seen\.json|.*\.before-[a-z0-9-]+\.(json|md))$/i;
 
 // Working files the crew leaves behind between runs. One of these --
 // ".standup-tmp-coral.txt", a status somebody was halfway through writing --
@@ -140,10 +170,12 @@ function copyTree(from, to, rel) {
     const r = rel ? rel + "/" + e.name : e.name;
     if (e.isDirectory()) {
       if (EXCLUDE_DIRS.has(e.name) || EXCLUDE_DIRS.has(r)) continue;
+      // In the shared launchers folder, only this crew's own tasks.
+      if (from === CREW && !CREW_TASKS.has(e.name)) continue;
       copyTree(path.join(from, e.name), path.join(to, e.name), r);
       continue;
     }
-    if (EXCLUDE_FILES.has(e.name) || EXCLUDE_EXT.test(e.name) || EXCLUDE_TEMP.test(e.name)) continue;
+    if (EXCLUDE_FILES.has(e.name) || EXCLUDE_EXT.test(e.name) || EXCLUDE_TEMP.test(e.name) || EXCLUDE_DATA.test(e.name)) continue;
     // Content files ship as TEMPLATES: the structure, one worked example, and
     // blanks. Copying the real ones would hand a friend this fleet's package
     // descriptions and FAQ answers to overwrite, which is worse than a blank --
@@ -174,7 +206,12 @@ console.log("  from  " + APP);
 console.log("  to    " + OUT + "\n");
 
 copyTree(APP, path.join(OUT, "app"), "");
-copyTree(CREW, path.join(OUT, "crew"), "");
+if (!NO_CREW) {
+  copyTree(CREW, path.join(OUT, "crew"), "");
+  copyTree(CREW_FOLDER, path.join(OUT, "crew"), "");  // beside the launchers, as /crew
+} else {
+  console.log("  --no-crew: crew briefs and launchers left out");
+}
 copyTree(SCRIPTS, path.join(OUT, "scripts"), "");
 
 console.log("  " + copied + " files copied");
@@ -256,3 +293,26 @@ console.log("\n  " + OUT + "\n");
     console.log("  every phone number in the package is covered by the wizard's rewrite rules");
   }
 }
+
+// --- guests: the list itself is the test -------------------------------------
+//
+// Filenames and credential shapes never catch a person. Read every guest's
+// name and email from the database (read only), replace them in the package,
+// then fail the build if any full name or guest email is still in it.
+// See dist-privacy.js for why this exists.
+require("./dist-privacy").scrubPackage(OUT).then((r) => {
+  console.log("\n  guests: " + r.people + " names and " + r.emails + " emails checked against the package");
+  console.log("  scrubbed " + r.changes + " occurrences in " + r.files + " files (names -> Guest, our social account ids -> placeholders)");
+  if (r.survivors.length) {
+    console.log("  !! a full guest name or email is STILL in " + r.survivors.length + " file(s):");
+    for (const s of r.survivors.slice(0, 12)) console.log("      " + s);
+    console.log("  Do not share this package.\n");
+    process.exitCode = 1;
+  } else {
+    console.log("  no guest's full name or email remains -- safe to share\n");
+  }
+}).catch((e) => {
+  console.log("\n  !! could not check the package against the guest list: " + e.message);
+  console.log("  Do not share this package until the check runs.\n");
+  process.exitCode = 1;
+});
