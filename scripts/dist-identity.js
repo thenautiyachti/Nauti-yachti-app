@@ -103,7 +103,14 @@ const RELATIVE_MAP = [
 // "Nauti Yachti" is deliberately absent from the vessel list even though it was
 // a boat. It is also the business name, and the business-name rule has already
 // claimed it -- a boat and a brand cannot both win the same string.
+//
+// Packages FIRST (7 Oct 2026): the wizard required a packages answer and then
+// never applied it. And "Party Cove Package" contains the location "Party
+// Cove", so with locations first the package name came out as "<your cove>
+// Package" and the packages rule never matched. Most specific first, as
+// with domain before business name.
 const LIST_SOURCES = {
+  packages: ["Party Cove Package", "Birthday Party", "Tubing / Wakeboarding"],
   locations: ["Party Cove", "The Island", "The Dam"],
   vessels: ["Nauti Explorer", "Nauti Islander"],
 };

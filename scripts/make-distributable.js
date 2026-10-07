@@ -75,6 +75,9 @@ const EXCLUDE_DIRS = new Set([
                        // friend a crew roster with dead members in it.
   "releases",          // snapshots of this business
   "public/gallery",    // this fleet's photographs
+  "conf",              // gitignored machine state. Held a token until 15 Sep 2026
+                       // and now a note about revoking it; shipped by mistake on
+                       // 7 Oct because this walk ignores .gitignore.
   "_Old",              // the Crew folder's history: superseded briefs, not instructions
   "_Scripts",          // inside the Crew folder; copied on its own into scripts/
   "References",        // each agent's learned notes: research logs, real payouts,
