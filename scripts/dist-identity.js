@@ -217,7 +217,7 @@ function applyIdentity(text, config) {
   // them. Restored at the end.
   const holds = {};
   CREW_NAMES.forEach((n, i) => {
-    const token = " CREW" + i + " ";
+    const token = "\u0000CREW" + i + "\u0000";
     holds[token] = (config.crew && config.crew[n]) ? config.crew[n] : "Nauti " + n;
     const before = out;
     out = out.replace(crewFind(n), token);
