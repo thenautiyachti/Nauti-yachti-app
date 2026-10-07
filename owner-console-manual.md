@@ -901,7 +901,17 @@ Once a file has been pulled, the console and the guest's trip page show it as re
 
 ## 6.4 Social posts: from draft to published
 
-The content agent drafts posts from real fleet media; you approve them; the publishing agent puts them out. Every post is a card in **Marketing → Media Drafts**, boxed by the day it goes out, soonest first. Drafts with no date sit above them in two boxes, one each: **Waiting on you** (approve, discuss or deny), then **Approved, still needs a date** (the content agent dates these on her next run).
+The content agent drafts posts from real fleet media; you approve them; the publishing agent puts them out. Every post is a card in **Marketing → Media Drafts**, in five sections:
+
+| Section | What is in it | Who acts |
+|---|---|---|
+| **Already posted** (collapsed) | Posts that went out, newest first | Nobody; it is the record |
+| **Denied** (collapsed) | Posts you denied | Nobody; **Back to review** restores one |
+| **Proposed — needs you** | New drafts, and drafts sent back for a fix (*needs work*) | **You**: approve, discuss or deny |
+| **Scheduled** | Approved, dated and checked, boxed by the day they go out, soonest first | Nobody; they post on their own at the time shown |
+| **To be scheduled** | Approved but not yet given a slot, and any approved post whose date passed without it going out | The crew gives each a date and time on its next run |
+
+A post that missed its date is not dead. It moves to **To be scheduled** for a new slot rather than disappearing.
 
 ```
             Approve                         on its date

@@ -4025,7 +4025,7 @@ function draftIsPast(d, todayKey) {
 // Anything unparseable sorts to the end of its day rather than the start, so a
 // draft with no time never jumps ahead of one with a real slot.
 function draftMinutes(t) {
-  const m = String(t || "").match(/^(d{1,2}):(d{2})s*([AaPp])?/);
+  const m = String(t || "").match(/^(\d{1,2}):(\d{2})\s*([AaPp])?/);
   if (!m) return 24 * 60 + 1;
   let h = Number(m[1]) % 12;
   if (m[3] && /p/i.test(m[3])) h += 12;
@@ -4052,20 +4052,31 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia, 
   const [showPast, setShowPast] = useState(false);
   const todayKey = localDayKey(new Date());
 
-  const upcoming = mediaDrafts
-    .filter((d) => !draftIsPast(d, todayKey))
-    .sort((a, b) => draftSortKey(a).localeCompare(draftSortKey(b)));
-  // Most recent first, so the thing that just went out is at the top.
-  //
-  // Split in two, because they answer different questions. "Already posted" is
-  // a record of work that went out and is worth glancing at; "denied or past" is
-  // a bin. Together they were one long list where a successful post and a
-  // rejected one looked the same.
-  const past = mediaDrafts
-    .filter((d) => draftIsPast(d, todayKey))
-    .sort((a, b) => draftSortKey(b).localeCompare(draftSortKey(a)));
-  const postedDrafts = past.filter((d) => d.status === "posted");
-  const deniedOrPast = past.filter((d) => d.status !== "posted");
+  // FIVE SECTIONS, one per question (owner, 7 Oct 2026):
+  //   Already posted   -- the record                        (collapsed)
+  //   Denied           -- the bin                           (collapsed)
+  //   Proposed         -- needs you: approve, discuss, deny
+  //   Scheduled        -- approved AND dated by the crew; goes out on its own
+  //   To be scheduled  -- approved, waiting for the crew to give it a slot
+  // Before this, a proposed draft that already carried a date sat inside that
+  // day's box beside scheduled posts, so "what needs me" and "what is going out"
+  // were mixed; and a post whose date passed without going out vanished into
+  // "Denied or past" as if it had been rejected. A missed post is not dead, it
+  // needs a new slot, so it now lands in To be scheduled.
+  const newest = (a, b) => draftSortKey(b).localeCompare(draftSortKey(a));
+  const soonest = (a, b) => draftSortKey(a).localeCompare(draftSortKey(b));
+  const postedDrafts = mediaDrafts.filter((d) => d.status === "posted").sort(newest);
+  const deniedDrafts = mediaDrafts.filter((d) => d.status === "rejected" || d.status === "delisted").sort(newest);
+  const live = mediaDrafts.filter((d) => !["posted", "rejected", "delisted"].includes(d.status));
+  const proposedDrafts = live.filter((d) => d.status === "proposed" || d.status === "discussing").sort(soonest);
+  const isMissed = (d) => Boolean(d.scheduledDate) && d.scheduledDate < todayKey;
+  const scheduledDrafts = live.filter((d) => d.status === "scheduled" && d.scheduledDate && !isMissed(d)).sort(soonest);
+  const toScheduleDrafts = live
+    .filter((d) => (d.status === "approved") || (d.status === "scheduled" && (!d.scheduledDate || isMissed(d))))
+    .sort(soonest);
+  const upcoming = [...proposedDrafts, ...scheduledDrafts, ...toScheduleDrafts];
+  const past = [...postedDrafts, ...deniedDrafts];
+  const deniedOrPast = deniedDrafts;
 
   const GRID = { display: "grid", minWidth: 0, gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 };
   const cardProps = { onUpdateStatus, onDelete, onAttachMedia, onSetPostType };
@@ -4081,21 +4092,16 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia, 
   // grouped together"). Now each bucket is collected once: what is waiting on
   // him first, then what is waiting on Coral for a date, then each day in date
   // order (`upcoming` is already date-sorted, so first appearance is order).
-  const byKey = new Map();
-  for (const d of upcoming) {
-    // Two buckets, not one. A draft with no date is either waiting on HIM
-    // (proposed, not yet approved) or waiting on CORAL (approved, never dated).
-    // Only the second is a problem, and lumping them together made the first
-    // look like one.
-    const day = d.scheduledDate || (d.status === "approved" ? "needs-date" : "awaiting-you");
-    if (!byKey.has(day)) byKey.set(day, { day, items: [] });
-    byKey.get(day).items.push(d);
+  // Scheduled posts stay boxed by the day they go out (three posts on one date
+  // are one piece of work); the other two sections are one box each.
+  const byDay = new Map();
+  for (const d of scheduledDrafts) {
+    if (!byDay.has(d.scheduledDate)) byDay.set(d.scheduledDate, { day: d.scheduledDate, items: [] });
+    byDay.get(d.scheduledDate).items.push(d);
   }
-  const FIRST = ["awaiting-you", "needs-date"];
-  const upcomingByDay = [
-    ...FIRST.filter((k) => byKey.has(k)).map((k) => byKey.get(k)),
-    ...[...byKey.values()].filter((g) => !FIRST.includes(g.day)),
-  ];
+  const scheduledByDay = [...byDay.values()];
+  const SECTION = { fontWeight: 700, fontSize: 14, color: "var(--text)", margin: "18px 0 4px" };
+  const SECTION_NOTE = { fontSize: 12, color: "var(--muted)", margin: "0 0 10px" };
 
   return (
     <div>
@@ -4129,7 +4135,7 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia, 
         <div style={{ marginBottom: 14 }}>
           <button type="button" onClick={() => setShowPast((v) => !v)}
             style={{ background: "transparent", color: "var(--muted)", border: "1px solid rgba(203,108,230,0.3)", borderRadius: 6, padding: "7px 12px", fontSize: 12.5, fontWeight: 600 }}>
-            {showPast ? "▾" : "▸"} Denied or past ({deniedOrPast.length})
+            {showPast ? "▾" : "▸"} Denied ({deniedOrPast.length})
           </button>
           {showPast && (
             <div style={{ ...GRID, marginTop: 12, marginBottom: 6 }}>
@@ -4139,11 +4145,6 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia, 
         </div>
       )}
 
-      {upcoming.length === 0 && (
-        <div style={{ color: "var(--muted)", fontSize: 13.5 }}>
-          Nothing scheduled ahead{past.length > 0 ? " — everything is in the list above." : "."}
-        </div>
-      )}
 
       {/* Boxed by day. Three posts going out on the same date are one piece of
           work in the owner's head -- the same idea told three ways -- and a flat
@@ -4153,11 +4154,27 @@ function MediaDraftsTab({ mediaDrafts, onUpdateStatus, onDelete, onAttachMedia, 
       {/* Two days abreast, fixed. auto-fill fitted a third column on a wide
           monitor, which squeezed each day's cards too narrow to read the
           caption they are being approved on. */}
-      <div className="draft-days">
-        {upcomingByDay.map(({ day, items }) => (
-          <DraftDayGroup key={day} day={day} items={items} cardProps={cardProps} />
-        ))}
-      </div>
+      <div style={SECTION}>Proposed — needs you ({proposedDrafts.length})</div>
+      <p style={SECTION_NOTE}>Approve, discuss or deny. Nothing here is posted until you approve it. Cards marked needs work are with the content agent for a fix.</p>
+      {proposedDrafts.length === 0
+        ? <div style={{ color: "var(--muted)", fontSize: 13 }}>Nothing waiting on you.</div>
+        : <div className="draft-days"><DraftDayGroup day="awaiting-you" items={proposedDrafts} cardProps={cardProps} /></div>}
+
+      <div style={SECTION}>Scheduled ({scheduledDrafts.length})</div>
+      <p style={SECTION_NOTE}>Approved, dated and checked. These go out on their own at the time shown. Use Deny or Discuss on a card to stop one.</p>
+      {scheduledByDay.length === 0
+        ? <div style={{ color: "var(--muted)", fontSize: 13 }}>Nothing scheduled ahead.</div>
+        : <div className="draft-days">
+            {scheduledByDay.map(({ day, items }) => (
+              <DraftDayGroup key={day} day={day} items={items} cardProps={cardProps} />
+            ))}
+          </div>}
+
+      <div style={SECTION}>To be scheduled ({toScheduleDrafts.length})</div>
+      <p style={SECTION_NOTE}>You approved these. The crew gives each a date and time on the next run. A post whose date passed without going out lands here too, for a new slot.</p>
+      {toScheduleDrafts.length === 0
+        ? <div style={{ color: "var(--muted)", fontSize: 13 }}>Nothing waiting for a date.</div>
+        : <div className="draft-days"><DraftDayGroup day="needs-date" items={toScheduleDrafts} cardProps={cardProps} /></div>}
     </div>
   );
 }
@@ -6802,14 +6819,13 @@ function DraftDayGroup({ day, items, cardProps }) {
   const [open, setOpen] = useState(true);
   const platforms = [...new Set(items.map((d) => d.platform).filter(Boolean))];
   const label =
-    day === "awaiting-you" ? "Waiting on you"
-    : day === "needs-date" ? "Approved, still needs a date"
+    day === "awaiting-you" ? "Proposed"
+    : day === "needs-date" ? "Approved, waiting for a date"
     : mediaDraftDate(day) || day;
   // Said plainly under the heading, because the difference is the whole point.
   const note =
-    day === "awaiting-you" ? "Approve, send back or deny. Nothing happens to these until you do."
-    : day === "needs-date" ? "You approved these. Coral gives them a date on her next run — if one sits here for days, say so."
-    : null;
+    // The section heading above each box now says this (Media Drafts, 7 Oct 2026).
+    null;
   // Every post that day shares a time in practice; show it once rather than on
   // each card.
   const time = items.find((d) => d.scheduledTime)?.scheduledTime;
