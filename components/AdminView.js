@@ -43,6 +43,7 @@ import {
 } from "../lib/subscriptions";
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import DemoOutbox from "./DemoOutbox";
+import CalendarFeedCard from "./CalendarFeedCard";
 import { isDemo } from "../lib/demo";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
@@ -767,6 +768,7 @@ export default function AdminView({
 
         {tab === "availability" && (
           <div>
+            <CalendarFeedCard />
             <p style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 6 }}>
               Click a day to toggle a full-day block, per vessel. Orange/striped days have confirmed bookings but aren't full — click only if you need to close the rest of the day too.
             </p>

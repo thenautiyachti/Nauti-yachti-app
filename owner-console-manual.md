@@ -577,6 +577,10 @@ Reach out from **Overview → Guests → Charters we owe** (see [5.5](#5-5-chart
 
 ## 3.10 Availability and blocking days
 
+**Bookings in Google Calendar.** At the top of **Bookings → Availability**, open **Bookings in Google Calendar** and copy the private link. In Google Calendar on a computer: **Other calendars → + → From URL**, paste it, **Add calendar**. Every booking that holds a day appears there (from 30 days back): package, boat, start time and length, party size, the guest's first name, the booking number, how it was booked and whether it is paid. No phone numbers or emails. New bookings, changes and cancellations follow on their own, but Google refreshes a subscribed calendar every few hours, so a booking made a minute ago may not show yet. The console is always current. Keep the link private: anyone with it can see the bookings.
+
+**Known limit:** the link is built from the console's session secret. If that secret is ever changed, the link changes too: copy the new one and subscribe again.
+
 **Bookings → Availability** shows each boat's days. A day is:
 
 | State | When |
