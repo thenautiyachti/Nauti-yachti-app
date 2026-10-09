@@ -989,7 +989,10 @@ function toUnifiedRows(inquiries, externalBookings) {
     addOnIds: i.addOnIds ? JSON.parse(i.addOnIds) : [],
     raw: i,
   }));
-  const fromExternal = externalBookings.map((b) => ({
+  // A booking row numbered <parent>-X<n> is a retired copy of an "Add time"
+  // payment, kept as evidence after it was merged into its parent (Erika,
+  // 9 Oct 2026). The payment is shown under the parent; the copy is not a line.
+  const fromExternal = externalBookings.filter((b) => !isExtensionRef(b.bookingId)).map((b) => ({
     kind: "external",
     id: b.id,
     bookingId: b.bookingId,
