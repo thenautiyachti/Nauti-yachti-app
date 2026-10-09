@@ -44,6 +44,7 @@ import {
 import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import DemoOutbox from "./DemoOutbox";
 import CalendarFeedCard from "./CalendarFeedCard";
+import AddTimeButton from "./AddTimeButton";
 import { isDemo } from "../lib/demo";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
@@ -2293,6 +2294,9 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                             );
                           })()}
                           <TripPageLink row={r} />
+                          {/* Extend a paid charter and charge only the difference
+                              (owner, 9 Oct 2026). See lib/extendBooking.js. */}
+                          <AddTimeButton row={r} canSendSms={canSendSms} />
                           {isOwed(r.status) && (() => {
                             const body = owedMessage("sms", r, localDayKey(new Date()));
                             const phone = bookingPhones(r)[0];
