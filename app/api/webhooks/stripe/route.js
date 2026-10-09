@@ -7,6 +7,8 @@ const { availabilityProblem } = require("../../../../lib/availabilityQuery");
 const { holdsTheDay, INQUIRY_STATUS_BUCKET } = require("../../../../lib/bookingStatus");
 const { parsePackage } = require("../../../../lib/serialize");
 const { isFullRefund, refundUpdate, alreadyRecorded } = require("../../../../lib/refunds");
+const { isExtensionRef } = require("../../../../lib/extensionRef");
+const { foldExtensionPayment } = require("../../../../lib/extensionPayment");
 
 // IS THE BOAT STILL FREE, NOW THAT THE MONEY HAS ARRIVED?
 //
@@ -554,7 +556,20 @@ async function POST(req) {
       // Idempotent via platformRef: Stripe retries webhooks, and a retry must
       // not mint a second booking. The session id is the natural key here, the
       // same way a Boatsetter reservation number is for a platform booking.
-      if (paidInquiry) {
+      //
+      // EXCEPT AN "ADD TIME" CHARGE (bookingId "<parent>-X<n>"). That is more
+      // time on a charter that already exists, so its hours and money go INTO
+      // that booking rather than making a second one. Erika's extension made a
+      // second line on 9 Oct 2026; see lib/extensionPayment.js.
+      if (paidInquiry && isExtensionRef(paidInquiry.bookingId)) {
+        try {
+          await foldExtensionPayment(prisma, paidInquiry, {
+            paid: typeof session.amount_total === "number" ? session.amount_total / 100 : null,
+          });
+        } catch (foldErr) {
+          console.error("[webhooks/stripe] Failed to add paid extension to its booking:", foldErr);
+        }
+      } else if (paidInquiry) {
         try {
           const alreadyBooked = await prisma.externalBooking.findFirst({
             where: { platformRef: session.id },

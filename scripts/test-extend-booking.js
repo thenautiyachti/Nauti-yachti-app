@@ -36,5 +36,36 @@ const t = X.extensionText({ guestName: "Erika Lopez", extra: 1, amount: 170, end
 ok("text: first name, price, end time, /pay link", t.includes("Hi Erika,") && t.includes("$170") && t.includes("4pm") && t.includes("/pay/abc"));
 ok("text never carries a raw Stripe link", !/checkout\.stripe\.com/.test(t));
 
+// ONE RESERVATION (lib/extensionRef.js, lib/extensionPayment.js): the charge is
+// numbered under its parent and, once paid, folded into it.
+const R = require(path.join(__dirname, "..", "lib", "extensionRef.js"));
+ok("first extension of NY-20261009-01 is -X1", R.extensionRef("NY-20261009-01", 1) === "NY-20261009-01-X1");
+ok("an extension knows its parent", R.parentRefOf("NY-20261009-01-X2") === "NY-20261009-01");
+ok("an ordinary booking is not an extension", !R.isExtensionRef("NY-20261009-01") && !R.isExtensionRef(null));
+ok("a parent with no number uses its row id", R.parentRefOf("cmuoc2apc0000x2prge863lhv-X1") === "cmuoc2apc0000x2prge863lhv");
+
+const { foldedParent } = require(path.join(__dirname, "..", "lib", "extensionPayment.js"));
+const parent = { hours: 2, priceQuoted: 460, pricePaid: 460, note: "Booked by text." };
+const ext = { bookingId: "NY-20261009-01-X1", hours: 2, priceQuoted: 360 };
+const f = foldedParent(parent, ext, { paid: 360, today: "2026-10-09" });
+ok("paid extension: 2 + 2 = 4 hours on the parent", f.hours === 4);
+ok("paid extension: $460 + $360 = $820 paid and quoted", f.pricePaid === 820 && f.priceQuoted === 820);
+ok("the parent's note records the payment", f.note.startsWith("Booked by text.\n") && f.note.includes("NY-20261009-01-X1 paid"));
+ok("a webhook retry changes nothing", foldedParent({ ...parent, ...f }, ext, { paid: 360, today: "2026-10-09" }) === null);
+ok("what Stripe charged wins over the quote", foldedParent(parent, ext, { paid: 300, today: "x" }).pricePaid === 760);
+
+const { occupyingRows } = require(path.join(__dirname, "..", "lib", "occupancy.js"));
+const diary = [{ id: "p", bookingId: "NY-20261009-01", vesselId: "explorer", date: "2026-10-09", hours: 4, status: "booked" }];
+const charge = { id: "c", bookingId: "NY-20261009-01-X1", vesselId: "explorer", date: "2026-10-09", hours: 2, status: "booked" };
+ok("the boat is not counted twice for the extra hours", occupyingRows(diary, [charge]).length === 1);
+
+const { tripsSharingPhone } = require(path.join(__dirname, "..", "lib", "guestTrips.js"));
+const trips = tripsSharingPhone([], [{ ...charge, phone: "9365550100" }], "9365550100");
+ok("an extension is not a trip of its own", trips.length === 0);
+
+const { feedEvents } = require(path.join(__dirname, "..", "lib", "calendarFeed.js"));
+const ev = feedEvents({ externalBookings: [], inquiries: [{ ...charge, name: "Erika" }], today: "2026-10-01" });
+ok("an extension is not a calendar event of its own", ev.length === 0);
+
 console.log(`  extend booking: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

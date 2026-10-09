@@ -45,6 +45,7 @@ import { PlatformIcon, PlatformLabel } from "./PlatformIcon";
 import DemoOutbox from "./DemoOutbox";
 import CalendarFeedCard from "./CalendarFeedCard";
 import AddTimeButton from "./AddTimeButton";
+import { isExtensionRef, parentRefOf } from "../lib/extensionRef";
 import { isDemo } from "../lib/demo";
 import AvailabilityMonthGrid from "./AvailabilityMonthGrid";
 import SocialCommentsTab from "./SocialCommentsTab";
@@ -1035,7 +1036,26 @@ function toUnifiedRows(inquiries, externalBookings) {
   }
   const deduped = fromInquiries.filter((i) => !(i.bookingId && externalByBookingId.has(i.bookingId)));
 
-  return [...deduped, ...fromExternal].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  // "ADD TIME" CHARGES ARE PAYMENTS ON A RESERVATION, NOT RESERVATIONS.
+  // Owner, 9 Oct 2026: "I want to see it all in the NY- reservation ... her two
+  // separate payment transactions should reside" there. A charge numbered
+  // <parent>-X<n> (lib/extensionRef.js) is listed under its parent as a
+  // payment. One whose parent cannot be found stays a line of its own, so a
+  // charge can never simply vanish from the list.
+  const externalByRef = new Map(fromExternal.map((b) => [b.id, b]));
+  for (const b of fromExternal) if (b.bookingId) externalByRef.set(b.bookingId, b);
+  const shown = deduped.filter((i) => {
+    if (!isExtensionRef(i.bookingId)) return true;
+    const parent = externalByRef.get(parentRefOf(i.bookingId));
+    if (!parent) return true;
+    (parent.extensions = parent.extensions || []).push(i.raw);
+    return false;
+  });
+  for (const b of fromExternal) {
+    if (b.extensions) b.extensions.sort((x, y) => String(x.bookingId).localeCompare(String(y.bookingId), undefined, { numeric: true }));
+  }
+
+  return [...shown, ...fromExternal].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
 
 // ---- Inquiries tab -------------------------------------------------
@@ -2203,6 +2223,29 @@ function BookingsTab({ vessels, inquiries, externalBookings, addOns, onAddExtern
                       ) : (
                         r.pricePaid != null ? currency(r.pricePaid) : "—"
                       )}
+                      {/* The payments that make up this reservation, when time
+                          was added (lib/extensionRef.js): the original charge,
+                          then each extension, paid or still waiting. */}
+                      {r.extensions && r.extensions.length > 0 && (() => {
+                        const paidExtra = r.extensions
+                          .filter((x) => x.paymentStatus === "paid")
+                          .reduce((s, x) => s + (Number(x.priceQuoted) || 0), 0);
+                        const original = r.pricePaid != null ? Number(r.pricePaid) - paidExtra : null;
+                        return (
+                          <div style={{ marginTop: 4, fontSize: 11, color: "var(--muted)", lineHeight: 1.45, whiteSpace: "nowrap" }}>
+                            <div>Payments:</div>
+                            {original != null && <div>· {currency(original)} booking</div>}
+                            {r.extensions.map((x) => (
+                              <div key={x.id} title={x.message || ""}>
+                                · {currency(x.priceQuoted)} +{x.hours} h{" "}
+                                {x.paymentStatus === "paid"
+                                  ? <span style={{ color: "#6FCF97" }}>paid</span>
+                                  : <a href={`/pay/${x.id}`} target="_blank" rel="noreferrer" style={{ color: "#E8934A" }}>unpaid</a>}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                       {/* HOW the money arrived, which nothing else can know.
                           The ledger reads this instead of guessing from the
                           booking channel -- that guess is what filed a card

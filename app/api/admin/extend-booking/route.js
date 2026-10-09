@@ -5,6 +5,7 @@ const { parsePackage } = require("../../../../lib/serialize");
 const { availabilityProblem } = require("../../../../lib/availabilityQuery");
 const { extensionQuote, endLabel, extensionText } = require("../../../../lib/extendBooking");
 const { siteBase } = require("../../../../lib/demo");
+const { extensionRef } = require("../../../../lib/extensionRef");
 
 // POST { id, extraHours } -- "Add time" on a booking (lib/extendBooking.js).
 // Creates the separate charge for the extra hours and returns its /pay link
@@ -59,8 +60,14 @@ async function POST(req) {
   });
   const end = endLabel(b.startTime, q.to);
   const label = `Extra ${extra === 1 ? "hour" : extra + " hours"}${end ? ` (to ${end})` : ""}, ${b.packageName || pkg.name}`;
+  // ONE RESERVATION (lib/extensionRef.js): the charge carries the parent's
+  // number plus -X1, -X2, ..., so when it is paid the webhook folds it into
+  // this booking instead of making a second line in Bookings.
+  const parentRef = b.bookingId || b.id;
+  const earlier = recent ? 0 : await prisma.inquiry.count({ where: { bookingId: { startsWith: parentRef + "-X" } } });
   const ext = recent || await prisma.inquiry.create({
     data: {
+      bookingId: extensionRef(parentRef, earlier + 1),
       name: b.guestName || "Guest",
       email: b.email || "",
       phone: b.phone || "",
@@ -82,7 +89,7 @@ async function POST(req) {
   if (!recent) {
     await prisma.externalBooking.update({
       where: { id: b.id },
-      data: { note: (b.note ? b.note + "\n" : "") + `Extended by ${extra} h${end ? ` to ${end}` : ""} on ${new Date().toISOString().slice(0, 10)}: billed separately at $${q.amount}, inquiry ${ext.id}.` },
+      data: { note: (b.note ? b.note + "\n" : "") + `Add time ${ext.bookingId}: ${extra} h${end ? ` to ${end}` : ""}, $${q.amount}, link sent ${new Date().toISOString().slice(0, 10)} (unpaid until the guest pays).` },
     });
   }
   const url = `${siteBase()}/pay/${ext.id}`;
