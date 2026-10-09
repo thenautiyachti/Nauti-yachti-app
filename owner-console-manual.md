@@ -2,7 +2,7 @@
 
 How to run a charter business on this system: the public website, the owner console at thenautiyachti.com/admin, and the AI crew that watches over both.
 
-Edition for version 3.1.1 · October 2026
+Edition for version 3.2.0 · October 2026
 
 [[TOC]]
 
