@@ -50,6 +50,26 @@ const { videoArgs, describe } = require("./videoEncoder");
 
 const FFMPEG = "C:/Users/immex/tools/ffmpeg/ffmpeg.exe";
 const FFPROBE = "C:/Users/immex/tools/ffmpeg/ffprobe.exe";
+
+// HDR CLIPS (10 Oct 2026). The Meta glasses record HDR (HLG, BT.2020) since
+// about 19 Sep 2026. Cut as if it were ordinary video it comes out pale and
+// washed out, which the owner read as "brightened" on a daytime charter. An HDR
+// clip is tone-mapped to ordinary BT.709 first; an ordinary clip is untouched.
+// A colour conversion, not a grade: no brightness is added.
+const HDR_TONEMAP = "zscale=t=linear:npl=203,format=gbrpf32le,zscale=p=bt709," +
+  "tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p";
+const hdrSeen = new Map();
+function isHdr(file) {
+  if (!hdrSeen.has(file)) {
+    let t = "";
+    try {
+      t = execFileSync(FFPROBE, ["-v", "quiet", "-select_streams", "v:0", "-show_entries",
+        "stream=color_transfer", "-of", "csv=p=0", file], { encoding: "utf8" }).trim();
+    } catch { /* unreadable: ordinary */ }
+    hdrSeen.set(file, t === "arib-std-b67" || t === "smpte2084");
+  }
+  return hdrSeen.get(file);
+}
 const INBOX = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/00 Inbox";
 const CHARTERS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter";
 
@@ -816,7 +836,8 @@ seq.forEach((r, i) => {
   }
   // Scale so the frame is covered, then centre-crop. -2 keeps the dimension
   // even, which h264 requires.
-  const vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS},setsar=1`;
+  const vf = (isHdr(r.full) ? HDR_TONEMAP + "," : "") +
+    `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS},setsar=1`;
   const args = [
     "-hide_banner", "-loglevel", "error", "-y",
     // Seeking BEFORE -i decodes only what is needed, which is the difference
