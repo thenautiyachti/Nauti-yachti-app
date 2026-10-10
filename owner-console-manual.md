@@ -2,7 +2,7 @@
 
 How to run a charter business on this system: the public website, the owner console at thenautiyachti.com/admin, and the AI crew that watches over both.
 
-Edition for version 3.2.0 · October 2026
+Edition for version 3.3.0 · October 2026
 
 [[TOC]]
 
@@ -948,6 +948,7 @@ A post sent back with **Discuss** returns to you as *proposed* once it is fixed,
 
 - **Approved with a date** is the same permission. The publisher moves those onto the schedule herself at the start of each run.
 - **Approved with no date never goes out.** The content agent gives each of these a date every morning and says which dates she chose, so you can move one with **Reschedule**.
+- **A completed charter's recap goes out first.** Every completed charter gets one trip video, its recap, 40 to 59 seconds when the footage allows, finished in the run after its footage is filed, and drafted for you as *the newest trip*. Once you approve it, it takes the soonest slot: tonight's evening post if it is before 6:30pm and tonight is free, otherwise tomorrow. If that day already has a post, everything scheduled from that day on moves back one day, in order, and the agent says what moved. No other post jumps the queue.
 - Nothing else is ever published: not a proposed draft, not one that needs work, not a rejected one.
 
 So the queue is safe to leave alone until a post's date arrives. **To stop a post for good, press Deny.** To hold it for a fix instead, press **Discuss**: a post needing work never publishes until you approve it again.
