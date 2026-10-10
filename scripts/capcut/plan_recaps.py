@@ -373,12 +373,29 @@ def upright(clip):
     print("  could not make an upright copy of %s; using it as it is" % os.path.basename(clip), file=sys.stderr)
     return clip
 
+def held_keys():
+    """doNotUse and timeRestricted keys from _media-tags.json (matched as parts
+    of a file's name), the same list plan_themes.py honours. Coral, 10 Oct 2026:
+    the Snapchat step added his phone media without checking it, so a blocked
+    Snapchat video would still have reached a recap."""
+    try:
+        t = json.load(open(TAGS, encoding="utf-8"))
+        return tuple(list(t.get("doNotUse", {})) + list(t.get("timeRestricted", {})))
+    except Exception:
+        return ()
+
+def is_held(path, keys):
+    name = os.path.basename(path or ""); stem = os.path.splitext(name)[0]
+    return any(k and (k in name or k == stem) for k in keys)
+
 def snap_clip_shots(base, shot_len):
     """Shots from the owner's Snapchat videos: evenly across the clip, skipping
     the first and last 8% (the phone settling, the thumb on the button)."""
     out = []
+    keys = held_keys()
     for f in sorted(os.listdir(base)):
         if not (is_snap(f) and re.search(r"\.(mp4|mov|m4v)$", f, re.I)): continue
+        if is_held(f, keys): continue
         orig = os.path.join(base, f)
         clip = upright(orig); d = clip_seconds(clip)
         if d < 1.5: continue
@@ -483,7 +500,7 @@ def plan(folder, moments, used):
     # His Snapchat videos go in whole (see SNAP), and his Snapchat photos ahead
     # of every other photo.
     pool += snap_clip_shots(folder_dir(folder), shot_len)
-    snap_photos = [p for p in photos if is_snap(p)]
+    snap_photos = [p for p in photos if is_snap(p) and not is_held(p, held_keys())]
     pool += [{"kind": "photo", "file": p, "snap": True} for p in snap_photos]
     photos = [p for p in photos if not is_snap(p)]
     # Enough shots for MIN_LEN, filled GENEROUSLY. Erika's v2 (10 Oct 2026) came
