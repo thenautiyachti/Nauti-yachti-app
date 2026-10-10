@@ -63,7 +63,7 @@ HOOK = {"riding": "Day on the water, Lake Conroe", "party": "Party day on Lake C
 # sheets the same evening, for the same reason. plan_themes.py uses this list too.
 TRANS = ["pull-in", "white-flash", "split-iv", "slide", "whirlpool", "radial-blur", "shutter", "woosh"]
 END = "Book your day\nthenautiyachti.com"
-TARGET_SHOT, MAX_SHOTS, MAX_LEN = 2.6, 24, 60.0
+TARGET_SHOT, MAX_SHOTS, MAX_LEN = 2.6, 24, 59.0  # up to 59s (owner, 10 Oct 2026)
 # AT LEAST 40 SECONDS when the trip has the media (owner, 10 Oct 2026, of
 # Erika's 18-second recap: "we should try to make it a standard to have the
 # compilation video at least 40 seconds to a minute long ... assuming there's
@@ -309,6 +309,46 @@ LOOKALIKE = 24.0  # mean |diff| of 24x24 grey frames, 0-255. Island repeat: ~12-
 # by centre square; Toshia Mills's family photo as a 4x5 crop and in full: 33.5
 # full frame). Different photos of one day scored 39 and up (6 Oct 2026).
 PHOTO_LOOKALIKE = 38.0
+# THE OWNER'S PHONE MEDIA COMES FIRST (10 Oct 2026). Files named Snapchat-<n>
+# are saved from his own camera roll: "media labeled like this should be flagged
+# for a more definitive use as it's going to be great quality. Great moments."
+# The glasses footage is still scanned and picked as before. So:
+#  - every Snapchat VIDEO in the charter folder goes into the recap directly,
+#    in segments of about a shot each across the clip (it never needed a pick);
+#  - every Snapchat PHOTO goes in, and is dropped as a repeat only when it is
+#    nearly the same picture. Erika's four Island group photos (two standing,
+#    two sitting in the water) were all thrown out as "looks like" one another
+#    at PHOTO_LOOKALIKE, because the beach and the tree behind them match;
+#  - Snapchat shots are the last to be trimmed when the cut is too long.
+SNAP = re.compile(r"^snapchat", re.I)
+SNAP_LOOKALIKE = 12.0
+SNAP_SEGMENTS = 5  # most shots from one Snapchat video
+
+def is_snap(path):
+    return bool(SNAP.search(os.path.basename(path or "")))
+
+def clip_seconds(path):
+    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path],
+                       capture_output=True, text=True)
+    try: return float(r.stdout.strip())
+    except ValueError: return 0.0
+
+def snap_clip_shots(base, shot_len):
+    """Shots from the owner's Snapchat videos: evenly across the clip, skipping
+    the first and last 8% (the phone settling, the thumb on the button)."""
+    out = []
+    for f in sorted(os.listdir(base)):
+        if not (is_snap(f) and re.search(r"\.(mp4|mov|m4v)$", f, re.I)): continue
+        clip = os.path.join(base, f); d = clip_seconds(clip)
+        if d < 1.5: continue
+        lo, hi = d * 0.08, d * 0.92
+        n = max(1, min(SNAP_SEGMENTS, int((hi - lo) // max(shot_len, 1.0))))
+        for k in range(n):
+            t = lo + (hi - lo) * (k + 0.5) / n
+            half = min(shot_len / 2, (hi - lo) / (2 * n))
+            out.append({"kind": "people", "file": clip, "t": t, "a": max(0.0, t - half), "b": min(d, t + half),
+                        "dur_clip": d, "still": None, "snap": True})
+    return out
 
 def too_close(placed, file, frm, dur, gap=REPEAT_GAP):
     """A placed shot of the same file whose source span overlaps [frm, frm+dur] or
@@ -347,6 +387,7 @@ def repeats(placed, sh, kind):
     for p in placed:
         if kind == "rider" and p.get("_kind") == "rider": continue
         th = PHOTO_LOOKALIKE if sh.get("image") and p.get("image") else LOOKALIKE
+        if is_snap(sh["file"]) and is_snap(p["file"]): th = SNAP_LOOKALIKE  # his phone: only a near-identical one is a repeat
         if trip and trip_of(p["file"]) == trip and lookalike(p.get("_look"), sh["_look"], th):
             return "looks like %s @%.1f" % (os.path.basename(p["file"]), p["from"])
     return None
@@ -391,6 +432,12 @@ def plan(folder, moments, used):
     nb = max(2, int(round(TARGET_SHOT / bpm_beat / 2)) * 2)
     shot_len = nb * bpm_beat
     pool = clips[:]
+    # His Snapchat videos go in whole (see SNAP), and his Snapchat photos ahead
+    # of every other photo.
+    pool += snap_clip_shots(folder_dir(folder), shot_len)
+    snap_photos = [p for p in photos if is_snap(p)]
+    pool += [{"kind": "photo", "file": p, "snap": True} for p in snap_photos]
+    photos = [p for p in photos if not is_snap(p)]
     # Enough shots for MIN_LEN, filled GENEROUSLY. Erika's v2 (10 Oct 2026) came
     # out at 24s from 13 shots: short moments run under shot_len, and the photos
     # added to make up the number were mostly near-repeats of moments already in
@@ -398,14 +445,16 @@ def plan(folder, moments, used):
     # (MAX_LEN) and let the trimming below choose: riders held back first (real
     # motion, at most a third of the cut on an occasion trip), then photos.
     fill_to = min(MAX_SHOTS, int(MAX_LEN // shot_len))
+    # Tubing always earns its third (owner, 10 Oct 2026: "Maybe add a few more of
+    # them tubing"), whether or not the pool is already full: the trimming below
+    # keeps riders ahead of everything but his own phone media.
+    while dropped_riders and sum(s["kind"] == "rider" for s in pool) + 1 <= max(OTHER_RIDERS, fill_to // 3):
+        pool.append(dropped_riders.pop(0))
     if len(pool) < fill_to:
-        while len(pool) < fill_to and dropped_riders and \
-                sum(s["kind"] == "rider" for s in pool) + 1 <= max(OTHER_RIDERS, fill_to // 3):
-            pool.append(dropped_riders.pop(0))
         pool += [{"kind": "photo", "file": p} for p in photos[:fill_to - len(pool)]]
     max_shots = min(MAX_SHOTS, int(MAX_LEN // shot_len), len(pool))
     if len(pool) > max_shots:  # keep riders and the longest-held moments, spread across the day
-        keep = sorted(pool, key=lambda s: (s["kind"] != "rider", -(s.get("b", 0) - s.get("a", 0))))[:max_shots]
+        keep = sorted(pool, key=lambda s: (not s.get("snap"), s["kind"] != "rider", -(s.get("b", 0) - s.get("a", 0))))[:max_shots]
         pool = [s for s in pool if s in keep]
     riders = [s for s in pool if s["kind"] == "rider"]
     held = lambda s: s.get("b", 0) - s.get("a", 0)
