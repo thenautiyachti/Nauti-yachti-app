@@ -63,7 +63,16 @@ HOOK = {"riding": "Day on the water, Lake Conroe", "party": "Party day on Lake C
 # sheets the same evening, for the same reason. plan_themes.py uses this list too.
 TRANS = ["pull-in", "white-flash", "split-iv", "slide", "whirlpool", "radial-blur", "shutter", "woosh"]
 END = "Book your day\nthenautiyachti.com"
-TARGET_SHOT, MAX_SHOTS, MAX_LEN = 2.6, 16, 45.0
+TARGET_SHOT, MAX_SHOTS, MAX_LEN = 2.6, 24, 60.0
+# AT LEAST 40 SECONDS when the trip has the media (owner, 10 Oct 2026, of
+# Erika's 18-second recap: "we should try to make it a standard to have the
+# compilation video at least 40 seconds to a minute long ... assuming there's
+# enough media"). It was 9 shots because only 10 were ever asked for: the pool
+# was padded with photos to 10 and no further, and a bachelorette kept 3 riders.
+# Now the pool is filled to MIN_LEN with the trip's vetted photos and, if still
+# short, its riders. A recap under MIN_LEN is printed with "SHORT" so Coral adds
+# picks to Completed and rebuilds.
+MIN_LEN = 40.0
 PHOTO = re.compile(r"\.(jpe?g|png)$", re.I)
 FROM_VIDEO = re.compile(r"_(still\d+|t\d{4})", re.I)
 _dims = {}
@@ -370,16 +379,27 @@ def plan(folder, moments, used):
         # every riding clip had a rider still. "An occasion cut must show the
         # occasion, not the day" (owner, 5 Oct 2026). Keep the longest-held few.
         riders = sorted((s for s in clips if s["kind"] == "rider"), key=lambda s: -(s["b"] - s["a"]))
-        extra = {id(s) for s in riders[OTHER_RIDERS:]}
+        dropped_riders = riders[OTHER_RIDERS:]
+        extra = {id(s) for s in dropped_riders}
         clips = [s for s in clips if id(s) not in extra]
         photos = [p for p in photos if "_rider" not in os.path.basename(p)]  # not back in as fill photos
+    else:
+        dropped_riders = []
     if len(clips) + len(photos) < 3: return None
     song = pick_song(kind, used)
     bpm_beat = 60.0 / (song["bpm"] or 100)
     nb = max(2, int(round(TARGET_SHOT / bpm_beat / 2)) * 2)
     shot_len = nb * bpm_beat
     pool = clips[:]
-    if len(pool) < 10: pool += [{"kind": "photo", "file": p} for p in photos[:max(0, 10 - len(pool))]]
+    # Enough shots for MIN_LEN (the hook counts twice): photos first, then, on an
+    # occasion trip, riders held back above, so long as riders stay a third or
+    # less of the cut.
+    target = int(-(-MIN_LEN // shot_len))
+    if len(pool) < target:
+        pool += [{"kind": "photo", "file": p} for p in photos[:target - len(pool)]]
+    while len(pool) < target and dropped_riders and \
+            sum(s["kind"] == "rider" for s in pool) + 1 <= max(OTHER_RIDERS, target // 3):
+        pool.append(dropped_riders.pop(0))
     max_shots = min(MAX_SHOTS, int(MAX_LEN // shot_len), len(pool))
     if len(pool) > max_shots:  # keep riders and the longest-held moments, spread across the day
         keep = sorted(pool, key=lambda s: (s["kind"] != "rider", -(s.get("b", 0) - s.get("a", 0))))[:max_shots]
@@ -448,5 +468,6 @@ if __name__ == "__main__":
         if os.environ.get("RECAP_NAME"): p["name"] = os.environ["RECAP_NAME"]  # recap-charter.js --rebuild: "... recap v2 (Claude)"
         fn = os.path.join(HERE, "plans", re.sub(r"[^\w.-]+", "_", p["name"]) + ".json")
         json.dump(p, open(fn, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
-        print("%-44s %-12s %-22s %5.1fs %2d shots (%d rider, %d photo)" % (p["name"][:44], p["kind"], p["song"]["name"][:22], p["song"]["length"], len(p["shots"]),
-              sum(s.get("kind") == "rider" for s in p["shots"]), sum(bool(s.get("image")) for s in p["shots"])))
+        print("%-44s %-12s %-22s %5.1fs %2d shots (%d rider, %d photo)%s" % (p["name"][:44], p["kind"], p["song"]["name"][:22], p["song"]["length"], len(p["shots"]),
+              sum(s.get("kind") == "rider" for s in p["shots"]), sum(bool(s.get("image")) for s in p["shots"]),
+              "  SHORT: under %ds, add picks to Completed and rebuild" % MIN_LEN if p["song"]["length"] < MIN_LEN else ""))
