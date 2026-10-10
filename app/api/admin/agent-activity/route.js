@@ -48,7 +48,7 @@ async function POST(req) {
     const data = {};
     if (status !== undefined) data.status = status;
     if (detail !== undefined) data.detail = detail;
-    if (status === "completed" || status === "failed") data.completedAt = new Date();
+    if (status === "completed" || status === "failed" || status === "needs-input") data.completedAt = new Date();
 
     try {
       const updated = await prisma.agentActivity.update({ where: { id }, data });
