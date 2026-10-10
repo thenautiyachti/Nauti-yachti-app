@@ -40,6 +40,18 @@ TILE = 330                     # sheet tile width
 NODE = r"C:\Users\immex\tools\node-v24.19.0-win-x64\node.exe"
 CROP = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\AI & Website\Crew\_Scripts\crop-still.js"
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# HDR detection and the tone-map chain, the same as Crew\_Scripts\hdr.js and
+# charter-montage.js (10 Oct 2026).
+HDR_TONEMAP = ("zscale=t=linear:npl=203,format=gbrpf32le,zscale=p=bt709,"
+               "tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p")
+def is_hdr(path):
+    try:
+        t = subprocess.run(["ffprobe", "-v", "quiet", "-select_streams", "v:0", "-show_entries",
+                            "stream=color_transfer", "-of", "csv=p=0", path], capture_output=True, text=True).stdout.strip()
+    except Exception:
+        return False
+    return t in ("arib-std-b67", "smpte2084")
 CACHE = os.path.join(os.environ.get("TEMP", HERE), "rider-frames")
 FONT = r"C:\Windows\Fonts\arial.ttf"
 
@@ -138,8 +150,13 @@ def make(folder, specs):
         clip, t, uv = spec.split("@"); t = float(t); stem = os.path.splitext(clip)[0]
         still = os.path.join(fv, "%s_t%04d.jpg" % (stem, round(t * 10)))
         if not os.path.exists(still):
-            subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(t), "-i", os.path.join(base, clip),
-                            "-frames:v", "1", "-q:v", "2", still], check=True)
+            # HDR clips (the glasses since Sep 2026) are converted to ordinary
+            # colour, or the rider still comes out pale and washed out (Erika,
+            # 10 Oct 2026). A colour conversion, not a grade. Ordinary clips untouched.
+            src = os.path.join(base, clip)
+            vf = ["-vf", HDR_TONEMAP] if is_hdr(src) else []
+            subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(t), "-i", src,
+                            *vf, "-frames:v", "1", "-q:v", "2", still], check=True)
         r = subprocess.run([NODE, CROP, still, "--rider", "--focus", uv], capture_output=True, text=True)
         rider = os.path.splitext(still)[0] + "_rider.jpg"
         if not os.path.exists(rider): print("FAILED", spec, (r.stderr or r.stdout)[-200:]); continue
