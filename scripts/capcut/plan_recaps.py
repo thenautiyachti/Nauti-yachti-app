@@ -391,15 +391,18 @@ def plan(folder, moments, used):
     nb = max(2, int(round(TARGET_SHOT / bpm_beat / 2)) * 2)
     shot_len = nb * bpm_beat
     pool = clips[:]
-    # Enough shots for MIN_LEN (the hook counts twice): photos first, then, on an
-    # occasion trip, riders held back above, so long as riders stay a third or
-    # less of the cut.
-    target = int(-(-MIN_LEN // shot_len))
-    if len(pool) < target:
-        pool += [{"kind": "photo", "file": p} for p in photos[:target - len(pool)]]
-    while len(pool) < target and dropped_riders and \
-            sum(s["kind"] == "rider" for s in pool) + 1 <= max(OTHER_RIDERS, target // 3):
-        pool.append(dropped_riders.pop(0))
+    # Enough shots for MIN_LEN, filled GENEROUSLY. Erika's v2 (10 Oct 2026) came
+    # out at 24s from 13 shots: short moments run under shot_len, and the photos
+    # added to make up the number were mostly near-repeats of moments already in
+    # the cut and were skipped below. So fill to the most the cut can hold
+    # (MAX_LEN) and let the trimming below choose: riders held back first (real
+    # motion, at most a third of the cut on an occasion trip), then photos.
+    fill_to = min(MAX_SHOTS, int(MAX_LEN // shot_len))
+    if len(pool) < fill_to:
+        while len(pool) < fill_to and dropped_riders and \
+                sum(s["kind"] == "rider" for s in pool) + 1 <= max(OTHER_RIDERS, fill_to // 3):
+            pool.append(dropped_riders.pop(0))
+        pool += [{"kind": "photo", "file": p} for p in photos[:fill_to - len(pool)]]
     max_shots = min(MAX_SHOTS, int(MAX_LEN // shot_len), len(pool))
     if len(pool) > max_shots:  # keep riders and the longest-held moments, spread across the day
         keep = sorted(pool, key=lambda s: (s["kind"] != "rider", -(s.get("b", 0) - s.get("a", 0))))[:max_shots]
@@ -428,6 +431,12 @@ def plan(folder, moments, used):
         if s["kind"] != "photo":
             fit = int((s["b"] - s["a"]) / beat)
             want = max(2, min(want, fit - (fit % 2) if fit >= 2 else 2))
+            # A FULL SHOT around a short moment (10 Oct 2026). The span a..b is
+            # only how long the frame stays still, often a second on glasses
+            # footage, and capping every shot to it made Erika's recap 13 shots of
+            # 1.8s. A non-rider shot now runs at least shot_len centred on the
+            # vetted moment (clamped to the clip); riders keep the cap below.
+            if s["kind"] != "rider": want = max(want, nb)
         # A zoomed rider is framed for one moment: at 4x the camera's drift
         # loses them within a couple of seconds (Nagdy's 4.6 s opener, 5 Oct
         # 2026, showed mostly water). Four beats at most, centred on the moment.
