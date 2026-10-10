@@ -6,6 +6,7 @@ const { holdsTheDay, INQUIRY_STATUS_BUCKET } = require("../../../../lib/bookingS
 const { parsePackage } = require("../../../../lib/serialize");
 const { checkGiftCertificate, applicableAmount, redeem: redeemGiftCertificate } = require("../../../../lib/giftCertificates");
 const { sendBookingConfirmationEmail } = require("../../../../lib/email");
+const { checkCoupon, discountedAmount } = require("../../../../lib/coupons");
 
 // Public: hand a guest from our own payment page to Stripe.
 //
@@ -80,6 +81,31 @@ async function POST(req, { params }) {
   // Stripe to charge.
   const body = await req.json().catch(() => ({}));
   let amount = Number(booking.amount);
+
+  // A COUPON CODE, typed on the payment page (owner, 10 Oct 2026): "all
+  // payment links need to have a place to input our coupon code, as our website
+  // front page does." Tony had been told to use LASTCALL20 on his link and the
+  // page had nowhere to type it. Same rules as the booking form (lib/coupons.js):
+  // the code is the only thing trusted from the browser and the discount is
+  // worked out here. Unlike the form, a bad code is REFUSED with its reason
+  // rather than silently charged at full price, because the guest is looking at
+  // the total and should see why it did not change.
+  //
+  // A use is counted only when the payment lands (the webhook), never here: a
+  // pay link can be opened many times, and LASTCALL20 has ten uses.
+  let coupon = null;
+  let couponOff = 0;
+  if (body && body.couponCode) {
+    const c = await checkCoupon(body.couponCode, (booking.row && booking.row.email) || body.email);
+    if (!c.valid) {
+      return NextResponse.json({ error: c.reason, couponInvalid: true }, { status: 400 });
+    }
+    coupon = c.coupon;
+    const after = Math.round(discountedAmount(coupon.discountType, coupon.discountValue, amount) * 100) / 100;
+    couponOff = Math.round((amount - after) * 100) / 100;
+    amount = after;
+  }
+
   let gift = null;
   let giftApplied = 0;
   if (body && body.giftCertificateCode) {
@@ -103,6 +129,9 @@ async function POST(req, { params }) {
       console.error("[pay] gift certificate redemption failed:", err.message);
       return NextResponse.json({ error: "We could not apply that gift certificate. Please call us." }, { status: 400 });
     }
+    if (coupon) {
+      await prisma.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } }).catch(() => {});
+    }
     const paid = { paymentStatus: "paid", status: "booked", paymentMethod: "Gift certificate", paymentFailedAt: null, paymentFailedError: null };
     const row = booking.kind === "external"
       ? await prisma.externalBooking.update({
@@ -110,12 +139,16 @@ async function POST(req, { params }) {
           data: {
             ...paid,
             note: ((booking.row.note || "") + "\nPaid in full by gift certificate " + gift.code
-              + " ($" + giftApplied.toFixed(2) + ") on its payment page.").trim(),
+              + " ($" + giftApplied.toFixed(2) + ") on its payment page."
+              + (coupon ? " Coupon " + coupon.code + " took $" + couponOff.toFixed(2) + " off first." : "")).trim(),
           },
         })
       : await prisma.inquiry.update({
           where: { id: booking.id },
-          data: { ...paid, giftCertificateCode: gift.code, giftAmount: giftApplied },
+          data: {
+            ...paid, giftCertificateCode: gift.code, giftAmount: giftApplied,
+            ...(coupon ? { couponCode: coupon.code, discountAmount: couponOff } : {}),
+          },
         });
     // The same confirmation a card payment gets: where to go and when.
     const r = await sendBookingConfirmationEmail({
@@ -151,6 +184,7 @@ async function POST(req, { params }) {
     booking.hours ? booking.hours + " hours" : null,
     booking.partySize ? booking.partySize + " guests" : null,
     booking.bookingId,
+    coupon ? coupon.code + " −$" + couponOff.toFixed(2) : null,
   ].filter(Boolean).join(" · ");
 
   let session;
@@ -180,9 +214,14 @@ async function POST(req, { params }) {
       // The certificate rides along in the metadata and is spent by the
       // webhook once the card part has been paid — never before, so an
       // abandoned checkout cannot spend somebody's certificate.
-      metadata: gift
-        ? { ...metadataFor(booking), giftCertificateCode: gift.code, giftAmount: String(giftApplied) }
-        : metadataFor(booking),
+      // payLinkCoupon is read by the webhook to record the code and count ONE
+      // use once the money lands. The booking form never sets it (it counts its
+      // own use when it creates the inquiry), so the two cannot double-count.
+      metadata: {
+        ...metadataFor(booking),
+        ...(gift ? { giftCertificateCode: gift.code, giftAmount: String(giftApplied) } : {}),
+        ...(coupon ? { payLinkCoupon: coupon.code, payLinkCouponOff: String(couponOff) } : {}),
+      },
       phone_number_collection: { enabled: true },
       consent_collection: { terms_of_service: "required" },
       custom_text: {

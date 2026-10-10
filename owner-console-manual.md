@@ -262,6 +262,8 @@ Codes are made in **Setup → Coupons**: a percentage or a fixed amount off, wit
 
 A guest can enter a gift certificate code in two places: the booking form, beside the coupon box, and the payment page you text them, under **Have a gift certificate?**. The code is checked as they type it and the balance is shown.
 
+**Coupon codes work on the payment page too** (since 10 Oct 2026), under **Have a coupon code?**, so a guest you text a `/pay` link can use a code such as LASTCALL20 themselves. The total updates as soon as the code is applied, and a code that cannot be used (expired, used up, or for returning guests only) shows its reason instead of quietly charging full price. The coupon comes off first, then any gift certificate. A use is counted only when the payment goes through, so a guest opening their link several times does not use up a limited code. Nothing is discounted unless the guest types the code: the price on the booking stays as you set it.
+
 - The certificate is applied **after** any coupon, against whatever is still owed.
 - It is **spent only once the rest is paid**, so an abandoned checkout never uses it. When it covers the whole charter there is nothing for the card to pay, so it is spent at once, the booking is marked paid by gift certificate, and the guest gets their confirmation.
 - A code given with a plain inquiry is kept on the inquiry, shown in your inquiry email, and filled in on the payment page when you send the link. It is not spent until they pay.

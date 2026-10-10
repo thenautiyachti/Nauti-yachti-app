@@ -34,6 +34,19 @@ async function slotStillFree(row, kind) {
   });
 }
 
+// A COUPON TYPED ON A PAY LINK (10 Oct 2026): one use, counted when the money
+// lands, and only the first time this row turns paid (a retried webhook must
+// not count it again). See app/api/pay/[id]/route.js.
+async function countPayLinkCoupon(meta, wasPaid) {
+  const code = meta && meta.payLinkCoupon;
+  if (!code || wasPaid) return;
+  try {
+    await prisma.coupon.update({ where: { code: String(code).toUpperCase() }, data: { usedCount: { increment: 1 } } });
+  } catch (e) {
+    console.error("[webhooks/stripe] could not count coupon " + code + ": " + e.message);
+  }
+}
+
 // SPEND A GIFT CERTIFICATE, once the card part has actually been paid.
 //
 // Two ways a code arrives: on the Inquiry row (the website's booking form has
@@ -390,6 +403,12 @@ async function POST(req) {
             data.note = ((before.note || "") + "\n" + line).trim();
           }
         }
+        if (meta.payLinkCoupon && before) {
+          const line = "Coupon " + meta.payLinkCoupon + " took $" + (Number(meta.payLinkCouponOff) || 0).toFixed(2) + " off on its payment page.";
+          const base = data.note != null ? data.note : (before.note || "");
+          if (!String(base).includes(line)) data.note = (base + "\n" + line).trim();
+          await countPayLinkCoupon(meta, before.paymentStatus === "paid");
+        }
         // Stripe verifies these, so they beat whatever we had -- but only
         // overwrite when it actually returned one, so a blank never clobbers a
         // good number or address already on the record.
@@ -514,6 +533,13 @@ async function POST(req) {
         : (session.id ? await prisma.inquiry.findFirst({ where: { stripeSessionId: session.id } }) : null);
       const conflict = before ? await slotStillFree(before, "inquiry") : null;
       if (conflict) delete data.status;
+
+      // A coupon typed on this inquiry's pay link (see countPayLinkCoupon).
+      if (meta.payLinkCoupon && before) {
+        data.couponCode = String(meta.payLinkCoupon).toUpperCase();
+        data.discountAmount = Number(meta.payLinkCouponOff) || null;
+        await countPayLinkCoupon(meta, before.paymentStatus === "paid");
+      }
 
       // A certificate named in the metadata (the payment link) is recorded on
       // the row as well, so the inquiry says how it was paid.
