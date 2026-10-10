@@ -35,6 +35,8 @@
 //   --email     if known. Otherwise Stripe collects it at checkout.
 //   --note      anything worth remembering about how it was agreed
 //   --source    referralSource, default "Word of mouth"
+//   --start     start time, HH:MM
+//   --status    inquiry, for a lead not yet confirmed (default: booked)
 require("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/paths.js").loadSecrets();
 const APP = "C:/Users/immex/Documents/Nauti-yachti-app";
 const { PrismaClient } = require(APP + "/node_modules/@prisma/client");
@@ -189,7 +191,9 @@ function e164(raw) {
       hours,
       startTime: val("start") || (pkg.id === "glowz" ? "17:00" : null),
       platform: "Direct",
-      status: "booked",
+      // --status inquiry (10 Oct 2026): a lead agreed by text but not yet
+      // confirmed goes on as an inquiry, with its price and pay link ready.
+      status: val("status") === "inquiry" ? "inquiry" : "booked",
       paymentStatus: "unpaid",
       referralSource: val("source") || "Word of mouth",
       bookingId,
