@@ -333,15 +333,63 @@ def clip_seconds(path):
     try: return float(r.stdout.strip())
     except ValueError: return 0.0
 
+def clip_rotation(path):
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                        "stream_side_data=rotation", "-of", "csv=p=0", path], capture_output=True, text=True)
+    try: return int(float((r.stdout.strip().splitlines() or ["0"])[0] or 0))
+    except ValueError: return 0
+
+def upright(clip):
+    """A phone video stored sideways with a rotate flag, as an upright copy.
+
+    His phone saves Snapchat videos 1920x1080 with "rotate -90". CapCut honoured
+    the flag on two of Erika's and ignored it on the third, which played sideways
+    in the 10 Oct 2026 recap. An upright copy (the rotation baked into the
+    pixels, no flag) cannot be misread. Kept beside the stills in
+    _from video/upright, never in the charter folder itself, so nothing counts it
+    as raw media twice. Made once; the original is never touched.
+
+    THE FLAG CAN BE WRONG. Erika's Snapchat-1342882634 was still sideways after
+    honouring it (the phone was held sideways while recording). A clip's own
+    entry in _media-tags.json "files" may carry "rotate": 90 (a quarter turn
+    clockwise), -90 (anticlockwise) or 180, applied on top. Owner, 10 Oct 2026:
+    "Just rotate it then correctly." Look at the contact sheet; set it when a
+    shot is sideways or upside down, and rebuild."""
+    extra = int(file_tag(clip).get("rotate") or 0) % 360
+    if not clip_rotation(clip) and not extra: return clip
+    turn = {90: ["-vf", "transpose=1"], 270: ["-vf", "transpose=2"], 180: ["-vf", "transpose=1,transpose=1"]}.get(extra, [])
+    out_dir = os.path.join(os.path.dirname(clip), "_from video", "upright")
+    stem, ext = os.path.splitext(os.path.basename(clip))
+    out = os.path.join(out_dir, stem + ("_r%d" % extra if extra else "") + ext)
+    if os.path.exists(out) and os.path.getsize(out) > 0: return out
+    os.makedirs(out_dir, exist_ok=True)
+    tmp = out + ".part.mp4"
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", clip, *turn, "-c:v", "libx264", "-crf", "17",
+                        "-preset", "medium", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", tmp], capture_output=True)
+    if r.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0:
+        os.replace(tmp, out); return out
+    try: os.remove(tmp)
+    except OSError: pass
+    print("  could not make an upright copy of %s; using it as it is" % os.path.basename(clip), file=sys.stderr)
+    return clip
+
 def snap_clip_shots(base, shot_len):
     """Shots from the owner's Snapchat videos: evenly across the clip, skipping
     the first and last 8% (the phone settling, the thumb on the button)."""
     out = []
     for f in sorted(os.listdir(base)):
         if not (is_snap(f) and re.search(r"\.(mp4|mov|m4v)$", f, re.I)): continue
-        clip = os.path.join(base, f); d = clip_seconds(clip)
+        orig = os.path.join(base, f)
+        clip = upright(orig); d = clip_seconds(clip)
         if d < 1.5: continue
         lo, hi = d * 0.08, d * 0.92
+        # Only part of it is usable? Its "files" entry may say which seconds:
+        # "use": [from, to]. Erika's Island clip dips to the group's legs for its
+        # first three seconds (10 Oct 2026); the rest is the whole group waving.
+        use = file_tag(orig).get("use")
+        if isinstance(use, list) and len(use) == 2:
+            lo, hi = max(0.0, float(use[0])), min(d, float(use[1]))
+            if hi - lo < 1.0: continue
         n = max(1, min(SNAP_SEGMENTS, int((hi - lo) // max(shot_len, 1.0))))
         for k in range(n):
             t = lo + (hi - lo) * (k + 0.5) / n
