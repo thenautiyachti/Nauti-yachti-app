@@ -202,7 +202,12 @@ def choose_song(names, used, avoid=()):
     return SONG[name]
 
 def pick_song(kind, used):
-    return choose_song(SONGS[kind], used, {used.get("last")})
+    # A recap is cut to its song, so a song shorter than MIN_LEN can never make
+    # the 40s the owner asked for (10 Oct 2026). Prefer the songs long enough;
+    # fall back to the whole list only when none of them is usable.
+    names = SONGS[kind]
+    long = [n for n in names if n in SONG and n not in PRO_ONLY and n not in BANNED and SONG[n]["dur"] >= MIN_LEN + 1]
+    return choose_song(long or names, used, {used.get("last")})
 
 def song_history(skip=()):
     """Songs already used by Claude-built drafts in his CapCut library.
@@ -388,6 +393,55 @@ def is_held(path, keys):
     name = os.path.basename(path or ""); stem = os.path.splitext(name)[0]
     return any(k and (k in name or k == stem) for k in keys)
 
+# HDR CLIPS GO TO CAPCUT AS ORDINARY COLOUR (10 Oct 2026). The Meta glasses
+# record HDR (HLG, BT.2020). CapCut built Robert Snow's recap straight from those
+# clips without converting them: the owner, "the greens turn almost grey ... you
+# can tell by her green shirt" (neon green raw, pale in the recap). So every HDR
+# shot in a plan is handed to CapCut as a short tone-mapped copy of just the
+# seconds it uses (plus a second either side for transitions), kept in
+# _from video/sdr beside the clip. A colour conversion, not a grade: the same
+# chain as Crew/_Scripts/hdr.js. The original clip is never touched.
+SDR_TONEMAP = ("zscale=t=linear:npl=203,format=gbrpf32le,zscale=p=bt709,"
+               "tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p")
+_HDR = {}
+
+def is_hdr(path):
+    if path not in _HDR:
+        r = subprocess.run(["ffprobe", "-v", "quiet", "-select_streams", "v:0", "-show_entries",
+                            "stream=color_transfer", "-of", "csv=p=0", path], capture_output=True, text=True)
+        _HDR[path] = r.stdout.strip() in ("arib-std-b67", "smpte2084")
+    return _HDR[path]
+
+def sdr_shots(p, pad=1.0):
+    """Point every HDR video shot of plan `p` at a tone-mapped copy of its span."""
+    for sh in p.get("shots", []):
+        if sh.get("image") or not sh.get("file") or not is_hdr(sh["file"]): continue
+        clip = sh["file"]; frm = float(sh.get("from", 0)); dur = float(sh.get("dur", 0))
+        start = max(0.0, frm - pad); length = dur + (frm - start) + pad
+        base = os.path.dirname(clip)
+        if os.path.basename(base) in ("upright", "sdr"): base = os.path.dirname(os.path.dirname(base))
+        out_dir = os.path.join(base, "_from video", "sdr")
+        stem = os.path.splitext(os.path.basename(clip))[0]
+        out = os.path.join(out_dir, "%s_s%05d_d%04d.mp4" % (stem, round(start * 100), round(length * 100)))
+        if not (os.path.exists(out) and os.path.getsize(out) > 0):
+            os.makedirs(out_dir, exist_ok=True)
+            tmp = out + ".part.mp4"
+            r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", "%.3f" % start, "-i", clip,
+                                "-t", "%.3f" % length, "-vf", SDR_TONEMAP, "-c:v", "libx264", "-crf", "16", "-preset", "fast",
+                                "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
+                                "-c:a", "aac", "-b:a", "192k", tmp], capture_output=True)
+            if r.returncode != 0 or not os.path.exists(tmp) or os.path.getsize(tmp) == 0:
+                print("  could not convert %s for CapCut; left as HDR" % os.path.basename(clip), file=sys.stderr)
+                try: os.remove(tmp)
+                except OSError: pass
+                continue
+            os.replace(tmp, out)
+        sh["src"] = clip
+        sh["file"] = out
+        sh["from"] = round(frm - start, 3)
+        if "dur_clip" in sh: sh["dur_clip"] = round(length, 3)
+    return p
+
 def snap_clip_shots(base, shot_len):
     """Shots from the owner's Snapchat videos: evenly across the clip, skipping
     the first and last 8% (the phone settling, the thumb on the button)."""
@@ -529,15 +583,24 @@ def plan(folder, moments, used):
     # in time order, a rider filmed late was the shot the song ran out before
     # (Nagdy, 5 Oct 2026), and tubing is the main seller.
     pool = [hook] + [s for s in riders if s is not hook] + [s for s in pool if s is not hook and s not in riders]
-    need = sum(min(shot_len * (2 if s is hook else 1), max(2 * bpm_beat, (s.get("b", 99) - s.get("a", 0)))) for s in pool)
+    # A rider shot is laid out at four beats at most (below), so budget it at
+    # that. Budgeted at a full shot_len, Robert Snow's riding recap (10 Oct 2026)
+    # was trimmed to fit a 43s song and then laid out at 25.8s.
+    est = lambda s: min(4 * bpm_beat, shot_len * (2 if s is hook else 1)) if s["kind"] == "rider" \
+        else min(shot_len * (2 if s is hook else 1), max(2 * bpm_beat, (s.get("b", 99) - s.get("a", 0))))
+    need = sum(est(s) for s in pool)
     # Too long for the song: drop the shortest-held shot that is not a rider.
     # This used to drop from the end of the day, which on 5 Oct 2026 threw out
     # Nagdy's only usable rider (filmed at 8pm) and left a tubing recap with no
     # one on a tube. Owner: "when wakeboarding or tubing we need a zoom on them".
+    # His own phone (Snapchat) media goes last, after the riders: it is first in
+    # his order of priority (10 Oct 2026), and on Robert Snow's recap it was the
+    # first thing dropped.
     while len(pool) > 1 and need > song["dur"] - 1:
         rest = pool[1:]
-        victim = min([s for s in rest if s["kind"] != "rider"] or rest, key=held)
-        pool.remove(victim); need -= shot_len
+        victim = min([s for s in rest if s["kind"] != "rider" and not s.get("snap")]
+                     or [s for s in rest if not s.get("snap")] or rest, key=held)
+        pool.remove(victim); need -= est(victim)
     times, i0, beat = song_grid(song, need)
     t0 = times[i0]; at = 0.0; k = i0; shots = []
     for s in pool:
@@ -589,6 +652,7 @@ if __name__ == "__main__":
         p = plan(folder, moments[folder], used)
         if not p: print("skip (too little):", folder); continue
         if os.environ.get("RECAP_NAME"): p["name"] = os.environ["RECAP_NAME"]  # recap-charter.js --rebuild: "... recap v2 (Claude)"
+        sdr_shots(p)  # HDR glasses footage handed to CapCut in ordinary colour
         fn = os.path.join(HERE, "plans", re.sub(r"[^\w.-]+", "_", p["name"]) + ".json")
         json.dump(p, open(fn, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
         print("%-44s %-12s %-22s %5.1fs %2d shots (%d rider, %d photo)%s" % (p["name"][:44], p["kind"], p["song"]["name"][:22], p["song"]["length"], len(p["shots"]),

@@ -702,7 +702,9 @@ if __name__ == "__main__":
         if thin: out["thin"].append(thin); continue
         week[slug] = {os.path.basename(s["file"]) for s in p["shots"]}
         f = os.path.join(HERE, "plans", re.sub(r"[^\w.-]+", "_", p["name"]) + ".json")
-        if not DRY: json.dump(p, open(f, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+        if not DRY:
+            pr.sdr_shots(p)  # HDR glasses footage handed to CapCut in ordinary colour (10 Oct 2026)
+            json.dump(p, open(f, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
         out["plans"].append({"theme": slug, "file": f, "name": p["name"], "charters": len(p["used"]),
                              "shots": len(p["shots"]), "seconds": p["song"]["length"], "song": p["song"]["name"]})
     print(json.dumps(out, ensure_ascii=False))
