@@ -157,6 +157,9 @@ def make(folder, specs):
             vf = ["-vf", HDR_TONEMAP] if is_hdr(src) else []
             subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(t), "-i", src,
                             *vf, "-frames:v", "1", "-q:v", "2", still], check=True)
+            if vf:  # converted here, so fix-hdr-stills.js must not convert it again
+                with open(os.path.join(fv, "_hdr-fixed.txt"), "a", encoding="utf-8") as lf:
+                    lf.write("_from video/%s\n%s\n" % (os.path.basename(still), os.path.basename(still)[:-4] + "_rider.jpg"))
         r = subprocess.run([NODE, CROP, still, "--rider", "--focus", uv], capture_output=True, text=True)
         rider = os.path.splitext(still)[0] + "_rider.jpg"
         if not os.path.exists(rider): print("FAILED", spec, (r.stderr or r.stdout)[-200:]); continue
