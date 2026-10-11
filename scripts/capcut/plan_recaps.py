@@ -13,7 +13,8 @@ from PIL import Image, ImageOps
 from locate_moments import folder_dir  # _By charter or _outings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\02 Charters\_By charter"
+from locate_moments import PHOTOS_ROOT
+ROOT = os.path.join(PHOTOS_ROOT, "02 Charters", "_By charter")
 WC, HC = 1080, 1920
 shelf = json.load(open(os.path.join(HERE, "shelf.json"), encoding="utf-8"))
 SONG = {}
@@ -292,7 +293,7 @@ def shots_for(folder, moments):
     rank = lambda f: (0 if not FROM_VIDEO.search(f) else 1 if "_rider" in f else 2, f)
     return merged, [os.path.join(done, f) for f in sorted(imgs, key=rank)]
 
-TAGS = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\_media-tags.json"
+TAGS = os.path.join(PHOTOS_ROOT, "_media-tags.json")
 
 # NO REPEATS WITHIN A CUT. Owner, 6 Oct 2026, on the Island v3 compilation: "in
 # the middle of the island video it also looks like the same media used twice".

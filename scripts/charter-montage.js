@@ -71,7 +71,13 @@ function isHdr(file) {
   return hdrSeen.get(file);
 }
 const INBOX = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/00 Inbox";
-const CHARTERS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter";
+// The library root from the crew's nauti-paths.json (11 Oct 2026: the media
+// library moved to the external drive; Drive keeps finished work only).
+const PHOTOS_ROOT = (() => {
+  try { return JSON.parse(require("fs").readFileSync("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/nauti-paths.json", "utf8")).photos; }
+  catch { return "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos"; }
+})();
+const CHARTERS = PHOTOS_ROOT + "/02 Charters/_By charter";
 
 // 9:16, which is what Reels, TikTok and Stories all want. The source is 3:4,
 // so filling the frame costs about a quarter of the width off the sides —

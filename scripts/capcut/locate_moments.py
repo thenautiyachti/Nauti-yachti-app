@@ -14,13 +14,22 @@ import os, re, sys, json, subprocess
 import numpy as np
 from PIL import Image, ImageOps
 
-ROOT = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\02 Charters\_By charter"
+# THE LIBRARY ROOT comes from the crew's nauti-paths.json (11 Oct 2026: the media
+# library moved to the external drive; Drive keeps finished work only).
+def _photos_root():
+    try:
+        import json as _j
+        return _j.load(open(r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\AI & Website\Crew\_Scripts\nauti-paths.json", encoding="utf-8"))["photos"].replace("/", "\\")
+    except Exception:
+        return r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos"
+PHOTOS_ROOT = _photos_root()
+ROOT = os.path.join(PHOTOS_ROOT, "02 Charters", "_By charter")
 # Since 3 Oct 2026 the days with no charter (his own outings, the 2025 glow promo
 # nights) live beside the charters in 02 Charters\_outings, tagged the same way.
 # They may be posted, each post approved by him ("It can be used for posts too.
 # I'll be able to stage gate it"), so theme cuts draw on them, after the
 # charters, and their moments are found here as well. Recaps stay charter-only.
-OUTINGS = r"C:\Users\immex\Documents\_MyFiles\_The Nauti Yachti LLC\Photos\02 Charters\_outings"
+OUTINGS = os.path.join(PHOTOS_ROOT, "02 Charters", "_outings")
 ROOTS = (ROOT, OUTINGS)
 # The crew's one guard (Crew\_Scripts\media-guard.js), copied: never a source.
 RESTRICTED = re.compile(r"\bNDA\b|NO MEDIA|DO NOT POST|NOT FOR (?:POST|PUBLIC|USE)|\bNOT USED?\b", re.I)

@@ -21,7 +21,13 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 
 const HERE = __dirname;
-const TAGS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/_media-tags.json";
+// The library root from the crew's nauti-paths.json (11 Oct 2026: the media
+// library moved to the external drive; Drive keeps finished work only).
+const PHOTOS_ROOT = (() => {
+  try { return JSON.parse(require("fs").readFileSync("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/nauti-paths.json", "utf8")).photos; }
+  catch { return "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos"; }
+})();
+const TAGS = PHOTOS_ROOT + "/_media-tags.json";
 const say = (code, o) => { console.log(JSON.stringify(o)); process.exit(code); };
 
 const folder = process.argv[2];

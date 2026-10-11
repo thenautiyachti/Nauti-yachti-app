@@ -25,7 +25,13 @@ const HERE = __dirname;
 const PY = fs.existsSync("C:/Users/immex/AppData/Local/Programs/Python/Python312/python.exe")
   ? "C:/Users/immex/AppData/Local/Programs/Python/Python312/python.exe" : "python";
 const STORE = path.join(process.env.LOCALAPPDATA, "CapCut/User Data/Projects/com.lveditor.draft");
-const CHARTERS = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/02 Charters/_By charter";
+// The library root from the crew's nauti-paths.json (11 Oct 2026: the media
+// library moved to the external drive; Drive keeps finished work only).
+const PHOTOS_ROOT = (() => {
+  try { return JSON.parse(require("fs").readFileSync("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/nauti-paths.json", "utf8")).photos; }
+  catch { return "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos"; }
+})();
+const CHARTERS = PHOTOS_ROOT + "/02 Charters/_By charter";
 const say = (code, obj) => { console.log(JSON.stringify(obj)); process.exit(code); };
 const run = (cmd, args) => spawnSync(cmd, args, { cwd: HERE, encoding: "utf8", env: { ...process.env, PYTHONIOENCODING: "utf-8" }, maxBuffer: 1 << 26 });
 

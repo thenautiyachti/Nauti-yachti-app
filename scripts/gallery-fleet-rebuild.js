@@ -38,7 +38,13 @@ const { PrismaClient } = require(path.join(APP, "node_modules/@prisma/client"));
 const prisma = new PrismaClient();
 
 const APPLY = process.argv.includes("--apply");
-const FLEET = "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos/01 Fleet";
+// The library root from the crew's nauti-paths.json (11 Oct 2026: the media
+// library moved to the external drive; Drive keeps finished work only).
+const PHOTOS_ROOT = (() => {
+  try { return JSON.parse(require("fs").readFileSync("C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/AI & Website/Crew/_Scripts/nauti-paths.json", "utf8")).photos; }
+  catch { return "C:/Users/immex/Documents/_MyFiles/_The Nauti Yachti LLC/Photos"; }
+})();
+const FLEET = PHOTOS_ROOT + "/01 Fleet";
 const OUT = path.join(APP, "public", "gallery");
 const FFMPEG = ["C:/Users/immex/tools/ffmpeg/bin/ffmpeg.exe", "C:/Users/immex/tools/ffmpeg/ffmpeg.exe"].find(fs.existsSync);
 const FFPROBE = ["C:/Users/immex/tools/ffmpeg/bin/ffprobe.exe", "C:/Users/immex/tools/ffmpeg/ffprobe.exe"].find(fs.existsSync);
