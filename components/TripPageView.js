@@ -104,6 +104,16 @@ function GettingThere({ view }) {
 
 function Money({ view }) {
   const m = view.money;
+  if (m.partner) {
+    return (
+      <section style={CARD}>
+        <h2 style={H2}>Payment</h2>
+        <p style={{ ...P, margin: 0 }}>
+          This charter ran with our partner {m.partner}, and your payment went to them, so your receipt and any questions about it are with {m.partner}.
+        </p>
+      </section>
+    );
+  }
   if (m.platform) {
     return (
       <section style={CARD}>
