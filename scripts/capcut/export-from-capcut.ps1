@@ -10,7 +10,8 @@
 # specific enough that it is the first card). Prints one JSON line and exits:
 #   0  {"exported": "<path to mp4>", "shots": "<dir>"}   then run blur-bars.js on it
 #   3  {"skipped": "CapCut is open"}        he is using it; try next run
-#   4  {"skipped": "owner active"}          input in the last 2 minutes; try again shortly
+#   4  {"skipped": "owner active"}          he pressed Not now, or kept using the PC for 3 minutes
+#   4  {"skipped": "PC locked"}             the lock screen is up; nothing can be clicked
 #   1  {"error": "...", "shots": "<dir>"}   report it with the screenshots; never improvise clicks
 #
 # Screenshots (5 Oct 2026): each run keeps its own folder,
@@ -30,9 +31,15 @@
 #   otherwise Windows silently refuses every cursor move (another window, e.g.
 #   GameInputSvc, holds the foreground).
 # - The "share it now" panel after an export is closed, never Shared.
-# Two idle minutes, not ten (owner, 5 Oct 2026: "10mins is too long to wait for
-# idle, just do a couple minutes").
-param([Parameter(Mandatory = $true)][string]$Project, [int]$IdleMinutes = 2,
+# THE COUNTDOWN OVERLAY (owner, 11 Oct 2026): "it would be cool to have a little
+# overlay appear stating Nauti Coral is about to perform some media/capcut
+# actions so it allows me to not use the computer. once the overlay start it
+# should do a 30 second countdown or something and then start her task."
+# It replaces the silent two-idle-minutes rule: a topmost panel counts down 30
+# seconds; any mouse or keyboard input starts it again; "Not now", or 3 minutes
+# of him still working, postpones (exit 4). During the export a click-through
+# banner at the bottom says hands off. Neither can take a click CapCut needs.
+param([string]$Project = "", [int]$IdleMinutes = 2, [switch]$OverlayTest,
       [string]$ShotRoot = (Join-Path $env:TEMP "capcut-export"))
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
@@ -52,6 +59,8 @@ public delegate bool EnumProc(System.IntPtr h, System.IntPtr l);
 [DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);
 [DllImport("user32.dll")] public static extern bool GetWindowRect(System.IntPtr h, out RECT r);
 [DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO i);
+[DllImport("user32.dll")] public static extern int GetWindowLong(System.IntPtr h, int i);
+[DllImport("user32.dll")] public static extern int SetWindowLong(System.IntPtr h, int i, int v);
 public struct RECT { public int L, T, R, B; }
 public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
 '@
@@ -78,12 +87,14 @@ function Wins() {
   [CapEx.W]::EnumWindows($cb, [IntPtr]::Zero) | Out-Null
   $list
 }
+function Pump() { try { [System.Windows.Forms.Application]::DoEvents() } catch {} }
 function Big() { Wins | Where-Object { $_.W -ge 1200 -and $_.Ht -ge 700 } | Select-Object -First 1 }
 function ClosePopups() {
   foreach ($w in (Wins | Where-Object { $_.W -lt 1200 -or $_.Ht -lt 700 })) {
     [CapEx.W]::PostMessage($w.H, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
   }
   Start-Sleep -Milliseconds 500
+  Pump
 }
 function Front($w) {
   [CapEx.W]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [CapEx.W]::SetForegroundWindow($w.H) | Out-Null
@@ -126,11 +137,78 @@ function EndCapCut() {
 }
 
 if (Get-Process CapCut -ErrorAction SilentlyContinue) { Say 3 @{ skipped = "CapCut is open" } }
-$li = New-Object CapEx.W+LASTINPUTINFO; $li.cbSize = 8; [CapEx.W]::GetLastInputInfo([ref]$li) | Out-Null
-# Both clocks are 32-bit milliseconds since boot and wrap after 49.7 days.
-$now = [int64][Environment]::TickCount; if ($now -lt 0) { $now += 4294967296 }
-$ms = $now - [int64]$li.dwTime; if ($ms -lt 0) { $ms += 4294967296 }
-if ($ms / 60000 -lt $IdleMinutes) { Say 4 @{ skipped = "owner active"; idleMinutes = [math]::Round($ms / 60000, 1) } }
+# The lock screen: nothing can be clicked or captured (11 Oct 2026, a run failed this way).
+# Only THIS session's lock screen: other Windows accounts signed in on this PC
+# have their own LogonUI (11 Oct 2026: session 3 read as locked while his was not).
+$mySession = (Get-Process -Id $PID).SessionId
+if (Get-Process LogonUI -ErrorAction SilentlyContinue | Where-Object { $_.SessionId -eq $mySession }) { Say 4 @{ skipped = "PC locked" } }
+
+function LastInput() {
+  $li = New-Object CapEx.W+LASTINPUTINFO; $li.cbSize = 8; [CapEx.W]::GetLastInputInfo([ref]$li) | Out-Null
+  return [uint32]$li.dwTime
+}
+function Countdown([int]$Seconds = 30, [int]$MaxWaitSeconds = 180) {
+  $f = New-Object System.Windows.Forms.Form
+  $f.FormBorderStyle = "None"; $f.StartPosition = "CenterScreen"; $f.TopMost = $true; $f.ShowInTaskbar = $false
+  $f.Size = New-Object System.Drawing.Size(620, 250); $f.BackColor = [System.Drawing.Color]::FromArgb(18, 12, 30); $f.Opacity = 0.96
+  $t1 = New-Object System.Windows.Forms.Label; $t1.Text = "Nauti Coral is about to use CapCut"
+  $t1.Font = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold); $t1.ForeColor = [System.Drawing.Color]::FromArgb(203, 108, 230)
+  $t1.AutoSize = $false; $t1.TextAlign = "MiddleCenter"; $t1.SetBounds(10, 22, 600, 40)
+  $t2 = New-Object System.Windows.Forms.Label; $t2.Text = "Please don't use the mouse or keyboard while she exports a video."
+  $t2.Font = New-Object System.Drawing.Font("Segoe UI", 11); $t2.ForeColor = [System.Drawing.Color]::White
+  $t2.AutoSize = $false; $t2.TextAlign = "MiddleCenter"; $t2.SetBounds(10, 70, 600, 26)
+  $t3 = New-Object System.Windows.Forms.Label; $t3.Font = New-Object System.Drawing.Font("Segoe UI", 28, [System.Drawing.FontStyle]::Bold)
+  $t3.ForeColor = [System.Drawing.Color]::White; $t3.AutoSize = $false; $t3.TextAlign = "MiddleCenter"; $t3.SetBounds(10, 104, 600, 56)
+  $b = New-Object System.Windows.Forms.Button; $b.Text = "Not now"; $b.SetBounds(255, 182, 110, 36)
+  $b.FlatStyle = "Flat"; $b.ForeColor = [System.Drawing.Color]::White; $b.Font = New-Object System.Drawing.Font("Segoe UI", 10)
+  $f.Controls.AddRange(@($t1, $t2, $t3, $b))
+  $script:cdResult = "go"; $script:cdLeft = $Seconds; $script:cdWaited = 0; $script:cdLast = LastInput
+  $b.Add_Click({ $script:cdResult = "later"; $f.Close() })
+  $tm = New-Object System.Windows.Forms.Timer; $tm.Interval = 1000
+  $tm.Add_Tick({
+    $script:cdWaited++
+    $li = LastInput
+    if ($li -ne $script:cdLast) { $script:cdLast = $li; $script:cdLeft = $Seconds; $t2.Text = "You're using the PC, so the countdown starts again when you stop." }
+    else { $script:cdLeft--; $t2.Text = "Please don't use the mouse or keyboard while she exports a video." }
+    $t3.Text = "Starting in " + $script:cdLeft + "s"
+    if ($script:cdLeft -le 0) { $tm.Stop(); $f.Close() }
+    elseif ($script:cdWaited -ge $MaxWaitSeconds) { $script:cdResult = "later"; $tm.Stop(); $f.Close() }
+  })
+  $t3.Text = "Starting in " + $Seconds + "s"
+  $f.Add_Shown({ $tm.Start() })
+  [void]$f.ShowDialog()
+  $tm.Dispose(); $f.Dispose()
+  return $script:cdResult
+}
+function Banner() {
+  $f = New-Object System.Windows.Forms.Form
+  $f.FormBorderStyle = "None"; $f.TopMost = $true; $f.ShowInTaskbar = $false; $f.StartPosition = "Manual"
+  $f.BackColor = [System.Drawing.Color]::FromArgb(18, 12, 30); $f.Opacity = 0.88
+  $sc = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+  $f.SetBounds([int]($sc.Width / 2 - 330), $sc.Height - 96, 660, 40)
+  $l = New-Object System.Windows.Forms.Label; $l.Text = "Nauti Coral is exporting in CapCut, hands off the mouse and keyboard"
+  $l.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold); $l.ForeColor = [System.Drawing.Color]::White
+  $l.AutoSize = $false; $l.TextAlign = "MiddleCenter"; $l.Dock = "Fill"; $f.Controls.Add($l)
+  [void]$f.Handle
+  # Click-through (WS_EX_TRANSPARENT | WS_EX_LAYERED), never activated
+  # (WS_EX_NOACTIVATE), so it cannot take a click meant for CapCut.
+  $ex = [CapEx.W]::GetWindowLong($f.Handle, -20)
+  [CapEx.W]::SetWindowLong($f.Handle, -20, ($ex -bor 0x20 -bor 0x80000 -bor 0x08000000)) | Out-Null
+  [CapEx.W]::ShowWindow($f.Handle, 8) | Out-Null    # SW_SHOWNA
+  $f.TopMost = $true
+  [System.Windows.Forms.Application]::DoEvents()
+  return $f
+}
+
+# -OverlayTest: show the countdown (10s) and the banner (8s), touch nothing else.
+if ($OverlayTest) {
+  $r = Countdown -Seconds 10
+  if ($r -eq "go") { $bn = Banner; foreach ($i in 1..16) { Start-Sleep -Milliseconds 500; Pump }; $bn.Close() }
+  Say 0 @{ overlayTest = $r }
+}
+if (-not $Project) { Say 1 @{ error = "-Project is required" } }
+if ((Countdown) -ne "go") { Say 4 @{ skipped = "owner active" } }
+$script:banner = Banner
 
 $videos = Join-Path $env:LOCALAPPDATA "CapCut\Videos"
 $started = Get-Date
@@ -173,9 +251,11 @@ try {
   Shot "after-export"
   EndCapCut
   if (-not $file) { throw "no exported file appeared within 5 minutes" }
+  if ($script:banner) { $script:banner.Close() }
   Say 0 @{ exported = $file; shots = $ShotDir }
 } catch {
   try { Shot "error" } catch {}
   EndCapCut
+  if ($script:banner) { $script:banner.Close() }
   Say 1 @{ error = $_.Exception.Message; shots = $ShotDir }
 }
