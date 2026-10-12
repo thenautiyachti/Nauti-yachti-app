@@ -578,6 +578,21 @@ def trip_kind(folder):
     if pk or act: return "family"
     return next((v for k, v in TYPE.items() if folder.startswith(k)), "family")
 
+def tow_trip(folder):
+    """A trip that went tubing or wakeboarding, whatever its occasion."""
+    try: t = json.load(open(TAGS, encoding="utf-8"))["charters"].get(folder) or {}
+    except Exception: t = {}
+    return "tubing-wakeboarding" in (t.get("packages") or []) or \
+        bool({"tubing", "wakeboarding"} & set(t.get("activities") or []))
+
+def wake_at(clip, t):
+    try:
+        import numpy as _np
+        import find_riders as _fr
+        return float(_fr.wake_score(_np.asarray(_fr.full_frame(clip, t, 320))))
+    except Exception:
+        return 0.0
+
 def plan(folder, moments, used):
     kind = trip_kind(folder)
     clips, photos = shots_for(folder, moments)
@@ -613,10 +628,25 @@ def plan(folder, moments, used):
     # (MAX_LEN) and let the trimming below choose: riders held back first (real
     # motion, at most a third of the cut on an occasion trip), then photos.
     fill_to = min(MAX_SHOTS, int(MAX_LEN // shot_len))
+    # AN OCCASION TRIP THAT ALSO TOWED (owner, 11 Oct 2026, Tony Babu's birthday
+    # with tubing and wakeboarding: "zoom in on some of the people on the tube").
+    # Riders may be half the cut, not a third, and a wide shot of the tow from a
+    # clip that already has a zoomed rider moment is dropped, so the zoomed one
+    # is used instead of a speck behind the boat.
+    towing = tow_trip(folder)
+    rider_cap = fill_to // 2 if towing else fill_to // 3
+    if towing:
+        rider_files = {s["file"] for s in clips + dropped_riders if s["kind"] == "rider"}
+        def wide_tow_shot(s):
+            return (s.get("kind") not in ("rider", "photo") and not s.get("must") and not s.get("snap")
+                    and s.get("file") in rider_files and wake_at(s["file"], s.get("t", 0)) >= WIDE_TOW_FLOOR)
+        before = len(pool)
+        pool = [s for s in pool if not wide_tow_shot(s)]
+        if len(pool) < before: print("  dropped %d wide tow shot(s) in favour of zoomed riders" % (before - len(pool)), file=sys.stderr)
     # Tubing always earns its third (owner, 10 Oct 2026: "Maybe add a few more of
     # them tubing"), whether or not the pool is already full: the trimming below
     # keeps riders ahead of everything but his own phone media.
-    while dropped_riders and sum(s["kind"] == "rider" for s in pool) + 1 <= max(OTHER_RIDERS, fill_to // 3):
+    while dropped_riders and sum(s["kind"] == "rider" for s in pool) + 1 <= max(OTHER_RIDERS, rider_cap):
         pool.append(dropped_riders.pop(0))
     if len(pool) < fill_to:
         pool += [{"kind": "photo", "file": p} for p in photos[:fill_to - len(pool)]]
