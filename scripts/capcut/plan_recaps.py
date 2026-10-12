@@ -364,7 +364,7 @@ def upright(clip):
     extra = int(file_tag(clip).get("rotate") or 0) % 360
     if not clip_rotation(clip) and not extra: return clip
     turn = {90: ["-vf", "transpose=1"], 270: ["-vf", "transpose=2"], 180: ["-vf", "transpose=1,transpose=1"]}.get(extra, [])
-    out_dir = os.path.join(os.path.dirname(clip), "_from video", "upright")
+    out_dir = work_dir(clip, "upright")
     stem, ext = os.path.splitext(os.path.basename(clip))
     out = os.path.join(out_dir, stem + ("_r%d" % extra if extra else "") + ext)
     if os.path.exists(out) and os.path.getsize(out) > 0: return out
@@ -413,15 +413,28 @@ def is_hdr(path):
         _HDR[path] = r.stdout.strip() in ("arib-std-b67", "smpte2084")
     return _HDR[path]
 
+# WHERE THE CONVERTED COPIES GO (11 Oct 2026). Inside a Google Drive folder,
+# Drive grabbed a half-written copy of one of Marco's clips mid-sync and the
+# rename failed, which broke his recap build. While the library is still on
+# Drive the copies go to a local working folder outside it; once the library is
+# on the external drive (nauti-paths.json "photos" off _MyFiles) they sit beside
+# the clip again, in _from video\sdr and _from video\upright.
+CACHE_ROOT = r"C:\Users\immex\Documents\Nauti-media-cache"
+
+def work_dir(clip, kind):
+    base = os.path.dirname(clip)
+    if os.path.basename(base) in ("upright", "sdr"): base = os.path.dirname(os.path.dirname(base))
+    if "_myfiles" in os.path.abspath(base).lower():
+        return os.path.join(CACHE_ROOT, os.path.basename(base), kind)
+    return os.path.join(base, "_from video", kind)
+
 def sdr_shots(p, pad=1.0):
     """Point every HDR video shot of plan `p` at a tone-mapped copy of its span."""
     for sh in p.get("shots", []):
         if sh.get("image") or not sh.get("file") or not is_hdr(sh["file"]): continue
         clip = sh["file"]; frm = float(sh.get("from", 0)); dur = float(sh.get("dur", 0))
         start = max(0.0, frm - pad); length = dur + (frm - start) + pad
-        base = os.path.dirname(clip)
-        if os.path.basename(base) in ("upright", "sdr"): base = os.path.dirname(os.path.dirname(base))
-        out_dir = os.path.join(base, "_from video", "sdr")
+        out_dir = work_dir(clip, "sdr")
         stem = os.path.splitext(os.path.basename(clip))[0]
         out = os.path.join(out_dir, "%s_s%05d_d%04d.mp4" % (stem, round(start * 100), round(length * 100)))
         if not (os.path.exists(out) and os.path.getsize(out) > 0):
