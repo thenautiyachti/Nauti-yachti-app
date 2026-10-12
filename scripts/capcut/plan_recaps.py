@@ -433,6 +433,36 @@ def work_dir(clip, kind):
         return os.path.join(CACHE_ROOT, os.path.basename(base), kind)
     return os.path.join(base, "_from video", kind)
 
+# WIDE TOW SHOTS (owner, 11 Oct 2026, of Tony Babu's recap: "we need to zoom in
+# on some of the people on the tube being pulled behind the boat when we're in an
+# active tubing session"). Only a moment with a `_rider` still gets the rider
+# zoom; a group-shot moment that happens to look back at the tow stays wide and
+# the tube is a speck. find_riders.wake_score (foam low in the frame, lake round
+# it) finds those shots. It is a prompt, not a detector: on Tony's plan it caught
+# four of five real ones and also a dashboard view and a swimmer. So it lists
+# them as "wideTow" in the plan and prints WIDE TOW; Coral looks at each, makes a
+# rider still for the real ones (find_riders.py --make clip@seconds@u,v) and
+# rebuilds. Never zoomed blind.
+WIDE_TOW_FLOOR = 0.15
+
+def wide_tow(p):
+    try:
+        import numpy as _np
+        import find_riders as _fr
+    except Exception:
+        return []
+    out = []
+    for sh in p.get("shots", []):
+        if sh.get("image") or sh.get("kind") == "rider" or not sh.get("file"): continue
+        t = float(sh.get("from", 0)) + float(sh.get("dur", 0)) / 2
+        try:
+            sc = _fr.wake_score(_np.asarray(_fr.full_frame(sh["file"], t, 320)))
+        except Exception:
+            continue
+        if sc >= WIDE_TOW_FLOOR:
+            out.append({"clip": os.path.basename(sh["file"]), "seconds": round(t, 1), "score": round(float(sc), 2)})
+    return out
+
 def sdr_shots(p, pad=1.0):
     """Point every HDR video shot of plan `p` at a tone-mapped copy of its span."""
     for sh in p.get("shots", []):
@@ -672,9 +702,12 @@ if __name__ == "__main__":
         p = plan(folder, moments[folder], used)
         if not p: print("skip (too little):", folder); continue
         if os.environ.get("RECAP_NAME"): p["name"] = os.environ["RECAP_NAME"]  # recap-charter.js --rebuild: "... recap v2 (Claude)"
+        p["wideTow"] = wide_tow(p)  # before sdr_shots, so the times are the original clip's
         sdr_shots(p)  # HDR glasses footage handed to CapCut in ordinary colour
         fn = os.path.join(HERE, "plans", re.sub(r"[^\w.-]+", "_", p["name"]) + ".json")
         json.dump(p, open(fn, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
         print("%-44s %-12s %-22s %5.1fs %2d shots (%d rider, %d photo)%s" % (p["name"][:44], p["kind"], p["song"]["name"][:22], p["song"]["length"], len(p["shots"]),
               sum(s.get("kind") == "rider" for s in p["shots"]), sum(bool(s.get("image")) for s in p["shots"]),
               "  SHORT: under %ds, add picks to Completed and rebuild" % MIN_LEN if p["song"]["length"] < MIN_LEN else ""))
+        for w in p.get("wideTow", []):
+            print("  WIDE TOW? %s @ %.1fs (wake %.2f): look; if a rider is on the tow, make a rider still there and rebuild" % (w["clip"], w["seconds"], w["score"]))
