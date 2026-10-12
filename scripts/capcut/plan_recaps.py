@@ -264,8 +264,13 @@ def shots_for(folder, moments):
         # the place's wide shot a place cut opens on, or "occasion", the bride,
         # the hats, the cake. Tagged rather than renamed, so the guests' trip
         # pages keep their file names. "_scenery" in the name still counts.
-        role = file_tag(os.path.join(done, m["still"])).get("role")
+        tag = file_tag(os.path.join(done, m["still"]))
+        role = tag.get("role")
         if role: sh["role"] = role
+        # "must": true (owner, 11 Oct 2026, of Tony Babu's group jumping off the
+        # back: "We definitely want to include that"): never trimmed, and held
+        # a little longer so the jump and the splash both land.
+        if tag.get("must"): sh["must"] = True
         if role == "scenery" and m["kind"] != "rider": sh["kind"] = "scenery"
         if m["kind"] == "rider":
             crop = os.path.join(done, m["still"]); b = m["still"].replace("_rider", "")
@@ -587,7 +592,7 @@ def plan(folder, moments, used):
         pool += [{"kind": "photo", "file": p} for p in photos[:fill_to - len(pool)]]
     max_shots = min(MAX_SHOTS, int(MAX_LEN // shot_len), len(pool))
     if len(pool) > max_shots:  # keep riders and the longest-held moments, spread across the day
-        keep = sorted(pool, key=lambda s: (not s.get("snap"), s["kind"] != "rider", -(s.get("b", 0) - s.get("a", 0))))[:max_shots]
+        keep = sorted(pool, key=lambda s: (not s.get("must"), not s.get("snap"), s["kind"] != "rider", -(s.get("b", 0) - s.get("a", 0))))[:max_shots]
         pool = [s for s in pool if s in keep]
     riders = [s for s in pool if s["kind"] == "rider"]
     held = lambda s: s.get("b", 0) - s.get("a", 0)
@@ -611,7 +616,7 @@ def plan(folder, moments, used):
     # his order of priority (10 Oct 2026), and on Robert Snow's recap it was the
     # first thing dropped.
     while len(pool) > 1 and need > song["dur"] - 1:
-        rest = pool[1:]
+        rest = [s for s in pool[1:] if not s.get("must")] or pool[1:]
         victim = min([s for s in rest if s["kind"] != "rider" and not s.get("snap")]
                      or [s for s in rest if not s.get("snap")] or rest, key=held)
         pool.remove(victim); need -= est(victim)
@@ -628,6 +633,7 @@ def plan(folder, moments, used):
             # 1.8s. A non-rider shot now runs at least shot_len centred on the
             # vetted moment (clamped to the clip); riders keep the cap below.
             if s["kind"] != "rider": want = max(want, nb)
+            if s.get("must"): want = max(want, nb + 2)  # a little longer: the leap and the splash
         # A zoomed rider is framed for one moment: at 4x the camera's drift
         # loses them within a couple of seconds (Nagdy's 4.6 s opener, 5 Oct
         # 2026, showed mostly water). Four beats at most, centred on the moment.
