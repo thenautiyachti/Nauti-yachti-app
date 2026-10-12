@@ -662,6 +662,16 @@ def plan(folder, moments, used):
     # in time order, a rider filmed late was the shot the song ran out before
     # (Nagdy, 5 Oct 2026), and tubing is the main seller.
     pool = [hook] + [s for s in riders if s is not hook] + [s for s in pool if s is not hook and s not in riders]
+    # A MUST moment is never the last shot: the end card sits over the last one,
+    # and Tony Babu's group jump (12 Oct 2026) landed under it, splash cut off.
+    # Close on a shot from another clip instead, so the lineup and the jump stay
+    # in order just before it.
+    if len(pool) > 2 and pool[-1].get("must"):
+        last = pool[-1].get("file")
+        other = next((i for i in range(len(pool) - 2, 0, -1)
+                      if pool[i].get("file") != last and not pool[i].get("must")), None)
+        if other is not None:
+            pool.append(pool.pop(other))
     # A rider shot is laid out at four beats at most (below), so budget it at
     # that. Budgeted at a full shot_len, Robert Snow's riding recap (10 Oct 2026)
     # was trimmed to fit a 43s song and then laid out at 25.8s.
@@ -707,6 +717,9 @@ def plan(folder, moments, used):
         else:
             lo, hi = max(0.0, s["a"] - 0.25), min(s["dur_clip"], s["b"] + 0.25)
             frm = min(max(s["t"] - dur / 2, lo), max(lo, hi - dur))
+            # A MUST moment is held mostly AFTER the marked frame (the leap, then
+            # the splash), and may run past the still's steady span to get it.
+            if s.get("must"): frm = max(0.0, s["t"] - dur * 0.3)
             frm = max(0.0, min(frm, s["dur_clip"] - dur - 0.05))
             if s["kind"] == "rider": sc, x, y = place(s["file"], *s["uv"], z=rider_zoom(s["file"]))
             else: sc, x, y = place(s["file"])
@@ -714,8 +727,19 @@ def plan(folder, moments, used):
         why = repeats(shots, sh, s["kind"])  # owner, 6 Oct 2026: "the same media used twice"
         if why:
             print("  skip %s @%.1f: %s" % (os.path.basename(s["file"]), sh["from"], why), file=sys.stderr); continue
-        sh["_kind"] = s["kind"]; shots.append(sh); k += want
-    for sh in shots: sh.pop("_look", None); sh.pop("_kind", None)
+        sh["_kind"] = s["kind"]; sh["_must"] = bool(s.get("must")); shots.append(sh); k += want
+    # Never END on a must moment (the end card covers the last shot): move the
+    # nearest shot from another clip behind it and re-time the cut. Every shot
+    # is a whole number of beats, so the sum still lands on the song's grid.
+    if len(shots) > 2 and shots[-1].get("_must"):
+        last = shots[-1]["file"]
+        j = next((i for i in range(len(shots) - 2, 0, -1)
+                  if shots[i]["file"] != last and not shots[i].get("_must")), None)
+        if j is not None:
+            shots.append(shots.pop(j))
+            run = 0.0
+            for sh in shots: sh["at"] = round(run, 3); run += sh["dur"]
+    for sh in shots: sh.pop("_look", None); sh.pop("_kind", None); sh.pop("_must", None)
     if len(shots) < 3: return None
     length = round(times[k] - t0, 3)
     date = folder[:10]; who = re.sub(r"\s*\(.*$", "", folder[11:]).split(" + ")[0].strip()
