@@ -2,7 +2,7 @@
 
 How to run a charter business on this system: the public website, the owner console at thenautiyachti.com/admin, and the AI crew that watches over both.
 
-Edition for version 3.3.0 · October 2026
+Edition for version 3.4.0 · October 2026
 
 [[TOC]]
 
@@ -818,7 +818,7 @@ The panel is not shown at all when nobody is owed, which is the normal state.
 
 ## 6.1 The photo library
 
-All charter photos and video live in the `Photos` folder of the business folder, backed up by Google Drive. It is large, and organised so the crew can find things without anyone browsing it. **It holds only media for social posts and the website** (your rule, 3 October 2026): `00 Inbox`, `01 Fleet` and `02 Charters`. Apparel, campaign graphics and QR codes live in `04 Brand & Pricing`, equipment photos in `03 Fleet & Equipment`.
+All charter photos and video live in the photo library. Since 13 October 2026 the library is on **an external drive**, not in Google Drive: the raw footage of one charter runs to several gigabytes, and it filled both Drive and the PC. Drive keeps **finished work only**: each charter's `Completed` folder, any partner copy, `_Compilations`, `01 Fleet` and the tag file, copied there by Coral at the end of every run. `00 Inbox` stays in Drive, because that is where the phone uploads, and the library on the external drive points to it. If the external drive is unplugged, Coral's media tools stop rather than write raw footage back into Drive. The library is large, and organised so the crew can find things without anyone browsing it. **It holds only media for social posts and the website** (your rule, 3 October 2026): `00 Inbox`, `01 Fleet` and `02 Charters`. Apparel, campaign graphics and QR codes live in `04 Brand & Pricing`, equipment photos in `03 Fleet & Equipment`.
 
 | Folder | What goes there |
 |---|---|
@@ -994,10 +994,14 @@ After each completed charter, once its `Completed` folder is curated, the conten
 
 - **Shots** are the charter's own vetted photos, found in their clips and held only while the camera stays on that scene.
 - **Music** comes only from your Music shelf: a CapCut project called *media shelf* holding tracks you added from **Commercial only**. The agent picks one that fits the trip (from the charter's tags), never the same song twice running, and cuts every shot on its beat. Add tracks to the shelf whenever it feels stale.
-- **Exporting** uses CapCut's own Export button, which the agent works the way you would, so the music stays licensed through CapCut. It does this only when CapCut is closed and nobody has touched the PC for two minutes; otherwise it waits for the next run. It closes CapCut's promotion pop-ups, never uses "Share", and closes CapCut afterwards.
+- **Exporting** uses CapCut's own Export button, which the agent works the way you would, so the music stays licensed through CapCut. It does this only when CapCut is closed, the PC is unlocked and nobody has touched it for two minutes; otherwise it waits for the next run. Before it takes the mouse it shows a **30-second countdown** on screen with a **Not now** button (press it and the export waits for the next run), and while it works a banner says hands off. It closes CapCut's promotion pop-ups, never uses "Share", and closes CapCut afterwards.
 - **Black bars:** most footage is 4:3, so in a 9:16 video it sits between bars. They are filled with a blurred copy of the same picture (your choice, 5 October 2026), which keeps everyone in the frame.
 
-- **Riders are zoomed in.** A tubing or wakeboarding shot is punched in about four times and centred on the rider (your words: *"when wakeboarding or tubing we need a zoom on them"*), kept short so the rider stays in frame, and the riding shots lead the recap. A wake-surfer is the exception: they ride close behind the boat and already fill the frame, so a clip Coral has tagged as wake surfing is punched in about three times instead (your words: *"if wakesurfing then we need not to zoom in 4x, just lessen it slightly"*). Every other shot shows the whole picture. Coral finds the riders by following the tow rope to whatever is on the end of it, in every clip, and each rider becomes a zoomed photo on the guest's trip page too.
+- **Riders are zoomed in.** A tubing or wakeboarding shot is punched in about four times and centred on the rider (your words: *"when wakeboarding or tubing we need a zoom on them"*), kept short so the rider stays in frame, and the riding shots lead the recap. A wake-surfer is the exception: they ride close behind the boat and already fill the frame, so a clip Coral has tagged as wake surfing is punched in about three times instead (your words: *"if wakesurfing then we need not to zoom in 4x, just lessen it slightly"*). Every other shot shows the whole picture. Coral finds the riders by following the tow rope to whatever is on the end of it, in every clip, and each rider becomes a zoomed photo on the guest's trip page too. On a trip that towed, riders may fill up to half the recap; a wide shot of an active tow with no rider zoom yet is flagged so Coral makes one.
+- **Length and order:** one recap per charter, 40 to 59 seconds when the footage allows. Your own phone media (Snapchat saves) goes in first, then the riders, then the best camera-glasses moments. A day that was nearly all riding can come out shorter.
+- **A moment you must have** (a group jump, a cake) can be tagged *must* in the tag file: it is never trimmed, it is held mostly after its frame, and it is never the last shot, because the end card covers that one.
+- **Colour:** the camera glasses record HDR. Every shot is converted to ordinary colour before CapCut sees it, so greens stay green. A recap that came out washed out can be rebuilt with the same song and shots, colour fixed.
+- **Shared charters:** a charter run on a partner's boat gets a second copy of the recap for the partner, in a `For <partner>` folder beside `Completed`, and its posts credit the partner.
 
 **Known limit:** a rider is only zoomed in if Coral has made a rider photo from that clip. Older tubing charters are being caught up a few per run.
 
@@ -1288,7 +1292,8 @@ The full rules are in `AI & Website\VERSIONING.md`.
 
 | What | Where | Backed up by |
 |---|---|---|
-| Business files: photos, finance, legal, releases | `Documents\_MyFiles\_The Nauti Yachti LLC` | Google Drive |
+| Business files: finance, legal, releases, finished photos and videos | `Documents\_MyFiles\_The Nauti Yachti LLC` | Google Drive |
+| The photo library, raw footage included | an external drive, named in the crew's `nauti-paths.json` | **nothing**: it is the only copy of the raw footage; the finished work is also in Drive |
 | The crew's instructions and scripts | `…\AI & Website\Crew` | Google Drive |
 | The website and console code | `Documents\Nauti-yachti-app` | GitHub, every version tagged |
 | The libraries the crew scripts need | `C:\Users\<you>\.node_modules` | nothing; rebuilt after a restore (see [9.3](#9-3-backups-and-disaster-recovery)) |
