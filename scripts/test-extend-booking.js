@@ -16,8 +16,13 @@ const pkg = {
   } },
 };
 
-const erika = X.extensionQuote(pkg, { vesselId: "explorer", date: "2026-10-09", hours: 2, extraHours: 1, platform: "Website" });
-ok("Erika's Friday extra hour is $170", erika.amount === 170 && erika.before === 400 && erika.after === 570);
+// Erika's extra hour (Fri 9 Oct 2026) was $170 at weekday rates. Fridays have
+// been weekend rates since 15 Oct 2026, so the weekday case is now a Thursday
+// and a Friday is checked separately.
+const erika = X.extensionQuote(pkg, { vesselId: "explorer", date: "2026-10-08", hours: 2, extraHours: 1, platform: "Website" });
+ok("a weekday extra hour after 2 is $170", erika.amount === 170 && erika.before === 400 && erika.after === 570);
+const friday = X.extensionQuote(pkg, { vesselId: "explorer", date: "2026-10-16", hours: 2, extraHours: 1, platform: "Website" });
+ok("a Friday extra hour after 2 is $185 (weekend rates)", friday.amount === 185 && friday.before === 440 && friday.after === 625);
 const sat = X.extensionQuote(pkg, { vesselId: "explorer", date: "2026-10-10", hours: 2, extraHours: 2, platform: "Direct" });
 ok("Saturday uses the weekend table: 4 h $830 less 2 h $440 = $390", sat.amount === 390);
 ok("Boatsetter is extended on Boatsetter", /Boatsetter/.test(X.extensionQuote(pkg, { vesselId: "explorer", date: "2026-10-09", hours: 2, extraHours: 1, platform: "Boatsetter" }).error || ""));

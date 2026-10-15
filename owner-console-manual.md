@@ -192,11 +192,21 @@ A link with `?package=<id>` opens the home page with that package already chosen
 
 ## 2.2 How a guest books
 
-The booking form is at the bottom of the home page.
+The home page walks the guest through **three steps** (since 15 October 2026), named in the hero as "Booking is 3 easy steps":
 
-**The guest fills in:** name, email, phone, party size, the package, the boat (only boats that run that package are offered), the date, the hours (for hourly packages), any add-ons, an optional coupon code, an optional gift certificate code and a message, and ticks to accept the terms. For a fixed-date event the date is set for them, and once that date has passed the event is not offered at all (see [2.6](#2-6-seat-sale-events)).
+1. **Pick your vessel.** Tapping a boat takes them to step 2.
+2. **Pick your package.** The prices shown are for the boat they picked. **Choose this package** takes them to step 3 (a seat-sale event goes straight to the booking form, because its date is fixed).
+3. **Pick your date & time.** The calendar shows this month and next, and **Later months** pages up to a year ahead. Tapping an open or partly booked day opens a small panel: how long, and an estimated start time. A start time that overlaps a charter already booked at a known time is shown as *taken* and cannot be chosen. **Continue to book** fills the booking form with everything chosen so far.
 
-The price updates as they choose. Then they pick one of two buttons:
+The booking form is at the bottom of the home page, headed **Your charter**, with the review form beside it on a wide screen (below it on a phone). One small box at its top says replies are same-day, the cancellation terms, and the phone number.
+
+**The guest fills in:** the package, the boat (only boats that run that package are offered), the date, the hours (for hourly packages), the estimated start time, party size, any add-ons, then name, email, phone and a message, then an optional coupon code and gift certificate code, and ticks to accept the terms. For a fixed-date event the date and time are set for them, and once that date has passed the event is not offered at all (see [2.6](#2-6-seat-sale-events)).
+
+**The price is on the button** and updates as they choose: **Book & pay now · $830**. A coupon or gift certificate is checked as soon as they leave its box, and the total above the button shows the charter, the discount and what is due today. That is a preview; the server prices it again and applies the codes itself.
+
+**The start time reaches you** at the top of the inquiry's message ("Preferred start time: 1pm"), and on a paid booking it is written into the booking's start time, so the calendar shows the window and the confirmation email states it.
+
+Then they pick one of two buttons:
 
 | Button | What happens |
 |---|---|
@@ -231,7 +241,7 @@ Each package is priced one of four ways:
 
 | Pricing type | How the price is found |
 |---|---|
-| **Hourly by vessel** | a grid per boat: hours × weekday or weekend. Saturday and Sunday are the weekend; holidays are not treated specially. |
+| **Hourly by vessel** | a grid per boat: hours × weekday or weekend. **Friday, Saturday and Sunday are the weekend** (Friday since 15 October 2026, your decision); holidays are not treated specially. |
 | **Per guest** | party size × price per guest. Used for seat-sale events. |
 | **Tiered by guests** | one flat price for the size band the party falls in |
 | **Flat** | one price |
@@ -348,7 +358,7 @@ The server also refuses a seat-sale booking for any date other than the event's 
 | a payment link is opened for a booking that does not yet hold its day | that booking, leaving itself out |
 | the money arrives | that booking again, as a backstop |
 
-**For a charter**, the boat's day must not be blocked, and it must have the hours asked for left. A day holds eight hours, the same figure that turns a calendar square from partial to full ([3.10](#3-10-availability-and-blocking-days)). **For a seat-sale event**, the party must fit the seats available ([2.6](#2-6-seat-sale-events)).
+**For a charter**, the boat's day must not be blocked, it must have the hours asked for left, and the start time the guest picked must not overlap a charter already booked at a known time. A day holds eight hours, the same figure that turns a calendar square from partial to full ([3.10](#3-10-availability-and-blocking-days)). **For a seat-sale event**, the party must fit the seats available ([2.6](#2-6-seat-sale-events)).
 
 **A guest on Stripe's payment page holds their boat.** For 35 minutes from the moment they press **Book & pay now**, their hours count against the day, and Stripe's page itself closes after 30. So a second guest cannot slip in behind somebody typing a card number. A plain inquiry holds nothing.
 
@@ -356,7 +366,11 @@ The server also refuses a seat-sale booking for any date other than the event's 
 
 **Not checked:** a booking you add in the console yourself, and a payment link for a booking you have already marked booked. Both are your decision.
 
-> **Why it works this way.** A website booking names a boat, a day and a number of hours, never a start time; you settle the time with the guest. So the server can only ask what the calendar asks: is the day blocked, and are the hours left? If the check itself cannot run, for example because the database does not answer, the booking goes through as it did before the check existed: refusing every guest because of a fault would cost more charters than it saves.
+> **Why it works this way.** A website booking names a boat, a day, a number of hours and, since 15 October 2026, an estimated start time. The time can only be checked against bookings that have a start time of their own, so the hours-left test still does most of the work.
+
+**Known limit:** a booking with no start time cannot clash with a start time; it is still counted against the day's eight hours. Add start times to bookings to make the time check complete.
+
+> **Also:** If the check itself cannot run, for example because the database does not answer, the booking goes through as it did before the check existed: refusing every guest because of a fault would cost more charters than it saves.
 
 ## 2.8 The trip page
 

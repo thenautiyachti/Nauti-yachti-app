@@ -8,6 +8,7 @@ const { eventBookingRefusal } = require("../../../lib/eventSeats");
 const { availabilityProblem } = require("../../../lib/availabilityQuery");
 const { checkGiftCertificate } = require("../../../lib/giftCertificates");
 const { parsePackage } = require("../../../lib/serialize");
+const { cleanStartTime, messageWithStartTime } = require("../../../lib/pricing");
 const { tripUrl } = require("../../../lib/tripLink");
 const {
   DUPLICATE_WINDOW_MINUTES,
@@ -56,6 +57,7 @@ async function POST(req) {
     pkg: pkgRow ? parsePackage(pkgRow) : null,
     vesselId: body.vesselId, vesselName: body.vesselName,
     date: body.date, hours: body.hours, partySize: body.partySize,
+    startTime: cleanStartTime(body.startTime),
   });
   if (slot) {
     return NextResponse.json({ error: slot.message, unavailable: true, reason: slot.reason }, { status: 409 });
@@ -144,7 +146,7 @@ async function POST(req) {
       date: body.date || null,
       hours: body.hours ? Number(body.hours) : null,
       partySize: body.partySize ? String(body.partySize) : null,
-      message: body.message || null,
+      message: messageWithStartTime(body) || null,
       priceQuoted: body.priceQuoted != null ? Number(body.priceQuoted) : null,
       bookingId,
       // Stamped server-side, not taken from the client: a timestamp the browser

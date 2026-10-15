@@ -68,7 +68,7 @@ function PriceTable({ pkg, vessels }) {
     <div style={{ overflowX: "auto", marginTop: 18 }}>
       <table style={{ width: "100%", minWidth: 620, borderCollapse: "collapse", fontSize: 14 }}>
         <caption style={{ captionSide: "top", textAlign: "left", color: "var(--muted)", fontSize: 13.5, paddingBottom: 10 }}>
-          Total price for the whole boat, not per person. Weekend rates apply on Saturdays and Sundays.
+          Total price for the whole boat, not per person. Weekend rates apply on Fridays, Saturdays and Sundays.
         </caption>
         <thead>
           <tr>

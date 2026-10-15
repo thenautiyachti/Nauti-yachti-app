@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { currency, dayTypeForDate, quotePackage, quoteTotal, imageFocus, durationText } from "../lib/pricing";
+import { currency, dayTypeForDate, formatStartTime, quotePackage, quoteTotal, imageFocus, durationText } from "../lib/pricing";
+import { windowProblem } from "../lib/availability";
 import { slugForPackage, EXCLUDED_PACKAGE_IDS } from "../lib/seo";
 import { GOOGLE_REVIEW_URL } from "../lib/reviews";
 import { includedIds, isIncluded, isCovered, chargeableIds, takesAddOns } from "../lib/addOns";
@@ -25,10 +26,46 @@ const SOCIALS = [
   { label: "GetMyBoat — Yolo, Lake Conroe", url: "https://www.getmyboat.com/trips/GaZ8b2dK/" },
 ];
 
+// Summarised from two long paragraphs on the owner's ask, 15 Oct 2026 ("Let's
+// summarize the information on our page"). Same occasions, same safety promise.
 const HERO_PARAGRAPHS = [
-  "You can't buy happiness, but you can rent a boat. Whether you want to celebrate a special occasion, catch sunrays on a regular outing, or get a little wild on the waves, The Nauti Yachti has the perfect boat available for your boat adventure! Our skilled captains are guaranteed to turn heads and maybe even some other things while they steer you towards adventure, excitement, and maybe even a little bit of romance. We aim to provide exceptional experiences for all occasions while ensuring safety is a top priority. The Nauti Yachti therefore adheres to Lake Conroe’s boating regulations by providing proper safety gear & knowledge.",
-  "Book a boat rental and prepare for a day of sun, smiles, and perhaps a touch of something special, let our captains show you the ropes for any of your special occasions such as Tubing/Wakeboarding adventures, Birthday parties, Bachelor/Bachelorette parties, Night cruises, an Epic Party Cove experience, or the unique once a year Boatz & Glowz party.",
+  "You can't buy happiness, but you can rent a boat. We run private, captained charters on Lake Conroe for birthdays, bachelor and bachelorette parties, tubing and wakeboarding, Party Cove days, night cruises and our once-a-year Boatz & Glowz party.",
+  "Your captain drives, brings the safety gear and follows Lake Conroe's boating rules, so your group just enjoys the water.",
 ];
+
+// The booking path, which the page now walks in order. Owner, 15 Oct 2026:
+// "mention how this is an easy 3 step process."
+const BOOKING_STEPS = [
+  { n: 1, title: "Pick your vessel", target: "vessels" },
+  { n: 2, title: "Pick your package", target: "packages" },
+  { n: 3, title: "Pick your date & time", target: "availability" },
+];
+
+// Start times a guest can choose, every half hour from 8am to 8pm.
+const START_SLOTS = Array.from({ length: 25 }, (_, i) => {
+  const mins = 8 * 60 + i * 30;
+  return String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
+});
+
+// The windows already booked on a boat's day, in the shape windowProblem reads.
+function timedFor(bookedWindows, vesselId, date) {
+  return ((bookedWindows[vesselId] || {})[date] || []).map((w) => ({ startTime: w.start, hours: w.hours }));
+}
+
+function scrollToSection(id) {
+  requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
+// "STEP 2 OF 3" over a section heading.
+function StepHeading({ n, title, sub, center }) {
+  return (
+    <div style={{ textAlign: center ? "center" : "left", marginBottom: 22 }}>
+      <div className="mono" style={{ color: "var(--pink)", fontSize: 12, letterSpacing: "0.15em", marginBottom: 4, fontWeight: 700 }}>STEP {n} OF 3</div>
+      <h2 className="display" style={{ fontSize: 30, color: "var(--text)", margin: "0 0 6px" }}>{title}</h2>
+      {sub && <div style={{ color: "var(--muted)", fontSize: 14 }}>{sub}</div>}
+    </div>
+  );
+}
 
 // Gallery sections whose category is not a package id.
 //
@@ -75,6 +112,8 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
   const [selectedVessel, setSelectedVessel] = useState(initialVessels[0]?.id);
   const [activePackage, setActivePackage] = useState((initialPackages.find((p) => p.salesOpen !== false) || initialPackages[0])?.id || null);
   const [prefill, setPrefill] = useState(null);
+  // The day tapped on the step 3 calendar, before a start time is chosen.
+  const [pickedDate, setPickedDate] = useState(null);
   const [toast, setToast] = useState(null);
 
   // Longer for a refusal the guest has to read and act on ("only 4 hours left
@@ -113,10 +152,23 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
   // URL and almost nobody submits the form on the page they arrived at.
   useEffect(() => { captureReferralSource(); }, []);
 
+  // STEP 2 -> STEP 3. Choosing a package used to drop the guest straight into
+  // the booking form with no date; it now goes to the calendar, and the form
+  // is reached from there with the date and time already filled in. A dated
+  // event (Boatz & Glowz) has its one date already, so it skips the calendar.
   function handleBook(pkgId, selection) {
+    const pkg = packages.find((p) => p.id === pkgId);
     setActivePackage(pkgId);
-    setPrefill(selection);
-    document.getElementById("inquire")?.scrollIntoView({ behavior: "smooth" });
+    setPrefill({ ...selection });
+    if (selection.vesselId && pkg?.vessels?.includes(selection.vesselId)) setSelectedVessel(selection.vesselId);
+    setPickedDate(null);
+    scrollToSection(pkg?.pricingType === "per-guest" ? "inquire" : "availability");
+  }
+
+  // STEP 3 -> the booking form, carrying everything chosen so far.
+  function handleDateChosen({ date, startTime, hour }) {
+    setPrefill((p) => ({ ...(p || {}), vesselId: selectedVessel, date, startTime, hour: hour || (p && p.hour) }));
+    scrollToSection("inquire");
   }
 
   async function submitPlainInquiry(form) {
@@ -248,14 +300,28 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               <p key={i} style={{ fontSize: 16.5, opacity: 0.85, lineHeight: 1.65, margin: "0 0 14px" }}>{p}</p>
             ))}
           </div>
+          <div className="mono" style={{ color: "var(--purple)", fontSize: 12.5, letterSpacing: "0.15em", margin: "4px 0 12px", fontWeight: 700 }}>
+            BOOKING IS 3 EASY STEPS
+          </div>
+          <div className="hero-steps">
+            {BOOKING_STEPS.map((s) => (
+              <a key={s.n} href={`#${s.target}`} className="hero-step">
+                <span className="hero-step-n">{s.n}</span>
+                <span>{s.title}</span>
+              </a>
+            ))}
+          </div>
+          <p style={{ fontSize: 14, opacity: 0.75, margin: "12px 0 22px" }}>
+            Then book and pay in one go, or send us an inquiry first.
+          </p>
           <a
-            href="#inquire"
+            href="#vessels"
             style={{
               display: "inline-block", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", fontWeight: 700,
               padding: "13px 28px", borderRadius: 6, textDecoration: "none", fontSize: 15,
             }}
           >
-            Check availability
+            Start booking
           </a>
         </div>
         <div style={{ height: 40 }} />
@@ -270,10 +336,9 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       <WakeLine />
 
       {/* VESSELS */}
-      <div style={{ background: "var(--ink-soft)", padding: "10px 24px 50px" }}>
+      <div id="vessels" style={{ background: "var(--ink-soft)", padding: "10px 24px 50px", scrollMarginTop: 130 }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 4 }}>Pick your vessel</h2>
-          <p style={{ color: "var(--muted)", marginTop: 0, marginBottom: 22, fontSize: 14 }}>Each slip shows what that boat is built for.</p>
+          <StepHeading n={1} title="Pick your vessel" sub="Each slip shows what that boat is built for. Tap one to go on to step 2." />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 16 }}>
             {vessels.map((v, i) => {
               const active = v.id === selectedVessel;
@@ -284,7 +349,7 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                 <button
                   key={v.id}
                   className="slip-card"
-                  onClick={() => setSelectedVessel(v.id)}
+                  onClick={() => { setSelectedVessel(v.id); setPickedDate(null); scrollToSection("packages"); }}
                   style={{
                     textAlign: "left", border: active ? "2px solid var(--purple)" : "2px solid rgba(203,108,230,0.15)",
                     background: `var(--paper-site-${plate})`, color: "var(--text)", borderRadius: 10, padding: 0, overflow: "hidden",
@@ -309,18 +374,21 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       </div>
 
       {/* PACKAGES */}
-      <div id="packages" style={{ background: "var(--ink)", padding: "50px 24px" }}>
+      <div id="packages" style={{ background: "var(--ink)", padding: "50px 24px", scrollMarginTop: 130 }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
           {/* "Pick your package" rather than "Packages & pricing", to sit in
               sequence with "Pick your vessel" above it. The two sections are a
               two-step choice and now read as one. */}
-          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Pick your package</h2>
-          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 22 }}>
-            Quote a charter right here, or open a package for the full price table and what's included.{" "}
-            <Link href="/packages" style={{ color: "var(--purple)" }}>Browse all packages</Link>
-            {" · "}
-            <Link href="/faq" style={{ color: "var(--purple)" }}>Read the FAQ</Link>
-          </p>
+          <StepHeading
+            n={2}
+            title="Pick your package"
+            sub={<>
+              Prices shown for the {vessels.find((v) => v.id === selectedVessel)?.name || "boat you picked"}. Choose one to go on to step 3, or open a package for the full price table.{" "}
+              <Link href="/packages" style={{ color: "var(--purple)" }}>Browse all packages</Link>
+              {" · "}
+              <Link href="/faq" style={{ color: "var(--purple)" }}>Read the FAQ</Link>
+            </>}
+          />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px,1fr))", gap: 16 }}>
             {packages.map((p, i) => (
               <PackageCard
@@ -338,14 +406,23 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
       <WakeLine flip />
 
       {/* AVAILABILITY */}
-      <div id="availability" style={{ padding: "50px 24px", background: "var(--ink-soft)" }}>
+      <div id="availability" style={{ padding: "50px 24px", background: "var(--ink-soft)", scrollMarginTop: 130 }}>
         <div style={{ maxWidth: 1400, margin: "0 auto", textAlign: "center" }}>
-          <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>
-            Availability — {vessels.find((v) => v.id === selectedVessel)?.name}
-          </h2>
-          <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 14 }}>
-            This updates live from the owner console.
-          </p>
+          <StepHeading
+            center
+            n={3}
+            title={`Pick your date — ${vessels.find((v) => v.id === selectedVessel)?.name || ""}`}
+            sub="Live from our booking calendar. Tap an open day, then choose a start time."
+          />
+          {(() => {
+            const pkg = packages.find((p) => p.id === activePackage);
+            return pkg ? (
+              <div style={{ fontSize: 13.5, color: "var(--text)", marginBottom: 14 }}>
+                Package: <strong>{pkg.name}</strong>{" "}
+                <a href="#packages" style={{ color: "var(--purple)", fontSize: 12.5 }}>change</a>
+              </div>
+            ) : null;
+          })()}
 
           {/* Switch vessels without scrolling back up.
               Until now this calendar could only be changed from "Pick your
@@ -355,13 +432,13 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
 
               It writes to the same selectedVessel state, so the cards above and
               the quote form below stay in step with what is on screen here. */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 18 }}>
+          <div className="avail-vessels">
             {vessels.map((v) => {
               const active = v.id === selectedVessel;
               return (
                 <button
                   key={v.id}
-                  onClick={() => setSelectedVessel(v.id)}
+                  onClick={() => { setSelectedVessel(v.id); setPickedDate(null); }}
                   aria-pressed={active}
                   style={{
                     background: active ? "rgba(203,108,230,0.22)" : "transparent",
@@ -369,9 +446,10 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
                     opacity: active ? 1 : 0.72,
                     border: active ? "1px solid var(--purple)" : "1px solid rgba(203,108,230,0.3)",
                     borderRadius: 999,
-                    padding: "8px 16px",
+                    padding: "8px 10px",
                     fontSize: 13.5,
                     fontWeight: 600,
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {v.name}
@@ -380,12 +458,31 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
             })}
           </div>
 
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
-            <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "var(--purple)", verticalAlign: "middle", marginRight: 5 }} />Open</span>
-            <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "repeating-linear-gradient(45deg, #E8934A, #E8934A 3px, #C97633 3px, #C97633 6px)", verticalAlign: "middle", marginRight: 5 }} />Partially booked <span style={{ opacity: 0.7 }}>&mdash; the time shown is what is already taken</span></span>
-            <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "#3A2E40", verticalAlign: "middle", marginRight: 5 }} />Fully booked</span>
+          <div className="avail-legend">
+            <span><span className="avail-swatch" style={{ background: "var(--purple)" }} />Open</span>
+            <span><span className="avail-swatch" style={{ background: "repeating-linear-gradient(45deg, #E8934A, #E8934A 3px, #C97633 3px, #C97633 6px)" }} />Partly booked</span>
+            <span><span className="avail-swatch" style={{ background: "#3A2E40" }} />Fully booked</span>
           </div>
-          <AvailabilityCalendar blockedDates={blocked[selectedVessel] || []} partialDates={partialDates[selectedVessel] || {}} bookedWindows={bookedWindows[selectedVessel] || {}} />
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 18 }}>On a partly booked day, the time shown is what is already taken.</div>
+          <AvailabilityCalendar
+            blockedDates={blocked[selectedVessel] || []}
+            partialDates={partialDates[selectedVessel] || {}}
+            bookedWindows={bookedWindows[selectedVessel] || {}}
+            selectedDate={pickedDate}
+            onPickDate={setPickedDate}
+          />
+          {pickedDate && (
+            <DatePickPanel
+              key={`${selectedVessel}-${pickedDate}-${activePackage}`}
+              pkg={packages.find((p) => p.id === activePackage)}
+              vessel={vessels.find((v) => v.id === selectedVessel)}
+              date={pickedDate}
+              timed={timedFor(bookedWindows, selectedVessel, pickedDate)}
+              defaultHours={prefill?.hour}
+              onContinue={handleDateChosen}
+              onClose={() => setPickedDate(null)}
+            />
+          )}
         </div>
       </div>
 
@@ -526,48 +623,29 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
               <strong>Been aboard before?</strong> Every returning guest gets <strong>10% off</strong> their next trip — just use code <span className="mono" style={{ color: "var(--pink)", fontWeight: 700 }}>WELCOMEBACK10</span> when you book. And if you've got a minute, we'd genuinely love to hear how your trip went below!
             </span>
           </div>
-          <div className="testimonials-layout">
-            <div className="testimonials-columns">
-              {testimonials.length === 0 && (
-                <div style={{ color: "var(--muted)", fontSize: 14 }}>No reviews yet — be the first to share your experience!</div>
-              )}
-              {testimonials.map((t, i) => <TestimonialCard key={t.id} t={t} plate={(i % 9) + 1} />)}
-            </div>
-            <TestimonialForm onSubmit={submitTestimonial} />
+          {/* The review form now sits beside the booking form, further down
+              (owner, 15 Oct 2026), so the reviews get the full width here. */}
+          <div className="testimonials-columns">
+            {testimonials.length === 0 && (
+              <div style={{ color: "var(--muted)", fontSize: 14 }}>No reviews yet — be the first to share your experience!</div>
+            )}
+            {testimonials.map((t, i) => <TestimonialCard key={t.id} t={t} plate={(i % 9) + 1} />)}
           </div>
         </div>
       </div>
 
       {/* INQUIRY */}
-      <div id="inquire" style={{ background: "var(--ink-soft)", padding: "56px 24px 80px" }}>
+      <div id="inquire" style={{ background: "var(--ink-soft)", padding: "56px 24px 80px", scrollMarginTop: 130 }}>
+        {/* Owner, 15 Oct 2026: the review form to the LEFT of the booking form on
+            a wide screen, and the three reassurance cards folded into the
+            booking form to save space. On a phone the booking form comes first. */}
         <div className="inquire-layout">
-          <div style={{ paddingTop: 6 }}>
-            <h2 className="display" style={{ fontSize: 30, color: "var(--text)", marginBottom: 6 }}>Check availability & inquire</h2>
-            <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 0, marginBottom: 26 }}>
-              We'll get back to you fast — this goes straight to our dashboard and email.
-            </p>
-            <div style={{ display: "grid", gap: 16 }}>
-              <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: "16px 18px" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--purple)", marginBottom: 4 }}>Fast response</div>
-                <div style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
-                  Every inquiry lands directly on our dashboard — we typically reply the same day.
-                </div>
-              </div>
-              <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: "16px 18px" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--purple)", marginBottom: 4 }}>Flexible cancellation</div>
-                <div style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
-                  Full refund 24+ hours out, and free rescheduling 2+ days before your charter. See our <a href="/terms" style={{ color: "var(--purple)" }}>full policy</a>.
-                </div>
-              </div>
-              <div style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.18)", borderRadius: 10, padding: "16px 18px" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--purple)", marginBottom: 4 }}>Prefer to talk it through?</div>
-                <div style={{ fontSize: 13.5, color: "var(--text)", opacity: 0.85, lineHeight: 1.5 }}>
-                  TheNautiYachti@Gmail.com — 832-948-2912
-                </div>
-              </div>
-            </div>
+          <div className="inquire-review">
+            <TestimonialForm onSubmit={submitTestimonial} />
           </div>
-          <InquiryForm packages={packages} vessels={vessels} addOns={addOns} defaultPackageId={activePackage} prefill={prefill} onSubmitPay={submitCheckout} onSubmitInquire={submitPlainInquiry} />
+          <div className="inquire-book">
+            <InquiryForm packages={packages} vessels={vessels} addOns={addOns} bookedWindows={bookedWindows} defaultPackageId={activePackage} prefill={prefill} onSubmitPay={submitCheckout} onSubmitInquire={submitPlainInquiry} />
+          </div>
         </div>
       </div>
 
@@ -901,7 +979,7 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
             onClick={() => onBook({ vesselId, dayType, hour, guests })}
             style={{ background: "var(--purple)", color: "#0A0612", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontWeight: 700 }}
           >
-            Book this
+            {pkg.pricingType === "per-guest" ? "Book seats →" : "Choose this package →"}
           </button>
         )}
         {/* Real internal link to the package's own indexable page. The card
@@ -925,18 +1003,26 @@ function PackageCard({ pkg, vessels, defaultVesselId, onBook, plate = 4 }) {
   );
 }
 
-function AvailabilityCalendar({ blockedDates, partialDates, bookedWindows = {} }) {
+// How far ahead a guest can page the calendar, in months past this one.
+const CALENDAR_MONTHS_AHEAD = 12;
+
+function AvailabilityCalendar({ blockedDates, partialDates, bookedWindows = {}, selectedDate, onPickDate }) {
   // Computed client-side only: "today" must reflect the viewer's local clock,
   // and doing this during SSR causes hydration mismatches when the server's
   // timezone differs from the browser's.
-  const [months, setMonths] = useState(null);
+  const [base, setBase] = useState(null);
+  // Owner, 15 Oct 2026: guests see this month and next "as is but can change
+  // to further future dates if needed".
+  const [offset, setOffset] = useState(0);
   useEffect(() => {
     const now = new Date();
-    setMonths([
-      { year: now.getFullYear(), month: now.getMonth() },
-      { year: now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear(), month: (now.getMonth() + 1) % 12 },
-    ]);
+    setBase({ year: now.getFullYear(), month: now.getMonth() });
   }, []);
+  const monthAt = (k) => {
+    const m = base.month + offset + k;
+    return { year: base.year + Math.floor(m / 12), month: ((m % 12) + 12) % 12 };
+  };
+  const months = base ? [monthAt(0), monthAt(1)] : null;
 
   function getState(key) {
     if (blockedDates.includes(key)) return "full";
@@ -953,21 +1039,143 @@ function AvailabilityCalendar({ blockedDates, partialDates, bookedWindows = {} }
 
   if (!months) return null;
 
+  const navBtn = (disabled) => ({
+    background: "transparent", color: "var(--text)", border: "1px solid rgba(203,108,230,0.35)", borderRadius: 999,
+    padding: "7px 14px", fontSize: 13, fontWeight: 600, opacity: disabled ? 0.35 : 1, cursor: disabled ? "default" : "pointer",
+  });
+
   return (
-    <div style={{ display: "flex", gap: 32, flexWrap: "wrap", justifyContent: "center" }}>
-      {months.map((m) => (
-        <AvailabilityMonthGrid key={`${m.year}-${m.month}`} year={m.year} month={m.month} getState={getState} getWindows={getWindows} />
-      ))}
+    <div>
+      <div style={{ display: "flex", gap: 32, flexWrap: "wrap", justifyContent: "center" }}>
+        {months.map((m) => (
+          <AvailabilityMonthGrid
+            key={`${m.year}-${m.month}`}
+            year={m.year} month={m.month}
+            getState={getState} getWindows={getWindows}
+            onDayClick={onPickDate} disableFull selectedKey={selectedDate}
+          />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}>
+        <button type="button" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - 1))} style={navBtn(offset === 0)}>
+          ← Earlier
+        </button>
+        <button type="button" disabled={offset >= CALENDAR_MONTHS_AHEAD} onClick={() => setOffset((o) => Math.min(CALENDAR_MONTHS_AHEAD, o + 1))} style={navBtn(offset >= CALENDAR_MONTHS_AHEAD)}>
+          Later months →
+        </button>
+      </div>
     </div>
   );
 }
 
-function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onSubmitPay, onSubmitInquire }) {
+// STEP 3, second half: the guest has tapped a day. How long, and what time?
+//
+// Owner, 15 Oct 2026: "once a date is selected here on the calendar, it should
+// ask for an estimated time, ensure it's available, and then send you to the
+// book and pay now window with all the information they have selected."
+// A time that overlaps a charter already booked at a known time is offered but
+// disabled, and the server checks the same thing again when they pay.
+function DatePickPanel({ pkg, vessel, date, timed, defaultHours, onContinue, onClose }) {
+  const hourly = pkg?.pricingType === "hourly-by-vessel";
+  const onThisBoat = !pkg?.vessels?.length || pkg.vessels.includes(vessel?.id);
+  const dayType = dayTypeForDate(date);
+  const table = hourly ? (pkg.hourlyByVessel?.[vessel?.id]?.[dayType] || {}) : {};
+  const hourOptions = Object.keys(table).map(Number).sort((a, b) => a - b);
+  const [hours, setHours] = useState(
+    hourly ? (hourOptions.includes(Number(defaultHours)) ? Number(defaultHours) : hourOptions[0]) : (Number(pkg?.fixedHours) || null)
+  );
+  const [start, setStart] = useState("");
+  const clash = (t) => windowProblem({ startTime: t, hours, timed });
+  const startProblem = start ? clash(start) : null;
+  const price = hourly && hours ? table[String(hours)] : null;
+
+  const box = { background: "var(--card)", border: "1px solid var(--purple)", borderRadius: 12, padding: "18px 18px 16px", maxWidth: 520, margin: "22px auto 0", textAlign: "left" };
+  const sel = { width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 };
+
+  return (
+    <div style={box}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
+        <div>
+          <div className="mono" style={{ color: "var(--purple)", fontSize: 12, letterSpacing: "0.12em", fontWeight: 700 }}>YOUR DATE</div>
+          <div className="display" style={{ fontSize: 20, color: "var(--text)" }}>{formatGlowDate(date)}</div>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close" style={{ background: "transparent", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer" }}>×</button>
+      </div>
+
+      {!pkg || !onThisBoat ? (
+        <p style={{ fontSize: 13.5, color: "var(--pink)", margin: 0 }}>
+          {pkg ? `${pkg.name} isn't offered on the ${vessel?.name}.` : "Pick a package first."}{" "}
+          <a href="#packages" style={{ color: "var(--purple)" }}>Choose a package</a> or switch boats above.
+        </p>
+      ) : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: hourly ? "1fr 1fr" : "1fr", gap: 12, marginBottom: 12 }}>
+            {hourly && (
+              <label style={{ display: "block" }}>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>How long</div>
+                <select value={hours || ""} onChange={(e) => setHours(Number(e.target.value))} style={sel}>
+                  {hourOptions.map((h) => <option key={h} value={h}>{h} hour{h === 1 ? "" : "s"} — {currency(table[String(h)])}</option>)}
+                </select>
+              </label>
+            )}
+            <label style={{ display: "block" }}>
+              <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Estimated start time</div>
+              <select value={start} onChange={(e) => setStart(e.target.value)} style={sel}>
+                <option value="">Choose a time</option>
+                {START_SLOTS.map((t) => {
+                  const taken = !!clash(t);
+                  return <option key={t} value={t} disabled={taken}>{formatStartTime(t)}{taken ? " — taken" : ""}</option>;
+                })}
+              </select>
+            </label>
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 12 }}>
+            {hourly ? `${dayType === "weekend" ? "Weekend" : "Weekday"} rate (Friday to Sunday is the weekend).` : durationText(pkg)}
+            {timed.length > 0 && <> Already booked that day: {timed.map((w) => formatStartTime(w.startTime)).join(", ")}.</>}
+          </div>
+          {startProblem && <div style={{ fontSize: 13, color: "var(--pink)", marginBottom: 10 }}>{startProblem.message}</div>}
+          <button
+            type="button"
+            disabled={!start || !!startProblem}
+            onClick={() => onContinue({ date, startTime: start, hour: hours })}
+            style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "12px", fontWeight: 700, fontSize: 15, opacity: !start || startProblem ? 0.5 : 1, cursor: !start || startProblem ? "default" : "pointer" }}
+          >
+            {start ? `Continue to book${price != null ? ` — ${currency(price)}` : ""} →` : "Pick a start time to continue"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function InquiryForm({ packages, vessels, addOns, bookedWindows = {}, defaultPackageId, prefill, onSubmitPay, onSubmitInquire }) {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", packageId: defaultPackageId || packages[0]?.id,
-    vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 1, couponCode: "",
+    vesselId: vessels[0]?.id, date: "", startTime: "", partySize: "", message: "", hours: 1, couponCode: "",
     giftCertificateCode: "", addOnIds: [], agreeTerms: false,
   });
+  // What the coupon field found: a preview for the price on the button. The
+  // server checks the code again and is what actually discounts the charge.
+  const [couponNote, setCouponNote] = useState(null); // { ok, text, discountType, discountValue }
+
+  async function checkCouponCode(raw) {
+    const code = String(raw || "").trim();
+    if (!code) { setCouponNote(null); return; }
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, email: form.email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setCouponNote(data.valid
+        ? { ok: true, discountType: data.discountType, discountValue: Number(data.discountValue),
+            text: (data.discountType === "percent" ? data.discountValue + "% off" : currency(data.discountValue) + " off") + " applied to the total." }
+        : { ok: false, text: data.reason || "That code was not recognised." });
+    } catch {
+      setCouponNote({ ok: false, text: "We could not check that code just now. It will still be checked when you book." });
+    }
+  }
   // What the gift certificate field found, shown under it. Only a preview: the
   // server reads the balance again and spends it once payment succeeds.
   const [giftNote, setGiftNote] = useState(null); // { ok, text }
@@ -983,7 +1191,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
       });
       const data = await res.json().catch(() => ({}));
       setGiftNote(data.valid
-        ? { ok: true, text: "$" + Number(data.balance).toFixed(2) + " on this certificate. It comes off the total when you book and pay." }
+        ? { ok: true, balance: Number(data.balance), text: "$" + Number(data.balance).toFixed(2) + " on this certificate. It comes off the total when you book and pay." }
         : { ok: false, text: data.reason || "That code was not recognised." });
     } catch {
       setGiftNote({ ok: false, text: "We could not check that code just now. It will still be checked when you book." });
@@ -1035,6 +1243,9 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
         vesselId: prefill.vesselId || f.vesselId,
         hours: prefill.hour || f.hours,
         partySize: prefill.guests || f.partySize,
+        // From the step 3 calendar: the day and the start time they chose.
+        date: prefill.date || f.date,
+        startTime: prefill.startTime || f.startTime,
       }));
     }
   }, [prefill]);
@@ -1043,6 +1254,24 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     return dayTypeForDate(dateStr);
   }
   const dayType = dayTypeFor(form.date);
+
+  // THE PRICE ON THE BUTTON. Owner, 15 Oct 2026: "it would be nice to have the
+  // price in the pink book and pay now (changes upon edits to the reservation
+  // selections)". The same quoteTotal the server charges, then the coupon and
+  // the gift certificate previews, in the order the server applies them.
+  const usesOurBoatNow = !!(selectedPkg?.vessels && selectedPkg.vessels.length);
+  const baseTotal = selectedPkg && !(selectedPkg.pricingType === "hourly-by-vessel" && !form.date)
+    ? quoteTotal(selectedPkg, addOns, {
+        vesselId: usesOurBoatNow ? form.vesselId : null, date: form.date, hours: form.hours,
+        partySize: form.partySize, addOnIds: form.addOnIds,
+      })
+    : null;
+  const afterCoupon = baseTotal == null ? null : !couponNote?.ok ? baseTotal
+    : Math.max(0, couponNote.discountType === "percent" ? baseTotal * (1 - couponNote.discountValue / 100) : baseTotal - couponNote.discountValue);
+  const dueNow = afterCoupon == null ? null : giftNote?.ok ? Math.max(0, afterCoupon - giftNote.balance) : afterCoupon;
+  const money = (n) => "$" + (Math.round(n * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  const timedToday = form.date && form.vesselId ? timedFor(bookedWindows, form.vesselId, form.date) : [];
+  const needsStart = selectedPkg && selectedPkg.pricingType !== "per-guest";
 
   function field(name, label, type = "text", extra = {}) {
     return (
@@ -1121,11 +1350,13 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           vesselName: vessel?.name || null,
           date: form.date || null,
           partySize: form.partySize || null,
+          startTime: form.startTime || null,
           priceQuoted,
         });
       }
-      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", partySize: "", message: "", hours: 1, couponCode: "", giftCertificateCode: "", addOnIds: [], agreeTerms: false });
+      setForm({ name: "", email: "", phone: "", packageId: packages[0]?.id, vesselId: vessels[0]?.id, date: "", startTime: "", partySize: "", message: "", hours: 1, couponCode: "", giftCertificateCode: "", addOnIds: [], agreeTerms: false });
       setGiftNote(null);
+      setCouponNote(null);
       setTimeout(() => setSent(false), 3500);
     } else {
       setSubmitting(false);
@@ -1159,6 +1390,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
       // YYYY-MM-DD in, "Saturday, September 19, 2026" out. The raw ISO string is
       // what the form holds, and it is not what a guest should be reading back.
       ["Date", confirmed.date ? formatGlowDate(confirmed.date) : null],
+      ["Start", formatStartTime(confirmed.startTime)],
       ["Guests", confirmed.partySize],
       ["Quoted", confirmed.priceQuoted != null ? currency(confirmed.priceQuoted) : null],
     ].filter(([, v]) => v !== null && v !== undefined && v !== "");
@@ -1201,13 +1433,32 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
     );
   }
 
+  const section = (label, first) => (
+    <div className="mono" style={{ ...fullWidth, fontSize: 11.5, letterSpacing: "0.14em", color: "var(--purple)", fontWeight: 700, paddingTop: first ? 0 : 14, marginTop: first ? 0 : 4, borderTop: first ? "none" : "1px solid rgba(203,108,230,0.15)" }}>
+      {label}
+    </div>
+  );
+
   return (
     <form onSubmit={submit} style={{ background: "var(--card)", border: "1px solid rgba(203,108,230,0.2)", borderRadius: 12, padding: 20, boxShadow: "0 4px 24px rgba(0,0,0,0.35)" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 14px", marginBottom: 12 }}>
-        {field("name", "Name")}
-        {field("email", "Email", "email")}
-        {field("phone", "Phone", "tel")}
+      {/* HEADER, and the three reassurances that used to be three big cards
+          beside the form (owner, 15 Oct 2026: "summarize that or reformat
+          this somewhere"). */}
+      <div style={{ marginBottom: 14 }}>
+        <div className="mono" style={{ color: "var(--pink)", fontSize: 12, letterSpacing: "0.15em", fontWeight: 700 }}>BOOK &amp; PAY</div>
+        <h2 className="display" style={{ fontSize: 28, color: "var(--text)", margin: "2px 0 4px" }}>Your charter</h2>
+        <div style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.5 }}>
+          Check the details, then book and pay in one go. Not ready? Send an inquiry instead.
+        </div>
+      </div>
+      <div className="book-perks">
+        <span><strong>Same-day replies</strong> to every inquiry</span>
+        <span><strong>Full refund</strong> 24+ hours out · free reschedule 2+ days out · <a href="/terms" style={{ color: "var(--purple)" }}>policy</a></span>
+        <span><strong>Rather talk?</strong> <a href="tel:+18329482912" style={{ color: "var(--purple)" }}>832-948-2912</a> · <a href="mailto:TheNautiYachti@Gmail.com" style={{ color: "var(--purple)" }}>email</a></span>
+      </div>
 
+      <div className="book-grid">
+        {section("YOUR TRIP", true)}
         <label style={{ display: "block" }}>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Package</div>
           <select value={form.packageId} onChange={(e) => setForm({ ...form, packageId: e.target.value })}
@@ -1264,7 +1515,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
         {selectedPkg?.pricingType === "hourly-by-vessel" && (
           <label style={{ display: "block" }}>
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>
-              Duration <span style={{ color: "var(--purple)", fontWeight: 400 }}>({form.date ? (dayType === "weekend" ? "weekend" : "weekday") + " rate" : "pick a date to confirm weekday/weekend rate"})</span>
+              Duration <span style={{ color: "var(--purple)", fontWeight: 400 }}>({form.date ? (dayType === "weekend" ? "weekend" : "weekday") + " rate" : "pick a date: Friday to Sunday is the weekend rate"})</span>
             </div>
             <select value={form.hours} onChange={(e) => setForm({ ...form, hours: Number(e.target.value) })}
               style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
@@ -1275,16 +1526,61 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           </label>
         )}
 
-        {field("partySize", "Party size", "number", { min: 1 })}
+        {needsStart && (
+          <label style={{ display: "block" }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Estimated start time</div>
+            <select value={form.startTime} required onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}>
+              <option value="">Choose a time</option>
+              {START_SLOTS.map((t) => {
+                const taken = !!windowProblem({ startTime: t, hours: form.hours, timed: timedToday });
+                return <option key={t} value={t} disabled={taken}>{formatStartTime(t)}{taken ? " — taken" : ""}</option>;
+              })}
+            </select>
+          </label>
+        )}
 
+        {field("partySize", "Party size", "number", { min: 1 })}
+        {/* A per-seat event takes no add-ons and must not offer any. Boatz &
+            Glowz sells ONE SEAT on a boat carrying a dozen strangers — there is
+            no table to decorate and no way to set up for two people in the
+            middle of somebody else's night. Slade Deliberto was charged $60 for
+            a decoration package on two glow seats on the morning of 18 Sep 2026
+            because this dropdown offered it. lib/pricing.js refuses to charge
+            for it either way; this stops it being asked for. */}
+        {addOns && addOns.length > 0 && takesAddOns(selectedPkg) && (
+          <AddOnsDropdown
+            addOns={addOns}
+            selectedIds={form.addOnIds}
+            onChange={(ids) => setForm({ ...form, addOnIds: ids })}
+            packageId={form.packageId}
+          />
+        )}
+
+
+        {section("YOUR DETAILS")}
+        {field("name", "Name")}
+        {field("email", "Email", "email")}
+        {field("phone", "Phone", "tel")}
+        <label style={{ display: "block", ...fullWidth }}>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Anything else?</div>
+          <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, fontFamily: "inherit" }} />
+        </label>
+
+        {section("CODES (OPTIONAL)")}
         <label style={{ display: "block" }}>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Coupon code <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span></div>
           <input
             type="text"
             value={form.couponCode}
-            onChange={(e) => setForm({ ...form, couponCode: e.target.value.toUpperCase() })}
+            onChange={(e) => { setForm({ ...form, couponCode: e.target.value.toUpperCase() }); setCouponNote(null); }}
+            onBlur={(e) => checkCouponCode(e.target.value)}
             style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14 }}
           />
+          {couponNote && (
+            <div style={{ fontSize: 12, marginTop: 4, color: couponNote.ok ? "var(--text)" : "var(--pink)" }}>{couponNote.text}</div>
+          )}
         </label>
 
         {/* GIFT CERTIFICATE. The certificate email has always told guests to
@@ -1306,28 +1602,30 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
           )}
         </label>
 
-        {/* A per-seat event takes no add-ons and must not offer any. Boatz &
-            Glowz sells ONE SEAT on a boat carrying a dozen strangers — there is
-            no table to decorate and no way to set up for two people in the
-            middle of somebody else's night. Slade Deliberto was charged $60 for
-            a decoration package on two glow seats on the morning of 18 Sep 2026
-            because this dropdown offered it. lib/pricing.js refuses to charge
-            for it either way; this stops it being asked for. */}
-        {addOns && addOns.length > 0 && takesAddOns(selectedPkg) && (
-          <AddOnsDropdown
-            addOns={addOns}
-            selectedIds={form.addOnIds}
-            onChange={(ids) => setForm({ ...form, addOnIds: ids })}
-            packageId={form.packageId}
-          />
-        )}
-
-        <label style={{ display: "block", ...fullWidth }}>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 4, fontWeight: 600 }}>Anything else?</div>
-          <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(203,108,230,0.3)", fontSize: 14, fontFamily: "inherit" }} />
-        </label>
       </div>
+
+      {dueNow != null && (
+        <div style={{ background: "var(--paper-12)", borderRadius: 10, padding: "12px 14px", margin: "16px 0 14px", fontSize: 13.5 }}>
+          {(couponNote?.ok || giftNote?.ok) && (
+            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", marginBottom: 4 }}>
+              <span>Charter</span><span>{money(baseTotal)}</span>
+            </div>
+          )}
+          {couponNote?.ok && (
+            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", marginBottom: 4 }}>
+              <span>Coupon {form.couponCode}</span><span>−{money(baseTotal - afterCoupon)}</span>
+            </div>
+          )}
+          {giftNote?.ok && (
+            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", marginBottom: 4 }}>
+              <span>Gift certificate</span><span>−{money(afterCoupon - dueNow)}</span>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text)", fontWeight: 700, fontSize: 15 }}>
+            <span>Total today</span><span>{money(dueNow)}</span>
+          </div>
+        </div>
+      )}
 
       <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 14, fontSize: 13, color: "var(--muted)" }}>
         <input
@@ -1347,7 +1645,7 @@ function InquiryForm({ packages, vessels, addOns, defaultPackageId, prefill, onS
         </span>
       </label>
       <button type="submit" disabled={submitting} style={{ width: "100%", background: "linear-gradient(135deg, var(--purple), var(--pink))", color: "#0A0612", border: "none", borderRadius: 6, padding: "12px", fontWeight: 700, fontSize: 15, opacity: submitting ? 0.7 : 1 }}>
-        {sent ? "Request sent ✓" : submitting ? "Redirecting to payment…" : "Book & pay now"}
+        {sent ? "Request sent ✓" : submitting ? "Redirecting to payment…" : `Book & pay now${dueNow != null ? ` · ${money(dueNow)}` : ""}`}
       </button>
       <button type="button" onClick={inquireOnly} disabled={submitting} style={{ width: "100%", marginTop: 10, background: "transparent", color: "var(--purple)", border: "1px solid var(--purple)", borderRadius: 6, padding: "11px", fontWeight: 600, fontSize: 14, opacity: submitting ? 0.7 : 1 }}>
         Not ready to pay? Just send an inquiry

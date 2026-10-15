@@ -391,8 +391,57 @@ input::placeholder, textarea::placeholder {
   max-width: 1400px;
   margin: 0 auto;
 }
+/* Owner, 15 Oct 2026: the review form on the left, the booking form on the
+   right. On a phone the booking form comes first. */
+.inquire-book { order: 1; min-width: 0; }
+.inquire-review { order: 2; min-width: 0; }
 @media (min-width: 900px) {
-  .inquire-layout { grid-template-columns: minmax(260px, 1fr) minmax(360px, 720px); gap: 44px; }
+  .inquire-layout { grid-template-columns: minmax(260px, 1fr) minmax(380px, 760px); gap: 44px; }
+  .inquire-review { order: 1; position: sticky; top: 20px; }
+  .inquire-book { order: 2; }
+}
+
+/* The booking form: two columns, one on a phone. */
+.book-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; margin-bottom: 4px; }
+@media (max-width: 560px) { .book-grid { grid-template-columns: 1fr; } }
+.book-perks {
+  display: grid; gap: 6px; font-size: 12.5px; line-height: 1.45; color: var(--muted);
+  background: rgba(203, 108, 230, 0.07); border: 1px solid rgba(203, 108, 230, 0.18);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 16px;
+}
+.book-perks strong { color: var(--text); font-weight: 700; }
+
+/* "Booking is 3 easy steps" in the hero. */
+.hero-steps { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.hero-step {
+  display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none;
+  border: 1px solid rgba(203, 108, 230, 0.4); border-radius: 999px; padding: 7px 14px 7px 7px;
+  font-size: 14px; font-weight: 600; background: rgba(10, 6, 18, 0.5);
+}
+.hero-step-n {
+  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--pink)); color: #0A0612; font-weight: 800; font-size: 13px;
+}
+@media (max-width: 560px) {
+  .hero-steps { flex-direction: column; align-items: stretch; max-width: 300px; margin: 0 auto; }
+}
+
+/* Step 3's boat switcher and legend. On a phone the pills wrapped one, two
+   and the legend's long note ran into three ragged lines (owner's screenshot,
+   15 Oct 2026). Now: three equal pills in one row, and a one-line legend. */
+.avail-vessels {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+  max-width: 520px; margin: 0 auto 16px;
+}
+.avail-legend {
+  display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--muted); margin-bottom: 6px;
+}
+.avail-legend > span { white-space: nowrap; }
+.avail-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin-right: 5px; }
+@media (max-width: 420px) {
+  .avail-vessels button { font-size: 12px !important; padding: 8px 4px !important; }
+  .avail-legend { gap: 10px; font-size: 11.5px; }
 }
 
 /* The Social Pipeline holds captions that have to be readable at a glance, so

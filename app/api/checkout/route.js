@@ -4,7 +4,7 @@ const { sendInquiryEmail, sendInquiryAckEmail, sendBookingConfirmationEmail } = 
 const { checkCoupon, discountedAmount } = require("../../../lib/coupons");
 const { checkGiftCertificate, applicableAmount, redeem: redeemGiftCertificate } = require("../../../lib/giftCertificates");
 const { generateBookingId } = require("../../../lib/bookingId");
-const { quoteTotal } = require("../../../lib/pricing");
+const { quoteTotal, cleanStartTime, messageWithStartTime } = require("../../../lib/pricing");
 const { parsePackage } = require("../../../lib/serialize");
 const { clean: cleanSource } = require("../../../lib/referralSource");
 const { isPartnerReferralRow } = require("../../../lib/partners");
@@ -99,6 +99,7 @@ async function POST(req) {
     pkg: parsePackage(pkgRow),
     vesselId: body.vesselId, vesselName: body.vesselName,
     date: body.date, hours: body.hours, partySize: body.partySize,
+    startTime: cleanStartTime(body.startTime),
   });
   if (slot) {
     return NextResponse.json({ error: slot.message, unavailable: true, reason: slot.reason }, { status: 409 });
@@ -186,7 +187,7 @@ async function POST(req) {
       date: body.date || null,
       hours: body.hours ? Number(body.hours) : null,
       partySize: body.partySize ? String(body.partySize) : null,
-      message: body.message || null,
+      message: messageWithStartTime(body) || null,
       priceQuoted,
       paymentStatus: "unpaid",
       couponCode: appliedCoupon ? appliedCoupon.code : null,
@@ -278,7 +279,9 @@ async function POST(req) {
       ],
       success_url: `${origin}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/#packages`,
-      metadata: { inquiryId: created.id },
+      // The start time rides to the webhook, which writes it on the booking so
+      // the calendar shows the window and the confirmation email states it.
+      metadata: { inquiryId: created.id, ...(cleanStartTime(body.startTime) ? { startTime: cleanStartTime(body.startTime) } : {}) },
       // THE SHORTEST LIFE STRIPE ALLOWS, 30 minutes (plus one for the clock).
       // While this session is open the boat is held for this guest — see
       // HOLD_MINUTES in lib/availability.js — and a slot held for the default

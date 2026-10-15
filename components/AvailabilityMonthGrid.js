@@ -24,7 +24,9 @@ const STATE_TEXT_COLOR = {
 // calendar and the admin console's toggle view. getState(dateKey) returns
 // "open" | "partial" | "full"; pass onDayClick to make days clickable
 // (admin only — the public calendar is read-only).
-export default function AvailabilityMonthGrid({ year, month, getState, getWindows, onDayClick, size = "normal" }) {
+// disableFull: a fully booked day cannot be clicked (the public calendar; the
+// admin view clicks full days to unblock them). selectedKey outlines one day.
+export default function AvailabilityMonthGrid({ year, month, getState, getWindows, onDayClick, size = "normal", disableFull = false, selectedKey = null }) {
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayKey = localDateKey(new Date());
@@ -53,12 +55,14 @@ export default function AvailabilityMonthGrid({ year, month, getState, getWindow
           const isPast = key < todayKey;
           const state = isPast ? null : getState(key);
           const windows = isPast || !getWindows ? null : getWindows(key);
-          const clickable = !!onDayClick && !isPast;
+          const clickable = !!onDayClick && !isPast && !(disableFull && state === "full");
+          const selected = key === selectedKey;
           const Tag = clickable ? "button" : "div";
           return (
             <Tag
               key={key}
               onClick={clickable ? () => onDayClick(key) : undefined}
+              aria-pressed={onDayClick && disableFull ? selected : undefined}
               className={clickable ? "day-cell" : undefined}
               style={{
                 border: "none", borderRadius: 8, padding: cellPad, textAlign: "center",
@@ -67,6 +71,7 @@ export default function AvailabilityMonthGrid({ year, month, getState, getWindow
                 opacity: isPast ? 0.35 : 1,
                 cursor: clickable ? "pointer" : "default",
                 fontFamily: "inherit",
+                boxShadow: selected ? "0 0 0 3px var(--text), 0 0 0 6px var(--pink)" : "none",
               }}
             >
               <div className="mono" style={{ fontSize: size === "compact" ? 12 : 17, fontWeight: 700 }}>{d}</div>

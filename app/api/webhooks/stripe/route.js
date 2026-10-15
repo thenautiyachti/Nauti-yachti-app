@@ -6,6 +6,7 @@ const { describeFailure } = require("../../../../lib/paymentFailure");
 const { availabilityProblem } = require("../../../../lib/availabilityQuery");
 const { holdsTheDay, INQUIRY_STATUS_BUCKET } = require("../../../../lib/bookingStatus");
 const { parsePackage } = require("../../../../lib/serialize");
+const { cleanStartTime } = require("../../../../lib/pricing");
 const { isFullRefund, refundUpdate, alreadyRecorded } = require("../../../../lib/refunds");
 const { isExtensionRef } = require("../../../../lib/extensionRef");
 const { foldExtensionPayment } = require("../../../../lib/extensionPayment");
@@ -611,6 +612,9 @@ async function POST(req) {
                 vesselId: paidInquiry.vesselId || "unknown",
                 vesselName: paidInquiry.vesselName || paidInquiry.packageName || "Unassigned",
                 date: paidInquiry.date,
+                // The start time the guest picked on the booking form (since
+                // 15 Oct 2026), carried in the session metadata.
+                startTime: cleanStartTime(session.metadata && session.metadata.startTime),
                 hours: paidInquiry.hours ?? null,
                 guestName: paidInquiry.name || null,
                 email: paidInquiry.email || null,

@@ -40,6 +40,8 @@ console.log("\n  DAY TYPE — the rate depends on it, so it must be derived the 
 ok("a Saturday is a weekend", dayTypeForDate("2026-09-05"), "weekend");
 ok("a Sunday is a weekend", dayTypeForDate("2026-09-06"), "weekend");
 ok("a Wednesday is a weekday", dayTypeForDate("2026-09-09"), "weekday");
+ok("a Friday is a weekend (owner, 15 Oct 2026)", dayTypeForDate("2026-10-16"), "weekend");
+ok("a Thursday is a weekday", dayTypeForDate("2026-10-15"), "weekday");
 ok("no date falls back to weekday", dayTypeForDate(null), "weekday");
 
 console.log("\n  HOURLY BY VESSEL\n");
