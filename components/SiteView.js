@@ -263,7 +263,10 @@ export default function SiteView({ initialPackages, initialVessels, initialGalle
           style={{
             position: "absolute", inset: 0,
             backgroundImage: "linear-gradient(rgba(10,6,18,0.86), rgba(10,6,18,0.93)), url(/hero-watermark.jpg)",
-            backgroundSize: "cover", backgroundPosition: "center 22%", backgroundRepeat: "no-repeat",
+            // 58%, not 22%: the photo is portrait and the hero is wide, so only a band
+            // of it shows. When the hero copy was shortened (v3.5.0) a 22% band was
+            // all sky; the boats and the crowd sit 50-70% down (owner, 16 Oct 2026).
+            backgroundSize: "cover", backgroundPosition: "center 58%", backgroundRepeat: "no-repeat",
           }}
         />
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
