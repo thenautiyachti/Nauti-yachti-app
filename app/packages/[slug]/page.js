@@ -61,7 +61,11 @@ const HOURS = [1, 2, 3, 4, 5, 6, 7, 8];
 function PriceTable({ pkg, vessels }) {
   if (!pkg.hourlyByVessel) return null;
 
-  const usable = vessels.filter((v) => pkg.hourlyByVessel[v.id]);
+  // Only the boats that run this package. Tubing's rate table still holds
+  // Islander and Yachti rows, and printing them told guests they could book
+  // tubing on boats that do not run it (owner, 16 Oct 2026).
+  const runsOn = Array.isArray(pkg.vessels) && pkg.vessels.length ? pkg.vessels : null;
+  const usable = vessels.filter((v) => pkg.hourlyByVessel[v.id] && (!runsOn || runsOn.includes(v.id)));
   if (!usable.length) return null;
 
   return (
